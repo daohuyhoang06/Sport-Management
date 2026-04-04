@@ -1,0 +1,218 @@
+import { describe, test, expect, jest, beforeEach } from '@jest/globals';
+import httpMocks from 'node-mocks-http';
+
+// Mock models
+const mockBookingModel = {
+  findAll: jest.fn(),
+  findByPk: jest.fn(),
+  create: jest.fn(),
+  update: jest.fn(),
+  destroy: jest.fn(),
+  count: jest.fn()
+};
+
+const mockFieldModel = {
+  findByPk: jest.fn(),
+  findAll: jest.fn()
+};
+
+const mockPersonModel = {
+  findByPk: jest.fn()
+};
+
+jest.unstable_mockModule('../../src/models/Booking.js', () => ({
+  default: mockBookingModel
+}));
+
+jest.unstable_mockModule('../../src/models/Field.js', () => ({
+  default: mockFieldModel
+}));
+
+jest.unstable_mockModule('../../src/models/Person.js', () => ({
+  default: mockPersonModel
+}));
+
+describe('Booking Management Controller Tests', () => {
+  let bookingController;
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    bookingController = await import('../../src/controllers/admin/bookingManagementController.js');
+  });
+
+  describe('getAllBookings', () => {
+    test('should return all bookings successfully', async () => {
+      const req = httpMocks.createRequest({
+        method: 'GET',
+        query: {}
+      });
+      const res = httpMocks.createResponse();
+
+      const mockBookings = [
+        { booking_id: 1, status: 'pending', total_price: 500000 },
+        { booking_id: 2, status: 'confirmed', total_price: 600000 }
+      ];
+
+      mockBookingModel.findAll.mockResolvedValue(mockBookings);
+      mockBookingModel.count.mockResolvedValue(2);
+
+      await bookingController.getAllBookings(req, res);
+
+      expect(res.statusCode).toBe(200);
+      const data = res._getJSONData();
+      expect(data.success).toBe(true);
+      expect(data.data).toHaveLength(2);
+    });
+
+    test('should filter bookings by status', async () => {
+      const req = httpMocks.createRequest({
+        method: 'GET',
+        query: { status: 'confirmed' }
+      });
+      const res = httpMocks.createResponse();
+
+      const mockConfirmedBookings = [
+        { booking_id: 2, status: 'confirmed', total_price: 600000 }
+      ];
+
+      mockBookingModel.findAll.mockResolvedValue(mockConfirmedBookings);
+
+      await bookingController.getAllBookings(req, res);
+
+      expect(res.statusCode).toBe(200);
+      const data = res._getJSONData();
+      expect(data.data[0].status).toBe('confirmed');
+    });
+
+    test('should filter bookings by date range', async () => {
+      const req = httpMocks.createRequest({
+        method: 'GET',
+        query: {
+          startDate: '2024-01-01',
+          endDate: '2024-12-31'
+        }
+      });
+      const res = httpMocks.createResponse();
+
+      mockBookingModel.findAll.mockResolvedValue([]);
+
+      await bookingController.getAllBookings(req, res);
+
+      expect(mockBookingModel.findAll).toHaveBeenCalled();
+    });
+  });
+
+  describe('updateBookingStatus', () => {
+    test('should update booking status to confirmed', async () => {
+      const req = httpMocks.createRequest({
+        method: 'PATCH',
+        params: { id: '1' },
+        body: { status: 'confirmed' }
+      });
+      const res = httpMocks.createResponse();
+
+      const mockBooking = {
+        booking_id: 1,
+        status: 'pending',
+        update: jest.fn().mockResolvedValue(true)
+      };
+
+      mockBookingModel.findByPk.mockResolvedValue(mockBooking);
+
+      await bookingController.updateBookingStatus(req, res);
+
+      expect(mockBooking.update).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'confirmed' })
+      );
+      expect(res.statusCode).toBe(200);
+    });
+
+    test('should reject invalid status transitions', async () => {
+      const req = httpMocks.createRequest({
+        method: 'PATCH',
+        params: { id: '1' },
+        body: { status: 'invalid_status' }
+      });
+      const res = httpMocks.createResponse();
+
+      const mockBooking = {
+        booking_id: 1,
+        status: 'pending'
+      };
+
+      mockBookingModel.findByPk.mockResolvedValue(mockBooking);
+
+      await bookingController.updateBookingStatus(req, res);
+
+      expect(res.statusCode).toBe(400);
+    });
+  });
+
+  describe('cancelBooking', () => {
+    test('should cancel booking successfully', async () => {
+      const req = httpMocks.createRequest({
+        method: 'POST',
+        params: { id: '1' },
+        body: { reason: 'Customer request' }
+      });
+      const res = httpMocks.createResponse();
+
+      const mockBooking = {
+        booking_id: 1,
+        status: 'pending',
+        update: jest.fn().mockResolvedValue(true)
+      };
+
+      mockBookingModel.findByPk.mockResolvedValue(mockBooking);
+
+      await bookingController.cancelBooking(req, res);
+
+      expect(mockBooking.update).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'cancelled' })
+      );
+      expect(res.statusCode).toBe(200);
+    });
+
+    test('should not cancel completed booking', async () => {
+      const req = httpMocks.createRequest({
+        method: 'POST',
+        params: { id: '1' }
+      });
+      const res = httpMocks.createResponse();
+
+      const mockBooking = {
+        booking_id: 1,
+        status: 'completed'
+      };
+
+      mockBookingModel.findByPk.mockResolvedValue(mockBooking);
+
+      await bookingController.cancelBooking(req, res);
+
+      expect(res.statusCode).toBe(400);
+    });
+  });
+
+  describe('getBookingStats', () => {
+    test('should return booking statistics', async () => {
+      const req = httpMocks.createRequest({
+        method: 'GET'
+      });
+      const res = httpMocks.createResponse();
+
+      mockBookingModel.count
+        .mockResolvedValueOnce(100)  // totalBookings
+        .mockResolvedValueOnce(20)   // pendingBookings
+        .mockResolvedValueOnce(40)   // confirmedBookings
+        .mockResolvedValueOnce(30)   // completedBookings
+        .mockResolvedValueOnce(10);  // cancelledBookings
+
+      await bookingController.getBookingStats(req, res);
+
+      expect(res.statusCode).toBe(200);
+      const data = res._getJSONData();
+      expect(data.data.totalBookings).toBe(100);
+      expect(data.data.pendingBookings).toBe(20);
+    });
+  });
+});

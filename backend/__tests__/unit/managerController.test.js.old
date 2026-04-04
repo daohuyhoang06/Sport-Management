@@ -1,0 +1,380 @@
+import { describe, test, expect, jest, beforeEach } from '@jest/globals';
+import httpMocks from 'node-mocks-http';
+
+// Mock models
+const mockFieldModel = {
+  findAll: jest.fn(),
+  findByPk: jest.fn(),
+  count: jest.fn()
+};
+
+const mockBookingModel = {
+  findAll: jest.fn(),
+  findByPk: jest.fn(),
+  create: jest.fn(),
+  update: jest.fn(),
+  count: jest.fn()
+};
+
+const mockFieldScheduleModel = {
+  findAll: jest.fn()
+};
+
+jest.unstable_mockModule('../../src/models/Field.js', () => ({
+  default: mockFieldModel
+}));
+
+jest.unstable_mockModule('../../src/models/Booking.js', () => ({
+  default: mockBookingModel
+}));
+
+jest.unstable_mockModule('../../src/models/FieldSchedule.js', () => ({
+  default: mockFieldScheduleModel
+}));
+
+describe('Manager Controller Tests', () => {
+  let managerController;
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    managerController = await import('../../src/controllers/manager/bookingController.js');
+  });
+
+  describe('listBookings', () => {
+    test('should return bookings for manager\'s fields', async () => {
+      const req = httpMocks.createRequest({
+        method: 'GET',
+        user: { person_id: 2, role: 'manager', fieldId: 1 },
+        query: {}
+      });
+      const res = httpMocks.createResponse();
+
+      const mockBookings = [
+        { booking_id: 1, field_id: 1, status: 'pending' },
+        { booking_id: 2, field_id: 1, status: 'confirmed' }
+      ];
+
+      mockBookingModel.findAll.mockResolvedValue(mockBookings);
+
+      await managerController.listBookings(req, res);
+
+      expect(res.statusCode).toBe(200);
+      const data = res._getJSONData();
+      expect(data.success).toBe(true);
+      expect(data.data).toHaveLength(2);
+    });
+
+    test('should filter bookings by status', async () => {
+      const req = httpMocks.createRequest({
+        method: 'GET',
+        user: { person_id: 2, role: 'manager', fieldId: 1 },
+        query: { status: 'pending' }
+      });
+      const res = httpMocks.createResponse();
+
+      const mockPendingBookings = [
+        { booking_id: 1, field_id: 1, status: 'pending' }
+      ];
+
+      mockBookingModel.findAll.mockResolvedValue(mockPendingBookings);
+
+      await managerController.listBookings(req, res);
+
+      expect(res.statusCode).toBe(200);
+      const data = res._getJSONData();
+      expect(data.data[0].status).toBe('pending');
+    });
+
+    test('should filter bookings by date range', async () => {
+      const req = httpMocks.createRequest({
+        method: 'GET',
+        user: { person_id: 2, role: 'manager', fieldId: 1 },
+        query: {
+          startDate: '2024-01-01',
+          endDate: '2024-12-31'
+        }
+      });
+      const res = httpMocks.createResponse();
+
+      mockBookingModel.findAll.mockResolvedValue([]);
+
+      await managerController.listBookings(req, res);
+
+      expect(mockBookingModel.findAll).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            booking_date: expect.any(Object)
+          })
+        })
+      );
+    });
+  });
+
+  describe('approveBooking', () => {
+    test('should approve a pending booking', async () => {
+      const req = httpMocks.createRequest({
+        method: 'PUT',
+        params: { id: '1' },
+        user: { person_id: 2, role: 'manager', fieldId: 1 }
+      });
+      const res = httpMocks.createResponse();
+
+      const mockBooking = {
+        booking_id: 1,
+        field_id: 1,
+        status: 'pending',
+        update: jest.fn().mockResolvedValue(true)
+      };
+
+      mockBookingModel.findByPk.mockResolvedValue(mockBooking);
+
+      await managerController.approveBooking(req, res);
+
+      expect(mockBooking.update).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'confirmed' })
+      );
+      expect(res.statusCode).toBe(200);
+    });
+
+    test('should not approve booking for other manager\'s field', async () => {
+      const req = httpMocks.createRequest({
+        method: 'PUT',
+        params: { id: '1' },
+        user: { person_id: 2, role: 'manager', fieldId: 1 }
+      });
+      const res = httpMocks.createResponse();
+
+      const mockBooking = {
+        booking_id: 1,
+        field_id: 2, // Different field
+        status: 'pending'
+      };
+
+      mockBookingModel.findByPk.mockResolvedValue(mockBooking);
+
+      await managerController.approveBooking(req, res);
+
+      expect(res.statusCode).toBe(403);
+    });
+
+    test('should not approve already confirmed booking', async () => {
+      const req = httpMocks.createRequest({
+        method: 'PUT',
+        params: { id: '1' },
+        user: { person_id: 2, role: 'manager', fieldId: 1 }
+      });
+      const res = httpMocks.createResponse();
+
+      const mockBooking = {
+        booking_id: 1,
+        field_id: 1,
+        status: 'confirmed'
+      };
+
+      mockBookingModel.findByPk.mockResolvedValue(mockBooking);
+
+      await managerController.approveBooking(req, res);
+
+      expect(res.statusCode).toBe(400);
+    });
+  });
+
+  describe('rejectBooking', () => {
+    test('should reject a pending booking with reason', async () => {
+      const req = httpMocks.createRequest({
+        method: 'PUT',
+        params: { id: '1' },
+        body: { reason: 'Field under maintenance' },
+        user: { person_id: 2, role: 'manager', fieldId: 1 }
+      });
+      const res = httpMocks.createResponse();
+
+      const mockBooking = {
+        booking_id: 1,
+        field_id: 1,
+        status: 'pending',
+        update: jest.fn().mockResolvedValue(true)
+      };
+
+      mockBookingModel.findByPk.mockResolvedValue(mockBooking);
+
+      await managerController.rejectBooking(req, res);
+
+      expect(mockBooking.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: 'rejected',
+          rejection_reason: 'Field under maintenance'
+        })
+      );
+      expect(res.statusCode).toBe(200);
+    });
+
+    test('should require rejection reason', async () => {
+      const req = httpMocks.createRequest({
+        method: 'PUT',
+        params: { id: '1' },
+        body: {},
+        user: { person_id: 2, role: 'manager', fieldId: 1 }
+      });
+      const res = httpMocks.createResponse();
+
+      const mockBooking = {
+        booking_id: 1,
+        field_id: 1,
+        status: 'pending'
+      };
+
+      mockBookingModel.findByPk.mockResolvedValue(mockBooking);
+
+      await managerController.rejectBooking(req, res);
+
+      expect(res.statusCode).toBe(400);
+    });
+  });
+
+  describe('completeBooking', () => {
+    test('should mark confirmed booking as completed', async () => {
+      const req = httpMocks.createRequest({
+        method: 'PUT',
+        params: { id: '1' },
+        user: { person_id: 2, role: 'manager', fieldId: 1 }
+      });
+      const res = httpMocks.createResponse();
+
+      const mockBooking = {
+        booking_id: 1,
+        field_id: 1,
+        status: 'confirmed',
+        booking_date: new Date(Date.now() - 86400000), // Yesterday
+        update: jest.fn().mockResolvedValue(true)
+      };
+
+      mockBookingModel.findByPk.mockResolvedValue(mockBooking);
+
+      await managerController.completeBooking(req, res);
+
+      expect(mockBooking.update).toHaveBeenCalledWith(
+        expect.objectContaining({ status: 'completed' })
+      );
+      expect(res.statusCode).toBe(200);
+    });
+
+    test('should not complete future booking', async () => {
+      const req = httpMocks.createRequest({
+        method: 'PUT',
+        params: { id: '1' },
+        user: { person_id: 2, role: 'manager', fieldId: 1 }
+      });
+      const res = httpMocks.createResponse();
+
+      const mockBooking = {
+        booking_id: 1,
+        field_id: 1,
+        status: 'confirmed',
+        booking_date: new Date(Date.now() + 86400000) // Tomorrow
+      };
+
+      mockBookingModel.findByPk.mockResolvedValue(mockBooking);
+
+      await managerController.completeBooking(req, res);
+
+      expect(res.statusCode).toBe(400);
+    });
+  });
+
+  describe('cancelBooking', () => {
+    test('should cancel booking with reason', async () => {
+      const req = httpMocks.createRequest({
+        method: 'PUT',
+        params: { id: '1' },
+        body: { reason: 'Weather conditions' },
+        user: { person_id: 2, role: 'manager', fieldId: 1 }
+      });
+      const res = httpMocks.createResponse();
+
+      const mockBooking = {
+        booking_id: 1,
+        field_id: 1,
+        status: 'confirmed',
+        update: jest.fn().mockResolvedValue(true)
+      };
+
+      mockBookingModel.findByPk.mockResolvedValue(mockBooking);
+
+      await managerController.cancelBooking(req, res);
+
+      expect(mockBooking.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          status: 'cancelled',
+          cancellation_reason: 'Weather conditions'
+        })
+      );
+      expect(res.statusCode).toBe(200);
+    });
+
+    test('should not cancel completed booking', async () => {
+      const req = httpMocks.createRequest({
+        method: 'PUT',
+        params: { id: '1' },
+        body: { reason: 'Test reason' },
+        user: { person_id: 2, role: 'manager', fieldId: 1 }
+      });
+      const res = httpMocks.createResponse();
+
+      const mockBooking = {
+        booking_id: 1,
+        field_id: 1,
+        status: 'completed'
+      };
+
+      mockBookingModel.findByPk.mockResolvedValue(mockBooking);
+
+      await managerController.cancelBooking(req, res);
+
+      expect(res.statusCode).toBe(400);
+    });
+  });
+
+  describe('getBookingById', () => {
+    test('should return booking details', async () => {
+      const req = httpMocks.createRequest({
+        method: 'GET',
+        params: { id: '1' },
+        user: { person_id: 2, role: 'manager', fieldId: 1 }
+      });
+      const res = httpMocks.createResponse();
+
+      const mockBooking = {
+        booking_id: 1,
+        field_id: 1,
+        status: 'pending',
+        total_price: 500000,
+        Field: { field_name: 'Field 1' },
+        Person: { name: 'Customer Name' }
+      };
+
+      mockBookingModel.findByPk.mockResolvedValue(mockBooking);
+
+      await managerController.getBookingById(req, res);
+
+      expect(res.statusCode).toBe(200);
+      const data = res._getJSONData();
+      expect(data.data.booking_id).toBe(1);
+    });
+
+    test('should return 404 for non-existent booking', async () => {
+      const req = httpMocks.createRequest({
+        method: 'GET',
+        params: { id: '999' },
+        user: { person_id: 2, role: 'manager', fieldId: 1 }
+      });
+      const res = httpMocks.createResponse();
+
+      mockBookingModel.findByPk.mockResolvedValue(null);
+
+      await managerController.getBookingById(req, res);
+
+      expect(res.statusCode).toBe(404);
+    });
+  });
+});

@@ -1,0 +1,258 @@
+import { describe, test, expect, jest, beforeEach } from '@jest/globals';
+import httpMocks from 'node-mocks-http';
+
+// Mock models
+const mockPersonModel = {
+  findAll: jest.fn(),
+  findByPk: jest.fn(),
+  findOne: jest.fn(),
+  create: jest.fn(),
+  update: jest.fn(),
+  destroy: jest.fn(),
+  count: jest.fn()
+};
+
+const mockFieldModel = {
+  findAll: jest.fn(),
+  findByPk: jest.fn(),
+  count: jest.fn()
+};
+
+const mockBookingModel = {
+  findAll: jest.fn(),
+  findByPk: jest.fn(),
+  count: jest.fn()
+};
+
+jest.unstable_mockModule('../../src/models/Person.js', () => ({
+  default: mockPersonModel
+}));
+
+jest.unstable_mockModule('../../src/models/Field.js', () => ({
+  default: mockFieldModel
+}));
+
+jest.unstable_mockModule('../../src/models/Booking.js', () => ({
+  default: mockBookingModel
+}));
+
+describe('User Management Controller Tests', () => {
+  let userController;
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    userController = await import('../../src/controllers/admin/userManagementController.js');
+  });
+
+  describe('getAllUsers', () => {
+    test('should return all users successfully', async () => {
+      const req = httpMocks.createRequest({
+        method: 'GET',
+        query: {}
+      });
+      const res = httpMocks.createResponse();
+
+      const mockUsers = [
+        { person_id: 1, name: 'User 1', email: 'user1@test.com', role: 'user' },
+        { person_id: 2, name: 'User 2', email: 'user2@test.com', role: 'manager' }
+      ];
+
+      mockPersonModel.findAll.mockResolvedValue(mockUsers);
+      mockPersonModel.count.mockResolvedValue(2);
+
+      await userController.getAllUsers(req, res);
+
+      expect(res.statusCode).toBe(200);
+      const data = res._getJSONData();
+      expect(data.success).toBe(true);
+      expect(data.data).toHaveLength(2);
+    });
+
+    test('should filter users by role', async () => {
+      const req = httpMocks.createRequest({
+        method: 'GET',
+        query: { role: 'manager' }
+      });
+      const res = httpMocks.createResponse();
+
+      const mockManagers = [
+        { person_id: 2, name: 'Manager 1', email: 'mgr@test.com', role: 'manager' }
+      ];
+
+      mockPersonModel.findAll.mockResolvedValue(mockManagers);
+      mockPersonModel.count.mockResolvedValue(1);
+
+      await userController.getAllUsers(req, res);
+
+      expect(res.statusCode).toBe(200);
+      const data = res._getJSONData();
+      expect(data.data).toHaveLength(1);
+      expect(data.data[0].role).toBe('manager');
+    });
+
+    test('should handle pagination', async () => {
+      const req = httpMocks.createRequest({
+        method: 'GET',
+        query: { page: '2', limit: '10' }
+      });
+      const res = httpMocks.createResponse();
+
+      mockPersonModel.findAll.mockResolvedValue([]);
+      mockPersonModel.count.mockResolvedValue(25);
+
+      await userController.getAllUsers(req, res);
+
+      expect(mockPersonModel.findAll).toHaveBeenCalledWith(
+        expect.objectContaining({
+          limit: 10,
+          offset: 10
+        })
+      );
+    });
+  });
+
+  describe('createUser', () => {
+    test('should create a new user successfully', async () => {
+      const req = httpMocks.createRequest({
+        method: 'POST',
+        body: {
+          name: 'New User',
+          email: 'newuser@test.com',
+          password: 'Password123!',
+          role: 'user',
+          phone_number: '0123456789'
+        }
+      });
+      const res = httpMocks.createResponse();
+
+      const mockNewUser = {
+        person_id: 3,
+        name: 'New User',
+        email: 'newuser@test.com',
+        role: 'user',
+        phone_number: '0123456789'
+      };
+
+      mockPersonModel.findOne.mockResolvedValue(null);
+      mockPersonModel.create.mockResolvedValue(mockNewUser);
+
+      await userController.createUser(req, res);
+
+      expect(res.statusCode).toBe(201);
+      const data = res._getJSONData();
+      expect(data.success).toBe(true);
+      expect(data.data.email).toBe('newuser@test.com');
+    });
+
+    test('should reject creating user with existing email', async () => {
+      const req = httpMocks.createRequest({
+        method: 'POST',
+        body: {
+          name: 'New User',
+          email: 'existing@test.com',
+          password: 'Password123!',
+          role: 'user'
+        }
+      });
+      const res = httpMocks.createResponse();
+
+      mockPersonModel.findOne.mockResolvedValue({
+        person_id: 1,
+        email: 'existing@test.com'
+      });
+
+      await userController.createUser(req, res);
+
+      expect(res.statusCode).toBe(400);
+    });
+  });
+
+  describe('updateUser', () => {
+    test('should update user successfully', async () => {
+      const req = httpMocks.createRequest({
+        method: 'PUT',
+        params: { id: '1' },
+        body: {
+          name: 'Updated Name',
+          phone_number: '0987654321'
+        }
+      });
+      const res = httpMocks.createResponse();
+
+      const mockUser = {
+        person_id: 1,
+        name: 'Old Name',
+        email: 'user@test.com',
+        update: jest.fn().mockResolvedValue(true)
+      };
+
+      mockPersonModel.findByPk.mockResolvedValue(mockUser);
+
+      await userController.updateUser(req, res);
+
+      expect(mockUser.update).toHaveBeenCalled();
+      expect(res.statusCode).toBe(200);
+    });
+
+    test('should return 404 for non-existent user', async () => {
+      const req = httpMocks.createRequest({
+        method: 'PUT',
+        params: { id: '999' },
+        body: { name: 'Updated Name' }
+      });
+      const res = httpMocks.createResponse();
+
+      mockPersonModel.findByPk.mockResolvedValue(null);
+
+      await userController.updateUser(req, res);
+
+      expect(res.statusCode).toBe(404);
+    });
+  });
+
+  describe('deleteUser', () => {
+    test('should delete user successfully', async () => {
+      const req = httpMocks.createRequest({
+        method: 'DELETE',
+        params: { id: '1' }
+      });
+      const res = httpMocks.createResponse();
+
+      const mockUser = {
+        person_id: 1,
+        name: 'User to delete',
+        destroy: jest.fn().mockResolvedValue(true)
+      };
+
+      mockPersonModel.findByPk.mockResolvedValue(mockUser);
+
+      await userController.deleteUser(req, res);
+
+      expect(mockUser.destroy).toHaveBeenCalled();
+      expect(res.statusCode).toBe(200);
+    });
+  });
+
+  describe('getUserStats', () => {
+    test('should return user statistics', async () => {
+      const req = httpMocks.createRequest({
+        method: 'GET'
+      });
+      const res = httpMocks.createResponse();
+
+      mockPersonModel.count
+        .mockResolvedValueOnce(100)  // totalUsers
+        .mockResolvedValueOnce(80)   // regularUsers
+        .mockResolvedValueOnce(15)   // managers
+        .mockResolvedValueOnce(5)    // admins
+        .mockResolvedValueOnce(90);  // activeUsers
+
+      await userController.getUserStats(req, res);
+
+      expect(res.statusCode).toBe(200);
+      const data = res._getJSONData();
+      expect(data.data.totalUsers).toBe(100);
+      expect(data.data.activeUsers).toBe(90);
+    });
+  });
+});

@@ -1,0 +1,233 @@
+import { describe, test, expect, beforeAll, afterAll } from '@jest/globals';
+import request from 'supertest';
+
+// Note: For integration tests, you would need a test database
+// This is a template showing the structure of integration tests
+
+describe('Auth API Integration Tests', () => {
+  let app;
+  let authToken;
+  let testUserId;
+
+  beforeAll(async () => {
+    // Import app after environment is set up
+    const appModule = await import('../../src/app.js');
+    app = appModule.default;
+    
+    // Setup test database connection
+    // await sequelize.sync({ force: true });
+  });
+
+  afterAll(async () => {
+    // Clean up test database
+    // await sequelize.close();
+  });
+
+  describe('POST /api/auth/register', () => {
+    test('should register a new user', async () => {
+      const response = await request(app)
+        .post('/api/auth/register')
+        .send({
+          name: 'Integration Test User',
+          email: `test_${Date.now()}@example.com`,
+          password: 'Password123!',
+          phone_number: '0123456789'
+        });
+
+      expect(response.status).toBe(201);
+      expect(response.body.success).toBe(true);
+      expect(response.body.data).toHaveProperty('user');
+      
+      testUserId = response.body.data.user.person_id;
+    });
+
+    test('should reject registration with duplicate email', async () => {
+      const duplicateEmail = 'duplicate@example.com';
+      
+      // First registration
+      await request(app)
+        .post('/api/auth/register')
+        .send({
+          name: 'User 1',
+          email: duplicateEmail,
+          password: 'Password123!',
+          phone_number: '0111111111'
+        });
+
+      // Duplicate registration
+      const response = await request(app)
+        .post('/api/auth/register')
+        .send({
+          name: 'User 2',
+          email: duplicateEmail,
+          password: 'Password456!',
+          phone_number: '0222222222'
+        });
+
+      expect(response.status).toBe(400);
+      expect(response.body.success).toBe(false);
+    });
+
+    test('should reject registration with invalid email', async () => {
+      const response = await request(app)
+        .post('/api/auth/register')
+        .send({
+          name: 'Test User',
+          email: 'invalid-email',
+          password: 'Password123!',
+          phone_number: '0123456789'
+        });
+
+      expect(response.status).toBe(400);
+    });
+
+    test('should reject registration with weak password', async () => {
+      const response = await request(app)
+        .post('/api/auth/register')
+        .send({
+          name: 'Test User',
+          email: 'test@example.com',
+          password: '123',
+          phone_number: '0123456789'
+        });
+
+      expect(response.status).toBe(400);
+    });
+  });
+
+  describe('POST /api/auth/login', () => {
+    const testEmail = `login_test_${Date.now()}@example.com`;
+    const testPassword = 'Password123!';
+
+    beforeAll(async () => {
+      // Create a test user
+      await request(app)
+        .post('/api/auth/register')
+        .send({
+          name: 'Login Test User',
+          email: testEmail,
+          password: testPassword,
+          phone_number: '0123456789'
+        });
+    });
+
+    test('should login successfully with correct credentials', async () => {
+      const response = await request(app)
+        .post('/api/auth/login')
+        .send({
+          email: testEmail,
+          password: testPassword
+        });
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.body.data).toHaveProperty('token');
+      expect(response.body.data).toHaveProperty('user');
+      
+      authToken = response.body.data.token;
+    });
+
+    test('should reject login with incorrect password', async () => {
+      const response = await request(app)
+        .post('/api/auth/login')
+        .send({
+          email: testEmail,
+          password: 'WrongPassword123!'
+        });
+
+      expect(response.status).toBe(401);
+      expect(response.body.success).toBe(false);
+    });
+
+    test('should reject login with non-existent email', async () => {
+      const response = await request(app)
+        .post('/api/auth/login')
+        .send({
+          email: 'nonexistent@example.com',
+          password: testPassword
+        });
+
+      expect(response.status).toBe(401);
+    });
+
+    test('should reject login without credentials', async () => {
+      const response = await request(app)
+        .post('/api/auth/login')
+        .send({});
+
+      expect(response.status).toBe(400);
+    });
+  });
+
+  describe('GET /api/auth/me', () => {
+    test('should get current user profile with valid token', async () => {
+      const response = await request(app)
+        .get('/api/auth/me')
+        .set('Authorization', `Bearer ${authToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+      expect(response.body.data).toHaveProperty('email');
+      expect(response.body.data).toHaveProperty('name');
+    });
+
+    test('should reject request without token', async () => {
+      const response = await request(app)
+        .get('/api/auth/me');
+
+      expect(response.status).toBe(401);
+    });
+
+    test('should reject request with invalid token', async () => {
+      const response = await request(app)
+        .get('/api/auth/me')
+        .set('Authorization', 'Bearer invalid-token');
+
+      expect(response.status).toBe(401);
+    });
+  });
+
+  describe('POST /api/auth/logout', () => {
+    test('should logout successfully', async () => {
+      const response = await request(app)
+        .post('/api/auth/logout')
+        .set('Authorization', `Bearer ${authToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+    });
+  });
+
+  describe('Password Reset Flow', () => {
+    const resetEmail = `reset_${Date.now()}@example.com`;
+
+    beforeAll(async () => {
+      // Create a test user for password reset
+      await request(app)
+        .post('/api/auth/register')
+        .send({
+          name: 'Reset Test User',
+          email: resetEmail,
+          password: 'Password123!',
+          phone_number: '0123456789'
+        });
+    });
+
+    test('should request password reset', async () => {
+      const response = await request(app)
+        .post('/api/auth/forgot-password')
+        .send({ email: resetEmail });
+
+      expect(response.status).toBe(200);
+      expect(response.body.success).toBe(true);
+    });
+
+    test('should handle forgot password for non-existent email', async () => {
+      const response = await request(app)
+        .post('/api/auth/forgot-password')
+        .send({ email: 'nonexistent@example.com' });
+
+      expect(response.status).toBe(404);
+    });
+  });
+});

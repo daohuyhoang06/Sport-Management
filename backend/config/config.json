@@ -1,0 +1,29 @@
+{
+  "development": {
+    "username": "root",
+    "password": "hoang123",
+    "database": "sport_management",
+    "host": "localhost",
+    "port": 3306,
+    "dialect": "mysql",
+    "timezone": "+07:00"
+  },
+  "test": {
+    "username": "root",
+    "password": "hoang123",
+    "database": "sport_management_test",
+    "host": "localhost",
+    "port": 3306,
+    "dialect": "mysql",
+    "timezone": "+07:00"
+  },
+  "production": {
+    "username": "root",
+    "password": null,
+    "database": "sport_management",
+    "host": "localhost",
+    "port": 3306,
+    "dialect": "mysql",
+    "timezone": "+07:00"
+  }
+}

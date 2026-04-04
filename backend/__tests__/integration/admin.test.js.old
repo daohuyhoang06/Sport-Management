@@ -1,0 +1,264 @@
+import { describe, test, expect, beforeAll, afterAll } from '@jest/globals';
+import request from 'supertest';
+
+describe('Admin API Integration Tests', () => {
+  let app;
+  let adminToken;
+  let userToken;
+
+  beforeAll(async () => {
+    const appModule = await import('../../src/app.js');
+    app = appModule.default;
+
+    // Create admin user and get token
+    const adminResponse = await request(app)
+      .post('/api/auth/login')
+      .send({
+        email: 'admin@example.com',
+        password: 'admin123'
+      });
+    
+    if (adminResponse.status === 200) {
+      adminToken = adminResponse.body.data.token;
+    }
+
+    // Create regular user for testing authorization
+    const userRegister = await request(app)
+      .post('/api/auth/register')
+      .send({
+        name: 'Regular User',
+        email: `user_${Date.now()}@example.com`,
+        password: 'Password123!',
+        phone_number: '0123456789'
+      });
+    
+    if (userRegister.status === 201) {
+      userToken = userRegister.body.data.token;
+    }
+  });
+
+  describe('Dashboard Endpoints', () => {
+    test('GET /api/admin/dashboard should return dashboard stats for admin', async () => {
+      const response = await request(app)
+        .get('/api/admin/dashboard')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('data');
+      expect(response.body.data).toHaveProperty('totalUsers');
+      expect(response.body.data).toHaveProperty('totalFields');
+      expect(response.body.data).toHaveProperty('totalBookings');
+    });
+
+    test('GET /api/admin/dashboard should reject regular users', async () => {
+      const response = await request(app)
+        .get('/api/admin/dashboard')
+        .set('Authorization', `Bearer ${userToken}`);
+
+      expect(response.status).toBe(403);
+    });
+
+    test('GET /api/admin/revenue/date-range should return revenue data', async () => {
+      const startDate = '2024-01-01';
+      const endDate = '2024-12-31';
+      
+      const response = await request(app)
+        .get(`/api/admin/revenue/date-range?startDate=${startDate}&endDate=${endDate}`)
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.data).toHaveProperty('totalRevenue');
+      expect(response.body.data).toHaveProperty('bookings');
+    });
+  });
+
+  describe('User Management Endpoints', () => {
+    test('GET /api/admin/users should return all users', async () => {
+      const response = await request(app)
+        .get('/api/admin/users')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('data');
+      expect(Array.isArray(response.body.data)).toBe(true);
+    });
+
+    test('GET /api/admin/users with pagination', async () => {
+      const response = await request(app)
+        .get('/api/admin/users?page=1&limit=10')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body).toHaveProperty('pagination');
+      expect(response.body.pagination.limit).toBe(10);
+    });
+
+    test('GET /api/admin/users with role filter', async () => {
+      const response = await request(app)
+        .get('/api/admin/users?role=manager')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(response.status).toBe(200);
+    });
+
+    test('POST /api/admin/users should create new user', async () => {
+      const response = await request(app)
+        .post('/api/admin/users')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          name: 'New Admin User',
+          email: `new_user_${Date.now()}@example.com`,
+          password: 'Password123!',
+          role: 'manager',
+          phone_number: '0987654321'
+        });
+
+      expect(response.status).toBe(201);
+      expect(response.body.data).toHaveProperty('person_id');
+    });
+
+    test('GET /api/admin/users/stats should return user statistics', async () => {
+      const response = await request(app)
+        .get('/api/admin/users/stats')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.data).toHaveProperty('totalUsers');
+      expect(response.body.data).toHaveProperty('activeUsers');
+    });
+  });
+
+  describe('Field Management Endpoints', () => {
+    let createdFieldId;
+
+    test('POST /api/admin/fields should create new field', async () => {
+      const response = await request(app)
+        .post('/api/admin/fields')
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({
+          field_name: 'Test Field',
+          location: 'Test Location',
+          size: '7-a-side',
+          rental_price: 500000,
+          status: 'available'
+        });
+
+      expect(response.status).toBe(201);
+      expect(response.body.data).toHaveProperty('field_id');
+      createdFieldId = response.body.data.field_id;
+    });
+
+    test('GET /api/admin/fields should return all fields', async () => {
+      const response = await request(app)
+        .get('/api/admin/fields')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(response.status).toBe(200);
+      expect(Array.isArray(response.body.data)).toBe(true);
+    });
+
+    test('GET /api/admin/fields/:id should return specific field', async () => {
+      if (createdFieldId) {
+        const response = await request(app)
+          .get(`/api/admin/fields/${createdFieldId}`)
+          .set('Authorization', `Bearer ${adminToken}`);
+
+        expect(response.status).toBe(200);
+        expect(response.body.data.field_id).toBe(createdFieldId);
+      }
+    });
+
+    test('PUT /api/admin/fields/:id should update field', async () => {
+      if (createdFieldId) {
+        const response = await request(app)
+          .put(`/api/admin/fields/${createdFieldId}`)
+          .set('Authorization', `Bearer ${adminToken}`)
+          .send({
+            rental_price: 600000
+          });
+
+        expect(response.status).toBe(200);
+      }
+    });
+
+    test('PATCH /api/admin/fields/:id/status should toggle field status', async () => {
+      if (createdFieldId) {
+        const response = await request(app)
+          .patch(`/api/admin/fields/${createdFieldId}/status`)
+          .set('Authorization', `Bearer ${adminToken}`);
+
+        expect(response.status).toBe(200);
+      }
+    });
+
+    test('GET /api/admin/fields/stats should return field statistics', async () => {
+      const response = await request(app)
+        .get('/api/admin/fields/stats')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.data).toHaveProperty('totalFields');
+    });
+  });
+
+  describe('Booking Management Endpoints', () => {
+    test('GET /api/admin/bookings should return all bookings', async () => {
+      const response = await request(app)
+        .get('/api/admin/bookings')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(response.status).toBe(200);
+      expect(Array.isArray(response.body.data)).toBe(true);
+    });
+
+    test('GET /api/admin/bookings with status filter', async () => {
+      const response = await request(app)
+        .get('/api/admin/bookings?status=pending')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(response.status).toBe(200);
+    });
+
+    test('GET /api/admin/bookings/stats should return booking statistics', async () => {
+      const response = await request(app)
+        .get('/api/admin/bookings/stats')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(response.status).toBe(200);
+      expect(response.body.data).toHaveProperty('totalBookings');
+    });
+
+    test('GET /api/admin/bookings/date-range should filter by date', async () => {
+      const response = await request(app)
+        .get('/api/admin/bookings/date-range?startDate=2024-01-01&endDate=2024-12-31')
+        .set('Authorization', `Bearer ${adminToken}`);
+
+      expect(response.status).toBe(200);
+    });
+  });
+
+  describe('Authorization Tests', () => {
+    test('should reject requests without token', async () => {
+      const response = await request(app)
+        .get('/api/admin/dashboard');
+
+      expect(response.status).toBe(401);
+    });
+
+    test('should reject requests with invalid token', async () => {
+      const response = await request(app)
+        .get('/api/admin/dashboard')
+        .set('Authorization', 'Bearer invalid-token');
+
+      expect(response.status).toBe(401);
+    });
+
+    test('should reject regular users from admin endpoints', async () => {
+      const response = await request(app)
+        .get('/api/admin/dashboard')
+        .set('Authorization', `Bearer ${userToken}`);
+
+      expect(response.status).toBe(403);
+    });
+  });
+});

@@ -1,0 +1,241 @@
+import { describe, test, expect, jest, beforeEach } from '@jest/globals';
+import httpMocks from 'node-mocks-http';
+
+// Mock models
+const mockFieldModel = {
+  findAll: jest.fn(),
+  findByPk: jest.fn(),
+  create: jest.fn(),
+  update: jest.fn(),
+  destroy: jest.fn(),
+  count: jest.fn()
+};
+
+const mockFieldImageModel = {
+  findAll: jest.fn(),
+  create: jest.fn(),
+  destroy: jest.fn(),
+  findByPk: jest.fn()
+};
+
+jest.unstable_mockModule('../../src/models/Field.js', () => ({
+  default: mockFieldModel
+}));
+
+jest.unstable_mockModule('../../src/models/FieldImage.js', () => ({
+  default: mockFieldImageModel
+}));
+
+describe('Field Management Controller Tests', () => {
+  let fieldController;
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    fieldController = await import('../../src/controllers/admin/fieldManagementController.js');
+  });
+
+  describe('getAllFields', () => {
+    test('should return all fields successfully', async () => {
+      const req = httpMocks.createRequest({
+        method: 'GET',
+        query: {}
+      });
+      const res = httpMocks.createResponse();
+
+      const mockFields = [
+        { field_id: 1, field_name: 'Field 1', status: 'available' },
+        { field_id: 2, field_name: 'Field 2', status: 'maintenance' }
+      ];
+
+      mockFieldModel.findAll.mockResolvedValue(mockFields);
+      mockFieldModel.count.mockResolvedValue(2);
+
+      await fieldController.getAllFields(req, res);
+
+      expect(res.statusCode).toBe(200);
+      const data = res._getJSONData();
+      expect(data.success).toBe(true);
+      expect(data.data).toHaveLength(2);
+    });
+
+    test('should filter fields by status', async () => {
+      const req = httpMocks.createRequest({
+        method: 'GET',
+        query: { status: 'available' }
+      });
+      const res = httpMocks.createResponse();
+
+      const mockAvailableFields = [
+        { field_id: 1, field_name: 'Field 1', status: 'available' }
+      ];
+
+      mockFieldModel.findAll.mockResolvedValue(mockAvailableFields);
+
+      await fieldController.getAllFields(req, res);
+
+      expect(res.statusCode).toBe(200);
+      const data = res._getJSONData();
+      expect(data.data[0].status).toBe('available');
+    });
+  });
+
+  describe('createField', () => {
+    test('should create a new field successfully', async () => {
+      const req = httpMocks.createRequest({
+        method: 'POST',
+        body: {
+          field_name: 'New Field',
+          location: 'Location A',
+          size: '7-a-side',
+          rental_price: 500000,
+          status: 'available'
+        }
+      });
+      const res = httpMocks.createResponse();
+
+      const mockNewField = {
+        field_id: 1,
+        field_name: 'New Field',
+        location: 'Location A',
+        size: '7-a-side',
+        rental_price: 500000,
+        status: 'available'
+      };
+
+      mockFieldModel.create.mockResolvedValue(mockNewField);
+
+      await fieldController.createField(req, res);
+
+      expect(res.statusCode).toBe(201);
+      const data = res._getJSONData();
+      expect(data.success).toBe(true);
+      expect(data.data.field_name).toBe('New Field');
+    });
+
+    test('should validate required fields', async () => {
+      const req = httpMocks.createRequest({
+        method: 'POST',
+        body: {
+          field_name: 'Incomplete Field'
+          // Missing required fields
+        }
+      });
+      const res = httpMocks.createResponse();
+
+      await fieldController.createField(req, res);
+
+      expect(res.statusCode).toBe(400);
+    });
+  });
+
+  describe('updateField', () => {
+    test('should update field successfully', async () => {
+      const req = httpMocks.createRequest({
+        method: 'PUT',
+        params: { id: '1' },
+        body: {
+          rental_price: 600000,
+          status: 'maintenance'
+        }
+      });
+      const res = httpMocks.createResponse();
+
+      const mockField = {
+        field_id: 1,
+        field_name: 'Field 1',
+        rental_price: 500000,
+        update: jest.fn().mockResolvedValue(true)
+      };
+
+      mockFieldModel.findByPk.mockResolvedValue(mockField);
+
+      await fieldController.updateField(req, res);
+
+      expect(mockField.update).toHaveBeenCalled();
+      expect(res.statusCode).toBe(200);
+    });
+
+    test('should return 404 for non-existent field', async () => {
+      const req = httpMocks.createRequest({
+        method: 'PUT',
+        params: { id: '999' },
+        body: { rental_price: 600000 }
+      });
+      const res = httpMocks.createResponse();
+
+      mockFieldModel.findByPk.mockResolvedValue(null);
+
+      await fieldController.updateField(req, res);
+
+      expect(res.statusCode).toBe(404);
+    });
+  });
+
+  describe('deleteField', () => {
+    test('should delete field successfully', async () => {
+      const req = httpMocks.createRequest({
+        method: 'DELETE',
+        params: { id: '1' }
+      });
+      const res = httpMocks.createResponse();
+
+      const mockField = {
+        field_id: 1,
+        field_name: 'Field to delete',
+        destroy: jest.fn().mockResolvedValue(true)
+      };
+
+      mockFieldModel.findByPk.mockResolvedValue(mockField);
+
+      await fieldController.deleteField(req, res);
+
+      expect(mockField.destroy).toHaveBeenCalled();
+      expect(res.statusCode).toBe(200);
+    });
+  });
+
+  describe('getFieldStats', () => {
+    test('should return field statistics', async () => {
+      const req = httpMocks.createRequest({
+        method: 'GET'
+      });
+      const res = httpMocks.createResponse();
+
+      mockFieldModel.count
+        .mockResolvedValueOnce(20)  // totalFields
+        .mockResolvedValueOnce(15)  // availableFields
+        .mockResolvedValueOnce(3)   // maintenanceFields
+        .mockResolvedValueOnce(2);  // inactiveFields
+
+      await fieldController.getFieldStats(req, res);
+
+      expect(res.statusCode).toBe(200);
+      const data = res._getJSONData();
+      expect(data.data.totalFields).toBe(20);
+      expect(data.data.availableFields).toBe(15);
+    });
+  });
+
+  describe('toggleFieldStatus', () => {
+    test('should toggle field status from available to maintenance', async () => {
+      const req = httpMocks.createRequest({
+        method: 'PATCH',
+        params: { id: '1' }
+      });
+      const res = httpMocks.createResponse();
+
+      const mockField = {
+        field_id: 1,
+        field_name: 'Field 1',
+        status: 'available',
+        update: jest.fn().mockResolvedValue(true)
+      };
+
+      mockFieldModel.findByPk.mockResolvedValue(mockField);
+
+      await fieldController.toggleFieldStatus(req, res);
+
+      expect(res.statusCode).toBe(200);
+    });
+  });
+});
