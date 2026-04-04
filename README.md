@@ -1,10 +1,6 @@
 # ⚽ Sport Field Management System
 
-> Hệ thống backend quản lý sân bóng đá toàn diện
-
-[![Node.js](https://img.shields.io/badge/Node.js-Express-green.svg)](https://nodejs.org/)
-[![PostgreSQL](https://img.shields.io/badge/Database-PostgreSQL-blue.svg)](https://www.postgresql.org/)
-[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+> Hệ thống backend quản lý sân thể thao toàn diện
 
 ## 📋 Mục lục
 
@@ -291,12 +287,12 @@ Distributed under the MIT License. See `LICENSE` for more information.
 
 ## 👥 Team
 
-- **Developers**: DHP Team
-- **Course**: INT3306
-- **Year**: 2024-2025
+- **Developers**: HHDD Team
+- **Course**: INT3120-2
+- **Year**: 2025-2026
 
 ---
 
 ⭐ Star us on GitHub — it helps!
 
-Made with ❤️ by INT_3306_1 Team
+Made with ❤️ by INT_3120_2 Team
