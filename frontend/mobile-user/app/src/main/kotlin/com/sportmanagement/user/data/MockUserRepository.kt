@@ -17,9 +17,11 @@ class MockUserRepository : UserRepository {
 
     override fun getNearbyFields(): List<UserField> =
         listOf(
-            UserField("CLB Pickleball H.A.S", "Nam Từ Liêm", "280.000đ/h", "4.9"),
-            UserField("Arena Alpha", "Quận 1", "250.000đ/h", "4.8"),
-            UserField("Green Pitch", "Quận 7", "220.000đ/h", "4.6")
+            UserField("Sân bóng C500 Học viện An Ninh", "Thanh Xuân, Hà Nội", "280.000đ/h", "4.8"),
+            UserField("Sân bóng Minh Kiệt", "Cầu Giấy, Hà Nội", "260.000đ/h", "4.7"),
+            UserField("Sân vận động Mỹ Đình", "Nam Từ Liêm, Hà Nội", "350.000đ/h", "4.9"),
+            UserField("Sân bóng Hoàng Mai", "Hoàng Mai, Hà Nội", "240.000đ/h", "4.6"),
+            UserField("Sân bóng Bách Khoa", "Hai Bà Trưng, Hà Nội", "230.000đ/h", "4.5")
         )
 
     override fun getFavoriteFields(): List<UserField> =
