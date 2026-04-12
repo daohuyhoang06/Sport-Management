@@ -1,3 +1,7 @@
+import EndpointPanel from "../../components/admin/EndpointPanel";
+import PageHero from "../../components/admin/PageHero";
+import StatsGrid from "../../components/admin/StatsGrid";
+
 const stats = [
   { label: "Users", value: "12,480" },
   { label: "Managers", value: "138" },
@@ -5,36 +9,22 @@ const stats = [
   { label: "Revenue", value: "1.24B VND" },
 ];
 
-const backendMap = [
-  ["GET", "/api/admin/dashboard"],
-  ["GET", "/api/admin/revenue/date-range"],
-  ["GET", "/api/admin/revenue/monthly"],
+const backendEndpoints = [
+  { method: "GET", path: "/api/admin/dashboard" },
+  { method: "GET", path: "/api/admin/revenue/date-range" },
+  { method: "GET", path: "/api/admin/revenue/monthly" },
 ];
 
 export default function DashboardPage() {
   return (
     <section className="page-shell">
-      <header className="hero">
-        <div className="page-meta">
-          <span className="badge">Admin module</span>
-          <span className="badge">Backend already exists</span>
-        </div>
-        <h2>Dashboard</h2>
-        <p>
-          Ngày 1 chỉ dựng khung hiển thị và chừa đúng chỗ cho dữ liệu từ
-          backend. Các page khác sẽ gắn vào cùng layout và route này ở các ngày
-          sau.
-        </p>
-      </header>
+      <PageHero
+        badges={["Admin module", "Backend already exists"]}
+        title="Dashboard"
+        description="Ngay 1 chi dung khung hien thi va chua dung cho du lieu backend. Cac page khac se gan vao cung layout va route nay o cac ngay sau."
+      />
 
-      <section className="stats-grid" aria-label="Summary stats">
-        {stats.map((item) => (
-          <article key={item.label} className="stat-card">
-            <p>{item.label}</p>
-            <h3>{item.value}</h3>
-          </article>
-        ))}
-      </section>
+      <StatsGrid stats={stats} />
 
       <section className="grid-two">
         <article className="section-card">
@@ -66,22 +56,10 @@ export default function DashboardPage() {
           </div>
         </article>
 
-        <article className="section-card">
-          <div className="section-head">
-            <div>
-              <h3>Backend endpoints to connect next</h3>
-              <p>These are already available in your backend.</p>
-            </div>
-          </div>
-          <div className="info-list">
-            {backendMap.map(([method, path]) => (
-              <div key={path} className="info-row">
-                <strong>{method}</strong>
-                <span>{path}</span>
-              </div>
-            ))}
-          </div>
-        </article>
+        <EndpointPanel
+          title="Backend endpoints to connect next"
+          endpoints={backendEndpoints}
+        />
       </section>
     </section>
   );
