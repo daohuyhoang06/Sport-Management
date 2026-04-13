@@ -338,6 +338,45 @@ th {
   text-transform: uppercase;
 }
 
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 84px;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.status-pill.active {
+  color: #0b6b4b;
+  background: #d7f8e8;
+}
+
+.status-pill.pending {
+  color: #8a4b00;
+  background: #ffefce;
+}
+
+.status-pill.blocked {
+  color: #8f1d2f;
+  background: #ffe2e8;
+}
+
+.table-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.table-actions .btn-secondary,
+.table-actions .btn-primary {
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+}
+
 .empty-state {
   padding: 28px;
   text-align: center;
