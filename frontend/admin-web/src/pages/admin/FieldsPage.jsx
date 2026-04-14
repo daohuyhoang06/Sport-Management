@@ -1,6 +1,7 @@
 import AdminTable from "../../components/admin/AdminTable";
 import EndpointPanel from "../../components/admin/EndpointPanel";
 import PageHero from "../../components/admin/PageHero";
+import StatusPill from "../../components/admin/StatusPill";
 import TableToolbar from "../../components/admin/TableToolbar";
 
 const fieldEndpoints = [
@@ -50,9 +51,7 @@ const fieldColumns = [
   {
     key: "status",
     label: "Status",
-    render: (row) => (
-      <span className={`status-pill ${row.status}`}>{row.status}</span>
-    ),
+    render: (row) => <StatusPill status={row.status} />,
   },
 ];
 
