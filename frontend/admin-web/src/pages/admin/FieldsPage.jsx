@@ -1,8 +1,10 @@
 import AdminTable from "../../components/admin/AdminTable";
 import EndpointPanel from "../../components/admin/EndpointPanel";
+import ListFilters from "../../components/admin/ListFilters";
 import PageHero from "../../components/admin/PageHero";
 import StatusPill from "../../components/admin/StatusPill";
 import TableSection from "../../components/admin/TableSection";
+import useListFilters from "../../hooks/useListFilters";
 
 const fieldEndpoints = [
   { method: "GET", path: "/api/admin/fields" },
@@ -56,6 +58,17 @@ const fieldColumns = [
 ];
 
 export default function FieldsPage() {
+  const {
+    searchText,
+    setSearchText,
+    statusFilter,
+    setStatusFilter,
+    filteredRows,
+  } = useListFilters({
+    rows: fieldRows,
+    searchFields: ["name", "location", "type"],
+  });
+
   return (
     <section className="page-shell">
       <PageHero
@@ -69,7 +82,25 @@ export default function FieldsPage() {
         subtitle="Quick preview of how field records will render in admin."
         actionLabel="Add field"
       >
-        <AdminTable columns={fieldColumns} rows={fieldRows} />
+        <ListFilters>
+          <input
+            type="search"
+            placeholder="Search by field, location, or type"
+            value={searchText}
+            onChange={(event) => setSearchText(event.target.value)}
+          />
+          <select
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value)}
+          >
+            <option value="all">All statuses</option>
+            <option value="active">Active</option>
+            <option value="pending">Pending</option>
+            <option value="blocked">Blocked</option>
+          </select>
+        </ListFilters>
+
+        <AdminTable columns={fieldColumns} rows={filteredRows} />
       </TableSection>
 
       <EndpointPanel title="Fields endpoints" endpoints={fieldEndpoints} />

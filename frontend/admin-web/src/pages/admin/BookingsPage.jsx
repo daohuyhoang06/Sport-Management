@@ -1,8 +1,10 @@
 import AdminTable from "../../components/admin/AdminTable";
 import EndpointPanel from "../../components/admin/EndpointPanel";
+import ListFilters from "../../components/admin/ListFilters";
 import PageHero from "../../components/admin/PageHero";
 import StatusPill from "../../components/admin/StatusPill";
 import TableSection from "../../components/admin/TableSection";
+import useListFilters from "../../hooks/useListFilters";
 
 const bookingEndpoints = [
   { method: "GET", path: "/api/admin/bookings" },
@@ -54,6 +56,17 @@ const bookingColumns = [
 ];
 
 export default function BookingsPage() {
+  const {
+    searchText,
+    setSearchText,
+    statusFilter,
+    setStatusFilter,
+    filteredRows,
+  } = useListFilters({
+    rows: bookingRows,
+    searchFields: ["id", "customer", "field"],
+  });
+
   return (
     <section className="page-shell">
       <PageHero
@@ -67,7 +80,25 @@ export default function BookingsPage() {
         subtitle="Snapshot view to verify columns, spacing, and statuses."
         actionLabel="Create booking"
       >
-        <AdminTable columns={bookingColumns} rows={bookingRows} />
+        <ListFilters>
+          <input
+            type="search"
+            placeholder="Search by booking ID, customer, or field"
+            value={searchText}
+            onChange={(event) => setSearchText(event.target.value)}
+          />
+          <select
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value)}
+          >
+            <option value="all">All statuses</option>
+            <option value="active">Active</option>
+            <option value="pending">Pending</option>
+            <option value="blocked">Blocked</option>
+          </select>
+        </ListFilters>
+
+        <AdminTable columns={bookingColumns} rows={filteredRows} />
       </TableSection>
 
       <EndpointPanel title="Bookings endpoints" endpoints={bookingEndpoints} />

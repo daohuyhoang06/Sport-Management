@@ -3,6 +3,7 @@ import EndpointPanel from "../../components/admin/EndpointPanel";
 import ListFilters from "../../components/admin/ListFilters";
 import PageHero from "../../components/admin/PageHero";
 import TableToolbar from "../../components/admin/TableToolbar";
+import useListFilters from "../../hooks/useListFilters";
 
 const employeeEndpoints = [
   { method: "GET", path: "/api/admin/employees" },
@@ -67,6 +68,17 @@ const employeeColumns = [
 ];
 
 export default function EmployeesPage() {
+  const {
+    searchText,
+    setSearchText,
+    statusFilter,
+    setStatusFilter,
+    filteredRows,
+  } = useListFilters({
+    rows: employeeRows,
+    searchFields: ["name", "role", "assignedField", "phone"],
+  });
+
   return (
     <section className="page-shell">
       <PageHero
@@ -83,8 +95,16 @@ export default function EmployeesPage() {
         />
 
         <ListFilters>
-          <input type="search" placeholder="Search by name or phone" />
-          <select defaultValue="all">
+          <input
+            type="search"
+            placeholder="Search by name, role, field, or phone"
+            value={searchText}
+            onChange={(event) => setSearchText(event.target.value)}
+          />
+          <select
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value)}
+          >
             <option value="all">All statuses</option>
             <option value="active">Active</option>
             <option value="pending">Pending</option>
@@ -92,7 +112,7 @@ export default function EmployeesPage() {
           </select>
         </ListFilters>
 
-        <AdminTable columns={employeeColumns} rows={employeeRows} />
+        <AdminTable columns={employeeColumns} rows={filteredRows} />
       </section>
 
       <EndpointPanel

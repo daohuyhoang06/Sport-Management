@@ -1,6 +1,8 @@
 import AdminTable from "../../components/admin/AdminTable";
 import EndpointPanel from "../../components/admin/EndpointPanel";
+import ListFilters from "../../components/admin/ListFilters";
 import PageHero from "../../components/admin/PageHero";
+import useListFilters from "../../hooks/useListFilters";
 
 const userEndpoints = [
   { method: "GET", path: "/api/admin/users" },
@@ -61,6 +63,17 @@ const userColumns = [
 ];
 
 export default function UsersPage() {
+  const {
+    searchText,
+    setSearchText,
+    statusFilter,
+    setStatusFilter,
+    filteredRows,
+  } = useListFilters({
+    rows: userRows,
+    searchFields: ["name", "email", "role"],
+  });
+
   return (
     <section className="page-shell">
       <PageHero
@@ -74,7 +87,26 @@ export default function UsersPage() {
           <h3>User list (mock data)</h3>
           <button type="button">Add user</button>
         </div>
-        <AdminTable columns={userColumns} rows={userRows} />
+
+        <ListFilters>
+          <input
+            type="search"
+            placeholder="Search by name, email, or role"
+            value={searchText}
+            onChange={(event) => setSearchText(event.target.value)}
+          />
+          <select
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value)}
+          >
+            <option value="all">All statuses</option>
+            <option value="active">Active</option>
+            <option value="pending">Pending</option>
+            <option value="blocked">Blocked</option>
+          </select>
+        </ListFilters>
+
+        <AdminTable columns={userColumns} rows={filteredRows} />
       </section>
 
       <EndpointPanel title="Users endpoints" endpoints={userEndpoints} />
