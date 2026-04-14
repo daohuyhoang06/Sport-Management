@@ -319,6 +319,27 @@ textarea {
   cursor: pointer;
 }
 
+.list-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.list-filters input,
+.list-filters select {
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+  min-height: 40px;
+  padding: 0 12px;
+  border-radius: 10px;
+}
+
+.list-filters input {
+  min-width: 260px;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
@@ -423,6 +444,15 @@ th {
   .info-row {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .list-filters {
+    width: 100%;
+  }
+
+  .list-filters input,
+  .list-filters select {
+    width: 100%;
   }
 
   .stats-grid,
