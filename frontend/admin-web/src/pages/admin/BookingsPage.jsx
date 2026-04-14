@@ -62,6 +62,10 @@ export default function BookingsPage() {
     statusFilter,
     setStatusFilter,
     filteredRows,
+    filteredCount,
+    totalCount,
+    hasActiveFilters,
+    resetFilters,
   } = useListFilters({
     rows: bookingRows,
     searchFields: ["id", "customer", "field"],
@@ -80,25 +84,23 @@ export default function BookingsPage() {
         subtitle="Snapshot view to verify columns, spacing, and statuses."
         actionLabel="Create booking"
       >
-        <ListFilters>
-          <input
-            type="search"
-            placeholder="Search by booking ID, customer, or field"
-            value={searchText}
-            onChange={(event) => setSearchText(event.target.value)}
-          />
-          <select
-            value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value)}
-          >
-            <option value="all">All statuses</option>
-            <option value="active">Active</option>
-            <option value="pending">Pending</option>
-            <option value="blocked">Blocked</option>
-          </select>
-        </ListFilters>
+        <ListFilters
+          searchPlaceholder="Search by booking ID, customer, or field"
+          searchText={searchText}
+          onSearchChange={setSearchText}
+          statusFilter={statusFilter}
+          onStatusChange={setStatusFilter}
+          totalCount={totalCount}
+          filteredCount={filteredCount}
+          hasActiveFilters={hasActiveFilters}
+          onResetFilters={resetFilters}
+        />
 
-        <AdminTable columns={bookingColumns} rows={filteredRows} />
+        <AdminTable
+          columns={bookingColumns}
+          rows={filteredRows}
+          emptyMessage="No bookings match the current filters."
+        />
       </TableSection>
 
       <EndpointPanel title="Bookings endpoints" endpoints={bookingEndpoints} />

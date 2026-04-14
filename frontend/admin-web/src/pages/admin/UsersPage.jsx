@@ -69,6 +69,10 @@ export default function UsersPage() {
     statusFilter,
     setStatusFilter,
     filteredRows,
+    filteredCount,
+    totalCount,
+    hasActiveFilters,
+    resetFilters,
   } = useListFilters({
     rows: userRows,
     searchFields: ["name", "email", "role"],
@@ -88,25 +92,23 @@ export default function UsersPage() {
           <button type="button">Add user</button>
         </div>
 
-        <ListFilters>
-          <input
-            type="search"
-            placeholder="Search by name, email, or role"
-            value={searchText}
-            onChange={(event) => setSearchText(event.target.value)}
-          />
-          <select
-            value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value)}
-          >
-            <option value="all">All statuses</option>
-            <option value="active">Active</option>
-            <option value="pending">Pending</option>
-            <option value="blocked">Blocked</option>
-          </select>
-        </ListFilters>
+        <ListFilters
+          searchPlaceholder="Search by name, email, or role"
+          searchText={searchText}
+          onSearchChange={setSearchText}
+          statusFilter={statusFilter}
+          onStatusChange={setStatusFilter}
+          totalCount={totalCount}
+          filteredCount={filteredCount}
+          hasActiveFilters={hasActiveFilters}
+          onResetFilters={resetFilters}
+        />
 
-        <AdminTable columns={userColumns} rows={filteredRows} />
+        <AdminTable
+          columns={userColumns}
+          rows={filteredRows}
+          emptyMessage="No users match the current filters."
+        />
       </section>
 
       <EndpointPanel title="Users endpoints" endpoints={userEndpoints} />

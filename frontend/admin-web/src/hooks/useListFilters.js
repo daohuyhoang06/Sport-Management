@@ -28,11 +28,23 @@ export default function useListFilters({ rows = [], searchFields = [] }) {
     });
   }, [rows, searchFields, searchText, statusFilter]);
 
+  const hasActiveFilters =
+    searchText.trim().length > 0 || statusFilter !== "all";
+
+  const resetFilters = () => {
+    setSearchText("");
+    setStatusFilter("all");
+  };
+
   return {
     searchText,
     setSearchText,
     statusFilter,
     setStatusFilter,
     filteredRows,
+    filteredCount: filteredRows.length,
+    totalCount: rows.length,
+    hasActiveFilters,
+    resetFilters,
   };
 }

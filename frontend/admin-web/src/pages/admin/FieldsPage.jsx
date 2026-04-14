@@ -64,6 +64,10 @@ export default function FieldsPage() {
     statusFilter,
     setStatusFilter,
     filteredRows,
+    filteredCount,
+    totalCount,
+    hasActiveFilters,
+    resetFilters,
   } = useListFilters({
     rows: fieldRows,
     searchFields: ["name", "location", "type"],
@@ -82,25 +86,23 @@ export default function FieldsPage() {
         subtitle="Quick preview of how field records will render in admin."
         actionLabel="Add field"
       >
-        <ListFilters>
-          <input
-            type="search"
-            placeholder="Search by field, location, or type"
-            value={searchText}
-            onChange={(event) => setSearchText(event.target.value)}
-          />
-          <select
-            value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value)}
-          >
-            <option value="all">All statuses</option>
-            <option value="active">Active</option>
-            <option value="pending">Pending</option>
-            <option value="blocked">Blocked</option>
-          </select>
-        </ListFilters>
+        <ListFilters
+          searchPlaceholder="Search by field, location, or type"
+          searchText={searchText}
+          onSearchChange={setSearchText}
+          statusFilter={statusFilter}
+          onStatusChange={setStatusFilter}
+          totalCount={totalCount}
+          filteredCount={filteredCount}
+          hasActiveFilters={hasActiveFilters}
+          onResetFilters={resetFilters}
+        />
 
-        <AdminTable columns={fieldColumns} rows={filteredRows} />
+        <AdminTable
+          columns={fieldColumns}
+          rows={filteredRows}
+          emptyMessage="No fields match the current filters."
+        />
       </TableSection>
 
       <EndpointPanel title="Fields endpoints" endpoints={fieldEndpoints} />

@@ -1,4 +1,8 @@
-export default function AdminTable({ columns = [], rows = [] }) {
+export default function AdminTable({
+  columns = [],
+  rows = [],
+  emptyMessage = "No records found.",
+}) {
   return (
     <table>
       <thead>
@@ -9,15 +13,23 @@ export default function AdminTable({ columns = [], rows = [] }) {
         </tr>
       </thead>
       <tbody>
-        {rows.map((row, rowIndex) => (
-          <tr key={row.id ?? rowIndex}>
-            {columns.map((column) => (
-              <td key={column.key}>
-                {column.render ? column.render(row) : row[column.key]}
-              </td>
-            ))}
+        {rows.length === 0 ? (
+          <tr>
+            <td className="table-empty" colSpan={columns.length || 1}>
+              {emptyMessage}
+            </td>
           </tr>
-        ))}
+        ) : (
+          rows.map((row, rowIndex) => (
+            <tr key={row.id ?? rowIndex}>
+              {columns.map((column) => (
+                <td key={column.key}>
+                  {column.render ? column.render(row) : row[column.key]}
+                </td>
+              ))}
+            </tr>
+          ))
+        )}
       </tbody>
     </table>
   );
