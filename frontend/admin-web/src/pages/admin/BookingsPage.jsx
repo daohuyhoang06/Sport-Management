@@ -2,7 +2,7 @@ import AdminTable from "../../components/admin/AdminTable";
 import EndpointPanel from "../../components/admin/EndpointPanel";
 import PageHero from "../../components/admin/PageHero";
 import StatusPill from "../../components/admin/StatusPill";
-import TableToolbar from "../../components/admin/TableToolbar";
+import TableSection from "../../components/admin/TableSection";
 
 const bookingEndpoints = [
   { method: "GET", path: "/api/admin/bookings" },
@@ -62,14 +62,13 @@ export default function BookingsPage() {
         description="Booking management scaffold with mock list. This can be connected to filters, date-range API, and actions in the next step."
       />
 
-      <section className="section-card table-card">
-        <TableToolbar
-          title="Bookings list (mock data)"
-          subtitle="Snapshot view to verify columns, spacing, and statuses."
-          actionLabel="Create booking"
-        />
+      <TableSection
+        title="Bookings list (mock data)"
+        subtitle="Snapshot view to verify columns, spacing, and statuses."
+        actionLabel="Create booking"
+      >
         <AdminTable columns={bookingColumns} rows={bookingRows} />
-      </section>
+      </TableSection>
 
       <EndpointPanel title="Bookings endpoints" endpoints={bookingEndpoints} />
     </section>

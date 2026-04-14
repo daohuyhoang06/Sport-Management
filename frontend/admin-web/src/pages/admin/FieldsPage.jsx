@@ -2,7 +2,7 @@ import AdminTable from "../../components/admin/AdminTable";
 import EndpointPanel from "../../components/admin/EndpointPanel";
 import PageHero from "../../components/admin/PageHero";
 import StatusPill from "../../components/admin/StatusPill";
-import TableToolbar from "../../components/admin/TableToolbar";
+import TableSection from "../../components/admin/TableSection";
 
 const fieldEndpoints = [
   { method: "GET", path: "/api/admin/fields" },
@@ -64,14 +64,13 @@ export default function FieldsPage() {
         description="Field inventory scaffold with mock rows. Next step can replace this with real listing, search, and status updates from backend APIs."
       />
 
-      <section className="section-card table-card">
-        <TableToolbar
-          title="Field list (mock data)"
-          subtitle="Quick preview of how field records will render in admin."
-          actionLabel="Add field"
-        />
+      <TableSection
+        title="Field list (mock data)"
+        subtitle="Quick preview of how field records will render in admin."
+        actionLabel="Add field"
+      >
         <AdminTable columns={fieldColumns} rows={fieldRows} />
-      </section>
+      </TableSection>
 
       <EndpointPanel title="Fields endpoints" endpoints={fieldEndpoints} />
     </section>
