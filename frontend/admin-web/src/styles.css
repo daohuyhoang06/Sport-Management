@@ -408,6 +408,11 @@ th {
   background: #ffe2e8;
 }
 
+.status-pill.inactive {
+  color: #334155;
+  background: #e2e8f0;
+}
+
 .table-actions {
   display: flex;
   gap: 8px;

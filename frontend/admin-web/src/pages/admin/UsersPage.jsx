@@ -2,6 +2,8 @@ import AdminTable from "../../components/admin/AdminTable";
 import EndpointPanel from "../../components/admin/EndpointPanel";
 import ListFilters from "../../components/admin/ListFilters";
 import PageHero from "../../components/admin/PageHero";
+import StatusPill from "../../components/admin/StatusPill";
+import useAdminUsers from "../../hooks/useAdminUsers";
 import useListFilters from "../../hooks/useListFilters";
 
 const userEndpoints = [
@@ -11,30 +13,6 @@ const userEndpoints = [
   { method: "PATCH", path: "/api/admin/users/:id/status" },
 ];
 
-const userRows = [
-  {
-    id: 1,
-    name: "Tran Minh Khang",
-    email: "khang.tm@example.com",
-    role: "User",
-    status: "active",
-  },
-  {
-    id: 2,
-    name: "Le Hoang Nhi",
-    email: "nhi.lh@example.com",
-    role: "Manager",
-    status: "pending",
-  },
-  {
-    id: 3,
-    name: "Nguyen Phuoc An",
-    email: "an.np@example.com",
-    role: "User",
-    status: "blocked",
-  },
-];
-
 const userColumns = [
   { key: "name", label: "Name" },
   { key: "email", label: "Email" },
@@ -42,9 +20,7 @@ const userColumns = [
   {
     key: "status",
     label: "Status",
-    render: (row) => (
-      <span className={`status-pill ${row.status}`}>{row.status}</span>
-    ),
+    render: (row) => <StatusPill status={row.status} />,
   },
   {
     key: "actions",
@@ -63,6 +39,8 @@ const userColumns = [
 ];
 
 export default function UsersPage() {
+  const { users, stats, loading, error } = useAdminUsers();
+
   const {
     searchText,
     setSearchText,
@@ -74,23 +52,29 @@ export default function UsersPage() {
     hasActiveFilters,
     resetFilters,
   } = useListFilters({
-    rows: userRows,
+    rows: users,
     searchFields: ["name", "email", "role"],
   });
 
   return (
     <section className="page-shell">
       <PageHero
-        badges={["Admin module", "Users"]}
+        badges={[
+          "Admin module",
+          "Users",
+          loading ? "Loading from backend" : `${stats.total} total users`,
+        ]}
         title="Users"
-        description="Initial users table scaffold. Next steps can attach real API data, filters, and pagination without changing the page structure."
+        description="Users page now reads data from backend admin APIs and keeps the same table/filter flow for quick operations."
       />
 
       <section className="section-card table-card">
         <div className="table-head">
-          <h3>User list (mock data)</h3>
+          <h3>User list</h3>
           <button type="button">Add user</button>
         </div>
+
+        {error && <p className="dashboard-state error">{error}</p>}
 
         <ListFilters
           searchPlaceholder="Search by name, email, or role"
@@ -102,6 +86,7 @@ export default function UsersPage() {
           filteredCount={filteredCount}
           hasActiveFilters={hasActiveFilters}
           onResetFilters={resetFilters}
+          statusOptions={["active", "inactive"]}
         />
 
         <AdminTable

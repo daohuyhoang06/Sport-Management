@@ -8,6 +8,7 @@ export default function ListFilters({
   filteredCount,
   hasActiveFilters,
   onResetFilters,
+  statusOptions = ["active", "pending", "blocked"],
 }) {
   return (
     <div className="list-filters-wrap">
@@ -23,9 +24,11 @@ export default function ListFilters({
           onChange={(event) => onStatusChange(event.target.value)}
         >
           <option value="all">All statuses</option>
-          <option value="active">Active</option>
-          <option value="pending">Pending</option>
-          <option value="blocked">Blocked</option>
+          {statusOptions.map((option) => (
+            <option key={option} value={option}>
+              {option.charAt(0).toUpperCase() + option.slice(1)}
+            </option>
+          ))}
         </select>
         <button
           type="button"
