@@ -4,6 +4,7 @@ import ListFilters from "../../components/admin/ListFilters";
 import PageHero from "../../components/admin/PageHero";
 import StatusPill from "../../components/admin/StatusPill";
 import TableSection from "../../components/admin/TableSection";
+import useAdminFields from "../../hooks/useAdminFields";
 import useListFilters from "../../hooks/useListFilters";
 
 const fieldEndpoints = [
@@ -14,41 +15,19 @@ const fieldEndpoints = [
   { method: "POST", path: "/api/admin/fields/:id/images" },
 ];
 
-const fieldRows = [
-  {
-    id: 1,
-    name: "San A1",
-    location: "Quan 7",
-    type: "5v5",
-    pricePerHour: "450.000",
-    status: "active",
-  },
-  {
-    id: 2,
-    name: "San B2",
-    location: "Thu Duc",
-    type: "7v7",
-    pricePerHour: "680.000",
-    status: "pending",
-  },
-  {
-    id: 3,
-    name: "San C3",
-    location: "Binh Thanh",
-    type: "11v11",
-    pricePerHour: "1.200.000",
-    status: "blocked",
-  },
-];
-
 const fieldColumns = [
   { key: "name", label: "Field" },
   { key: "location", label: "Location" },
-  { key: "type", label: "Type" },
+  { key: "managerName", label: "Manager" },
   {
     key: "pricePerHour",
     label: "Price / hour",
-    render: (row) => `${row.pricePerHour} VND`,
+    render: (row) =>
+      new Intl.NumberFormat("vi-VN", {
+        style: "currency",
+        currency: "VND",
+        maximumFractionDigits: 0,
+      }).format(row.pricePerHour),
   },
   {
     key: "status",
@@ -58,6 +37,8 @@ const fieldColumns = [
 ];
 
 export default function FieldsPage() {
+  const { fields, stats, loading, error } = useAdminFields();
+
   const {
     searchText,
     setSearchText,
@@ -69,25 +50,31 @@ export default function FieldsPage() {
     hasActiveFilters,
     resetFilters,
   } = useListFilters({
-    rows: fieldRows,
-    searchFields: ["name", "location", "type"],
+    rows: fields,
+    searchFields: ["name", "location", "managerName"],
   });
 
   return (
     <section className="page-shell">
       <PageHero
-        badges={["Admin module", "Fields"]}
+        badges={[
+          "Admin module",
+          "Fields",
+          loading ? "Loading from backend" : `${stats.total} total fields`,
+        ]}
         title="Fields"
-        description="Field inventory scaffold with mock rows. Next step can replace this with real listing, search, and status updates from backend APIs."
+        description="Fields page now reads backend list and stats so admin web reflects the same field state as the database."
       />
 
       <TableSection
-        title="Field list (mock data)"
-        subtitle="Quick preview of how field records will render in admin."
+        title="Field list"
+        subtitle="Live data from /api/admin/fields and /api/admin/fields/stats."
         actionLabel="Add field"
       >
+        {error && <p className="dashboard-state error">{error}</p>}
+
         <ListFilters
-          searchPlaceholder="Search by field, location, or type"
+          searchPlaceholder="Search by field, location, or manager"
           searchText={searchText}
           onSearchChange={setSearchText}
           statusFilter={statusFilter}
@@ -96,6 +83,7 @@ export default function FieldsPage() {
           filteredCount={filteredCount}
           hasActiveFilters={hasActiveFilters}
           onResetFilters={resetFilters}
+          statusOptions={["active", "inactive", "maintenance"]}
         />
 
         <AdminTable

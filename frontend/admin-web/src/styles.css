@@ -413,6 +413,11 @@ th {
   background: #e2e8f0;
 }
 
+.status-pill.maintenance {
+  color: #9a3412;
+  background: #ffedd5;
+}
+
 .table-actions {
   display: flex;
   gap: 8px;
