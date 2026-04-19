@@ -418,6 +418,22 @@ th {
   background: #ffedd5;
 }
 
+.status-pill.confirmed {
+  color: #065f46;
+  background: #d1fae5;
+}
+
+.status-pill.completed {
+  color: #1e40af;
+  background: #dbeafe;
+}
+
+.status-pill.cancelled,
+.status-pill.rejected {
+  color: #9f1239;
+  background: #ffe4e6;
+}
+
 .table-actions {
   display: flex;
   gap: 8px;
