@@ -14,6 +14,7 @@ const employeeEndpoints = [
   { method: "GET", path: "/api/admin/employees" },
   { method: "GET", path: "/api/admin/employees/stats" },
   { method: "GET", path: "/api/admin/employees/:id" },
+  { method: "POST", path: "/api/admin/employees" },
   { method: "POST", path: "/api/admin/employees/assign-field" },
 ];
 
@@ -54,17 +55,32 @@ function EmployeeActions({ row }) {
 }
 
 export default function EmployeesPage() {
-  const { employees, stats, loading, error, reload } = useAdminEmployees();
+  const { employees, stats, loading, error, reload, createEmployee } =
+    useAdminEmployees();
   const {
     fields,
     loading: fieldsLoading,
     error: fieldsError,
   } = useAdminFields();
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [creatingEmployee, setCreatingEmployee] = useState(false);
+  const [newEmployee, setNewEmployee] = useState({
+    person_name: "",
+    email: "",
+    username: "",
+    password: "",
+    phone: "",
+    address: "",
+    birthday: "",
+    sex: "",
+    status: "active",
+  });
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [selectedFieldId, setSelectedFieldId] = useState("");
   const [assigning, setAssigning] = useState(false);
   const [assignError, setAssignError] = useState("");
   const [assignSuccess, setAssignSuccess] = useState("");
+  const [createError, setCreateError] = useState("");
 
   const {
     searchText,
@@ -104,6 +120,85 @@ export default function EmployeesPage() {
       setSelectedFieldId(String(fields[0].id));
     }
   }, [fields, selectedEmployee, selectedFieldId]);
+
+  const openCreateModal = () => {
+    setCreateModalOpen(true);
+    setCreateError("");
+    setAssignSuccess("");
+  };
+
+  const closeCreateModal = () => {
+    if (creatingEmployee) {
+      return;
+    }
+
+    setCreateModalOpen(false);
+    setCreateError("");
+    setNewEmployee({
+      person_name: "",
+      email: "",
+      username: "",
+      password: "",
+      phone: "",
+      address: "",
+      birthday: "",
+      sex: "",
+      status: "active",
+    });
+  };
+
+  const handleCreateEmployeeChange = (event) => {
+    const { name, value } = event.target;
+    setNewEmployee((current) => ({
+      ...current,
+      [name]: value,
+    }));
+  };
+
+  const handleCreateEmployee = async (event) => {
+    event.preventDefault();
+
+    if (
+      !newEmployee.person_name.trim() ||
+      !newEmployee.username.trim() ||
+      !newEmployee.password
+    ) {
+      setCreateError("Please fill in name, username, and password.");
+      return;
+    }
+
+    if (newEmployee.phone && !/^[0-9]{10}$/.test(newEmployee.phone.trim())) {
+      setCreateError("Phone number must contain exactly 10 digits.");
+      return;
+    }
+
+    try {
+      setCreatingEmployee(true);
+      setCreateError("");
+      setAssignSuccess("");
+
+      await createEmployee({
+        person_name: newEmployee.person_name.trim(),
+        email: newEmployee.email.trim() || null,
+        username: newEmployee.username.trim(),
+        password: newEmployee.password,
+        phone: newEmployee.phone.trim() || null,
+        address: newEmployee.address.trim() || null,
+        birthday: newEmployee.birthday || null,
+        sex: newEmployee.sex || null,
+        status: newEmployee.status,
+      });
+
+      setAssignSuccess(
+        `Employee ${newEmployee.person_name.trim()} created successfully.`,
+      );
+      closeCreateModal();
+    } catch (submitError) {
+      setCreateError(submitError.message || "Unable to create employee");
+    } finally {
+      setCreatingEmployee(false);
+    }
+  };
 
   const closeModal = () => {
     if (assigning) {
@@ -165,11 +260,14 @@ export default function EmployeesPage() {
           title="Employee list"
           subtitle="Live data from /api/admin/employees and /api/admin/employees/stats."
           actionLabel="Add employee"
+          onAction={openCreateModal}
         />
 
         {(error || fieldsError) && (
           <p className="dashboard-state error">{error || fieldsError}</p>
         )}
+
+        {createError && <p className="dashboard-state error">{createError}</p>}
 
         {assignSuccess && (
           <p className="dashboard-state success">{assignSuccess}</p>
@@ -199,6 +297,152 @@ export default function EmployeesPage() {
         title="Employees endpoints"
         endpoints={employeeEndpoints}
       />
+
+      {createModalOpen && (
+        <div className="modal-backdrop" onClick={closeCreateModal}>
+          <div
+            className="modal-card"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="section-head modal-head">
+              <div>
+                <h3>Create employee</h3>
+                <p>Create a new manager account for field operations.</p>
+              </div>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={closeCreateModal}
+                disabled={creatingEmployee}
+              >
+                Close
+              </button>
+            </div>
+
+            <form className="modal-form" onSubmit={handleCreateEmployee}>
+              <label className="modal-field">
+                <span>Name</span>
+                <input
+                  type="text"
+                  name="person_name"
+                  value={newEmployee.person_name}
+                  onChange={handleCreateEmployeeChange}
+                  placeholder="Full name"
+                />
+              </label>
+
+              <label className="modal-field">
+                <span>Email</span>
+                <input
+                  type="email"
+                  name="email"
+                  value={newEmployee.email}
+                  onChange={handleCreateEmployeeChange}
+                  placeholder="Email address"
+                />
+              </label>
+
+              <label className="modal-field">
+                <span>Username</span>
+                <input
+                  type="text"
+                  name="username"
+                  value={newEmployee.username}
+                  onChange={handleCreateEmployeeChange}
+                  placeholder="Login username"
+                />
+              </label>
+
+              <label className="modal-field">
+                <span>Password</span>
+                <input
+                  type="password"
+                  name="password"
+                  value={newEmployee.password}
+                  onChange={handleCreateEmployeeChange}
+                  placeholder="Temporary password"
+                />
+              </label>
+
+              <label className="modal-field">
+                <span>Phone</span>
+                <input
+                  type="text"
+                  name="phone"
+                  value={newEmployee.phone}
+                  onChange={handleCreateEmployeeChange}
+                  placeholder="10-digit phone"
+                />
+              </label>
+
+              <label className="modal-field">
+                <span>Birthday</span>
+                <input
+                  type="date"
+                  name="birthday"
+                  value={newEmployee.birthday}
+                  onChange={handleCreateEmployeeChange}
+                />
+              </label>
+
+              <label className="modal-field">
+                <span>Sex</span>
+                <select
+                  name="sex"
+                  value={newEmployee.sex}
+                  onChange={handleCreateEmployeeChange}
+                >
+                  <option value="">Not set</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
+                </select>
+              </label>
+
+              <label className="modal-field">
+                <span>Status</span>
+                <select
+                  name="status"
+                  value={newEmployee.status}
+                  onChange={handleCreateEmployeeChange}
+                >
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </label>
+
+              <label className="modal-field modal-field-full">
+                <span>Address</span>
+                <textarea
+                  rows="3"
+                  name="address"
+                  value={newEmployee.address}
+                  onChange={handleCreateEmployeeChange}
+                  placeholder="Address"
+                />
+              </label>
+
+              <div className="modal-actions modal-actions-wide">
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={closeCreateModal}
+                  disabled={creatingEmployee}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary"
+                  disabled={creatingEmployee}
+                >
+                  {creatingEmployee ? "Creating..." : "Create employee"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {selectedEmployee && (
         <div className="modal-backdrop" onClick={closeModal}>

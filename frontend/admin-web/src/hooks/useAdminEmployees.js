@@ -72,11 +72,23 @@ export default function useAdminEmployees() {
     [loadEmployees],
   );
 
+  const createEmployee = useCallback(
+    async (employeeData) => {
+      await adminFetch("/api/admin/employees", {
+        method: "POST",
+        body: JSON.stringify(employeeData),
+      });
+      await reload();
+    },
+    [reload],
+  );
+
   return {
     employees,
     stats,
     loading,
     error,
     reload,
+    createEmployee,
   };
 }
