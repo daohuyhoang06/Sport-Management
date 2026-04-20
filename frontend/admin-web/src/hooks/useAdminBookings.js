@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { adminFetch } from "../services/adminApi";
 
 function formatDate(value) {
@@ -51,59 +51,89 @@ export default function useAdminBookings() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    let active = true;
+  const loadBookings = useCallback(async (signal) => {
+    try {
+      setLoading(true);
+      setError("");
 
-    async function loadBookings() {
-      try {
-        setLoading(true);
-        setError("");
+      const [bookingsResponse, statsResponse] = await Promise.all([
+        adminFetch("/api/admin/bookings?page=1&limit=200"),
+        adminFetch("/api/admin/bookings/stats"),
+      ]);
 
-        const [bookingsResponse, statsResponse] = await Promise.all([
-          adminFetch("/api/admin/bookings?page=1&limit=200"),
-          adminFetch("/api/admin/bookings/stats"),
-        ]);
+      if (signal.cancelled) {
+        return;
+      }
 
-        if (!active) {
-          return;
-        }
+      const bookingsData = bookingsResponse?.data?.bookings ?? [];
+      const statsData = statsResponse?.data ?? {};
 
-        const bookingsData = bookingsResponse?.data?.bookings ?? [];
-        const statsData = statsResponse?.data ?? {};
+      setBookings(normalizeBookings(bookingsData));
+      setStats({
+        total: Number(statsData.total ?? bookingsData.length ?? 0),
+        pending: Number(statsData.pending ?? 0),
+        confirmed: Number(statsData.confirmed ?? 0),
+        completed: Number(statsData.completed ?? 0),
+        cancelled: Number(statsData.cancelled ?? 0),
+        today: Number(statsData.today ?? 0),
+      });
+    } catch (fetchError) {
+      if (signal.cancelled) {
+        return;
+      }
 
-        setBookings(normalizeBookings(bookingsData));
-        setStats({
-          total: Number(statsData.total ?? bookingsData.length ?? 0),
-          pending: Number(statsData.pending ?? 0),
-          confirmed: Number(statsData.confirmed ?? 0),
-          completed: Number(statsData.completed ?? 0),
-          cancelled: Number(statsData.cancelled ?? 0),
-          today: Number(statsData.today ?? 0),
-        });
-      } catch (fetchError) {
-        if (!active) {
-          return;
-        }
-
-        setError(fetchError.message || "Unable to load bookings");
-      } finally {
-        if (active) {
-          setLoading(false);
-        }
+      setError(fetchError.message || "Unable to load bookings");
+    } finally {
+      if (!signal.cancelled) {
+        setLoading(false);
       }
     }
+  }, []);
 
-    loadBookings();
+  useEffect(() => {
+    const signal = { cancelled: false };
+
+    loadBookings(signal);
 
     return () => {
-      active = false;
+      signal.cancelled = true;
     };
-  }, []);
+  }, [loadBookings]);
+
+  const reload = useCallback(
+    () => loadBookings({ cancelled: false }),
+    [loadBookings],
+  );
+
+  const updateBookingStatus = useCallback(
+    async (bookingId, status, note = "") => {
+      await adminFetch(`/api/admin/bookings/${bookingId}/status`, {
+        method: "PATCH",
+        body: JSON.stringify({ status, note }),
+      });
+      await reload();
+    },
+    [reload],
+  );
+
+  const cancelBooking = useCallback(
+    async (bookingId, reason) => {
+      await adminFetch(`/api/admin/bookings/${bookingId}/cancel`, {
+        method: "POST",
+        body: JSON.stringify({ reason }),
+      });
+      await reload();
+    },
+    [reload],
+  );
 
   return {
     bookings,
     stats,
     loading,
     error,
+    reload,
+    updateBookingStatus,
+    cancelBooking,
   };
 }
