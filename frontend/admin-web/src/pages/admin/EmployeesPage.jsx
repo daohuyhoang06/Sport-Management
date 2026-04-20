@@ -2,7 +2,9 @@ import AdminTable from "../../components/admin/AdminTable";
 import EndpointPanel from "../../components/admin/EndpointPanel";
 import ListFilters from "../../components/admin/ListFilters";
 import PageHero from "../../components/admin/PageHero";
+import StatusPill from "../../components/admin/StatusPill";
 import TableToolbar from "../../components/admin/TableToolbar";
+import useAdminEmployees from "../../hooks/useAdminEmployees";
 import useListFilters from "../../hooks/useListFilters";
 
 const employeeEndpoints = [
@@ -12,44 +14,16 @@ const employeeEndpoints = [
   { method: "POST", path: "/api/admin/employees/assign-field" },
 ];
 
-const employeeRows = [
-  {
-    id: 101,
-    name: "Nguyen Tuan Kiet",
-    role: "Shift manager",
-    assignedField: "San A1",
-    phone: "0903 112 889",
-    status: "active",
-  },
-  {
-    id: 102,
-    name: "Pham Bao Han",
-    role: "Reception",
-    assignedField: "San B2",
-    phone: "0988 224 663",
-    status: "pending",
-  },
-  {
-    id: 103,
-    name: "Tran Minh Quang",
-    role: "Technician",
-    assignedField: "San C3",
-    phone: "0912 336 775",
-    status: "blocked",
-  },
-];
-
 const employeeColumns = [
   { key: "name", label: "Name" },
+  { key: "email", label: "Email" },
   { key: "role", label: "Role" },
   { key: "assignedField", label: "Assigned field" },
   { key: "phone", label: "Phone" },
   {
     key: "status",
     label: "Status",
-    render: (row) => (
-      <span className={`status-pill ${row.status}`}>{row.status}</span>
-    ),
+    render: (row) => <StatusPill status={row.status} />,
   },
   {
     key: "actions",
@@ -68,6 +42,8 @@ const employeeColumns = [
 ];
 
 export default function EmployeesPage() {
+  const { employees, stats, loading, error } = useAdminEmployees();
+
   const {
     searchText,
     setSearchText,
@@ -79,27 +55,33 @@ export default function EmployeesPage() {
     hasActiveFilters,
     resetFilters,
   } = useListFilters({
-    rows: employeeRows,
-    searchFields: ["name", "role", "assignedField", "phone"],
+    rows: employees,
+    searchFields: ["name", "email", "role", "assignedField", "phone"],
   });
 
   return (
     <section className="page-shell">
       <PageHero
-        badges={["Admin module", "Employees"]}
+        badges={[
+          "Admin module",
+          "Employees",
+          loading ? "Loading from backend" : `${stats.total} total employees`,
+        ]}
         title="Employees"
-        description="Employee management scaffold with assignment-ready table. Next steps can connect to live filters and assign-field actions."
+        description="Employees page now reads backend manager data and keeps the assign-field oriented table flow for admin operations."
       />
 
       <section className="section-card table-card">
         <TableToolbar
-          title="Employee list (mock data)"
-          subtitle="Track role, assigned field, and status in one place."
+          title="Employee list"
+          subtitle="Live data from /api/admin/employees and /api/admin/employees/stats."
           actionLabel="Add employee"
         />
 
+        {error && <p className="dashboard-state error">{error}</p>}
+
         <ListFilters
-          searchPlaceholder="Search by name, role, field, or phone"
+          searchPlaceholder="Search by name, email, role, field, or phone"
           searchText={searchText}
           onSearchChange={setSearchText}
           statusFilter={statusFilter}
@@ -108,6 +90,7 @@ export default function EmployeesPage() {
           filteredCount={filteredCount}
           hasActiveFilters={hasActiveFilters}
           onResetFilters={resetFilters}
+          statusOptions={["active", "inactive"]}
         />
 
         <AdminTable
