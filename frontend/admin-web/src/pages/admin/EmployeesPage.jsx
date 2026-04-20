@@ -15,6 +15,7 @@ const employeeEndpoints = [
   { method: "GET", path: "/api/admin/employees/stats" },
   { method: "GET", path: "/api/admin/employees/:id" },
   { method: "POST", path: "/api/admin/employees" },
+  { method: "PUT", path: "/api/admin/employees/:id" },
   { method: "POST", path: "/api/admin/employees/assign-field" },
   { method: "DELETE", path: "/api/admin/employees/:id" },
 ];
@@ -28,6 +29,7 @@ export default function EmployeesPage() {
     reload,
     createEmployee,
     deleteEmployee,
+    updateEmployee,
   } = useAdminEmployees();
   const {
     fields,
@@ -51,9 +53,21 @@ export default function EmployeesPage() {
   const [selectedFieldId, setSelectedFieldId] = useState("");
   const [assigning, setAssigning] = useState(false);
   const [deactivatingEmployeeId, setDeactivatingEmployeeId] = useState(null);
+  const [editingEmployeeId, setEditingEmployeeId] = useState(null);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editForm, setEditForm] = useState({
+    person_name: "",
+    email: "",
+    phone: "",
+    address: "",
+    birthday: "",
+    sex: "",
+    status: "active",
+  });
   const [assignError, setAssignError] = useState("");
   const [assignSuccess, setAssignSuccess] = useState("");
   const [createError, setCreateError] = useState("");
+  const [editError, setEditError] = useState("");
 
   const {
     searchText,
@@ -86,7 +100,26 @@ export default function EmployeesPage() {
   const openCreateModal = () => {
     setCreateModalOpen(true);
     setCreateError("");
+    setEditError("");
     setAssignSuccess("");
+  };
+
+  const openEditModal = (employee) => {
+    setEditModalOpen(true);
+    setEditError("");
+    setCreateError("");
+    setAssignError("");
+    setAssignSuccess("");
+    setEditForm({
+      person_name: employee.name || "",
+      email: employee.email && employee.email !== "-" ? employee.email : "",
+      phone: employee.phone && employee.phone !== "-" ? employee.phone : "",
+      address: "",
+      birthday: "",
+      sex: "",
+      status: employee.status || "active",
+    });
+    setEditingEmployeeId(employee.id);
   };
 
   const closeCreateModal = () => {
@@ -109,9 +142,36 @@ export default function EmployeesPage() {
     });
   };
 
+  const closeEditModal = () => {
+    if (editingEmployeeId && deactivatingEmployeeId === editingEmployeeId) {
+      return;
+    }
+
+    setEditModalOpen(false);
+    setEditingEmployeeId(null);
+    setEditError("");
+    setEditForm({
+      person_name: "",
+      email: "",
+      phone: "",
+      address: "",
+      birthday: "",
+      sex: "",
+      status: "active",
+    });
+  };
+
   const handleCreateEmployeeChange = (event) => {
     const { name, value } = event.target;
     setNewEmployee((current) => ({
+      ...current,
+      [name]: value,
+    }));
+  };
+
+  const handleEditChange = (event) => {
+    const { name, value } = event.target;
+    setEditForm((current) => ({
       ...current,
       [name]: value,
     }));
@@ -205,6 +265,49 @@ export default function EmployeesPage() {
     }
   };
 
+  const handleUpdateEmployee = async (event) => {
+    event.preventDefault();
+
+    if (!editingEmployeeId) {
+      return;
+    }
+
+    if (!editForm.person_name.trim()) {
+      setEditError("Please fill in employee name.");
+      return;
+    }
+
+    if (editForm.phone && !/^[0-9]{10}$/.test(editForm.phone.trim())) {
+      setEditError("Phone number must contain exactly 10 digits.");
+      return;
+    }
+
+    try {
+      setEditError("");
+      setCreateError("");
+      setAssignError("");
+      setAssignSuccess("");
+      setDeactivatingEmployeeId(editingEmployeeId);
+
+      await updateEmployee(editingEmployeeId, {
+        person_name: editForm.person_name.trim(),
+        email: editForm.email.trim() || null,
+        phone: editForm.phone.trim() || null,
+        address: editForm.address.trim() || null,
+        birthday: editForm.birthday || null,
+        sex: editForm.sex || null,
+        status: editForm.status,
+      });
+
+      setAssignSuccess("Employee updated successfully.");
+      closeEditModal();
+    } catch (submitError) {
+      setEditError(submitError.message || "Unable to update employee");
+    } finally {
+      setDeactivatingEmployeeId(null);
+    }
+  };
+
   const handleDeactivateEmployee = async (employee) => {
     if (employee.status === "inactive") {
       return;
@@ -251,6 +354,14 @@ export default function EmployeesPage() {
         label: "Actions",
         render: (row) => (
           <div className="table-actions booking-actions">
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => openEditModal(row)}
+              disabled={deactivatingEmployeeId === row.id}
+            >
+              Edit
+            </button>
             <button
               type="button"
               className="btn-secondary"
@@ -306,6 +417,8 @@ export default function EmployeesPage() {
 
         {createError && <p className="dashboard-state error">{createError}</p>}
 
+        {editError && <p className="dashboard-state error">{editError}</p>}
+
         {assignError && <p className="dashboard-state error">{assignError}</p>}
 
         {assignSuccess && (
@@ -336,6 +449,130 @@ export default function EmployeesPage() {
         title="Employees endpoints"
         endpoints={employeeEndpoints}
       />
+
+      {editModalOpen && (
+        <div className="modal-backdrop" onClick={closeEditModal}>
+          <div
+            className="modal-card"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="section-head modal-head">
+              <div>
+                <h3>Edit employee</h3>
+                <p>Update employee profile fields through backend admin API.</p>
+              </div>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={closeEditModal}
+                disabled={Boolean(deactivatingEmployeeId)}
+              >
+                Close
+              </button>
+            </div>
+
+            <form className="modal-form" onSubmit={handleUpdateEmployee}>
+              <label className="modal-field">
+                <span>Name</span>
+                <input
+                  type="text"
+                  name="person_name"
+                  value={editForm.person_name}
+                  onChange={handleEditChange}
+                  placeholder="Full name"
+                />
+              </label>
+
+              <label className="modal-field">
+                <span>Email</span>
+                <input
+                  type="email"
+                  name="email"
+                  value={editForm.email}
+                  onChange={handleEditChange}
+                  placeholder="Email address"
+                />
+              </label>
+
+              <label className="modal-field">
+                <span>Phone</span>
+                <input
+                  type="text"
+                  name="phone"
+                  value={editForm.phone}
+                  onChange={handleEditChange}
+                  placeholder="10-digit phone"
+                />
+              </label>
+
+              <label className="modal-field">
+                <span>Birthday</span>
+                <input
+                  type="date"
+                  name="birthday"
+                  value={editForm.birthday}
+                  onChange={handleEditChange}
+                />
+              </label>
+
+              <label className="modal-field">
+                <span>Sex</span>
+                <select
+                  name="sex"
+                  value={editForm.sex}
+                  onChange={handleEditChange}
+                >
+                  <option value="">Not set</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
+                </select>
+              </label>
+
+              <label className="modal-field">
+                <span>Status</span>
+                <select
+                  name="status"
+                  value={editForm.status}
+                  onChange={handleEditChange}
+                >
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </label>
+
+              <label className="modal-field modal-field-full">
+                <span>Address</span>
+                <textarea
+                  rows="3"
+                  name="address"
+                  value={editForm.address}
+                  onChange={handleEditChange}
+                  placeholder="Address"
+                />
+              </label>
+
+              <div className="modal-actions modal-actions-wide">
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={closeEditModal}
+                  disabled={Boolean(deactivatingEmployeeId)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary"
+                  disabled={Boolean(deactivatingEmployeeId)}
+                >
+                  {deactivatingEmployeeId ? "Saving..." : "Save changes"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {createModalOpen && (
         <div className="modal-backdrop" onClick={closeCreateModal}>

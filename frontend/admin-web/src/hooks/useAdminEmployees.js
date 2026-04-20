@@ -93,6 +93,17 @@ export default function useAdminEmployees() {
     [reload],
   );
 
+  const updateEmployee = useCallback(
+    async (employeeId, employeeData) => {
+      await adminFetch(`/api/admin/employees/${employeeId}`, {
+        method: "PUT",
+        body: JSON.stringify(employeeData),
+      });
+      await reload();
+    },
+    [reload],
+  );
+
   return {
     employees,
     stats,
@@ -101,5 +112,6 @@ export default function useAdminEmployees() {
     reload,
     createEmployee,
     deleteEmployee,
+    updateEmployee,
   };
 }
