@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import AdminTable from "../../components/admin/AdminTable";
 import EndpointPanel from "../../components/admin/EndpointPanel";
 import ListFilters from "../../components/admin/ListFilters";
@@ -16,47 +16,19 @@ const employeeEndpoints = [
   { method: "GET", path: "/api/admin/employees/:id" },
   { method: "POST", path: "/api/admin/employees" },
   { method: "POST", path: "/api/admin/employees/assign-field" },
+  { method: "DELETE", path: "/api/admin/employees/:id" },
 ];
-
-const employeeColumns = [
-  { key: "name", label: "Name" },
-  { key: "email", label: "Email" },
-  { key: "role", label: "Role" },
-  { key: "assignedField", label: "Assigned field" },
-  { key: "phone", label: "Phone" },
-  {
-    key: "status",
-    label: "Status",
-    render: (row) => <StatusPill status={row.status} />,
-  },
-  {
-    key: "actions",
-    label: "Actions",
-    render: (row) => <EmployeeActions row={row} />,
-  },
-];
-
-function EmployeeActions({ row }) {
-  const handleClick = () => {
-    window.dispatchEvent(
-      new CustomEvent("admin-assign-field-request", {
-        detail: row,
-      }),
-    );
-  };
-
-  return (
-    <div className="table-actions">
-      <button type="button" className="btn-secondary" onClick={handleClick}>
-        Assign field
-      </button>
-    </div>
-  );
-}
 
 export default function EmployeesPage() {
-  const { employees, stats, loading, error, reload, createEmployee } =
-    useAdminEmployees();
+  const {
+    employees,
+    stats,
+    loading,
+    error,
+    reload,
+    createEmployee,
+    deleteEmployee,
+  } = useAdminEmployees();
   const {
     fields,
     loading: fieldsLoading,
@@ -78,6 +50,7 @@ export default function EmployeesPage() {
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [selectedFieldId, setSelectedFieldId] = useState("");
   const [assigning, setAssigning] = useState(false);
+  const [deactivatingEmployeeId, setDeactivatingEmployeeId] = useState(null);
   const [assignError, setAssignError] = useState("");
   const [assignSuccess, setAssignSuccess] = useState("");
   const [createError, setCreateError] = useState("");
@@ -98,28 +71,17 @@ export default function EmployeesPage() {
   });
 
   useEffect(() => {
-    const onRequestAssignField = (event) => {
-      const employee = event.detail;
-      setSelectedEmployee(employee);
-      setAssignError("");
-      setAssignSuccess("");
-      setSelectedFieldId(fields[0]?.id ? String(fields[0].id) : "");
-    };
-
-    window.addEventListener("admin-assign-field-request", onRequestAssignField);
-    return () => {
-      window.removeEventListener(
-        "admin-assign-field-request",
-        onRequestAssignField,
-      );
-    };
-  }, [fields]);
-
-  useEffect(() => {
     if (selectedEmployee && fields.length > 0 && !selectedFieldId) {
       setSelectedFieldId(String(fields[0].id));
     }
   }, [fields, selectedEmployee, selectedFieldId]);
+
+  const openAssignModal = (employee) => {
+    setSelectedEmployee(employee);
+    setAssignError("");
+    setAssignSuccess("");
+    setSelectedFieldId(fields[0]?.id ? String(fields[0].id) : "");
+  };
 
   const openCreateModal = () => {
     setCreateModalOpen(true);
@@ -243,6 +205,81 @@ export default function EmployeesPage() {
     }
   };
 
+  const handleDeactivateEmployee = async (employee) => {
+    if (employee.status === "inactive") {
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Deactivate employee ${employee.name}? This will set status to inactive.`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setDeactivatingEmployeeId(employee.id);
+      setCreateError("");
+      setAssignError("");
+      setAssignSuccess("");
+
+      await deleteEmployee(employee.id);
+
+      setAssignSuccess(`Employee ${employee.name} was deactivated.`);
+    } catch (submitError) {
+      setAssignError(submitError.message || "Unable to deactivate employee");
+    } finally {
+      setDeactivatingEmployeeId(null);
+    }
+  };
+
+  const employeeColumns = useMemo(
+    () => [
+      { key: "name", label: "Name" },
+      { key: "email", label: "Email" },
+      { key: "role", label: "Role" },
+      { key: "assignedField", label: "Assigned field" },
+      { key: "phone", label: "Phone" },
+      {
+        key: "status",
+        label: "Status",
+        render: (row) => <StatusPill status={row.status} />,
+      },
+      {
+        key: "actions",
+        label: "Actions",
+        render: (row) => (
+          <div className="table-actions booking-actions">
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => openAssignModal(row)}
+              disabled={deactivatingEmployeeId === row.id}
+            >
+              Assign field
+            </button>
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={() => handleDeactivateEmployee(row)}
+              disabled={
+                deactivatingEmployeeId === row.id || row.status === "inactive"
+              }
+            >
+              {deactivatingEmployeeId === row.id
+                ? "Deactivating..."
+                : row.status === "inactive"
+                  ? "Inactive"
+                  : "Deactivate"}
+            </button>
+          </div>
+        ),
+      },
+    ],
+    [deactivatingEmployeeId, fields],
+  );
+
   return (
     <section className="page-shell">
       <PageHero
@@ -268,6 +305,8 @@ export default function EmployeesPage() {
         )}
 
         {createError && <p className="dashboard-state error">{createError}</p>}
+
+        {assignError && <p className="dashboard-state error">{assignError}</p>}
 
         {assignSuccess && (
           <p className="dashboard-state success">{assignSuccess}</p>

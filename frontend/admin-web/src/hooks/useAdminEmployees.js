@@ -83,6 +83,16 @@ export default function useAdminEmployees() {
     [reload],
   );
 
+  const deleteEmployee = useCallback(
+    async (employeeId) => {
+      await adminFetch(`/api/admin/employees/${employeeId}`, {
+        method: "DELETE",
+      });
+      await reload();
+    },
+    [reload],
+  );
+
   return {
     employees,
     stats,
@@ -90,5 +100,6 @@ export default function useAdminEmployees() {
     error,
     reload,
     createEmployee,
+    deleteEmployee,
   };
 }
