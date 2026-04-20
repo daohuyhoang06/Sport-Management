@@ -569,16 +569,16 @@ export const deleteEmployee = <span class="cstat-no" title="statement not covere
  */
 export const assignFieldToEmployee = <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >as</span>ync (req, res) =&gt; {</span>
 <span class="cstat-no" title="statement not covered" >  try {</span>
-    const { employeeId, fieldId } = <span class="cstat-no" title="statement not covered" >req.body;</span>
+    const { employeeId, field_id } = <span class="cstat-no" title="statement not covered" >req.body;</span>
 &nbsp;
-<span class="cstat-no" title="statement not covered" >    if (!employeeId || !fieldId) {</span>
+<span class="cstat-no" title="statement not covered" >    if (!employeeId || !field_id) {</span>
 <span class="cstat-no" title="statement not covered" >      return res.status(400).json({</span>
         success: false,
         message: 'Vui lòng cung cấp ID nhân viên và ID sân'
       });
     }
 &nbsp;
-    const result = <span class="cstat-no" title="statement not covered" >await assignFieldToEmployeeService(employeeId, fieldId);</span>
+    const result = <span class="cstat-no" title="statement not covered" >await assignFieldToEmployeeService(employeeId, field_id);</span>
 &nbsp;
 <span class="cstat-no" title="statement not covered" >    res.json({</span>
       success: true,

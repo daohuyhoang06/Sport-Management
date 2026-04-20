@@ -1,4 +1,4 @@
-import sequelize from '../../config/database.js';
+﻿import sequelize from "../../config/database.js";
 
 /**
  * Get dashboard statistics
@@ -14,7 +14,7 @@ export const getDashboardStatsService = async () => {
         SUM(CASE WHEN role = 'admin' THEN 1 ELSE 0 END) as totalAdmins,
         SUM(CASE WHEN role = 'user' THEN 1 ELSE 0 END) as activeUsers
       FROM person
-      WHERE role IN ('user', 'manager', 'admin')`
+      WHERE role IN ('user', 'manager', 'admin')`,
     );
 
     // Field stats with all statuses
@@ -24,7 +24,7 @@ export const getDashboardStatsService = async () => {
         SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as activeFields,
         SUM(CASE WHEN status = 'maintenance' THEN 1 ELSE 0 END) as maintenanceFields,
         SUM(CASE WHEN status = 'inactive' THEN 1 ELSE 0 END) as inactiveFields
-      FROM fields`
+      FROM fields`,
     );
 
     // Booking stats by status
@@ -36,14 +36,14 @@ export const getDashboardStatsService = async () => {
         SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completedBookings,
         SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelledBookings,
         SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) as rejectedBookings
-      FROM bookings`
+      FROM bookings`,
     );
 
     // Today's bookings
     const [todayStats] = await sequelize.query(
       `SELECT COUNT(*) as todayBookings
       FROM bookings
-      WHERE DATE(start_time) = CURRENT_DATE`
+      WHERE DATE(start_time) = CURRENT_DATE`,
     );
 
     // Revenue stats - only from confirmed and completed bookings
@@ -51,7 +51,7 @@ export const getDashboardStatsService = async () => {
       `SELECT 
         COALESCE(SUM(CASE WHEN status IN ('confirmed', 'completed') THEN price ELSE 0 END), 0) as totalRevenue,
         COALESCE(SUM(CASE WHEN status IN ('confirmed', 'completed') AND EXTRACT(MONTH FROM start_time) = EXTRACT(MONTH FROM CURRENT_DATE) AND EXTRACT(YEAR FROM start_time) = EXTRACT(YEAR FROM CURRENT_DATE) THEN price ELSE 0 END), 0) as monthlyRevenue
-      FROM bookings`
+      FROM bookings`,
     );
 
     return {
@@ -72,10 +72,10 @@ export const getDashboardStatsService = async () => {
       rejectedBookings: parseInt(bookingStats[0]?.rejectedbookings || 0),
       todayBookings: parseInt(todayStats[0]?.todaybookings || 0),
       totalRevenue: parseFloat(revenueStats[0]?.totalrevenue || 0),
-      monthlyRevenue: parseFloat(revenueStats[0]?.monthlyrevenue || 0)
+      monthlyRevenue: parseFloat(revenueStats[0]?.monthlyrevenue || 0),
     };
   } catch (error) {
-    console.error('Error in getDashboardStatsService:', error);
+    console.error("Error in getDashboardStatsService:", error);
     throw error;
   }
 };
@@ -93,25 +93,28 @@ export const getRevenuByDateRangeService = async (startDate, endDate) => {
         b.price,
         b.status,
         f.field_name,
-        p.person_name as customer_name
+        p.name as customer_name
       FROM bookings b
       LEFT JOIN fields f ON b.field_id = f.field_id
       LEFT JOIN person p ON b.customer_id = p.person_id
       WHERE b.status IN ('confirmed', 'completed')
         AND DATE(b.start_time) BETWEEN ? AND ?
       ORDER BY b.start_time DESC`,
-      { replacements: [startDate, endDate] }
+      { replacements: [startDate, endDate] },
     );
 
-    const totalRevenue = bookings.reduce((sum, booking) => sum + parseFloat(booking.price || 0), 0);
+    const totalRevenue = bookings.reduce(
+      (sum, booking) => sum + parseFloat(booking.price || 0),
+      0,
+    );
 
     return {
       bookings: bookings,
       totalRevenue: totalRevenue,
-      totalBookings: bookings.length
+      totalBookings: bookings.length,
     };
   } catch (error) {
-    console.error('Error in getRevenuByDateRangeService:', error);
+    console.error("Error in getRevenuByDateRangeService:", error);
     throw error;
   }
 };
@@ -119,7 +122,11 @@ export const getRevenuByDateRangeService = async (startDate, endDate) => {
 /**
  * Get revenue by field
  */
-export const getRevenueByFieldService = async (fieldId, startDate, endDate) => {
+export const getRevenueByFieldService = async (
+  field_id,
+  startDate,
+  endDate,
+) => {
   try {
     let query = `
       SELECT 
@@ -128,33 +135,36 @@ export const getRevenueByFieldService = async (fieldId, startDate, endDate) => {
         b.end_time,
         b.price,
         b.status,
-        p.person_name as customer_name
+        p.name as customer_name
       FROM bookings b
       LEFT JOIN person p ON b.customer_id = p.person_id
       WHERE b.field_id = ?
         AND b.status IN ('confirmed', 'completed')
     `;
 
-    const replacements = [fieldId];
+    const replacements = [field_id];
 
     if (startDate && endDate) {
-      query += ' AND DATE(b.start_time) BETWEEN ? AND ?';
+      query += " AND DATE(b.start_time) BETWEEN ? AND ?";
       replacements.push(startDate, endDate);
     }
 
-    query += ' ORDER BY b.start_time DESC';
+    query += " ORDER BY b.start_time DESC";
 
     const [bookings] = await sequelize.query(query, { replacements });
 
-    const totalRevenue = bookings.reduce((sum, booking) => sum + parseFloat(booking.price || 0), 0);
+    const totalRevenue = bookings.reduce(
+      (sum, booking) => sum + parseFloat(booking.price || 0),
+      0,
+    );
 
     return {
       bookings: bookings,
       totalRevenue: totalRevenue,
-      count: bookings.length
+      count: bookings.length,
     };
   } catch (error) {
-    console.error('Error in getRevenueByFieldService:', error);
+    console.error("Error in getRevenueByFieldService:", error);
     throw error;
   }
 };
@@ -174,28 +184,28 @@ export const getMonthlyRevenueStatsService = async (year) => {
         AND EXTRACT(YEAR FROM start_time) = ?
       GROUP BY EXTRACT(MONTH FROM start_time)
       ORDER BY EXTRACT(MONTH FROM start_time) ASC`,
-      { replacements: [year] }
+      { replacements: [year] },
     );
 
     // Fill in missing months with 0
     const monthlyData = Array.from({ length: 12 }, (_, i) => ({
       month: i + 1,
       revenue: 0,
-      count: 0
+      count: 0,
     }));
 
-    results.forEach(result => {
+    results.forEach((result) => {
       const monthIndex = result.month - 1;
       monthlyData[monthIndex] = {
         month: result.month,
         revenue: parseFloat(result.revenue || 0),
-        count: parseInt(result.count || 0)
+        count: parseInt(result.count || 0),
       };
     });
 
     return monthlyData;
   } catch (error) {
-    console.error('Error in getMonthlyRevenueStatsService:', error);
+    console.error("Error in getMonthlyRevenueStatsService:", error);
     throw error;
   }
 };

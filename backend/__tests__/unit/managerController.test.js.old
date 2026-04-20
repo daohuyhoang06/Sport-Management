@@ -44,7 +44,7 @@ describe('Manager Controller Tests', () => {
     test('should return bookings for manager\'s fields', async () => {
       const req = httpMocks.createRequest({
         method: 'GET',
-        user: { person_id: 2, role: 'manager', fieldId: 1 },
+        user: { person_id: 2, role: 'manager', field_id: 1 },
         query: {}
       });
       const res = httpMocks.createResponse();
@@ -67,7 +67,7 @@ describe('Manager Controller Tests', () => {
     test('should filter bookings by status', async () => {
       const req = httpMocks.createRequest({
         method: 'GET',
-        user: { person_id: 2, role: 'manager', fieldId: 1 },
+        user: { person_id: 2, role: 'manager', field_id: 1 },
         query: { status: 'pending' }
       });
       const res = httpMocks.createResponse();
@@ -88,7 +88,7 @@ describe('Manager Controller Tests', () => {
     test('should filter bookings by date range', async () => {
       const req = httpMocks.createRequest({
         method: 'GET',
-        user: { person_id: 2, role: 'manager', fieldId: 1 },
+        user: { person_id: 2, role: 'manager', field_id: 1 },
         query: {
           startDate: '2024-01-01',
           endDate: '2024-12-31'
@@ -115,7 +115,7 @@ describe('Manager Controller Tests', () => {
       const req = httpMocks.createRequest({
         method: 'PUT',
         params: { id: '1' },
-        user: { person_id: 2, role: 'manager', fieldId: 1 }
+        user: { person_id: 2, role: 'manager', field_id: 1 }
       });
       const res = httpMocks.createResponse();
 
@@ -140,7 +140,7 @@ describe('Manager Controller Tests', () => {
       const req = httpMocks.createRequest({
         method: 'PUT',
         params: { id: '1' },
-        user: { person_id: 2, role: 'manager', fieldId: 1 }
+        user: { person_id: 2, role: 'manager', field_id: 1 }
       });
       const res = httpMocks.createResponse();
 
@@ -161,7 +161,7 @@ describe('Manager Controller Tests', () => {
       const req = httpMocks.createRequest({
         method: 'PUT',
         params: { id: '1' },
-        user: { person_id: 2, role: 'manager', fieldId: 1 }
+        user: { person_id: 2, role: 'manager', field_id: 1 }
       });
       const res = httpMocks.createResponse();
 
@@ -185,7 +185,7 @@ describe('Manager Controller Tests', () => {
         method: 'PUT',
         params: { id: '1' },
         body: { reason: 'Field under maintenance' },
-        user: { person_id: 2, role: 'manager', fieldId: 1 }
+        user: { person_id: 2, role: 'manager', field_id: 1 }
       });
       const res = httpMocks.createResponse();
 
@@ -214,7 +214,7 @@ describe('Manager Controller Tests', () => {
         method: 'PUT',
         params: { id: '1' },
         body: {},
-        user: { person_id: 2, role: 'manager', fieldId: 1 }
+        user: { person_id: 2, role: 'manager', field_id: 1 }
       });
       const res = httpMocks.createResponse();
 
@@ -237,7 +237,7 @@ describe('Manager Controller Tests', () => {
       const req = httpMocks.createRequest({
         method: 'PUT',
         params: { id: '1' },
-        user: { person_id: 2, role: 'manager', fieldId: 1 }
+        user: { person_id: 2, role: 'manager', field_id: 1 }
       });
       const res = httpMocks.createResponse();
 
@@ -263,7 +263,7 @@ describe('Manager Controller Tests', () => {
       const req = httpMocks.createRequest({
         method: 'PUT',
         params: { id: '1' },
-        user: { person_id: 2, role: 'manager', fieldId: 1 }
+        user: { person_id: 2, role: 'manager', field_id: 1 }
       });
       const res = httpMocks.createResponse();
 
@@ -288,7 +288,7 @@ describe('Manager Controller Tests', () => {
         method: 'PUT',
         params: { id: '1' },
         body: { reason: 'Weather conditions' },
-        user: { person_id: 2, role: 'manager', fieldId: 1 }
+        user: { person_id: 2, role: 'manager', field_id: 1 }
       });
       const res = httpMocks.createResponse();
 
@@ -317,7 +317,7 @@ describe('Manager Controller Tests', () => {
         method: 'PUT',
         params: { id: '1' },
         body: { reason: 'Test reason' },
-        user: { person_id: 2, role: 'manager', fieldId: 1 }
+        user: { person_id: 2, role: 'manager', field_id: 1 }
       });
       const res = httpMocks.createResponse();
 
@@ -340,7 +340,7 @@ describe('Manager Controller Tests', () => {
       const req = httpMocks.createRequest({
         method: 'GET',
         params: { id: '1' },
-        user: { person_id: 2, role: 'manager', fieldId: 1 }
+        user: { person_id: 2, role: 'manager', field_id: 1 }
       });
       const res = httpMocks.createResponse();
 
@@ -366,7 +366,7 @@ describe('Manager Controller Tests', () => {
       const req = httpMocks.createRequest({
         method: 'GET',
         params: { id: '999' },
-        user: { person_id: 2, role: 'manager', fieldId: 1 }
+        user: { person_id: 2, role: 'manager', field_id: 1 }
       });
       const res = httpMocks.createResponse();
 

@@ -5,8 +5,8 @@ import {
   updateFieldService,
   deleteFieldService,
   updateFieldStatusService,
-  getFieldStatsService
-} from '../../services/manager/fieldService.js';
+  getFieldStatsService,
+} from "../../services/manager/fieldService.js";
 
 /**
  * Create new field
@@ -20,22 +20,26 @@ export const createField = async (req, res) => {
     if (!field_name || !location) {
       return res.status(400).json({
         success: false,
-        message: 'Tên sân và địa điểm là bắt buộc',
+        message: "Tên sân và địa điểm là bắt buộc",
       });
     }
 
-    const newField = await createFieldService(managerId, { field_name, location, rental_price });
+    const newField = await createFieldService(managerId, {
+      field_name,
+      location,
+      rental_price,
+    });
 
     res.status(201).json({
       success: true,
-      message: 'Tạo sân mới thành công',
+      message: "Tạo sân mới thành công",
       data: newField,
     });
   } catch (error) {
-    console.error('Error creating field:', error);
+    console.error("Error creating field:", error);
     res.status(500).json({
       success: false,
-      message: error.message || 'Lỗi server khi tạo sân',
+      message: error.message || "Lỗi server khi tạo sân",
     });
   }
 };
@@ -47,27 +51,27 @@ export const createField = async (req, res) => {
 export const updateField = async (req, res) => {
   try {
     const managerId = req.user.id;
-    const fieldId = req.params.id;
+    const field_id = req.params.id;
     const { field_name, location } = req.body;
 
     if (!field_name || !location) {
       return res.status(400).json({
         success: false,
-        message: 'Tên sân và địa điểm là bắt buộc',
+        message: "Tên sân và địa điểm là bắt buộc",
       });
     }
 
-    await updateFieldService(managerId, fieldId, { field_name, location });
+    await updateFieldService(managerId, field_id, { field_name, location });
 
     res.json({
       success: true,
-      message: 'Cập nhật sân thành công',
+      message: "Cập nhật sân thành công",
     });
   } catch (error) {
-    console.error('Error updating field:', error);
+    console.error("Error updating field:", error);
     res.status(500).json({
       success: false,
-      message: error.message || 'Lỗi server khi cập nhật sân',
+      message: error.message || "Lỗi server khi cập nhật sân",
     });
   }
 };
@@ -79,19 +83,19 @@ export const updateField = async (req, res) => {
 export const deleteField = async (req, res) => {
   try {
     const managerId = req.user.id;
-    const fieldId = req.params.id;
+    const field_id = req.params.id;
 
-    await deleteFieldService(managerId, fieldId);
+    await deleteFieldService(managerId, field_id);
 
     res.json({
       success: true,
-      message: 'Xóa sân thành công',
+      message: "Xóa sân thành công",
     });
   } catch (error) {
-    console.error('Error deleting field:', error);
+    console.error("Error deleting field:", error);
     res.status(500).json({
       success: false,
-      message: error.message || 'Lỗi server khi xóa sân',
+      message: error.message || "Lỗi server khi xóa sân",
     });
   }
 };
@@ -103,7 +107,7 @@ export const deleteField = async (req, res) => {
 export const getAllFields = async (req, res) => {
   try {
     const managerId = req.user.id;
-    
+
     const fields = await getManagerFieldsService(managerId);
 
     res.json({
@@ -111,10 +115,10 @@ export const getAllFields = async (req, res) => {
       data: fields,
     });
   } catch (error) {
-    console.error('Error fetching fields:', error);
+    console.error("Error fetching fields:", error);
     res.status(500).json({
       success: false,
-      message: 'Lỗi server khi lấy danh sách sân',
+      message: "Lỗi server khi lấy danh sách sân",
     });
   }
 };
@@ -126,14 +130,14 @@ export const getAllFields = async (req, res) => {
 export const getFieldById = async (req, res) => {
   try {
     const managerId = req.user.id;
-    const fieldId = req.params.id;
+    const field_id = req.params.id;
 
-    const field = await getManagerFieldByIdService(managerId, fieldId);
+    const field = await getManagerFieldByIdService(managerId, field_id);
 
     if (!field) {
       return res.status(404).json({
         success: false,
-        message: 'Không tìm thấy sân bóng hoặc bạn không có quyền truy cập',
+        message: "Không tìm thấy sân bóng hoặc bạn không có quyền truy cập",
       });
     }
 
@@ -142,10 +146,10 @@ export const getFieldById = async (req, res) => {
       data: field,
     });
   } catch (error) {
-    console.error('Error in getFieldById:', error);
+    console.error("Error in getFieldById:", error);
     res.status(500).json({
       success: false,
-      message: 'Lỗi server khi lấy thông tin sân',
+      message: "Lỗi server khi lấy thông tin sân",
     });
   }
 };
@@ -157,27 +161,27 @@ export const getFieldById = async (req, res) => {
 export const updateFieldStatus = async (req, res) => {
   try {
     const managerId = req.user.id;
-    const fieldId = req.params.id;
+    const field_id = req.params.id;
     const { status } = req.body;
 
-    if (!['active', 'inactive'].includes(status)) {
+    if (!["active", "inactive"].includes(status)) {
       return res.status(400).json({
         success: false,
-        message: 'Invalid status. Must be active or inactive',
+        message: "Invalid status. Must be active or inactive",
       });
     }
 
-    await updateFieldStatusService(managerId, fieldId, status);
+    await updateFieldStatusService(managerId, field_id, status);
 
     res.json({
       success: true,
-      message: 'Cập nhật trạng thái sân thành công',
+      message: "Cập nhật trạng thái sân thành công",
     });
   } catch (error) {
-    console.error('Error updating field status:', error);
+    console.error("Error updating field status:", error);
     res.status(500).json({
       success: false,
-      message: error.message || 'Lỗi server khi cập nhật trạng thái sân',
+      message: error.message || "Lỗi server khi cập nhật trạng thái sân",
     });
   }
 };
@@ -189,19 +193,19 @@ export const updateFieldStatus = async (req, res) => {
 export const getFieldStats = async (req, res) => {
   try {
     const managerId = req.user.id;
-    const fieldId = req.params.id;
+    const field_id = req.params.id;
 
-    const stats = await getFieldStatsService(managerId, fieldId);
+    const stats = await getFieldStatsService(managerId, field_id);
 
     res.json({
       success: true,
       data: stats,
     });
   } catch (error) {
-    console.error('Error getting field stats:', error);
+    console.error("Error getting field stats:", error);
     res.status(500).json({
       success: false,
-      message: error.message || 'Lỗi server khi lấy thống kê sân',
+      message: error.message || "Lỗi server khi lấy thống kê sân",
     });
   }
 };

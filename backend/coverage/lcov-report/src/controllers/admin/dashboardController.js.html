@@ -336,10 +336,10 @@ export const getRevenueByDateRange = <span class="cstat-no" title="statement not
  */
 export const getRevenueByField = <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >as</span>ync (req, res) =&gt; {</span>
 <span class="cstat-no" title="statement not covered" >  try {</span>
-    const { fieldId } = <span class="cstat-no" title="statement not covered" >req.params;</span>
+    const { field_id } = <span class="cstat-no" title="statement not covered" >req.params;</span>
     const { startDate, endDate } = <span class="cstat-no" title="statement not covered" >req.query;</span>
 &nbsp;
-    const result = <span class="cstat-no" title="statement not covered" >await getRevenueByFieldService(fieldId, startDate, endDate);</span>
+    const result = <span class="cstat-no" title="statement not covered" >await getRevenueByFieldService(field_id, startDate, endDate);</span>
 &nbsp;
 <span class="cstat-no" title="statement not covered" >    res.json({</span>
       success: true,

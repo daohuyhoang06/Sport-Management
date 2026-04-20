@@ -36,7 +36,7 @@ CREATE TABLE person (
   password VARCHAR(255) NOT NULL,
   role VARCHAR(45) DEFAULT 'user',
   status VARCHAR(45) DEFAULT 'active',
-  fieldId INTEGER
+  field_id INTEGER
 );
 
 CREATE INDEX idx_username ON person(username);
@@ -308,11 +308,11 @@ CREATE INDEX idx_created_messages ON messages(created_at);
 CREATE INDEX idx_read_messages ON messages(is_read);
 
 -- ============================================================
--- Add foreign key for person.fieldId
+-- Add foreign key for person.field_id
 -- ============================================================
 ALTER TABLE person
   ADD CONSTRAINT fk_person_field
-  FOREIGN KEY (fieldId) REFERENCES fields(field_id) ON DELETE SET NULL;
+  FOREIGN KEY (field_id) REFERENCES fields(field_id) ON DELETE SET NULL;
 
 -- ============================================================
 -- Create function for updated_at trigger

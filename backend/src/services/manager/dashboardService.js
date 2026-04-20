@@ -1,4 +1,4 @@
-import sequelize from '../../config/database.js';
+﻿import sequelize from '../../config/database.js';
 
 /**
  * Get dashboard statistics for manager
@@ -84,7 +84,7 @@ export const getRevenueByDateRangeService = async (managerId, startDate, endDate
         b.status,
         f.field_name,
         f.location,
-        p.person_name as customer_name
+        p.name as customer_name
       FROM bookings b
       INNER JOIN fields f ON b.field_id = f.field_id
       LEFT JOIN person p ON b.customer_id = p.person_id
@@ -138,3 +138,4 @@ export const getMonthlyRevenueStatsService = async (managerId, year) => {
     throw error;
   }
 };
+

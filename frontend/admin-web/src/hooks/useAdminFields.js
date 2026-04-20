@@ -76,8 +76,8 @@ export default function useAdminFields() {
   );
 
   const toggleFieldStatus = useCallback(
-    async (fieldId) => {
-      await adminFetch(`/api/admin/fields/${fieldId}/status`, {
+    async (field_id) => {
+      await adminFetch(`/api/admin/fields/${field_id}/status`, {
         method: "PATCH",
       });
       await reload();

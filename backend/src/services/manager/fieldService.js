@@ -1,11 +1,12 @@
-import sequelize from '../../config/database.js';
+import sequelize from "../../config/database.js";
 
 /**
  * Get all fields managed by this manager
  */
 export const getManagerFieldsService = async (managerId) => {
   try {
-    const [fields] = await sequelize.query(`
+    const [fields] = await sequelize.query(
+      `
       SELECT 
         field_id,
         field_name,
@@ -15,11 +16,13 @@ export const getManagerFieldsService = async (managerId) => {
       FROM fields
       WHERE manager_id = ?
       ORDER BY field_id DESC
-    `, { replacements: [managerId] });
+    `,
+      { replacements: [managerId] },
+    );
 
     return fields;
   } catch (error) {
-    console.error('Error in getManagerFieldsService:', error);
+    console.error("Error in getManagerFieldsService:", error);
     throw error;
   }
 };
@@ -30,16 +33,19 @@ export const getManagerFieldsService = async (managerId) => {
 export const createFieldService = async (managerId, fieldData) => {
   try {
     const { field_name, location, rental_price } = fieldData;
-    
-    const [result] = await sequelize.query(`
+
+    const [result] = await sequelize.query(
+      `
       INSERT INTO fields (field_name, location, rental_price, status, manager_id)
       VALUES (?, ?, ?, 'active', ?)
       RETURNING *
-    `, { replacements: [field_name, location, rental_price || null, managerId] });
+    `,
+      { replacements: [field_name, location, rental_price || null, managerId] },
+    );
 
     return result[0];
   } catch (error) {
-    console.error('Error in createFieldService:', error);
+    console.error("Error in createFieldService:", error);
     throw error;
   }
 };
@@ -47,21 +53,24 @@ export const createFieldService = async (managerId, fieldData) => {
 /**
  * Update field
  */
-export const updateFieldService = async (managerId, fieldId, fieldData) => {
+export const updateFieldService = async (managerId, field_id, fieldData) => {
   try {
-    const field = await getManagerFieldByIdService(managerId, fieldId);
-    if (!field) throw new Error('Field not found or unauthorized');
+    const field = await getManagerFieldByIdService(managerId, field_id);
+    if (!field) throw new Error("Field not found or unauthorized");
 
     const { field_name, location } = fieldData;
-    
-    await sequelize.query(`
+
+    await sequelize.query(
+      `
       UPDATE fields SET field_name = ?, location = ?
       WHERE field_id = ? AND manager_id = ?
-    `, { replacements: [field_name, location, fieldId, managerId] });
+    `,
+      { replacements: [field_name, location, field_id, managerId] },
+    );
 
     return { success: true };
   } catch (error) {
-    console.error('Error in updateFieldService:', error);
+    console.error("Error in updateFieldService:", error);
     throw error;
   }
 };
@@ -69,26 +78,32 @@ export const updateFieldService = async (managerId, fieldId, fieldData) => {
 /**
  * Delete field
  */
-export const deleteFieldService = async (managerId, fieldId) => {
+export const deleteFieldService = async (managerId, field_id) => {
   try {
-    const field = await getManagerFieldByIdService(managerId, fieldId);
-    if (!field) throw new Error('Field not found or unauthorized');
+    const field = await getManagerFieldByIdService(managerId, field_id);
+    if (!field) throw new Error("Field not found or unauthorized");
 
-    const [bookings] = await sequelize.query(`
+    const [bookings] = await sequelize.query(
+      `
       SELECT COUNT(*) as count FROM bookings WHERE field_id = ?
-    `, { replacements: [fieldId] });
+    `,
+      { replacements: [field_id] },
+    );
 
     if (bookings[0].count > 0) {
-      throw new Error('Cannot delete field with bookings');
+      throw new Error("Cannot delete field with bookings");
     }
 
-    await sequelize.query(`
+    await sequelize.query(
+      `
       DELETE FROM fields WHERE field_id = ? AND manager_id = ?
-    `, { replacements: [fieldId, managerId] });
+    `,
+      { replacements: [field_id, managerId] },
+    );
 
     return { success: true };
   } catch (error) {
-    console.error('Error in deleteFieldService:', error);
+    console.error("Error in deleteFieldService:", error);
     throw error;
   }
 };
@@ -96,9 +111,10 @@ export const deleteFieldService = async (managerId, fieldId) => {
 /**
  * Get field by ID (only if managed by this manager)
  */
-export const getManagerFieldByIdService = async (managerId, fieldId) => {
+export const getManagerFieldByIdService = async (managerId, field_id) => {
   try {
-    const [fields] = await sequelize.query(`
+    const [fields] = await sequelize.query(
+      `
       SELECT 
         field_id,
         field_name,
@@ -107,11 +123,13 @@ export const getManagerFieldByIdService = async (managerId, fieldId) => {
         manager_id
       FROM fields
       WHERE field_id = ? AND manager_id = ?
-    `, { replacements: [fieldId, managerId] });
+    `,
+      { replacements: [field_id, managerId] },
+    );
 
     return fields[0] || null;
   } catch (error) {
-    console.error('Error in getManagerFieldByIdService:', error);
+    console.error("Error in getManagerFieldByIdService:", error);
     throw error;
   }
 };
@@ -119,23 +137,26 @@ export const getManagerFieldByIdService = async (managerId, fieldId) => {
 /**
  * Update field status
  */
-export const updateFieldStatusService = async (managerId, fieldId, status) => {
+export const updateFieldStatusService = async (managerId, field_id, status) => {
   try {
     // Verify field belongs to manager
-    const field = await getManagerFieldByIdService(managerId, fieldId);
+    const field = await getManagerFieldByIdService(managerId, field_id);
     if (!field) {
-      throw new Error('Field not found or unauthorized');
+      throw new Error("Field not found or unauthorized");
     }
 
-    await sequelize.query(`
+    await sequelize.query(
+      `
       UPDATE fields
       SET status = ?
       WHERE field_id = ? AND manager_id = ?
-    `, { replacements: [status, fieldId, managerId] });
+    `,
+      { replacements: [status, field_id, managerId] },
+    );
 
     return { success: true };
   } catch (error) {
-    console.error('Error in updateFieldStatusService:', error);
+    console.error("Error in updateFieldStatusService:", error);
     throw error;
   }
 };
@@ -143,15 +164,16 @@ export const updateFieldStatusService = async (managerId, fieldId, status) => {
 /**
  * Get field statistics
  */
-export const getFieldStatsService = async (managerId, fieldId) => {
+export const getFieldStatsService = async (managerId, field_id) => {
   try {
     // Verify field belongs to manager
-    const field = await getManagerFieldByIdService(managerId, fieldId);
+    const field = await getManagerFieldByIdService(managerId, field_id);
     if (!field) {
-      throw new Error('Field not found or unauthorized');
+      throw new Error("Field not found or unauthorized");
     }
 
-    const [stats] = await sequelize.query(`
+    const [stats] = await sequelize.query(
+      `
       SELECT 
         COUNT(*) as totalBookings,
         SUM(CASE WHEN status = 'confirmed' THEN 1 ELSE 0 END) as confirmedBookings,
@@ -159,16 +181,18 @@ export const getFieldStatsService = async (managerId, fieldId) => {
         COALESCE(SUM(CASE WHEN status IN ('confirmed', 'completed') THEN price ELSE 0 END), 0) as totalRevenue
       FROM bookings
       WHERE field_id = ?
-    `, { replacements: [fieldId] });
+    `,
+      { replacements: [field_id] },
+    );
 
     return {
       totalBookings: Number(stats[0].totalbookings) || 0,
       confirmedBookings: Number(stats[0].confirmedbookings) || 0,
       completedBookings: Number(stats[0].completedbookings) || 0,
-      totalRevenue: parseFloat(stats[0].totalrevenue) || 0
+      totalRevenue: parseFloat(stats[0].totalrevenue) || 0,
     };
   } catch (error) {
-    console.error('Error in getFieldStatsService:', error);
+    console.error("Error in getFieldStatsService:", error);
     throw error;
   }
 };

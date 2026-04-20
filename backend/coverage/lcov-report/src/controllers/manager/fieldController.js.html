@@ -526,7 +526,7 @@ export const createField = <span class="cstat-no" title="statement not covered" 
 export const updateField = <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >as</span>ync (req, res) =&gt; {</span>
 <span class="cstat-no" title="statement not covered" >  try {</span>
     const managerId = <span class="cstat-no" title="statement not covered" >req.user.id;</span>
-    const fieldId = <span class="cstat-no" title="statement not covered" >req.params.id;</span>
+    const field_id = <span class="cstat-no" title="statement not covered" >req.params.id;</span>
     const { field_name, location } = <span class="cstat-no" title="statement not covered" >req.body;</span>
 &nbsp;
 <span class="cstat-no" title="statement not covered" >    if (!field_name || !location) {</span>
@@ -536,7 +536,7 @@ export const updateField = <span class="cstat-no" title="statement not covered" 
       });
     }
 &nbsp;
-<span class="cstat-no" title="statement not covered" >    await updateFieldService(managerId, fieldId, { field_name, location });</span>
+<span class="cstat-no" title="statement not covered" >    await updateFieldService(managerId, field_id, { field_name, location });</span>
 &nbsp;
 <span class="cstat-no" title="statement not covered" >    res.json({</span>
       success: true,
@@ -558,9 +558,9 @@ export const updateField = <span class="cstat-no" title="statement not covered" 
 export const deleteField = <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >as</span>ync (req, res) =&gt; {</span>
 <span class="cstat-no" title="statement not covered" >  try {</span>
     const managerId = <span class="cstat-no" title="statement not covered" >req.user.id;</span>
-    const fieldId = <span class="cstat-no" title="statement not covered" >req.params.id;</span>
+    const field_id = <span class="cstat-no" title="statement not covered" >req.params.id;</span>
 &nbsp;
-<span class="cstat-no" title="statement not covered" >    await deleteFieldService(managerId, fieldId);</span>
+<span class="cstat-no" title="statement not covered" >    await deleteFieldService(managerId, field_id);</span>
 &nbsp;
 <span class="cstat-no" title="statement not covered" >    res.json({</span>
       success: true,
@@ -605,9 +605,9 @@ export const getAllFields = <span class="cstat-no" title="statement not covered"
 export const getFieldById = <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >as</span>ync (req, res) =&gt; {</span>
 <span class="cstat-no" title="statement not covered" >  try {</span>
     const managerId = <span class="cstat-no" title="statement not covered" >req.user.id;</span>
-    const fieldId = <span class="cstat-no" title="statement not covered" >req.params.id;</span>
+    const field_id = <span class="cstat-no" title="statement not covered" >req.params.id;</span>
 &nbsp;
-    const field = <span class="cstat-no" title="statement not covered" >await getManagerFieldByIdService(managerId, fieldId);</span>
+    const field = <span class="cstat-no" title="statement not covered" >await getManagerFieldByIdService(managerId, field_id);</span>
 &nbsp;
 <span class="cstat-no" title="statement not covered" >    if (!field) {</span>
 <span class="cstat-no" title="statement not covered" >      return res.status(404).json({</span>
@@ -636,7 +636,7 @@ export const getFieldById = <span class="cstat-no" title="statement not covered"
 export const updateFieldStatus = <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >as</span>ync (req, res) =&gt; {</span>
 <span class="cstat-no" title="statement not covered" >  try {</span>
     const managerId = <span class="cstat-no" title="statement not covered" >req.user.id;</span>
-    const fieldId = <span class="cstat-no" title="statement not covered" >req.params.id;</span>
+    const field_id = <span class="cstat-no" title="statement not covered" >req.params.id;</span>
     const { status } = <span class="cstat-no" title="statement not covered" >req.body;</span>
 &nbsp;
 <span class="cstat-no" title="statement not covered" >    if (!['active', 'inactive'].includes(status)) {</span>
@@ -646,7 +646,7 @@ export const updateFieldStatus = <span class="cstat-no" title="statement not cov
       });
     }
 &nbsp;
-<span class="cstat-no" title="statement not covered" >    await updateFieldStatusService(managerId, fieldId, status);</span>
+<span class="cstat-no" title="statement not covered" >    await updateFieldStatusService(managerId, field_id, status);</span>
 &nbsp;
 <span class="cstat-no" title="statement not covered" >    res.json({</span>
       success: true,
@@ -668,9 +668,9 @@ export const updateFieldStatus = <span class="cstat-no" title="statement not cov
 export const getFieldStats = <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >as</span>ync (req, res) =&gt; {</span>
 <span class="cstat-no" title="statement not covered" >  try {</span>
     const managerId = <span class="cstat-no" title="statement not covered" >req.user.id;</span>
-    const fieldId = <span class="cstat-no" title="statement not covered" >req.params.id;</span>
+    const field_id = <span class="cstat-no" title="statement not covered" >req.params.id;</span>
 &nbsp;
-    const stats = <span class="cstat-no" title="statement not covered" >await getFieldStatsService(managerId, fieldId);</span>
+    const stats = <span class="cstat-no" title="statement not covered" >await getFieldStatsService(managerId, field_id);</span>
 &nbsp;
 <span class="cstat-no" title="statement not covered" >    res.json({</span>
       success: true,

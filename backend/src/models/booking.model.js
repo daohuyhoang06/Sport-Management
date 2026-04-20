@@ -1,44 +1,44 @@
-const { DataTypes } = require('sequelize');
-const sequelize = require('../config/database');
-const User = require('./user.model');
-const Field = require('./field.model');
+const { DataTypes } = require("sequelize");
+const sequelize = require("../config/database");
+const User = require("./user.model");
+const Field = require("./field.model");
 
-const Booking = sequelize.define('Booking', {
+const Booking = sequelize.define("Booking", {
   id: {
     type: DataTypes.INTEGER,
     primaryKey: true,
-    autoIncrement: true
+    autoIncrement: true,
   },
   userId: {
     type: DataTypes.INTEGER,
     references: {
       model: User,
-      key: 'id'
-    }
+      key: "id",
+    },
   },
-  fieldId: {
+  field_id: {
     type: DataTypes.INTEGER,
     references: {
       model: Field,
-      key: 'id'
-    }
+      key: "id",
+    },
   },
   startTime: {
     type: DataTypes.DATE,
-    allowNull: false
+    allowNull: false,
   },
   endTime: {
     type: DataTypes.DATE,
-    allowNull: false
+    allowNull: false,
   },
   totalPrice: {
     type: DataTypes.DECIMAL(10, 2),
-    allowNull: false
+    allowNull: false,
   },
   status: {
-    type: DataTypes.ENUM('pending', 'confirmed', 'cancelled'),
-    defaultValue: 'pending'
-  }
+    type: DataTypes.ENUM("pending", "confirmed", "cancelled"),
+    defaultValue: "pending",
+  },
 });
 
 // Define relationships

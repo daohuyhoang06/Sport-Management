@@ -51,7 +51,7 @@ export default function EmployeesPage() {
     status: "active",
   });
   const [selectedEmployee, setSelectedEmployee] = useState(null);
-  const [selectedFieldId, setSelectedFieldId] = useState("");
+  const [selectedfield_id, setSelectedfield_id] = useState("");
   const [assigning, setAssigning] = useState(false);
   const [deactivatingEmployeeId, setDeactivatingEmployeeId] = useState(null);
   const [loadingEditEmployeeId, setLoadingEditEmployeeId] = useState(null);
@@ -87,16 +87,16 @@ export default function EmployeesPage() {
   });
 
   useEffect(() => {
-    if (selectedEmployee && fields.length > 0 && !selectedFieldId) {
-      setSelectedFieldId(String(fields[0].id));
+    if (selectedEmployee && fields.length > 0 && !selectedfield_id) {
+      setSelectedfield_id(String(fields[0].id));
     }
-  }, [fields, selectedEmployee, selectedFieldId]);
+  }, [fields, selectedEmployee, selectedfield_id]);
 
   const openAssignModal = (employee) => {
     setSelectedEmployee(employee);
     setAssignError("");
     setAssignSuccess("");
-    setSelectedFieldId(fields[0]?.id ? String(fields[0].id) : "");
+    setSelectedfield_id(fields[0]?.id ? String(fields[0].id) : "");
   };
 
   const openCreateModal = () => {
@@ -244,7 +244,7 @@ export default function EmployeesPage() {
     }
 
     setSelectedEmployee(null);
-    setSelectedFieldId("");
+    setSelectedfield_id("");
     setAssignError("");
     setAssignSuccess("");
   };
@@ -252,7 +252,7 @@ export default function EmployeesPage() {
   const handleAssignField = async (event) => {
     event.preventDefault();
 
-    if (!selectedEmployee || !selectedFieldId) {
+    if (!selectedEmployee || !selectedfield_id) {
       setAssignError("Please choose a field first.");
       return;
     }
@@ -266,14 +266,14 @@ export default function EmployeesPage() {
         method: "POST",
         body: JSON.stringify({
           employeeId: selectedEmployee.id,
-          fieldId: Number(selectedFieldId),
+          field_id: Number(selectedfield_id),
         }),
       });
 
       setAssignSuccess("Field assigned successfully.");
       await reload();
       setSelectedEmployee(null);
-      setSelectedFieldId("");
+      setSelectedfield_id("");
     } catch (submitError) {
       setAssignError(submitError.message || "Unable to assign field");
     } finally {
@@ -772,8 +772,8 @@ export default function EmployeesPage() {
               <label className="modal-field">
                 <span>Field</span>
                 <select
-                  value={selectedFieldId}
-                  onChange={(event) => setSelectedFieldId(event.target.value)}
+                  value={selectedfield_id}
+                  onChange={(event) => setSelectedfield_id(event.target.value)}
                   disabled={fieldsLoading}
                 >
                   <option value="">

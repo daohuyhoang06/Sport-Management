@@ -1,4 +1,4 @@
-import Field from '../../models/Field.js';
+﻿import Field from '../../models/Field.js';
 import { Op } from 'sequelize';
 import sequelize from '../../config/database.js';
 import { getAvailableSlots, checkSlotAvailability } from '../../services/user/scheduleService.js';
@@ -375,7 +375,7 @@ export const listBookings = async (req, res) => {
         b.booking_id, b.customer_id, b.field_id, b.start_time, b.end_time,
         b.price, b.status, b.note,
         f.field_name, f.location,
-        p.person_name as customer_name, p.phone as customer_phone
+        p.name as customer_name, p.phone as customer_phone
       FROM bookings b
       LEFT JOIN fields f ON b.field_id = f.field_id
       LEFT JOIN person p ON b.customer_id = p.person_id

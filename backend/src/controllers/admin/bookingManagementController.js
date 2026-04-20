@@ -4,30 +4,30 @@ import {
   updateBookingStatusService,
   cancelBookingService,
   getBookingStatsService,
-  getBookingsByDateRangeService
-} from '../../services/admin/bookingManagementService.js';
+  getBookingsByDateRangeService,
+} from "../../services/admin/bookingManagementService.js";
 
 /**
  * Get all bookings
  */
 export const getAllBookings = async (req, res) => {
   try {
-    const { page, limit, status, fieldId, startDate, endDate } = req.query;
+    const { page, limit, status, field_id, startDate, endDate } = req.query;
     const result = await getAllBookingsService(
-      { status, fieldId, startDate, endDate },
-      { page, limit }
+      { status, field_id, startDate, endDate },
+      { page, limit },
     );
 
     res.json({
       success: true,
-      data: result
+      data: result,
     });
   } catch (error) {
-    console.error('Error in getAllBookings:', error);
+    console.error("Error in getAllBookings:", error);
     res.status(500).json({
       success: false,
-      message: 'Lỗi khi lấy danh sách đặt sân',
-      error: error.message
+      message: "Lỗi khi lấy danh sách đặt sân",
+      error: error.message,
     });
   }
 };
@@ -43,20 +43,20 @@ export const getBookingById = async (req, res) => {
     if (!booking) {
       return res.status(404).json({
         success: false,
-        message: 'Không tìm thấy đặt sân'
+        message: "Không tìm thấy đặt sân",
       });
     }
 
     res.json({
       success: true,
-      data: booking
+      data: booking,
     });
   } catch (error) {
-    console.error('Error in getBookingById:', error);
+    console.error("Error in getBookingById:", error);
     res.status(500).json({
       success: false,
-      message: 'Lỗi khi lấy thông tin đặt sân',
-      error: error.message
+      message: "Lỗi khi lấy thông tin đặt sân",
+      error: error.message,
     });
   }
 };
@@ -72,7 +72,7 @@ export const updateBookingStatus = async (req, res) => {
     if (!status) {
       return res.status(400).json({
         success: false,
-        message: 'Vui lòng cung cấp trạng thái'
+        message: "Vui lòng cung cấp trạng thái",
       });
     }
 
@@ -80,15 +80,15 @@ export const updateBookingStatus = async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Cập nhật trạng thái đặt sân thành công',
-      data: booking
+      message: "Cập nhật trạng thái đặt sân thành công",
+      data: booking,
     });
   } catch (error) {
-    console.error('Error in updateBookingStatus:', error);
+    console.error("Error in updateBookingStatus:", error);
     res.status(400).json({
       success: false,
-      message: 'Lỗi khi cập nhật trạng thái đặt sân',
-      error: error.message
+      message: "Lỗi khi cập nhật trạng thái đặt sân",
+      error: error.message,
     });
   }
 };
@@ -104,7 +104,7 @@ export const cancelBooking = async (req, res) => {
     if (!reason) {
       return res.status(400).json({
         success: false,
-        message: 'Vui lòng cung cấp lý do hủy'
+        message: "Vui lòng cung cấp lý do hủy",
       });
     }
 
@@ -112,15 +112,15 @@ export const cancelBooking = async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Hủy đặt sân thành công',
-      data: booking
+      message: "Hủy đặt sân thành công",
+      data: booking,
     });
   } catch (error) {
-    console.error('Error in cancelBooking:', error);
+    console.error("Error in cancelBooking:", error);
     res.status(400).json({
       success: false,
-      message: 'Lỗi khi hủy đặt sân',
-      error: error.message
+      message: "Lỗi khi hủy đặt sân",
+      error: error.message,
     });
   }
 };
@@ -134,14 +134,14 @@ export const getBookingStats = async (req, res) => {
 
     res.json({
       success: true,
-      data: stats
+      data: stats,
     });
   } catch (error) {
-    console.error('Error in getBookingStats:', error);
+    console.error("Error in getBookingStats:", error);
     res.status(500).json({
       success: false,
-      message: 'Lỗi khi lấy thống kê đặt sân',
-      error: error.message
+      message: "Lỗi khi lấy thống kê đặt sân",
+      error: error.message,
     });
   }
 };
@@ -156,7 +156,7 @@ export const getBookingsByDateRange = async (req, res) => {
     if (!startDate || !endDate) {
       return res.status(400).json({
         success: false,
-        message: 'Vui lòng cung cấp ngày bắt đầu và ngày kết thúc'
+        message: "Vui lòng cung cấp ngày bắt đầu và ngày kết thúc",
       });
     }
 
@@ -164,14 +164,14 @@ export const getBookingsByDateRange = async (req, res) => {
 
     res.json({
       success: true,
-      data: bookings
+      data: bookings,
     });
   } catch (error) {
-    console.error('Error in getBookingsByDateRange:', error);
+    console.error("Error in getBookingsByDateRange:", error);
     res.status(500).json({
       success: false,
-      message: 'Lỗi khi lấy đặt sân theo khoảng thời gian',
-      error: error.message
+      message: "Lỗi khi lấy đặt sân theo khoảng thời gian",
+      error: error.message,
     });
   }
 };

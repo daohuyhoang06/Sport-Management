@@ -1,4 +1,4 @@
-import sequelize from '../../config/database.js';
+﻿import sequelize from '../../config/database.js';
 
 export const listBookings = async (req, res) => {
   try {
@@ -21,7 +21,7 @@ export const listBookings = async (req, res) => {
         b.note,
         f.field_name,
         f.location,
-        p.person_name as customer_name,
+        p.name as customer_name,
         p.email as customer_email,
         p.phone as customer_phone
       FROM bookings b

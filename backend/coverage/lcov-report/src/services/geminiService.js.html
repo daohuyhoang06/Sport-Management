@@ -568,7 +568,7 @@ export const detectBookingFraud = <span class="cstat-no" title="statement not co
  */
 export const suggestBestTimeSlots = <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >as</span>ync (fieldData) =&gt; {</span>
 <span class="cstat-no" title="statement not covered" >  try {</span>
-    const { fieldId, fieldName, priceData, bookingStats } = <span class="cstat-no" title="statement not covered" >fieldData;</span>
+    const { field_id, fieldName, priceData, bookingStats } = <span class="cstat-no" title="statement not covered" >fieldData;</span>
     
     const model = <span class="cstat-no" title="statement not covered" >genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });</span>
     

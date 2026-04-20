@@ -1,4 +1,4 @@
-import Person from '../../models/Person.js';
+﻿import Person from '../../models/Person.js';
 import PasswordReset from '../../models/PasswordReset.js';
 import { sendOTPEmail, sendPasswordResetSuccessEmail } from '../../services/user/emailService.js';
 import { Op } from 'sequelize';
@@ -62,7 +62,7 @@ export const forgotPassword = async (req, res) => {
     });
 
     // Send OTP via email
-    await sendOTPEmail(user.email, otpCode, user.person_name);
+    await sendOTPEmail(user.email, otpCode, user.name);
 
     res.status(200).json({
       success: true,
@@ -199,7 +199,7 @@ export const resetPassword = async (req, res) => {
     await passwordReset.save();
 
     // Send success notification email
-    await sendPasswordResetSuccessEmail(user.email, user.person_name);
+    await sendPasswordResetSuccessEmail(user.email, user.name);
 
     res.status(200).json({
       success: true,
@@ -276,7 +276,7 @@ export const resendOTP = async (req, res) => {
       is_used: false
     });
 
-    await sendOTPEmail(user.email, otpCode, user.person_name);
+    await sendOTPEmail(user.email, otpCode, user.name);
 
     res.status(200).json({
       success: true,
