@@ -85,6 +85,17 @@ export default function useAdminFields() {
     [reload],
   );
 
+  const createField = useCallback(
+    async (fieldData) => {
+      await adminFetch("/api/admin/fields", {
+        method: "POST",
+        body: JSON.stringify(fieldData),
+      });
+      await reload();
+    },
+    [reload],
+  );
+
   return {
     fields,
     stats,
@@ -92,5 +103,6 @@ export default function useAdminFields() {
     error,
     reload,
     toggleFieldStatus,
+    createField,
   };
 }
