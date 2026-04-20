@@ -12,6 +12,7 @@
     "db:migrate:undo": "sequelize-cli db:migrate:undo",
     "db:migrate:reset": "node sync-config.cjs && sequelize-cli db:migrate:undo:all && sequelize-cli db:migrate && node reset-config.cjs",
     "db:migrate:status": "sequelize-cli db:migrate:status",
+    "seed:mock": "node seedMockData.js",
     "create-admin": "node create-admin.js",
     "test": "NODE_OPTIONS='--experimental-vm-modules' jest",
     "test:watch": "NODE_OPTIONS='--experimental-vm-modules' jest --watch",

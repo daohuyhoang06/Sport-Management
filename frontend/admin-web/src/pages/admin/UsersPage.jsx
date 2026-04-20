@@ -21,7 +21,7 @@ export default function UsersPage() {
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [creatingUser, setCreatingUser] = useState(false);
   const [newUser, setNewUser] = useState({
-    person_name: "",
+    name: "",
     email: "",
     username: "",
     password: "",
@@ -79,7 +79,7 @@ export default function UsersPage() {
 
     setCreateModalOpen(false);
     setNewUser({
-      person_name: "",
+      name: "",
       email: "",
       username: "",
       password: "",
@@ -105,7 +105,7 @@ export default function UsersPage() {
     event.preventDefault();
 
     if (
-      !newUser.person_name.trim() ||
+      !newUser.name.trim() ||
       !newUser.email.trim() ||
       !newUser.username.trim() ||
       !newUser.password
@@ -121,7 +121,7 @@ export default function UsersPage() {
 
       await createUser({
         ...newUser,
-        person_name: newUser.person_name.trim(),
+        name: newUser.name.trim(),
         email: newUser.email.trim(),
         username: newUser.username.trim(),
         password: newUser.password,
@@ -131,9 +131,7 @@ export default function UsersPage() {
         sex: newUser.sex || null,
       });
 
-      setActionSuccess(
-        `User ${newUser.person_name.trim()} created successfully.`,
-      );
+      setActionSuccess(`User ${newUser.name.trim()} created successfully.`);
       closeCreateModal();
     } catch (submitError) {
       setActionError(submitError.message || "Unable to create user");
@@ -252,8 +250,8 @@ export default function UsersPage() {
                 <span>Name</span>
                 <input
                   type="text"
-                  name="person_name"
-                  value={newUser.person_name}
+                  name="name"
+                  value={newUser.name}
                   onChange={handleCreateUserChange}
                   placeholder="Full name"
                 />

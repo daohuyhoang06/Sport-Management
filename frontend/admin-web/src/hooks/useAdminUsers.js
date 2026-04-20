@@ -4,7 +4,7 @@ import { adminFetch } from "../services/adminApi";
 function normalizeUsers(rawUsers = []) {
   return rawUsers.map((item) => ({
     id: item.person_id,
-    name: item.person_name || "-",
+    name: item.name || item.person_name || "-",
     email: item.email || "-",
     role: item.role || "user",
     status: item.status || "inactive",
@@ -31,14 +31,18 @@ export default function useAdminUsers() {
         return;
       }
 
-      const usersData = usersResponse?.data?.users ?? [];
+      const usersData = Array.isArray(usersResponse)
+        ? usersResponse
+        : usersResponse?.data?.users || usersResponse?.data || [];
       const statsData = statsResponse?.data ?? {};
 
       setUsers(normalizeUsers(usersData));
       setStats({
-        total: Number(statsData.total ?? usersData.length ?? 0),
-        active: Number(statsData.active ?? 0),
-        inactive: Number(statsData.inactive ?? 0),
+        total: Number(
+          statsData.total ?? statsData.totalUsers ?? usersData.length ?? 0,
+        ),
+        active: Number(statsData.active ?? statsData.activeUsers ?? 0),
+        inactive: Number(statsData.inactive ?? statsData.inactiveUsers ?? 0),
       });
     } catch (fetchError) {
       if (signal.cancelled) {
