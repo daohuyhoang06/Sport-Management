@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import AdminTable from "../../components/admin/AdminTable";
 import EndpointPanel from "../../components/admin/EndpointPanel";
 import ListFilters from "../../components/admin/ListFilters";
@@ -15,29 +16,11 @@ const fieldEndpoints = [
   { method: "POST", path: "/api/admin/fields/:id/images" },
 ];
 
-const fieldColumns = [
-  { key: "name", label: "Field" },
-  { key: "location", label: "Location" },
-  { key: "managerName", label: "Manager" },
-  {
-    key: "pricePerHour",
-    label: "Price / hour",
-    render: (row) =>
-      new Intl.NumberFormat("vi-VN", {
-        style: "currency",
-        currency: "VND",
-        maximumFractionDigits: 0,
-      }).format(row.pricePerHour),
-  },
-  {
-    key: "status",
-    label: "Status",
-    render: (row) => <StatusPill status={row.status} />,
-  },
-];
-
 export default function FieldsPage() {
-  const { fields, stats, loading, error } = useAdminFields();
+  const { fields, stats, loading, error, toggleFieldStatus } = useAdminFields();
+  const [submittingFieldId, setSubmittingFieldId] = useState(null);
+  const [actionError, setActionError] = useState("");
+  const [actionSuccess, setActionSuccess] = useState("");
 
   const {
     searchText,
@@ -53,6 +36,74 @@ export default function FieldsPage() {
     rows: fields,
     searchFields: ["name", "location", "managerName"],
   });
+
+  const handleToggleStatus = async (row) => {
+    if (row.status === "maintenance") {
+      return;
+    }
+
+    try {
+      setSubmittingFieldId(row.id);
+      setActionError("");
+      setActionSuccess("");
+      await toggleFieldStatus(row.id);
+      setActionSuccess(
+        `Field ${row.name} changed to ${row.status === "active" ? "inactive" : "active"}.`,
+      );
+    } catch (submitError) {
+      setActionError(submitError.message || "Unable to change field status");
+    } finally {
+      setSubmittingFieldId(null);
+    }
+  };
+
+  const fieldColumns = useMemo(
+    () => [
+      { key: "name", label: "Field" },
+      { key: "location", label: "Location" },
+      { key: "managerName", label: "Manager" },
+      {
+        key: "pricePerHour",
+        label: "Price / hour",
+        render: (row) =>
+          new Intl.NumberFormat("vi-VN", {
+            style: "currency",
+            currency: "VND",
+            maximumFractionDigits: 0,
+          }).format(row.pricePerHour),
+      },
+      {
+        key: "status",
+        label: "Status",
+        render: (row) => <StatusPill status={row.status} />,
+      },
+      {
+        key: "actions",
+        label: "Actions",
+        render: (row) => (
+          <div className="table-actions">
+            <button
+              type="button"
+              className="btn-primary"
+              onClick={() => handleToggleStatus(row)}
+              disabled={
+                submittingFieldId === row.id || row.status === "maintenance"
+              }
+            >
+              {submittingFieldId === row.id
+                ? "Updating..."
+                : row.status === "maintenance"
+                  ? "Maintenance"
+                  : row.status === "active"
+                    ? "Deactivate"
+                    : "Activate"}
+            </button>
+          </div>
+        ),
+      },
+    ],
+    [submittingFieldId],
+  );
 
   return (
     <section className="page-shell">
@@ -72,6 +123,10 @@ export default function FieldsPage() {
         actionLabel="Add field"
       >
         {error && <p className="dashboard-state error">{error}</p>}
+        {actionError && <p className="dashboard-state error">{actionError}</p>}
+        {actionSuccess && (
+          <p className="dashboard-state success">{actionSuccess}</p>
+        )}
 
         <ListFilters
           searchPlaceholder="Search by field, location, or manager"
