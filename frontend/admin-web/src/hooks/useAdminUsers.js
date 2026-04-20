@@ -78,6 +78,17 @@ export default function useAdminUsers() {
     [reload],
   );
 
+  const createUser = useCallback(
+    async (userData) => {
+      await adminFetch("/api/admin/users", {
+        method: "POST",
+        body: JSON.stringify(userData),
+      });
+      await reload();
+    },
+    [reload],
+  );
+
   return {
     users,
     stats,
@@ -85,5 +96,6 @@ export default function useAdminUsers() {
     error,
     reload,
     toggleUserStatus,
+    createUser,
   };
 }

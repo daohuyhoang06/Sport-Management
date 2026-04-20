@@ -502,7 +502,13 @@ th {
 
 .modal-form {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
+}
+
+.modal-field-full,
+.modal-actions-wide {
+  grid-column: 1 / -1;
 }
 
 .modal-field {
@@ -596,6 +602,10 @@ th {
 
   .modal-actions {
     flex-direction: column;
+  }
+
+  .modal-form {
+    grid-template-columns: 1fr;
   }
 
   .modal-actions .btn-secondary,
