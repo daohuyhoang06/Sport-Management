@@ -30,6 +30,7 @@ export default function EmployeesPage() {
     createEmployee,
     deleteEmployee,
     updateEmployee,
+    getEmployeeById,
   } = useAdminEmployees();
   const {
     fields,
@@ -53,6 +54,7 @@ export default function EmployeesPage() {
   const [selectedFieldId, setSelectedFieldId] = useState("");
   const [assigning, setAssigning] = useState(false);
   const [deactivatingEmployeeId, setDeactivatingEmployeeId] = useState(null);
+  const [loadingEditEmployeeId, setLoadingEditEmployeeId] = useState(null);
   const [editingEmployeeId, setEditingEmployeeId] = useState(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editForm, setEditForm] = useState({
@@ -104,22 +106,36 @@ export default function EmployeesPage() {
     setAssignSuccess("");
   };
 
-  const openEditModal = (employee) => {
-    setEditModalOpen(true);
-    setEditError("");
-    setCreateError("");
-    setAssignError("");
-    setAssignSuccess("");
-    setEditForm({
-      person_name: employee.name || "",
-      email: employee.email && employee.email !== "-" ? employee.email : "",
-      phone: employee.phone && employee.phone !== "-" ? employee.phone : "",
-      address: "",
-      birthday: "",
-      sex: "",
-      status: employee.status || "active",
-    });
-    setEditingEmployeeId(employee.id);
+  const openEditModal = async (employee) => {
+    try {
+      setLoadingEditEmployeeId(employee.id);
+      setEditError("");
+      setCreateError("");
+      setAssignError("");
+      setAssignSuccess("");
+
+      const details = await getEmployeeById(employee.id);
+
+      setEditForm({
+        person_name: details?.person_name || employee.name || "",
+        email:
+          details?.email ||
+          (employee.email && employee.email !== "-" ? employee.email : ""),
+        phone:
+          details?.phone ||
+          (employee.phone && employee.phone !== "-" ? employee.phone : ""),
+        address: details?.address || "",
+        birthday: details?.birthday || "",
+        sex: details?.sex || "",
+        status: details?.status || employee.status || "active",
+      });
+      setEditingEmployeeId(employee.id);
+      setEditModalOpen(true);
+    } catch (submitError) {
+      setEditError(submitError.message || "Unable to load employee details");
+    } finally {
+      setLoadingEditEmployeeId(null);
+    }
   };
 
   const closeCreateModal = () => {
@@ -358,9 +374,12 @@ export default function EmployeesPage() {
               type="button"
               className="btn-secondary"
               onClick={() => openEditModal(row)}
-              disabled={deactivatingEmployeeId === row.id}
+              disabled={
+                deactivatingEmployeeId === row.id ||
+                loadingEditEmployeeId === row.id
+              }
             >
-              Edit
+              {loadingEditEmployeeId === row.id ? "Loading..." : "Edit"}
             </button>
             <button
               type="button"
@@ -388,7 +407,7 @@ export default function EmployeesPage() {
         ),
       },
     ],
-    [deactivatingEmployeeId, fields],
+    [deactivatingEmployeeId, fields, loadingEditEmployeeId],
   );
 
   return (
