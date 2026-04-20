@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import AdminTable from "../../components/admin/AdminTable";
 import EndpointPanel from "../../components/admin/EndpointPanel";
 import ListFilters from "../../components/admin/ListFilters";
@@ -5,7 +6,9 @@ import PageHero from "../../components/admin/PageHero";
 import StatusPill from "../../components/admin/StatusPill";
 import TableToolbar from "../../components/admin/TableToolbar";
 import useAdminEmployees from "../../hooks/useAdminEmployees";
+import useAdminFields from "../../hooks/useAdminFields";
 import useListFilters from "../../hooks/useListFilters";
+import { adminFetch } from "../../services/adminApi";
 
 const employeeEndpoints = [
   { method: "GET", path: "/api/admin/employees" },
@@ -28,21 +31,40 @@ const employeeColumns = [
   {
     key: "actions",
     label: "Actions",
-    render: () => (
-      <div className="table-actions">
-        <button type="button" className="btn-secondary">
-          Assign
-        </button>
-        <button type="button" className="btn-primary">
-          Update
-        </button>
-      </div>
-    ),
+    render: (row) => <EmployeeActions row={row} />,
   },
 ];
 
+function EmployeeActions({ row }) {
+  const handleClick = () => {
+    window.dispatchEvent(
+      new CustomEvent("admin-assign-field-request", {
+        detail: row,
+      }),
+    );
+  };
+
+  return (
+    <div className="table-actions">
+      <button type="button" className="btn-secondary" onClick={handleClick}>
+        Assign field
+      </button>
+    </div>
+  );
+}
+
 export default function EmployeesPage() {
-  const { employees, stats, loading, error } = useAdminEmployees();
+  const { employees, stats, loading, error, reload } = useAdminEmployees();
+  const {
+    fields,
+    loading: fieldsLoading,
+    error: fieldsError,
+  } = useAdminFields();
+  const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [selectedFieldId, setSelectedFieldId] = useState("");
+  const [assigning, setAssigning] = useState(false);
+  const [assignError, setAssignError] = useState("");
+  const [assignSuccess, setAssignSuccess] = useState("");
 
   const {
     searchText,
@@ -59,6 +81,73 @@ export default function EmployeesPage() {
     searchFields: ["name", "email", "role", "assignedField", "phone"],
   });
 
+  useEffect(() => {
+    const onRequestAssignField = (event) => {
+      const employee = event.detail;
+      setSelectedEmployee(employee);
+      setAssignError("");
+      setAssignSuccess("");
+      setSelectedFieldId(fields[0]?.id ? String(fields[0].id) : "");
+    };
+
+    window.addEventListener("admin-assign-field-request", onRequestAssignField);
+    return () => {
+      window.removeEventListener(
+        "admin-assign-field-request",
+        onRequestAssignField,
+      );
+    };
+  }, [fields]);
+
+  useEffect(() => {
+    if (selectedEmployee && fields.length > 0 && !selectedFieldId) {
+      setSelectedFieldId(String(fields[0].id));
+    }
+  }, [fields, selectedEmployee, selectedFieldId]);
+
+  const closeModal = () => {
+    if (assigning) {
+      return;
+    }
+
+    setSelectedEmployee(null);
+    setSelectedFieldId("");
+    setAssignError("");
+    setAssignSuccess("");
+  };
+
+  const handleAssignField = async (event) => {
+    event.preventDefault();
+
+    if (!selectedEmployee || !selectedFieldId) {
+      setAssignError("Please choose a field first.");
+      return;
+    }
+
+    try {
+      setAssigning(true);
+      setAssignError("");
+      setAssignSuccess("");
+
+      await adminFetch("/api/admin/employees/assign-field", {
+        method: "POST",
+        body: JSON.stringify({
+          employeeId: selectedEmployee.id,
+          fieldId: Number(selectedFieldId),
+        }),
+      });
+
+      setAssignSuccess("Field assigned successfully.");
+      await reload();
+      setSelectedEmployee(null);
+      setSelectedFieldId("");
+    } catch (submitError) {
+      setAssignError(submitError.message || "Unable to assign field");
+    } finally {
+      setAssigning(false);
+    }
+  };
+
   return (
     <section className="page-shell">
       <PageHero
@@ -68,7 +157,7 @@ export default function EmployeesPage() {
           loading ? "Loading from backend" : `${stats.total} total employees`,
         ]}
         title="Employees"
-        description="Employees page now reads backend manager data and keeps the assign-field oriented table flow for admin operations."
+        description="Employees page now reads backend manager data and supports assigning a field directly from the admin table."
       />
 
       <section className="section-card table-card">
@@ -78,7 +167,13 @@ export default function EmployeesPage() {
           actionLabel="Add employee"
         />
 
-        {error && <p className="dashboard-state error">{error}</p>}
+        {(error || fieldsError) && (
+          <p className="dashboard-state error">{error || fieldsError}</p>
+        )}
+
+        {assignSuccess && (
+          <p className="dashboard-state success">{assignSuccess}</p>
+        )}
 
         <ListFilters
           searchPlaceholder="Search by name, email, role, field, or phone"
@@ -104,6 +199,80 @@ export default function EmployeesPage() {
         title="Employees endpoints"
         endpoints={employeeEndpoints}
       />
+
+      {selectedEmployee && (
+        <div className="modal-backdrop" onClick={closeModal}>
+          <div
+            className="modal-card"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="section-head modal-head">
+              <div>
+                <h3>Assign field</h3>
+                <p>
+                  {selectedEmployee.name} - choose a field to attach from the
+                  backend list.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={closeModal}
+                disabled={assigning}
+              >
+                Close
+              </button>
+            </div>
+
+            <form className="modal-form" onSubmit={handleAssignField}>
+              <label className="modal-field">
+                <span>Employee</span>
+                <input type="text" value={selectedEmployee.name} readOnly />
+              </label>
+
+              <label className="modal-field">
+                <span>Field</span>
+                <select
+                  value={selectedFieldId}
+                  onChange={(event) => setSelectedFieldId(event.target.value)}
+                  disabled={fieldsLoading}
+                >
+                  <option value="">
+                    {fieldsLoading ? "Loading fields..." : "Choose a field"}
+                  </option>
+                  {fields.map((field) => (
+                    <option key={field.id} value={field.id}>
+                      {field.name} - {field.location}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              {assignError && (
+                <p className="dashboard-state error">{assignError}</p>
+              )}
+
+              <div className="modal-actions">
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={closeModal}
+                  disabled={assigning}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary"
+                  disabled={assigning}
+                >
+                  {assigning ? "Assigning..." : "Assign field"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </section>
   );
 }
