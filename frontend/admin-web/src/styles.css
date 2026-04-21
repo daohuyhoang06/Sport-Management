@@ -1164,6 +1164,102 @@ th {
   background: #ffedd5;
 }
 
+.users-page {
+  display: grid;
+  gap: 18px;
+}
+
+.users-toolbar select {
+  min-width: 180px;
+  min-height: 52px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fff;
+  color: var(--ink);
+}
+
+.users-table-card {
+  padding: 20px;
+}
+
+.users-stats-grid .admin-stat-card {
+  min-height: 154px;
+}
+
+.modal-card-users {
+  width: min(880px, 100%);
+  padding: 24px;
+  border-radius: 24px;
+}
+
+.modal-card-users .modal-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.modal-card-users .modal-field-full {
+  grid-column: 1 / -1;
+}
+
+.modal-card-users textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  min-height: 108px;
+  padding: 12px 14px;
+  resize: vertical;
+  font: inherit;
+  color: var(--ink);
+}
+
+.user-name-cell {
+  color: #10203b;
+}
+
+.user-meta-cell {
+  color: #4b5563;
+}
+
+.user-role-pill,
+.user-status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 128px;
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.03em;
+}
+
+.user-role-pill.user {
+  color: #5b21b6;
+  background: #f3e8ff;
+}
+
+.user-role-pill.manager {
+  color: #0f766e;
+  background: #ccfbf1;
+}
+
+.user-role-pill.admin {
+  color: #9f1239;
+  background: #ffe4e6;
+}
+
+.user-status-pill.active {
+  color: #065f46;
+  background: #d1fae5;
+}
+
+.user-status-pill.inactive {
+  color: #334155;
+  background: #e2e8f0;
+}
+
 .modal-card-fields {
   width: min(760px, 100%);
   padding: 24px;
@@ -1738,6 +1834,15 @@ th {
 
   .fields-stats-grid {
     grid-template-columns: 1fr;
+  }
+
+  .modal-card-users .modal-form {
+    grid-template-columns: 1fr;
+  }
+
+  .user-role-pill,
+  .user-status-pill {
+    min-width: 112px;
   }
 
   .field-actions {

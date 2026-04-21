@@ -6,6 +6,11 @@ function normalizeUsers(rawUsers = []) {
     id: item.person_id,
     name: item.name || item.person_name || "-",
     email: item.email || "-",
+    username: item.username || "-",
+    phone: item.phone || "-",
+    address: item.address || "-",
+    birthday: item.birthday || "",
+    sex: item.sex || "",
     role: item.role || "user",
     status: item.status || "inactive",
   }));
@@ -103,6 +108,17 @@ export default function useAdminUsers() {
     [reload],
   );
 
+  const updateUser = useCallback(
+    async (userId, userData) => {
+      await adminFetch(`/api/admin/users/${userId}`, {
+        method: "PUT",
+        body: JSON.stringify(userData),
+      });
+      await reload();
+    },
+    [reload],
+  );
+
   return {
     users,
     stats,
@@ -112,5 +128,6 @@ export default function useAdminUsers() {
     toggleUserStatus,
     deleteUser,
     createUser,
+    updateUser,
   };
 }
