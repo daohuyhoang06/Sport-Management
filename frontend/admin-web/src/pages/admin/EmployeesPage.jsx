@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import AdminTable from "../../components/admin/AdminTable";
-import EndpointPanel from "../../components/admin/EndpointPanel";
 import ListFilters from "../../components/admin/ListFilters";
 import PageHero from "../../components/admin/PageHero";
 import StatusPill from "../../components/admin/StatusPill";
@@ -9,16 +8,6 @@ import useAdminEmployees from "../../hooks/useAdminEmployees";
 import useAdminFields from "../../hooks/useAdminFields";
 import useListFilters from "../../hooks/useListFilters";
 import { adminFetch } from "../../services/adminApi";
-
-const employeeEndpoints = [
-  { method: "GET", path: "/api/admin/employees" },
-  { method: "GET", path: "/api/admin/employees/stats" },
-  { method: "GET", path: "/api/admin/employees/:id" },
-  { method: "POST", path: "/api/admin/employees" },
-  { method: "PUT", path: "/api/admin/employees/:id" },
-  { method: "POST", path: "/api/admin/employees/assign-field" },
-  { method: "DELETE", path: "/api/admin/employees/:id" },
-];
 
 export default function EmployeesPage() {
   const {
@@ -117,7 +106,8 @@ export default function EmployeesPage() {
       const details = await getEmployeeById(employee.id);
 
       setEditForm({
-        person_name: details?.person_name || employee.name || "",
+        person_name:
+          details?.name || details?.person_name || employee.name || "",
         email:
           details?.email ||
           (employee.email && employee.email !== "-" ? employee.email : ""),
@@ -216,7 +206,7 @@ export default function EmployeesPage() {
       setAssignSuccess("");
 
       await createEmployee({
-        person_name: newEmployee.person_name.trim(),
+        name: newEmployee.person_name.trim(),
         email: newEmployee.email.trim() || null,
         username: newEmployee.username.trim(),
         password: newEmployee.password,
@@ -306,7 +296,7 @@ export default function EmployeesPage() {
       setDeactivatingEmployeeId(editingEmployeeId);
 
       await updateEmployee(editingEmployeeId, {
-        person_name: editForm.person_name.trim(),
+        name: editForm.person_name.trim(),
         email: editForm.email.trim() || null,
         phone: editForm.phone.trim() || null,
         address: editForm.address.trim() || null,
@@ -463,11 +453,6 @@ export default function EmployeesPage() {
           emptyMessage="No employees match the current filters."
         />
       </section>
-
-      <EndpointPanel
-        title="Employees endpoints"
-        endpoints={employeeEndpoints}
-      />
 
       {editModalOpen && (
         <div className="modal-backdrop" onClick={closeEditModal}>

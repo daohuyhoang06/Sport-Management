@@ -4,6 +4,7 @@ import { adminFetch } from "../services/adminApi";
 function normalizeFields(rawFields = []) {
   return rawFields.map((item) => ({
     id: item.field_id,
+    managerId: item.manager_id ?? null,
     name: item.field_name || "-",
     location: item.location || "-",
     managerName: item.manager_name || "Unassigned",
@@ -85,10 +86,31 @@ export default function useAdminFields() {
     [reload],
   );
 
+  const deleteField = useCallback(
+    async (field_id) => {
+      await adminFetch(`/api/admin/fields/${field_id}`, {
+        method: "DELETE",
+      });
+      await reload();
+    },
+    [reload],
+  );
+
   const createField = useCallback(
     async (fieldData) => {
       await adminFetch("/api/admin/fields", {
         method: "POST",
+        body: JSON.stringify(fieldData),
+      });
+      await reload();
+    },
+    [reload],
+  );
+
+  const updateField = useCallback(
+    async (fieldId, fieldData) => {
+      await adminFetch(`/api/admin/fields/${fieldId}`, {
+        method: "PUT",
         body: JSON.stringify(fieldData),
       });
       await reload();
@@ -103,6 +125,8 @@ export default function useAdminFields() {
     error,
     reload,
     toggleFieldStatus,
+    deleteField,
     createField,
+    updateField,
   };
 }

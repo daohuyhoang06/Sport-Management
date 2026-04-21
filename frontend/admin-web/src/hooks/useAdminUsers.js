@@ -82,6 +82,16 @@ export default function useAdminUsers() {
     [reload],
   );
 
+  const deleteUser = useCallback(
+    async (userId) => {
+      await adminFetch(`/api/admin/users/${userId}`, {
+        method: "DELETE",
+      });
+      await reload();
+    },
+    [reload],
+  );
+
   const createUser = useCallback(
     async (userData) => {
       await adminFetch("/api/admin/users", {
@@ -100,6 +110,7 @@ export default function useAdminUsers() {
     error,
     reload,
     toggleUserStatus,
+    deleteUser,
     createUser,
   };
 }

@@ -1,11 +1,6 @@
-import EndpointPanel from "./EndpointPanel";
 import PageHero from "./PageHero";
 
-export default function ModulePlaceholderPage({
-  moduleName,
-  description,
-  endpoints,
-}) {
+export default function ModulePlaceholderPage({ moduleName, description }) {
   return (
     <section className="page-shell">
       <PageHero
@@ -13,8 +8,6 @@ export default function ModulePlaceholderPage({
         title={moduleName}
         description={description}
       />
-
-      <EndpointPanel title={`${moduleName} endpoints`} endpoints={endpoints} />
     </section>
   );
 }

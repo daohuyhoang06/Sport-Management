@@ -1,111 +1,249 @@
 import { useMemo, useState } from "react";
 import AdminTable from "../../components/admin/AdminTable";
-import EndpointPanel from "../../components/admin/EndpointPanel";
-import ListFilters from "../../components/admin/ListFilters";
-import PageHero from "../../components/admin/PageHero";
-import StatusPill from "../../components/admin/StatusPill";
 import useAdminFields from "../../hooks/useAdminFields";
-import useListFilters from "../../hooks/useListFilters";
 
-const fieldEndpoints = [
-  { method: "GET", path: "/api/admin/fields" },
-  { method: "GET", path: "/api/admin/fields/stats" },
-  { method: "GET", path: "/api/admin/fields/:id" },
-  { method: "PATCH", path: "/api/admin/fields/:id/status" },
-  { method: "POST", path: "/api/admin/fields/:id/images" },
+const initialFieldForm = {
+  field_name: "",
+  location: "",
+  rental_price: "",
+  manager_id: "",
+  status: "active",
+};
+
+const statusOptions = [
+  { value: "all", label: "Tất cả trạng thái" },
+  { value: "active", label: "Hoạt động" },
+  { value: "inactive", label: "Không hoạt động" },
+  { value: "maintenance", label: "Bảo trì" },
 ];
 
+function renderFieldStatus(status) {
+  const labels = {
+    active: "HOẠT ĐỘNG",
+    inactive: "KHÔNG HOẠT ĐỘNG",
+    maintenance: "BẢO TRÌ",
+  };
+
+  return (
+    <span className={`field-status-pill ${status || "inactive"}`}>
+      {labels[status] || labels.inactive}
+    </span>
+  );
+}
+
+function FieldFormModal({
+  mode,
+  open,
+  formState,
+  loading,
+  error,
+  onClose,
+  onChange,
+  onSubmit,
+}) {
+  if (!open) {
+    return null;
+  }
+
+  const title = mode === "edit" ? "Sửa sân" : "Thêm sân";
+  const submitLabel = mode === "edit" ? "Lưu thay đổi" : "Tạo sân";
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div
+        className="modal-card modal-card-fields"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="section-head modal-head">
+          <div>
+            <h3>{title}</h3>
+            <p>
+              Đồng bộ theo phong cách dashboard và cập nhật trực tiếp từ
+              backend.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={onClose}
+            disabled={loading}
+          >
+            Đóng
+          </button>
+        </div>
+
+        {error && <p className="dashboard-state error">{error}</p>}
+
+        <form className="modal-form" onSubmit={onSubmit}>
+          <label className="modal-field">
+            <span>Tên sân</span>
+            <input
+              type="text"
+              name="field_name"
+              value={formState.field_name}
+              onChange={onChange}
+              placeholder="Nhập tên sân"
+            />
+          </label>
+
+          <label className="modal-field">
+            <span>Địa chỉ</span>
+            <input
+              type="text"
+              name="location"
+              value={formState.location}
+              onChange={onChange}
+              placeholder="Nhập khu vực hoặc địa chỉ"
+            />
+          </label>
+
+          <label className="modal-field">
+            <span>Giá thuê / giờ</span>
+            <input
+              type="number"
+              min="1"
+              name="rental_price"
+              value={formState.rental_price}
+              onChange={onChange}
+              placeholder="Ví dụ: 300000"
+            />
+          </label>
+
+          <label className="modal-field">
+            <span>Người quản lý (ID)</span>
+            <input
+              type="number"
+              min="1"
+              name="manager_id"
+              value={formState.manager_id}
+              onChange={onChange}
+              placeholder="Nếu chưa có, để trống"
+            />
+          </label>
+
+          <label className="modal-field modal-field-full">
+            <span>Trạng thái</span>
+            <select name="status" value={formState.status} onChange={onChange}>
+              <option value="active">Hoạt động</option>
+              <option value="inactive">Không hoạt động</option>
+              <option value="maintenance">Bảo trì</option>
+            </select>
+          </label>
+
+          <div className="modal-actions modal-actions-wide">
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={onClose}
+              disabled={loading}
+            >
+              Hủy
+            </button>
+            <button type="submit" className="btn-primary" disabled={loading}>
+              {loading ? "Đang xử lý..." : submitLabel}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export default function FieldsPage() {
-  const { fields, stats, loading, error, toggleFieldStatus, createField } =
-    useAdminFields();
+  const {
+    fields,
+    stats,
+    loading,
+    error,
+    toggleFieldStatus,
+    deleteField,
+    createField,
+    updateField,
+  } = useAdminFields();
+
+  const [searchText, setSearchText] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [submittingFieldId, setSubmittingFieldId] = useState(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
   const [creatingField, setCreatingField] = useState(false);
-  const [newField, setNewField] = useState({
-    field_name: "",
-    location: "",
-    rental_price: "",
-    manager_id: "",
-    status: "active",
-  });
+  const [editingField, setEditingField] = useState(false);
   const [actionError, setActionError] = useState("");
   const [actionSuccess, setActionSuccess] = useState("");
+  const [selectedField, setSelectedField] = useState(null);
+  const [createForm, setCreateForm] = useState(initialFieldForm);
+  const [editForm, setEditForm] = useState(initialFieldForm);
 
-  const {
-    searchText,
-    setSearchText,
-    statusFilter,
-    setStatusFilter,
-    filteredRows,
-    filteredCount,
-    totalCount,
-    hasActiveFilters,
-    resetFilters,
-  } = useListFilters({
-    rows: fields,
-    searchFields: ["name", "location", "managerName"],
-  });
+  const filteredRows = useMemo(() => {
+    const keyword = searchText.trim().toLowerCase();
 
-  const handleToggleStatus = async (row) => {
-    if (row.status === "maintenance") {
-      return;
-    }
+    return fields.filter((field) => {
+      const matchesKeyword =
+        !keyword ||
+        [field.name, field.location, field.managerName]
+          .join(" ")
+          .toLowerCase()
+          .includes(keyword);
 
-    try {
-      setSubmittingFieldId(row.id);
-      setActionError("");
-      setActionSuccess("");
-      await toggleFieldStatus(row.id);
-      setActionSuccess(
-        `Field ${row.name} changed to ${row.status === "active" ? "inactive" : "active"}.`,
-      );
-    } catch (submitError) {
-      setActionError(submitError.message || "Unable to change field status");
-    } finally {
-      setSubmittingFieldId(null);
-    }
-  };
+      const matchesStatus =
+        statusFilter === "all" || field.status === statusFilter;
 
-  const openCreateModal = () => {
-    setCreateModalOpen(true);
-    setActionError("");
-    setActionSuccess("");
-  };
-
-  const closeCreateModal = () => {
-    if (creatingField) {
-      return;
-    }
-
-    setCreateModalOpen(false);
-    setNewField({
-      field_name: "",
-      location: "",
-      rental_price: "",
-      manager_id: "",
-      status: "active",
+      return matchesKeyword && matchesStatus;
     });
-  };
+  }, [fields, searchText, statusFilter]);
 
-  const handleCreateFieldChange = (event) => {
+  const handleFieldChange = (setter) => (event) => {
     const { name, value } = event.target;
 
-    setNewField((current) => ({
+    setter((current) => ({
       ...current,
       [name]: value,
     }));
   };
 
-  const handleCreateField = async (event) => {
-    event.preventDefault();
+  const openCreateModal = () => {
+    setActionError("");
+    setActionSuccess("");
+    setCreateForm(initialFieldForm);
+    setCreateModalOpen(true);
+  };
 
-    if (!newField.field_name.trim() || !newField.location.trim()) {
-      setActionError("Please fill in field name and location.");
+  const openEditModal = (field) => {
+    setActionError("");
+    setActionSuccess("");
+    setSelectedField(field);
+    setEditForm({
+      field_name: field.name || "",
+      location: field.location || "",
+      rental_price: field.pricePerHour ? String(field.pricePerHour) : "",
+      manager_id: field.managerId ? String(field.managerId) : "",
+      status: field.status || "active",
+    });
+    setEditModalOpen(true);
+  };
+
+  const closeModals = () => {
+    if (creatingField || editingField) {
       return;
     }
 
-    if (!newField.rental_price || Number(newField.rental_price) <= 0) {
-      setActionError("Please enter a valid rental price.");
+    setCreateModalOpen(false);
+    setEditModalOpen(false);
+    setSelectedField(null);
+    setCreateForm(initialFieldForm);
+    setEditForm(initialFieldForm);
+  };
+
+  const handleCreateSubmit = async (event) => {
+    event.preventDefault();
+
+    if (!createForm.field_name.trim() || !createForm.location.trim()) {
+      setActionError("Vui lòng nhập tên sân và địa chỉ.");
+      return;
+    }
+
+    if (!createForm.rental_price || Number(createForm.rental_price) <= 0) {
+      setActionError("Vui lòng nhập giá thuê hợp lệ.");
       return;
     }
 
@@ -115,64 +253,168 @@ export default function FieldsPage() {
       setActionSuccess("");
 
       await createField({
-        field_name: newField.field_name.trim(),
-        location: newField.location.trim(),
-        rental_price: Number(newField.rental_price),
-        manager_id: newField.manager_id ? Number(newField.manager_id) : null,
-        status: newField.status,
+        field_name: createForm.field_name.trim(),
+        location: createForm.location.trim(),
+        rental_price: Number(createForm.rental_price),
+        manager_id: createForm.manager_id
+          ? Number(createForm.manager_id)
+          : null,
+        status: createForm.status,
       });
 
       setActionSuccess(
-        `Field ${newField.field_name.trim()} created successfully.`,
+        `Đã tạo sân ${createForm.field_name.trim()} thành công.`,
       );
-      closeCreateModal();
+      closeModals();
     } catch (submitError) {
-      setActionError(submitError.message || "Unable to create field");
+      setActionError(submitError.message || "Không thể tạo sân.");
     } finally {
       setCreatingField(false);
     }
   };
 
+  const handleEditSubmit = async (event) => {
+    event.preventDefault();
+
+    if (!selectedField) {
+      return;
+    }
+
+    if (!editForm.field_name.trim() || !editForm.location.trim()) {
+      setActionError("Vui lòng nhập tên sân và địa chỉ.");
+      return;
+    }
+
+    if (!editForm.rental_price || Number(editForm.rental_price) <= 0) {
+      setActionError("Vui lòng nhập giá thuê hợp lệ.");
+      return;
+    }
+
+    try {
+      setEditingField(true);
+      setActionError("");
+      setActionSuccess("");
+
+      await updateField(selectedField.id, {
+        field_name: editForm.field_name.trim(),
+        location: editForm.location.trim(),
+        rental_price: Number(editForm.rental_price),
+        manager_id: editForm.manager_id ? Number(editForm.manager_id) : null,
+        status: editForm.status,
+      });
+
+      setActionSuccess(
+        `Đã cập nhật sân ${editForm.field_name.trim()} thành công.`,
+      );
+      closeModals();
+    } catch (submitError) {
+      setActionError(submitError.message || "Không thể cập nhật sân.");
+    } finally {
+      setEditingField(false);
+    }
+  };
+
+  const handleToggleStatus = async (field) => {
+    if (field.status === "maintenance") {
+      return;
+    }
+
+    try {
+      setSubmittingFieldId(field.id);
+      setActionError("");
+      setActionSuccess("");
+      await toggleFieldStatus(field.id);
+      setActionSuccess(
+        `Đã chuyển sân ${field.name} sang trạng thái ${field.status === "active" ? "không hoạt động" : "hoạt động"}.`,
+      );
+    } catch (submitError) {
+      setActionError(submitError.message || "Không thể đổi trạng thái sân.");
+    } finally {
+      setSubmittingFieldId(null);
+    }
+  };
+
+  const handleDeleteField = async (field) => {
+    const confirmed = window.confirm(
+      `Xóa sân ${field.name}? Thao tác này không thể hoàn tác.`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setSubmittingFieldId(field.id);
+      setActionError("");
+      setActionSuccess("");
+      await deleteField(field.id);
+      setActionSuccess(`Đã xóa sân ${field.name} thành công.`);
+    } catch (submitError) {
+      setActionError(submitError.message || "Không thể xóa sân.");
+    } finally {
+      setSubmittingFieldId(null);
+    }
+  };
+
   const fieldColumns = useMemo(
     () => [
-      { key: "name", label: "Field" },
-      { key: "location", label: "Location" },
-      { key: "managerName", label: "Manager" },
       {
-        key: "pricePerHour",
-        label: "Price / hour",
-        render: (row) =>
-          new Intl.NumberFormat("vi-VN", {
-            style: "currency",
-            currency: "VND",
-            maximumFractionDigits: 0,
-          }).format(row.pricePerHour),
+        key: "id",
+        label: "ID",
+        render: (row) => <span className="field-id-tag">#{row.id}</span>,
       },
+      { key: "name", label: "Tên sân" },
+      {
+        key: "location",
+        label: "Địa chỉ",
+        render: (row) => (
+          <span className="field-location">
+            <span>📍</span>
+            {row.location}
+          </span>
+        ),
+      },
+      { key: "managerName", label: "Quản lý" },
       {
         key: "status",
-        label: "Status",
-        render: (row) => <StatusPill status={row.status} />,
+        label: "Trạng thái",
+        render: (row) => renderFieldStatus(row.status),
       },
       {
         key: "actions",
-        label: "Actions",
+        label: "Thao tác",
         render: (row) => (
-          <div className="table-actions">
+          <div className="field-actions">
             <button
               type="button"
-              className="btn-primary"
+              className="field-action edit"
+              onClick={() => openEditModal(row)}
+            >
+              ✏️ Sửa
+            </button>
+            <button
+              type="button"
+              className="field-action toggle"
               onClick={() => handleToggleStatus(row)}
               disabled={
                 submittingFieldId === row.id || row.status === "maintenance"
               }
             >
               {submittingFieldId === row.id
-                ? "Updating..."
+                ? "Đang xử lý..."
                 : row.status === "maintenance"
-                  ? "Maintenance"
+                  ? "Bảo trì"
                   : row.status === "active"
-                    ? "Deactivate"
-                    : "Activate"}
+                    ? "Tắt"
+                    : "Bật"}
+            </button>
+            <button
+              type="button"
+              className="field-action delete"
+              onClick={() => handleDeleteField(row)}
+              disabled={submittingFieldId === row.id}
+            >
+              🗑 Xóa
             </button>
           </div>
         ),
@@ -182,156 +424,145 @@ export default function FieldsPage() {
   );
 
   return (
-    <section className="page-shell">
-      <PageHero
-        badges={[
-          "Admin module",
-          "Fields",
-          loading ? "Loading from backend" : `${stats.total} total fields`,
-        ]}
-        title="Fields"
-        description="Fields page now reads backend list and stats so admin web reflects the same field state as the database."
-      />
-
-      <section className="section-card table-card">
-        <div className="table-head">
-          <h3>Field list</h3>
-          <button type="button" onClick={openCreateModal}>
-            Add field
-          </button>
+    <section className="fields-page">
+      <header className="fields-hero">
+        <div className="dashboard-hero-left">
+          <div className="dashboard-hero-icon">🏟️</div>
+          <div>
+            <p className="dashboard-hero-kicker">Dashboard</p>
+            <h2>Quản Lý Sân Bóng</h2>
+          </div>
         </div>
-        <p>Live data from /api/admin/fields and /api/admin/fields/stats.</p>
 
-        {error && <p className="dashboard-state error">{error}</p>}
-        {actionError && <p className="dashboard-state error">{actionError}</p>}
-        {actionSuccess && (
-          <p className="dashboard-state success">{actionSuccess}</p>
-        )}
+        <div className="dashboard-hero-right">
+          <div className="dashboard-role-switcher" aria-label="Vai trò">
+            <span className="is-active">👷 Quản trị viên</span>
+            <span>📘 Quản lý</span>
+            <span>👤 Người dùng</span>
+          </div>
+          <div className="dashboard-user-chip">
+            <span className="dashboard-user-badge">ADMIN</span>
+            <strong>Admin</strong>
+          </div>
+        </div>
+      </header>
 
-        <ListFilters
-          searchPlaceholder="Search by field, location, or manager"
-          searchText={searchText}
-          onSearchChange={setSearchText}
-          statusFilter={statusFilter}
-          onStatusChange={setStatusFilter}
-          totalCount={totalCount}
-          filteredCount={filteredCount}
-          hasActiveFilters={hasActiveFilters}
-          onResetFilters={resetFilters}
-          statusOptions={["active", "inactive", "maintenance"]}
-        />
+      <section className="fields-stats-grid">
+        <article
+          className="admin-stat-card"
+          style={{ ["--accent-color"]: "#6b7cff" }}
+        >
+          <div className="admin-stat-copy">
+            <p>Tổng số sân</p>
+            <h3>{stats.total.toLocaleString("vi-VN")}</h3>
+            <span>Toàn bộ sân trong hệ thống</span>
+          </div>
+          <div className="admin-stat-icon">🏟️</div>
+        </article>
+        <article
+          className="admin-stat-card"
+          style={{ ["--accent-color"]: "#18c48f" }}
+        >
+          <div className="admin-stat-copy">
+            <p>Đang hoạt động</p>
+            <h3>{stats.active.toLocaleString("vi-VN")}</h3>
+            <span>Sẵn sàng cho booking</span>
+          </div>
+          <div className="admin-stat-icon">✅</div>
+        </article>
+        <article
+          className="admin-stat-card"
+          style={{ ["--accent-color"]: "#f5b700" }}
+        >
+          <div className="admin-stat-copy">
+            <p>Bảo trì</p>
+            <h3>{stats.maintenance.toLocaleString("vi-VN")}</h3>
+            <span>Đang tạm ngưng phục vụ</span>
+          </div>
+          <div className="admin-stat-icon">🛠️</div>
+        </article>
+      </section>
+
+      <section className="fields-toolbar card-surface">
+        <div className="fields-search-wrap">
+          <label className="fields-search-box">
+            <span>🔎</span>
+            <input
+              type="search"
+              value={searchText}
+              onChange={(event) => setSearchText(event.target.value)}
+              placeholder="Tìm kiếm sân bóng..."
+            />
+          </label>
+          <select
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value)}
+          >
+            {statusOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <button
+          type="button"
+          className="fields-add-btn"
+          onClick={openCreateModal}
+        >
+          + Thêm Sân Bóng
+        </button>
+      </section>
+
+      {error && <p className="dashboard-state error">{error}</p>}
+      {actionError && <p className="dashboard-state error">{actionError}</p>}
+      {actionSuccess && (
+        <p className="dashboard-state success">{actionSuccess}</p>
+      )}
+
+      <section className="fields-table-card section-card">
+        <div className="fields-table-head">
+          <div>
+            <h3>Danh sách sân bóng</h3>
+            <p>
+              Hiển thị {filteredRows.length.toLocaleString("vi-VN")} /{" "}
+              {fields.length.toLocaleString("vi-VN")} sân.
+            </p>
+          </div>
+          <div className="fields-table-chip">
+            {loading ? "Đang tải dữ liệu..." : "Đồng bộ backend live"}
+          </div>
+        </div>
 
         <AdminTable
           columns={fieldColumns}
           rows={filteredRows}
-          emptyMessage="No fields match the current filters."
+          emptyMessage="Không có sân nào khớp với bộ lọc hiện tại."
         />
       </section>
 
-      <EndpointPanel title="Fields endpoints" endpoints={fieldEndpoints} />
+      <FieldFormModal
+        mode="create"
+        open={createModalOpen}
+        formState={createForm}
+        loading={creatingField}
+        error={actionError}
+        onClose={closeModals}
+        onChange={handleFieldChange(setCreateForm)}
+        onSubmit={handleCreateSubmit}
+      />
 
-      {createModalOpen && (
-        <div className="modal-backdrop" onClick={closeCreateModal}>
-          <div
-            className="modal-card"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="section-head modal-head">
-              <div>
-                <h3>Create field</h3>
-                <p>Add a new field through the backend admin endpoint.</p>
-              </div>
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={closeCreateModal}
-                disabled={creatingField}
-              >
-                Close
-              </button>
-            </div>
-
-            <form className="modal-form" onSubmit={handleCreateField}>
-              <label className="modal-field">
-                <span>Field name</span>
-                <input
-                  type="text"
-                  name="field_name"
-                  value={newField.field_name}
-                  onChange={handleCreateFieldChange}
-                  placeholder="Field name"
-                />
-              </label>
-
-              <label className="modal-field">
-                <span>Location</span>
-                <input
-                  type="text"
-                  name="location"
-                  value={newField.location}
-                  onChange={handleCreateFieldChange}
-                  placeholder="Address or area"
-                />
-              </label>
-
-              <label className="modal-field">
-                <span>Rental price (VND)</span>
-                <input
-                  type="number"
-                  min="1"
-                  name="rental_price"
-                  value={newField.rental_price}
-                  onChange={handleCreateFieldChange}
-                  placeholder="e.g. 300000"
-                />
-              </label>
-
-              <label className="modal-field">
-                <span>Manager ID (optional)</span>
-                <input
-                  type="number"
-                  min="1"
-                  name="manager_id"
-                  value={newField.manager_id}
-                  onChange={handleCreateFieldChange}
-                  placeholder="Person ID"
-                />
-              </label>
-
-              <label className="modal-field modal-field-full">
-                <span>Status</span>
-                <select
-                  name="status"
-                  value={newField.status}
-                  onChange={handleCreateFieldChange}
-                >
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                  <option value="maintenance">Maintenance</option>
-                </select>
-              </label>
-
-              <div className="modal-actions modal-actions-wide">
-                <button
-                  type="button"
-                  className="btn-secondary"
-                  onClick={closeCreateModal}
-                  disabled={creatingField}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="btn-primary"
-                  disabled={creatingField}
-                >
-                  {creatingField ? "Creating..." : "Create field"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <FieldFormModal
+        mode="edit"
+        open={editModalOpen}
+        formState={editForm}
+        loading={editingField}
+        error={actionError}
+        onClose={closeModals}
+        onChange={handleFieldChange(setEditForm)}
+        onSubmit={handleEditSubmit}
+      />
     </section>
   );
 }

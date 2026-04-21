@@ -2,10 +2,10 @@ import { NavLink, Outlet } from "react-router-dom";
 
 const navItems = [
   { to: "/admin/dashboard", label: "Dashboard", icon: "📊" },
-  { to: "/admin/users", label: "Users", icon: "👥" },
-  { to: "/admin/fields", label: "Fields", icon: "🏟️" },
-  { to: "/admin/bookings", label: "Bookings", icon: "📋" },
-  { to: "/admin/employees", label: "Employees", icon: "👔" },
+  { to: "/admin/users", label: "Quản lý người dùng", icon: "👥" },
+  { to: "/admin/fields", label: "Quản lý sân bóng", icon: "🏟️" },
+  { to: "/admin/bookings", label: "Quản lý đặt sân", icon: "📋" },
+  { to: "/admin/employees", label: "Quản lý nhân viên", icon: "👔" },
 ];
 
 export default function AdminLayout() {
@@ -13,12 +13,15 @@ export default function AdminLayout() {
     <div className="admin-shell">
       <aside className="sidebar">
         <div className="brand-block">
-          <p className="brand-kicker">Sport Management</p>
-          <h1 className="brand-title">Admin Web</h1>
+          <p className="brand-kicker">Admin</p>
+          <h1 className="brand-title">Panel</h1>
           <p className="brand-subtitle">
-            Day 1 skeleton for the frontend that matches the backend admin
-            modules.
+            Giao diện quản trị hệ thống sân bóng.
           </p>
+          <div className="sidebar-profile">
+            <strong>Admin</strong>
+            <span>Admin</span>
+          </div>
         </div>
 
         <nav className="nav-stack" aria-label="Admin navigation">
@@ -37,8 +40,8 @@ export default function AdminLayout() {
         </nav>
 
         <div className="sidebar-footer">
-          <strong>Backend-ready routes</strong>
-          <div>Dashboard, Users, Fields, Bookings, Employees</div>
+          <strong>Điều hướng nhanh</strong>
+          <div>Dashboard, người dùng, sân bóng, đặt sân, nhân viên</div>
         </div>
       </aside>
 

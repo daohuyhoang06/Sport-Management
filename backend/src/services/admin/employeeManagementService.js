@@ -11,29 +11,44 @@ export const getAllEmployeesService = async (filters = {}, pagination = {}) => {
     search = "",
     status = "",
   } = { ...filters, ...pagination };
-  const offset = (page - 1) * limit;
+  const parsedLimit = parseInt(limit);
+  const parsedPage = parseInt(page);
+  const offset = (parsedPage - 1) * parsedLimit;
+  const dialect = User.sequelize.getDialect();
+  const fieldNamesAgg =
+    dialect === "postgres"
+      ? "STRING_AGG(f.field_name, ', ')"
+      : "GROUP_CONCAT(f.field_name SEPARATOR ', ')";
 
   // Build WHERE clause for search
   let searchCondition = "";
+  const replacements = {};
   if (search) {
-    searchCondition = `AND (p.name LIKE '%${search}%' OR p.email LIKE '%${search}%' OR p.phone LIKE '%${search}%')`;
+    searchCondition =
+      "AND (p.name LIKE :search OR p.email LIKE :search OR p.phone LIKE :search)";
+    replacements.search = `%${search}%`;
   }
 
   let statusCondition = "";
   if (status) {
-    statusCondition = `AND p.status = '${status}'`;
+    statusCondition = "AND p.status = :status";
+    replacements.status = status;
   }
 
   // Get total count
-  const [countResult] = await User.sequelize.query(`
+  const [countResult] = await User.sequelize.query(
+    `
     SELECT COUNT(*) as count 
     FROM person p 
     WHERE p.role = 'manager' ${searchCondition} ${statusCondition}
-  `);
-  const count = countResult[0].count;
+  `,
+    { replacements },
+  );
+  const count = parseInt(countResult[0].count);
 
   // Get employees with count of their managed fields
-  const [employees] = await User.sequelize.query(`
+  const [employees] = await User.sequelize.query(
+    `
     SELECT 
       p.person_id,
       p.name,
@@ -47,14 +62,22 @@ export const getAllEmployeesService = async (filters = {}, pagination = {}) => {
       p.address,
       p.field_id,
       COUNT(f.field_id) as field_count,
-      STRING_AGG(f.field_name, ', ') as field_names
+      ${fieldNamesAgg} as field_names
     FROM person p
     LEFT JOIN fields f ON f.manager_id = p.person_id
     WHERE p.role = 'manager' ${searchCondition} ${statusCondition}
     GROUP BY p.person_id, p.name, p.email, p.phone, p.username, p.role, p.status, p.birthday, p.sex, p.address, p.field_id
     ORDER BY p.person_id DESC
-    LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}
-  `);
+    LIMIT :limit OFFSET :offset
+  `,
+    {
+      replacements: {
+        ...replacements,
+        limit: parsedLimit,
+        offset,
+      },
+    },
+  );
 
   // Format employee data
   const employeesList = employees.map((row) => ({
@@ -69,15 +92,15 @@ export const getAllEmployeesService = async (filters = {}, pagination = {}) => {
     sex: row.sex,
     address: row.address,
     field_id: row.field_id,
-    field_count: row.field_count,
+    field_count: parseInt(row.field_count),
     field_names: row.field_names,
   }));
 
   return {
     employees: employeesList,
     total: count,
-    page: parseInt(page),
-    totalPages: Math.ceil(count / limit),
+    page: parsedPage,
+    totalPages: Math.ceil(count / parsedLimit),
   };
 };
 
@@ -232,16 +255,51 @@ export const assignFieldToEmployeeService = async (employeeId, field_id) => {
     throw new Error("Employee not found");
   }
 
-  const field = await Field.findByPk(field_id);
-  if (!field) {
+  const [fields] = await User.sequelize.query(
+    `
+    SELECT field_id, field_name, location, status, manager_id
+    FROM fields
+    WHERE field_id = :fieldId
+    LIMIT 1
+  `,
+    {
+      replacements: { fieldId: field_id },
+    },
+  );
+
+  if (!fields || fields.length === 0) {
     throw new Error("Field not found");
   }
 
-  await field.update({ manager_id: employeeId });
+  await User.sequelize.query(
+    `
+    UPDATE fields
+    SET manager_id = :employeeId
+    WHERE field_id = :fieldId
+  `,
+    {
+      replacements: {
+        employeeId,
+        fieldId: field_id,
+      },
+    },
+  );
+
+  const [updatedFields] = await User.sequelize.query(
+    `
+    SELECT field_id, field_name, location, status, manager_id
+    FROM fields
+    WHERE field_id = :fieldId
+    LIMIT 1
+  `,
+    {
+      replacements: { fieldId: field_id },
+    },
+  );
 
   return {
     message: "Field assigned to employee successfully",
-    field: field,
+    field: updatedFields[0] || fields[0],
   };
 };
 

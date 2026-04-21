@@ -10,6 +10,14 @@ const initialDashboard = {
   todayBookings: 0,
   totalRevenue: 0,
   monthlyRevenue: 0,
+  activeUsers: 0,
+  inactiveUsers: 0,
+  pendingBookings: 0,
+  confirmedBookings: 0,
+  completedBookings: 0,
+  cancelledBookings: 0,
+  fieldInactive: 0,
+  fieldMaintenance: 0,
 };
 
 function formatCurrency(value) {
@@ -34,11 +42,20 @@ export default function useAdminDashboard() {
         setLoading(true);
         setError("");
 
-        const [dashboardResponse, monthlyRevenueResponse] = await Promise.all([
+        const [
+          dashboardResponse,
+          monthlyRevenueResponse,
+          usersStatsResponse,
+          fieldsStatsResponse,
+          bookingsStatsResponse,
+        ] = await Promise.all([
           adminFetch("/api/admin/dashboard"),
           adminFetch(
             `/api/admin/revenue/monthly?year=${new Date().getFullYear()}`,
           ),
+          adminFetch("/api/admin/users/stats"),
+          adminFetch("/api/admin/fields/stats"),
+          adminFetch("/api/admin/bookings/stats"),
         ]);
 
         if (!active) {
@@ -46,6 +63,9 @@ export default function useAdminDashboard() {
         }
 
         const data = dashboardResponse?.data ?? dashboardResponse;
+        const usersStats = usersStatsResponse?.data ?? {};
+        const fieldsStats = fieldsStatsResponse?.data ?? {};
+        const bookingsStats = bookingsStatsResponse?.data ?? {};
 
         setDashboard({
           ...initialDashboard,
@@ -57,6 +77,18 @@ export default function useAdminDashboard() {
           todayBookings: Number(data?.todayBookings ?? 0),
           totalRevenue: Number(data?.totalRevenue ?? 0),
           monthlyRevenue: Number(data?.monthlyRevenue ?? 0),
+          activeUsers: Number(
+            usersStats?.active ?? usersStats?.activeUsers ?? 0,
+          ),
+          inactiveUsers: Number(
+            usersStats?.inactive ?? usersStats?.inactiveUsers ?? 0,
+          ),
+          pendingBookings: Number(bookingsStats?.pending ?? 0),
+          confirmedBookings: Number(bookingsStats?.confirmed ?? 0),
+          completedBookings: Number(bookingsStats?.completed ?? 0),
+          cancelledBookings: Number(bookingsStats?.cancelled ?? 0),
+          fieldInactive: Number(fieldsStats?.inactive ?? 0),
+          fieldMaintenance: Number(fieldsStats?.maintenance ?? 0),
         });
 
         setMonthlyRevenue(

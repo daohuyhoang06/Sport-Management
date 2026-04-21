@@ -1,5 +1,5 @@
 export default function EmptyStateCard({
-  title = "Backend endpoints ready:",
+  title = "Backend is ready:",
   children,
 }) {
   return (

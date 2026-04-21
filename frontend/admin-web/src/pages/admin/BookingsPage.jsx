@@ -1,21 +1,11 @@
 import { useMemo, useState } from "react";
 import AdminTable from "../../components/admin/AdminTable";
-import EndpointPanel from "../../components/admin/EndpointPanel";
 import ListFilters from "../../components/admin/ListFilters";
 import PageHero from "../../components/admin/PageHero";
 import StatusPill from "../../components/admin/StatusPill";
 import TableSection from "../../components/admin/TableSection";
 import useAdminBookings from "../../hooks/useAdminBookings";
 import useListFilters from "../../hooks/useListFilters";
-
-const bookingEndpoints = [
-  { method: "GET", path: "/api/admin/bookings" },
-  { method: "GET", path: "/api/admin/bookings/stats" },
-  { method: "GET", path: "/api/admin/bookings/date-range" },
-  { method: "GET", path: "/api/admin/bookings/:id" },
-  { method: "PATCH", path: "/api/admin/bookings/:id/status" },
-  { method: "POST", path: "/api/admin/bookings/:id/cancel" },
-];
 
 function BookingActions({
   row,
@@ -190,7 +180,7 @@ export default function BookingsPage() {
           loading ? "Loading from backend" : `${stats.total} total bookings`,
         ]}
         title="Bookings"
-        description="Bookings page now uses backend list and stats endpoints so the admin web follows live booking states from database records."
+        description="Bookings page now uses backend list and stats data so the admin web follows live booking states from database records."
       />
 
       <TableSection
@@ -229,8 +219,6 @@ export default function BookingsPage() {
           emptyMessage="No bookings match the current filters."
         />
       </TableSection>
-
-      <EndpointPanel title="Bookings endpoints" endpoints={bookingEndpoints} />
 
       {selectedBooking && (
         <div className="modal-backdrop" onClick={closeModal}>

@@ -1,27 +1,7 @@
-const TOKEN_KEYS = ["adminToken", "accessToken", "token"];
-
-function readToken() {
-  if (typeof window === "undefined") {
-    return null;
-  }
-
-  for (const key of TOKEN_KEYS) {
-    const localToken = window.localStorage.getItem(key);
-    if (localToken) {
-      return localToken;
-    }
-
-    const sessionToken = window.sessionStorage.getItem(key);
-    if (sessionToken) {
-      return sessionToken;
-    }
-  }
-
-  return null;
-}
+import { readStoredAuthToken } from "./authStorage";
 
 export async function adminFetch(path, options = {}) {
-  const token = readToken();
+  const token = readStoredAuthToken();
   const headers = new Headers(options.headers || {});
 
   if (!headers.has("Content-Type") && options.body) {

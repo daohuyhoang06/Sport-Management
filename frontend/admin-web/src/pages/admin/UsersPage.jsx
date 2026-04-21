@@ -1,22 +1,21 @@
 import { useMemo, useState } from "react";
 import AdminTable from "../../components/admin/AdminTable";
-import EndpointPanel from "../../components/admin/EndpointPanel";
 import ListFilters from "../../components/admin/ListFilters";
 import PageHero from "../../components/admin/PageHero";
 import StatusPill from "../../components/admin/StatusPill";
 import useAdminUsers from "../../hooks/useAdminUsers";
 import useListFilters from "../../hooks/useListFilters";
 
-const userEndpoints = [
-  { method: "GET", path: "/api/admin/users" },
-  { method: "GET", path: "/api/admin/users/stats" },
-  { method: "GET", path: "/api/admin/users/:id" },
-  { method: "PATCH", path: "/api/admin/users/:id/status" },
-];
-
 export default function UsersPage() {
-  const { users, stats, loading, error, toggleUserStatus, createUser } =
-    useAdminUsers();
+  const {
+    users,
+    stats,
+    loading,
+    error,
+    toggleUserStatus,
+    deleteUser,
+    createUser,
+  } = useAdminUsers();
   const [submittingUserId, setSubmittingUserId] = useState(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [creatingUser, setCreatingUser] = useState(false);
@@ -61,6 +60,28 @@ export default function UsersPage() {
       );
     } catch (submitError) {
       setActionError(submitError.message || "Unable to change user status");
+    } finally {
+      setSubmittingUserId(null);
+    }
+  };
+
+  const handleDeleteUser = async (row) => {
+    const confirmed = window.confirm(
+      `Delete user ${row.name}? This action cannot be undone.`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    try {
+      setSubmittingUserId(row.id);
+      setActionError("");
+      setActionSuccess("");
+      await deleteUser(row.id);
+      setActionSuccess(`User ${row.name} deleted successfully.`);
+    } catch (submitError) {
+      setActionError(submitError.message || "Unable to delete user");
     } finally {
       setSubmittingUserId(null);
     }
@@ -167,6 +188,14 @@ export default function UsersPage() {
                   ? "Deactivate"
                   : "Activate"}
             </button>
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => handleDeleteUser(row)}
+              disabled={submittingUserId === row.id}
+            >
+              Delete
+            </button>
           </div>
         ),
       },
@@ -219,8 +248,6 @@ export default function UsersPage() {
           emptyMessage="No users match the current filters."
         />
       </section>
-
-      <EndpointPanel title="Users endpoints" endpoints={userEndpoints} />
 
       {createModalOpen && (
         <div className="modal-backdrop" onClick={closeCreateModal}>

@@ -22,7 +22,7 @@ export const getAllFieldsService = async (filters = {}, pagination = {}) => {
   } = { ...filters, ...pagination };
   const offset = (parseInt(page) - 1) * parseInt(limit);
 
-  let whereConditions = [];
+  let whereConditions = ["f.status <> 'deleted'"];
   let queryParams = [];
 
   if (search) {
@@ -31,8 +31,10 @@ export const getAllFieldsService = async (filters = {}, pagination = {}) => {
   }
 
   if (status) {
-    whereConditions.push("f.status = ?");
-    queryParams.push(status);
+    if (status !== "deleted") {
+      whereConditions.push("f.status = ?");
+      queryParams.push(status);
+    }
   }
 
   const whereClause =
@@ -52,10 +54,10 @@ export const getAllFieldsService = async (filters = {}, pagination = {}) => {
   const [rows] = await sequelize.query(
     `SELECT f.field_id, f.manager_id, f.field_name, f.location, f.status, ${priceSelect},
             p.name as manager_name, p.email as manager_email
-     FROM fields f
+    FROM fields f
      LEFT JOIN person p ON f.manager_id = p.person_id
      ${whereClause}
-     ORDER BY f.field_id DESC
+     ORDER BY f.field_id ASC
      LIMIT ? OFFSET ?`,
     { replacements: [...queryParams, parseInt(limit), offset] },
   );
@@ -82,7 +84,7 @@ export const getFieldByIdService = async (id) => {
             p.name as manager_name, p.email as manager_email, p.phone as manager_phone
      FROM fields f
      LEFT JOIN person p ON f.manager_id = p.person_id
-     WHERE f.field_id = ?`,
+     WHERE f.field_id = ? AND f.status <> 'deleted'`,
     { replacements: [id] },
   );
 
@@ -123,7 +125,7 @@ export const createFieldService = async (fieldData) => {
     const [result] = await sequelize.query(
       `INSERT INTO fields (field_name, location, manager_id, rental_price, status)
        VALUES (?, ?, ?, ?, ?)
-       RETURNING *`,
+      `,
       {
         replacements: [
           field_name,
@@ -132,22 +134,45 @@ export const createFieldService = async (fieldData) => {
           rental_price || null,
           status,
         ],
+        type: sequelize.QueryTypes.INSERT,
       },
     );
 
-    return result[0];
+    const insertId = Array.isArray(result) ? result[0] : result;
+    const [[createdField]] = await sequelize.query(
+      `SELECT f.field_id, f.manager_id, f.field_name, f.location, f.status, f.rental_price,
+              p.name as manager_name, p.email as manager_email
+       FROM fields f
+       LEFT JOIN person p ON f.manager_id = p.person_id
+       WHERE f.field_id = ?`,
+      { replacements: [insertId] },
+    );
+
+    return createdField;
   }
 
   const [result] = await sequelize.query(
     `INSERT INTO fields (field_name, location, manager_id, status)
      VALUES (?, ?, ?, ?)
-     RETURNING *`,
+    `,
     {
       replacements: [field_name, location, manager_id || null, status],
+      type: sequelize.QueryTypes.INSERT,
     },
   );
 
-  return result[0];
+  const insertId = Array.isArray(result) ? result[0] : result;
+  const [[createdField]] = await sequelize.query(
+    `SELECT f.field_id, f.manager_id, f.field_name, f.location, f.status,
+            NULL as rental_price,
+            p.name as manager_name, p.email as manager_email
+     FROM fields f
+     LEFT JOIN person p ON f.manager_id = p.person_id
+     WHERE f.field_id = ?`,
+    { replacements: [insertId] },
+  );
+
+  return createdField;
 };
 
 /**
@@ -156,12 +181,16 @@ export const createFieldService = async (fieldData) => {
 export const updateFieldService = async (id, fieldData) => {
   const { hasRentalPrice } = await getFieldSchema();
   const [[field]] = await sequelize.query(
-    "SELECT field_id FROM fields WHERE field_id = ?",
+    "SELECT field_id, status FROM fields WHERE field_id = ?",
     { replacements: [id] },
   );
 
   if (!field) {
     throw new Error("Field not found");
+  }
+
+  if (field.status === "deleted") {
+    throw new Error("Field already deleted");
   }
 
   const updates = [];
@@ -209,12 +238,16 @@ export const updateFieldService = async (id, fieldData) => {
  */
 export const deleteFieldService = async (id) => {
   const [[field]] = await sequelize.query(
-    "SELECT field_id FROM fields WHERE field_id = ?",
+    "SELECT field_id, status FROM fields WHERE field_id = ?",
     { replacements: [id] },
   );
 
   if (!field) {
     throw new Error("Field not found");
+  }
+
+  if (field.status === "deleted") {
+    throw new Error("Field already deleted");
   }
 
   // Check if field has active bookings
@@ -231,8 +264,10 @@ export const deleteFieldService = async (id) => {
   }
 
   await sequelize.query(
-    "UPDATE fields SET status = 'inactive' WHERE field_id = ?",
-    { replacements: [id] },
+    "UPDATE fields SET status = 'deleted' WHERE field_id = ?",
+    {
+      replacements: [id],
+    },
   );
 
   return { message: "Field deleted successfully" };
@@ -249,6 +284,14 @@ export const toggleFieldStatusService = async (id) => {
 
   if (!field) {
     throw new Error("Field not found");
+  }
+
+  if (field.status === "deleted") {
+    throw new Error("Field deleted");
+  }
+
+  if (field.status === "deleted") {
+    throw new Error("Field deleted");
   }
 
   const newStatus = field.status === "active" ? "inactive" : "active";
@@ -268,7 +311,7 @@ export const toggleFieldStatusService = async (id) => {
  */
 export const getFieldStatsService = async () => {
   const [[{ total }]] = await sequelize.query(
-    "SELECT COUNT(*) as total FROM fields",
+    "SELECT COUNT(*) as total FROM fields WHERE status <> 'deleted'",
   );
 
   const [[{ active }]] = await sequelize.query(

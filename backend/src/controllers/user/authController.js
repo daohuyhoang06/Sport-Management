@@ -1,5 +1,6 @@
 ﻿import jwt from "jsonwebtoken";
 import Person from "../../models/Person.js";
+import { Op } from "sequelize";
 
 // Generate JWT Token
 const generateToken = (user) => {
@@ -125,19 +126,22 @@ export const register = async (req, res) => {
 // @access  Public
 export const login = async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { username, email, identifier, password } = req.body;
+    const loginIdentifier = (identifier || username || email || "").trim();
 
     // Validation
-    if (!username || !password) {
+    if (!loginIdentifier || !password) {
       return res.status(400).json({
         success: false,
-        message: "Vui lòng nhập username và mật khẩu",
+        message: "Vui lòng nhập username/email và mật khẩu",
       });
     }
 
-    // Find user by username only
+    // Find user by username or email
     const user = await Person.findOne({
-      where: { username },
+      where: {
+        [Op.or]: [{ username: loginIdentifier }, { email: loginIdentifier }],
+      },
     });
 
     if (!user) {

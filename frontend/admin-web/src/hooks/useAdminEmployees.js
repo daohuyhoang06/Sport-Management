@@ -3,8 +3,8 @@ import { adminFetch } from "../services/adminApi";
 
 function normalizeEmployees(rawEmployees = []) {
   return rawEmployees.map((item) => ({
-    id: item.person_id,
-    name: item.person_name || "-",
+    id: item.person_id ?? item.id,
+    name: item.name || item.person_name || "-",
     email: item.email || "-",
     phone: item.phone || "-",
     role: item.role || "manager",
