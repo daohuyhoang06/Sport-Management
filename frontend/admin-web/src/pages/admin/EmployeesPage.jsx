@@ -1,13 +1,294 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import AdminTable from "../../components/admin/AdminTable";
-import ListFilters from "../../components/admin/ListFilters";
-import PageHero from "../../components/admin/PageHero";
-import StatusPill from "../../components/admin/StatusPill";
-import TableToolbar from "../../components/admin/TableToolbar";
 import useAdminEmployees from "../../hooks/useAdminEmployees";
 import useAdminFields from "../../hooks/useAdminFields";
-import useListFilters from "../../hooks/useListFilters";
 import { adminFetch } from "../../services/adminApi";
+
+const initialEmployeeForm = {
+  person_name: "",
+  email: "",
+  username: "",
+  password: "",
+  phone: "",
+  address: "",
+  birthday: "",
+  sex: "male",
+  status: "active",
+};
+
+const statusOptions = [
+  { value: "all", label: "Tất cả trạng thái" },
+  { value: "active", label: "Hoạt động" },
+  { value: "inactive", label: "Không hoạt động" },
+];
+
+function renderStatusPill(status) {
+  const labels = {
+    active: "HOẠT ĐỘNG",
+    inactive: "KHÔNG HOẠT ĐỘNG",
+  };
+
+  return (
+    <span className={`field-status-pill ${status || "inactive"}`}>
+      {labels[status] || labels.inactive}
+    </span>
+  );
+}
+
+function renderSexLabel(sex) {
+  const labels = {
+    male: "Nam",
+    female: "Nữ",
+    other: "Khác",
+  };
+
+  return labels[sex] || sex || "-";
+}
+
+function EmployeeFormModal({
+  open,
+  mode,
+  formState,
+  loading,
+  error,
+  onClose,
+  onChange,
+  onSubmit,
+}) {
+  if (!open) {
+    return null;
+  }
+
+  const isEdit = mode === "edit";
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div
+        className="modal-card modal-card-users modal-card-employees"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="section-head modal-head">
+          <div>
+            <h3>{isEdit ? "Sửa nhân viên" : "Thêm nhân viên"}</h3>
+            <p>
+              Giao diện thống nhất với dashboard và đồng bộ trực tiếp từ
+              backend.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={onClose}
+            disabled={loading}
+          >
+            Đóng
+          </button>
+        </div>
+
+        {error && <p className="dashboard-state error">{error}</p>}
+
+        <form className="modal-form" onSubmit={onSubmit}>
+          <label className="modal-field">
+            <span>Họ và tên</span>
+            <input
+              type="text"
+              name="person_name"
+              value={formState.person_name}
+              onChange={onChange}
+              placeholder="Nhập họ tên"
+            />
+          </label>
+
+          <label className="modal-field">
+            <span>Email</span>
+            <input
+              type="email"
+              name="email"
+              value={formState.email}
+              onChange={onChange}
+              placeholder="Nhập email"
+            />
+          </label>
+
+          <label className="modal-field">
+            <span>Tên đăng nhập</span>
+            <input
+              type="text"
+              name="username"
+              value={formState.username}
+              onChange={onChange}
+              placeholder="Nhập username"
+            />
+          </label>
+
+          {!isEdit && (
+            <label className="modal-field">
+              <span>Mật khẩu</span>
+              <input
+                type="password"
+                name="password"
+                value={formState.password}
+                onChange={onChange}
+                placeholder="Mật khẩu tạm"
+              />
+            </label>
+          )}
+
+          <label className="modal-field">
+            <span>Số điện thoại</span>
+            <input
+              type="text"
+              name="phone"
+              value={formState.phone}
+              onChange={onChange}
+              placeholder="Nhập số điện thoại"
+            />
+          </label>
+
+          <label className="modal-field">
+            <span>Ngày sinh</span>
+            <input
+              type="date"
+              name="birthday"
+              value={formState.birthday}
+              onChange={onChange}
+            />
+          </label>
+
+          <label className="modal-field">
+            <span>Giới tính</span>
+            <select name="sex" value={formState.sex} onChange={onChange}>
+              <option value="male">Nam</option>
+              <option value="female">Nữ</option>
+              <option value="other">Khác</option>
+            </select>
+          </label>
+
+          <label className="modal-field">
+            <span>Trạng thái</span>
+            <select name="status" value={formState.status} onChange={onChange}>
+              <option value="active">Hoạt động</option>
+              <option value="inactive">Không hoạt động</option>
+            </select>
+          </label>
+
+          <label className="modal-field modal-field-full">
+            <span>Địa chỉ</span>
+            <textarea
+              rows="3"
+              name="address"
+              value={formState.address}
+              onChange={onChange}
+              placeholder="Nhập địa chỉ"
+            />
+          </label>
+
+          <div className="modal-actions modal-actions-wide">
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={onClose}
+              disabled={loading}
+            >
+              Hủy
+            </button>
+            <button type="submit" className="btn-primary" disabled={loading}>
+              {loading
+                ? "Đang xử lý..."
+                : isEdit
+                  ? "Lưu thay đổi"
+                  : "Tạo nhân viên"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function AssignModal({
+  open,
+  employee,
+  fields,
+  selectedFieldId,
+  loading,
+  error,
+  onClose,
+  onChange,
+  onSubmit,
+}) {
+  if (!open || !employee) {
+    return null;
+  }
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div
+        className="modal-card modal-card-employees"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="section-head modal-head">
+          <div>
+            <h3>Phân công sân</h3>
+            <p>
+              {employee.name} - chọn sân để gán quản lý từ danh sách backend.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={onClose}
+            disabled={loading}
+          >
+            Đóng
+          </button>
+        </div>
+
+        {error && <p className="dashboard-state error">{error}</p>}
+
+        <form className="modal-form" onSubmit={onSubmit}>
+          <label className="modal-field">
+            <span>Nhân viên</span>
+            <input type="text" value={employee.name} readOnly />
+          </label>
+
+          <label className="modal-field">
+            <span>Sân quản lý</span>
+            <select name="field_id" value={selectedFieldId} onChange={onChange}>
+              {fields.length === 0 ? (
+                <option value="">Không có sân khả dụng</option>
+              ) : (
+                fields.map((field) => (
+                  <option key={field.id} value={String(field.id)}>
+                    {field.name || field.field_name || `Sân #${field.id}`}
+                  </option>
+                ))
+              )}
+            </select>
+          </label>
+
+          <div className="modal-actions modal-actions-wide">
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={onClose}
+              disabled={loading}
+            >
+              Hủy
+            </button>
+            <button
+              type="submit"
+              className="btn-primary"
+              disabled={loading || fields.length === 0}
+            >
+              {loading ? "Đang phân công..." : "Phân công"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
 
 export default function EmployeesPage() {
   const {
@@ -26,106 +307,58 @@ export default function EmployeesPage() {
     loading: fieldsLoading,
     error: fieldsError,
   } = useAdminFields();
+
+  const [searchText, setSearchText] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [createModalOpen, setCreateModalOpen] = useState(false);
-  const [creatingEmployee, setCreatingEmployee] = useState(false);
-  const [newEmployee, setNewEmployee] = useState({
-    person_name: "",
-    email: "",
-    username: "",
-    password: "",
-    phone: "",
-    address: "",
-    birthday: "",
-    sex: "",
-    status: "active",
-  });
-  const [selectedEmployee, setSelectedEmployee] = useState(null);
-  const [selectedfield_id, setSelectedfield_id] = useState("");
-  const [assigning, setAssigning] = useState(false);
-  const [deactivatingEmployeeId, setDeactivatingEmployeeId] = useState(null);
-  const [loadingEditEmployeeId, setLoadingEditEmployeeId] = useState(null);
-  const [editingEmployeeId, setEditingEmployeeId] = useState(null);
   const [editModalOpen, setEditModalOpen] = useState(false);
-  const [editForm, setEditForm] = useState({
-    person_name: "",
-    email: "",
-    phone: "",
-    address: "",
-    birthday: "",
-    sex: "",
-    status: "active",
-  });
-  const [assignError, setAssignError] = useState("");
-  const [assignSuccess, setAssignSuccess] = useState("");
-  const [createError, setCreateError] = useState("");
-  const [editError, setEditError] = useState("");
+  const [assignModalOpen, setAssignModalOpen] = useState(false);
+  const [creatingEmployee, setCreatingEmployee] = useState(false);
+  const [editingEmployee, setEditingEmployee] = useState(false);
+  const [assigning, setAssigning] = useState(false);
+  const [actionError, setActionError] = useState("");
+  const [actionSuccess, setActionSuccess] = useState("");
+  const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [selectedFieldId, setSelectedFieldId] = useState("");
+  const [loadingEditEmployeeId, setLoadingEditEmployeeId] = useState(null);
+  const [submittingEmployeeId, setSubmittingEmployeeId] = useState(null);
+  const [createForm, setCreateForm] = useState(initialEmployeeForm);
+  const [editForm, setEditForm] = useState(initialEmployeeForm);
 
-  const {
-    searchText,
-    setSearchText,
-    statusFilter,
-    setStatusFilter,
-    filteredRows,
-    filteredCount,
-    totalCount,
-    hasActiveFilters,
-    resetFilters,
-  } = useListFilters({
-    rows: employees,
-    searchFields: ["name", "email", "role", "assignedField", "phone"],
-  });
+  const filteredRows = useMemo(() => {
+    const keyword = searchText.trim().toLowerCase();
 
-  useEffect(() => {
-    if (selectedEmployee && fields.length > 0 && !selectedfield_id) {
-      setSelectedfield_id(String(fields[0].id));
-    }
-  }, [fields, selectedEmployee, selectedfield_id]);
+    return employees.filter((employee) => {
+      const matchesKeyword =
+        !keyword ||
+        [
+          employee.name,
+          employee.email,
+          employee.phone,
+          employee.assignedField,
+          employee.role,
+        ]
+          .join(" ")
+          .toLowerCase()
+          .includes(keyword);
 
-  const openAssignModal = (employee) => {
-    setSelectedEmployee(employee);
-    setAssignError("");
-    setAssignSuccess("");
-    setSelectedfield_id(fields[0]?.id ? String(fields[0].id) : "");
+      const matchesStatus =
+        statusFilter === "all" || employee.status === statusFilter;
+
+      return matchesKeyword && matchesStatus;
+    });
+  }, [employees, searchText, statusFilter]);
+
+  const handleFieldChange = (setter) => (event) => {
+    const { name, value } = event.target;
+    setter((current) => ({ ...current, [name]: value }));
   };
 
   const openCreateModal = () => {
+    setActionError("");
+    setActionSuccess("");
+    setCreateForm(initialEmployeeForm);
     setCreateModalOpen(true);
-    setCreateError("");
-    setEditError("");
-    setAssignSuccess("");
-  };
-
-  const openEditModal = async (employee) => {
-    try {
-      setLoadingEditEmployeeId(employee.id);
-      setEditError("");
-      setCreateError("");
-      setAssignError("");
-      setAssignSuccess("");
-
-      const details = await getEmployeeById(employee.id);
-
-      setEditForm({
-        person_name:
-          details?.name || details?.person_name || employee.name || "",
-        email:
-          details?.email ||
-          (employee.email && employee.email !== "-" ? employee.email : ""),
-        phone:
-          details?.phone ||
-          (employee.phone && employee.phone !== "-" ? employee.phone : ""),
-        address: details?.address || "",
-        birthday: details?.birthday || "",
-        sex: details?.sex || "",
-        status: details?.status || employee.status || "active",
-      });
-      setEditingEmployeeId(employee.id);
-      setEditModalOpen(true);
-    } catch (submitError) {
-      setEditError(submitError.message || "Unable to load employee details");
-    } finally {
-      setLoadingEditEmployeeId(null);
-    }
   };
 
   const closeCreateModal = () => {
@@ -134,168 +367,130 @@ export default function EmployeesPage() {
     }
 
     setCreateModalOpen(false);
-    setCreateError("");
-    setNewEmployee({
-      person_name: "",
-      email: "",
-      username: "",
-      password: "",
-      phone: "",
-      address: "",
-      birthday: "",
-      sex: "",
-      status: "active",
-    });
+    setCreateForm(initialEmployeeForm);
+  };
+
+  const openEditModal = async (employee) => {
+    try {
+      setLoadingEditEmployeeId(employee.id);
+      setActionError("");
+      setActionSuccess("");
+
+      const details = await getEmployeeById(employee.id);
+
+      setEditForm({
+        person_name: details?.name || employee.name || "",
+        email:
+          details?.email ||
+          (employee.email && employee.email !== "-" ? employee.email : ""),
+        username: details?.username || "",
+        password: "",
+        phone:
+          details?.phone ||
+          (employee.phone && employee.phone !== "-" ? employee.phone : ""),
+        address: details?.address || "",
+        birthday: details?.birthday || "",
+        sex: details?.sex || "male",
+        status: details?.status || employee.status || "active",
+      });
+
+      setSelectedEmployee({ ...employee, id: employee.id });
+      setEditModalOpen(true);
+    } catch (submitError) {
+      setActionError(
+        submitError.message || "Không thể tải thông tin nhân viên.",
+      );
+    } finally {
+      setLoadingEditEmployeeId(null);
+    }
   };
 
   const closeEditModal = () => {
-    if (editingEmployeeId && deactivatingEmployeeId === editingEmployeeId) {
+    if (editingEmployee) {
       return;
     }
 
     setEditModalOpen(false);
-    setEditingEmployeeId(null);
-    setEditError("");
-    setEditForm({
-      person_name: "",
-      email: "",
-      phone: "",
-      address: "",
-      birthday: "",
-      sex: "",
-      status: "active",
-    });
+    setSelectedEmployee(null);
+    setEditForm(initialEmployeeForm);
   };
 
-  const handleCreateEmployeeChange = (event) => {
-    const { name, value } = event.target;
-    setNewEmployee((current) => ({
-      ...current,
-      [name]: value,
-    }));
+  const openAssignModal = (employee) => {
+    setActionError("");
+    setActionSuccess("");
+    setSelectedEmployee(employee);
+    setSelectedFieldId(fields[0]?.id ? String(fields[0].id) : "");
+    setAssignModalOpen(true);
   };
 
-  const handleEditChange = (event) => {
-    const { name, value } = event.target;
-    setEditForm((current) => ({
-      ...current,
-      [name]: value,
-    }));
-  };
-
-  const handleCreateEmployee = async (event) => {
-    event.preventDefault();
-
-    if (
-      !newEmployee.person_name.trim() ||
-      !newEmployee.username.trim() ||
-      !newEmployee.password
-    ) {
-      setCreateError("Please fill in name, username, and password.");
+  const closeAssignModal = () => {
+    if (assigning) {
       return;
     }
 
-    if (newEmployee.phone && !/^[0-9]{10}$/.test(newEmployee.phone.trim())) {
-      setCreateError("Phone number must contain exactly 10 digits.");
+    setAssignModalOpen(false);
+    setSelectedEmployee(null);
+    setSelectedFieldId("");
+  };
+
+  const handleCreateSubmit = async (event) => {
+    event.preventDefault();
+
+    if (
+      !createForm.person_name.trim() ||
+      !createForm.username.trim() ||
+      !createForm.password
+    ) {
+      setActionError("Vui lòng nhập đầy đủ họ tên, username và mật khẩu.");
       return;
     }
 
     try {
       setCreatingEmployee(true);
-      setCreateError("");
-      setAssignSuccess("");
+      setActionError("");
+      setActionSuccess("");
 
       await createEmployee({
-        name: newEmployee.person_name.trim(),
-        email: newEmployee.email.trim() || null,
-        username: newEmployee.username.trim(),
-        password: newEmployee.password,
-        phone: newEmployee.phone.trim() || null,
-        address: newEmployee.address.trim() || null,
-        birthday: newEmployee.birthday || null,
-        sex: newEmployee.sex || null,
-        status: newEmployee.status,
+        name: createForm.person_name.trim(),
+        email: createForm.email.trim() || null,
+        username: createForm.username.trim(),
+        password: createForm.password,
+        phone: createForm.phone.trim() || null,
+        address: createForm.address.trim() || null,
+        birthday: createForm.birthday || null,
+        sex: createForm.sex || null,
+        status: createForm.status,
       });
 
-      setAssignSuccess(
-        `Employee ${newEmployee.person_name.trim()} created successfully.`,
+      setActionSuccess(
+        `Đã tạo nhân viên ${createForm.person_name.trim()} thành công.`,
       );
       closeCreateModal();
     } catch (submitError) {
-      setCreateError(submitError.message || "Unable to create employee");
+      setActionError(submitError.message || "Không thể tạo nhân viên.");
     } finally {
       setCreatingEmployee(false);
     }
   };
 
-  const closeModal = () => {
-    if (assigning) {
-      return;
-    }
-
-    setSelectedEmployee(null);
-    setSelectedfield_id("");
-    setAssignError("");
-    setAssignSuccess("");
-  };
-
-  const handleAssignField = async (event) => {
+  const handleEditSubmit = async (event) => {
     event.preventDefault();
 
-    if (!selectedEmployee || !selectedfield_id) {
-      setAssignError("Please choose a field first.");
-      return;
-    }
-
-    try {
-      setAssigning(true);
-      setAssignError("");
-      setAssignSuccess("");
-
-      await adminFetch("/api/admin/employees/assign-field", {
-        method: "POST",
-        body: JSON.stringify({
-          employeeId: selectedEmployee.id,
-          field_id: Number(selectedfield_id),
-        }),
-      });
-
-      setAssignSuccess("Field assigned successfully.");
-      await reload();
-      setSelectedEmployee(null);
-      setSelectedfield_id("");
-    } catch (submitError) {
-      setAssignError(submitError.message || "Unable to assign field");
-    } finally {
-      setAssigning(false);
-    }
-  };
-
-  const handleUpdateEmployee = async (event) => {
-    event.preventDefault();
-
-    if (!editingEmployeeId) {
+    if (!selectedEmployee) {
       return;
     }
 
     if (!editForm.person_name.trim()) {
-      setEditError("Please fill in employee name.");
-      return;
-    }
-
-    if (editForm.phone && !/^[0-9]{10}$/.test(editForm.phone.trim())) {
-      setEditError("Phone number must contain exactly 10 digits.");
+      setActionError("Vui lòng nhập họ tên nhân viên.");
       return;
     }
 
     try {
-      setEditError("");
-      setCreateError("");
-      setAssignError("");
-      setAssignSuccess("");
-      setDeactivatingEmployeeId(editingEmployeeId);
+      setEditingEmployee(true);
+      setActionError("");
+      setActionSuccess("");
 
-      await updateEmployee(editingEmployeeId, {
+      await updateEmployee(selectedEmployee.id, {
         name: editForm.person_name.trim(),
         email: editForm.email.trim() || null,
         phone: editForm.phone.trim() || null,
@@ -305,498 +500,299 @@ export default function EmployeesPage() {
         status: editForm.status,
       });
 
-      setAssignSuccess("Employee updated successfully.");
+      setActionSuccess(
+        `Đã cập nhật nhân viên ${editForm.person_name.trim()} thành công.`,
+      );
       closeEditModal();
     } catch (submitError) {
-      setEditError(submitError.message || "Unable to update employee");
+      setActionError(submitError.message || "Không thể cập nhật nhân viên.");
     } finally {
-      setDeactivatingEmployeeId(null);
+      setEditingEmployee(false);
+    }
+  };
+
+  const handleAssignSubmit = async (event) => {
+    event.preventDefault();
+
+    if (!selectedEmployee || !selectedFieldId) {
+      setActionError("Vui lòng chọn sân trước khi phân công.");
+      return;
+    }
+
+    try {
+      setAssigning(true);
+      setActionError("");
+      setActionSuccess("");
+
+      await adminFetch("/api/admin/employees/assign-field", {
+        method: "POST",
+        body: JSON.stringify({
+          employeeId: selectedEmployee.id,
+          field_id: Number(selectedFieldId),
+        }),
+      });
+
+      setActionSuccess(
+        `Đã phân công sân cho ${selectedEmployee.name} thành công.`,
+      );
+      await reload();
+      closeAssignModal();
+    } catch (submitError) {
+      setActionError(submitError.message || "Không thể phân công sân.");
+    } finally {
+      setAssigning(false);
     }
   };
 
   const handleDeactivateEmployee = async (employee) => {
-    if (employee.status === "inactive") {
-      return;
-    }
-
-    const confirmed = window.confirm(
-      `Deactivate employee ${employee.name}? This will set status to inactive.`,
-    );
-
+    const confirmed = window.confirm(`Vô hiệu hóa nhân viên ${employee.name}?`);
     if (!confirmed) {
       return;
     }
 
     try {
-      setDeactivatingEmployeeId(employee.id);
-      setCreateError("");
-      setAssignError("");
-      setAssignSuccess("");
-
+      setSubmittingEmployeeId(employee.id);
+      setActionError("");
+      setActionSuccess("");
       await deleteEmployee(employee.id);
-
-      setAssignSuccess(`Employee ${employee.name} was deactivated.`);
+      setActionSuccess(`Đã vô hiệu hóa nhân viên ${employee.name}.`);
     } catch (submitError) {
-      setAssignError(submitError.message || "Unable to deactivate employee");
+      setActionError(submitError.message || "Không thể vô hiệu hóa nhân viên.");
     } finally {
-      setDeactivatingEmployeeId(null);
+      setSubmittingEmployeeId(null);
     }
   };
 
   const employeeColumns = useMemo(
     () => [
-      { key: "name", label: "Name" },
-      { key: "email", label: "Email" },
-      { key: "role", label: "Role" },
-      { key: "assignedField", label: "Assigned field" },
-      { key: "phone", label: "Phone" },
+      {
+        key: "id",
+        label: "ID",
+        render: (row) => <span className="field-id-tag">#{row.id}</span>,
+      },
+      {
+        key: "name",
+        label: "Tên",
+        render: (row) => <strong className="user-name-cell">{row.name}</strong>,
+      },
+      {
+        key: "email",
+        label: "Email",
+        render: (row) => <span className="user-meta-cell">✉ {row.email}</span>,
+      },
+      {
+        key: "phone",
+        label: "Số điện thoại",
+        render: (row) => <span className="user-meta-cell">📱 {row.phone}</span>,
+      },
+      {
+        key: "assignedField",
+        label: "Sân quản lý",
+        render: (row) => (
+          <span className="employee-field-pill">🏟️ {row.assignedField}</span>
+        ),
+      },
       {
         key: "status",
-        label: "Status",
-        render: (row) => <StatusPill status={row.status} />,
+        label: "Trạng thái",
+        render: (row) => renderStatusPill(row.status),
       },
       {
         key: "actions",
-        label: "Actions",
+        label: "Thao tác",
         render: (row) => (
-          <div className="table-actions booking-actions">
+          <div className="field-actions">
             <button
               type="button"
-              className="btn-secondary"
+              className="field-action edit"
               onClick={() => openEditModal(row)}
               disabled={
-                deactivatingEmployeeId === row.id ||
-                loadingEditEmployeeId === row.id
+                loadingEditEmployeeId === row.id ||
+                submittingEmployeeId === row.id
               }
             >
-              {loadingEditEmployeeId === row.id ? "Loading..." : "Edit"}
+              ✏️ Sửa
             </button>
             <button
               type="button"
-              className="btn-secondary"
+              className="field-action toggle"
               onClick={() => openAssignModal(row)}
-              disabled={deactivatingEmployeeId === row.id}
+              disabled={submittingEmployeeId === row.id || fieldsLoading}
             >
-              Assign field
+              🏟️ Phân công
             </button>
             <button
               type="button"
-              className="btn-primary"
+              className="field-action delete"
               onClick={() => handleDeactivateEmployee(row)}
               disabled={
-                deactivatingEmployeeId === row.id || row.status === "inactive"
+                submittingEmployeeId === row.id || row.status === "inactive"
               }
             >
-              {deactivatingEmployeeId === row.id
-                ? "Deactivating..."
-                : row.status === "inactive"
-                  ? "Inactive"
-                  : "Deactivate"}
+              {submittingEmployeeId === row.id
+                ? "Đang xử lý..."
+                : "🗑 Vô hiệu hóa"}
             </button>
           </div>
         ),
       },
     ],
-    [deactivatingEmployeeId, fields, loadingEditEmployeeId],
+    [fieldsLoading, loadingEditEmployeeId, submittingEmployeeId],
   );
 
   return (
-    <section className="page-shell">
-      <PageHero
-        badges={[
-          "Admin module",
-          "Employees",
-          loading ? "Loading from backend" : `${stats.total} total employees`,
-        ]}
-        title="Employees"
-        description="Employees page now reads backend manager data and supports assigning a field directly from the admin table."
-      />
+    <section className="users-page employees-page">
+      <header className="employees-hero">
+        <div className="dashboard-hero-left">
+          <div className="dashboard-hero-icon">👔</div>
+          <div>
+            <p className="dashboard-hero-kicker">Dashboard</p>
+            <h2>Quản Lý Nhân Viên</h2>
+          </div>
+        </div>
 
-      <section className="section-card table-card">
-        <TableToolbar
-          title="Employee list"
-          subtitle="Live data from /api/admin/employees and /api/admin/employees/stats."
-          actionLabel="Add employee"
-          onAction={openCreateModal}
-        />
+        <div className="dashboard-hero-right employees-hero-right">
+          <div className="dashboard-role-switcher" aria-label="Vai trò">
+            <span className="is-active">👷 Quản trị viên</span>
+            <span>📘 Quản lý</span>
+            <span>👤 Người dùng</span>
+          </div>
+          <button
+            type="button"
+            className="fields-add-btn employees-add-btn"
+            onClick={openCreateModal}
+          >
+            + Thêm Nhân Viên
+          </button>
+          <div className="dashboard-user-chip">
+            <span className="dashboard-user-badge">ADMIN</span>
+            <strong>Admin</strong>
+          </div>
+        </div>
+      </header>
 
-        {(error || fieldsError) && (
-          <p className="dashboard-state error">{error || fieldsError}</p>
-        )}
+      <section className="fields-stats-grid users-stats-grid employees-stats-grid">
+        <article
+          className="admin-stat-card"
+          style={{ ["--accent-color"]: "#6b7cff" }}
+        >
+          <div className="admin-stat-copy">
+            <p>Tổng nhân viên</p>
+            <h3>{stats.total.toLocaleString("vi-VN")}</h3>
+            <span>Toàn bộ tài khoản quản lý sân</span>
+          </div>
+          <div className="admin-stat-icon">👔</div>
+        </article>
+        <article
+          className="admin-stat-card"
+          style={{ ["--accent-color"]: "#18c48f" }}
+        >
+          <div className="admin-stat-copy">
+            <p>Đang hoạt động</p>
+            <h3>{stats.active.toLocaleString("vi-VN")}</h3>
+            <span>Nhân viên đang làm việc</span>
+          </div>
+          <div className="admin-stat-icon">✅</div>
+        </article>
+        <article
+          className="admin-stat-card"
+          style={{ ["--accent-color"]: "#ff5a4f" }}
+        >
+          <div className="admin-stat-copy">
+            <p>Không hoạt động</p>
+            <h3>{stats.inactive.toLocaleString("vi-VN")}</h3>
+            <span>Nhân viên đã vô hiệu hóa</span>
+          </div>
+          <div className="admin-stat-icon">❌</div>
+        </article>
+      </section>
 
-        {createError && <p className="dashboard-state error">{createError}</p>}
+      <section className="fields-toolbar card-surface employees-toolbar">
+        <div className="fields-search-wrap">
+          <label className="fields-search-box">
+            <span>🔎</span>
+            <input
+              type="search"
+              value={searchText}
+              onChange={(event) => setSearchText(event.target.value)}
+              placeholder="Tìm kiếm nhân viên..."
+            />
+          </label>
 
-        {editError && <p className="dashboard-state error">{editError}</p>}
+          <select
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value)}
+          >
+            {statusOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      </section>
 
-        {assignError && <p className="dashboard-state error">{assignError}</p>}
+      {error && <p className="dashboard-state error">{error}</p>}
+      {fieldsError && <p className="dashboard-state error">{fieldsError}</p>}
+      {actionError && <p className="dashboard-state error">{actionError}</p>}
+      {actionSuccess && (
+        <p className="dashboard-state success">{actionSuccess}</p>
+      )}
 
-        {assignSuccess && (
-          <p className="dashboard-state success">{assignSuccess}</p>
-        )}
-
-        <ListFilters
-          searchPlaceholder="Search by name, email, role, field, or phone"
-          searchText={searchText}
-          onSearchChange={setSearchText}
-          statusFilter={statusFilter}
-          onStatusChange={setStatusFilter}
-          totalCount={totalCount}
-          filteredCount={filteredCount}
-          hasActiveFilters={hasActiveFilters}
-          onResetFilters={resetFilters}
-          statusOptions={["active", "inactive"]}
-        />
+      <section className="fields-table-card section-card users-table-card employees-table-card">
+        <div className="fields-table-head">
+          <div>
+            <h3>Danh sách nhân viên</h3>
+            <p>
+              Hiển thị {filteredRows.length.toLocaleString("vi-VN")} /{" "}
+              {employees.length.toLocaleString("vi-VN")} nhân viên.
+            </p>
+          </div>
+          <div className="fields-table-chip">
+            {loading ? "Đang tải dữ liệu..." : "Đồng bộ backend live"}
+          </div>
+        </div>
 
         <AdminTable
           columns={employeeColumns}
           rows={filteredRows}
-          emptyMessage="No employees match the current filters."
+          emptyMessage="Không có nhân viên nào khớp với bộ lọc hiện tại."
         />
       </section>
 
-      {editModalOpen && (
-        <div className="modal-backdrop" onClick={closeEditModal}>
-          <div
-            className="modal-card"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="section-head modal-head">
-              <div>
-                <h3>Edit employee</h3>
-                <p>Update employee profile fields through backend admin API.</p>
-              </div>
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={closeEditModal}
-                disabled={Boolean(deactivatingEmployeeId)}
-              >
-                Close
-              </button>
-            </div>
+      <EmployeeFormModal
+        open={createModalOpen}
+        mode="create"
+        formState={createForm}
+        loading={creatingEmployee}
+        error={actionError}
+        onClose={closeCreateModal}
+        onChange={handleFieldChange(setCreateForm)}
+        onSubmit={handleCreateSubmit}
+      />
 
-            <form className="modal-form" onSubmit={handleUpdateEmployee}>
-              <label className="modal-field">
-                <span>Name</span>
-                <input
-                  type="text"
-                  name="person_name"
-                  value={editForm.person_name}
-                  onChange={handleEditChange}
-                  placeholder="Full name"
-                />
-              </label>
+      <EmployeeFormModal
+        open={editModalOpen}
+        mode="edit"
+        formState={editForm}
+        loading={editingEmployee}
+        error={actionError}
+        onClose={closeEditModal}
+        onChange={handleFieldChange(setEditForm)}
+        onSubmit={handleEditSubmit}
+      />
 
-              <label className="modal-field">
-                <span>Email</span>
-                <input
-                  type="email"
-                  name="email"
-                  value={editForm.email}
-                  onChange={handleEditChange}
-                  placeholder="Email address"
-                />
-              </label>
-
-              <label className="modal-field">
-                <span>Phone</span>
-                <input
-                  type="text"
-                  name="phone"
-                  value={editForm.phone}
-                  onChange={handleEditChange}
-                  placeholder="10-digit phone"
-                />
-              </label>
-
-              <label className="modal-field">
-                <span>Birthday</span>
-                <input
-                  type="date"
-                  name="birthday"
-                  value={editForm.birthday}
-                  onChange={handleEditChange}
-                />
-              </label>
-
-              <label className="modal-field">
-                <span>Sex</span>
-                <select
-                  name="sex"
-                  value={editForm.sex}
-                  onChange={handleEditChange}
-                >
-                  <option value="">Not set</option>
-                  <option value="male">Male</option>
-                  <option value="female">Female</option>
-                  <option value="other">Other</option>
-                </select>
-              </label>
-
-              <label className="modal-field">
-                <span>Status</span>
-                <select
-                  name="status"
-                  value={editForm.status}
-                  onChange={handleEditChange}
-                >
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                </select>
-              </label>
-
-              <label className="modal-field modal-field-full">
-                <span>Address</span>
-                <textarea
-                  rows="3"
-                  name="address"
-                  value={editForm.address}
-                  onChange={handleEditChange}
-                  placeholder="Address"
-                />
-              </label>
-
-              <div className="modal-actions modal-actions-wide">
-                <button
-                  type="button"
-                  className="btn-secondary"
-                  onClick={closeEditModal}
-                  disabled={Boolean(deactivatingEmployeeId)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="btn-primary"
-                  disabled={Boolean(deactivatingEmployeeId)}
-                >
-                  {deactivatingEmployeeId ? "Saving..." : "Save changes"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {createModalOpen && (
-        <div className="modal-backdrop" onClick={closeCreateModal}>
-          <div
-            className="modal-card"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="section-head modal-head">
-              <div>
-                <h3>Create employee</h3>
-                <p>Create a new manager account for field operations.</p>
-              </div>
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={closeCreateModal}
-                disabled={creatingEmployee}
-              >
-                Close
-              </button>
-            </div>
-
-            <form className="modal-form" onSubmit={handleCreateEmployee}>
-              <label className="modal-field">
-                <span>Name</span>
-                <input
-                  type="text"
-                  name="person_name"
-                  value={newEmployee.person_name}
-                  onChange={handleCreateEmployeeChange}
-                  placeholder="Full name"
-                />
-              </label>
-
-              <label className="modal-field">
-                <span>Email</span>
-                <input
-                  type="email"
-                  name="email"
-                  value={newEmployee.email}
-                  onChange={handleCreateEmployeeChange}
-                  placeholder="Email address"
-                />
-              </label>
-
-              <label className="modal-field">
-                <span>Username</span>
-                <input
-                  type="text"
-                  name="username"
-                  value={newEmployee.username}
-                  onChange={handleCreateEmployeeChange}
-                  placeholder="Login username"
-                />
-              </label>
-
-              <label className="modal-field">
-                <span>Password</span>
-                <input
-                  type="password"
-                  name="password"
-                  value={newEmployee.password}
-                  onChange={handleCreateEmployeeChange}
-                  placeholder="Temporary password"
-                />
-              </label>
-
-              <label className="modal-field">
-                <span>Phone</span>
-                <input
-                  type="text"
-                  name="phone"
-                  value={newEmployee.phone}
-                  onChange={handleCreateEmployeeChange}
-                  placeholder="10-digit phone"
-                />
-              </label>
-
-              <label className="modal-field">
-                <span>Birthday</span>
-                <input
-                  type="date"
-                  name="birthday"
-                  value={newEmployee.birthday}
-                  onChange={handleCreateEmployeeChange}
-                />
-              </label>
-
-              <label className="modal-field">
-                <span>Sex</span>
-                <select
-                  name="sex"
-                  value={newEmployee.sex}
-                  onChange={handleCreateEmployeeChange}
-                >
-                  <option value="">Not set</option>
-                  <option value="male">Male</option>
-                  <option value="female">Female</option>
-                  <option value="other">Other</option>
-                </select>
-              </label>
-
-              <label className="modal-field">
-                <span>Status</span>
-                <select
-                  name="status"
-                  value={newEmployee.status}
-                  onChange={handleCreateEmployeeChange}
-                >
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                </select>
-              </label>
-
-              <label className="modal-field modal-field-full">
-                <span>Address</span>
-                <textarea
-                  rows="3"
-                  name="address"
-                  value={newEmployee.address}
-                  onChange={handleCreateEmployeeChange}
-                  placeholder="Address"
-                />
-              </label>
-
-              <div className="modal-actions modal-actions-wide">
-                <button
-                  type="button"
-                  className="btn-secondary"
-                  onClick={closeCreateModal}
-                  disabled={creatingEmployee}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="btn-primary"
-                  disabled={creatingEmployee}
-                >
-                  {creatingEmployee ? "Creating..." : "Create employee"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {selectedEmployee && (
-        <div className="modal-backdrop" onClick={closeModal}>
-          <div
-            className="modal-card"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="section-head modal-head">
-              <div>
-                <h3>Assign field</h3>
-                <p>
-                  {selectedEmployee.name} - choose a field to attach from the
-                  backend list.
-                </p>
-              </div>
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={closeModal}
-                disabled={assigning}
-              >
-                Close
-              </button>
-            </div>
-
-            <form className="modal-form" onSubmit={handleAssignField}>
-              <label className="modal-field">
-                <span>Employee</span>
-                <input type="text" value={selectedEmployee.name} readOnly />
-              </label>
-
-              <label className="modal-field">
-                <span>Field</span>
-                <select
-                  value={selectedfield_id}
-                  onChange={(event) => setSelectedfield_id(event.target.value)}
-                  disabled={fieldsLoading}
-                >
-                  <option value="">
-                    {fieldsLoading ? "Loading fields..." : "Choose a field"}
-                  </option>
-                  {fields.map((field) => (
-                    <option key={field.id} value={field.id}>
-                      {field.name} - {field.location}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              {assignError && (
-                <p className="dashboard-state error">{assignError}</p>
-              )}
-
-              <div className="modal-actions">
-                <button
-                  type="button"
-                  className="btn-secondary"
-                  onClick={closeModal}
-                  disabled={assigning}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="btn-primary"
-                  disabled={assigning}
-                >
-                  {assigning ? "Assigning..." : "Assign field"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <AssignModal
+        open={assignModalOpen}
+        employee={selectedEmployee}
+        fields={fields}
+        selectedFieldId={selectedFieldId}
+        loading={assigning}
+        error={actionError}
+        onClose={closeAssignModal}
+        onChange={(event) => setSelectedFieldId(event.target.value)}
+        onSubmit={handleAssignSubmit}
+      />
     </section>
   );
 }

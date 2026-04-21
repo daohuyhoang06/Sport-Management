@@ -1260,6 +1260,77 @@ th {
   background: #e2e8f0;
 }
 
+.employees-page {
+  display: grid;
+  gap: 18px;
+}
+
+.employees-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 18px 20px;
+  border-radius: 24px;
+  background: linear-gradient(135deg, #f4a300 0%, #ef9a00 42%, #e68a00 100%);
+  color: #1f2937;
+  box-shadow: 0 16px 36px rgba(232, 138, 0, 0.24);
+}
+
+.employees-hero-right {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.employees-add-btn {
+  min-height: 46px;
+  box-shadow: 0 14px 24px rgba(124, 58, 237, 0.24);
+}
+
+.employees-stats-grid .admin-stat-card {
+  min-height: 154px;
+}
+
+.employees-toolbar {
+  align-items: center;
+}
+
+.employees-toolbar .fields-search-wrap {
+  width: 100%;
+}
+
+.employees-table-card {
+  padding: 20px;
+}
+
+.modal-card-employees {
+  width: min(880px, 100%);
+  padding: 24px;
+  border-radius: 24px;
+}
+
+.modal-card-employees .modal-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.employee-field-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 132px;
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #0f766e;
+  background: #ccfbf1;
+}
+
 .modal-card-fields {
   width: min(760px, 100%);
   padding: 24px;
@@ -1840,9 +1911,27 @@ th {
     grid-template-columns: 1fr;
   }
 
+  .modal-card-employees .modal-form {
+    grid-template-columns: 1fr;
+  }
+
   .user-role-pill,
   .user-status-pill {
     min-width: 112px;
+  }
+
+  .employee-field-pill {
+    min-width: 112px;
+  }
+
+  .employees-hero {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .employees-hero-right {
+    justify-content: flex-start;
+    width: 100%;
   }
 
   .field-actions {
