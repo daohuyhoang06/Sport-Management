@@ -119,32 +119,20 @@ export const createUserService = async (userData) => {
     sex,
   } = userData;
 
-  const [result] = await sequelize.query(
-    `INSERT INTO person (name, email, username, password, role, status, phone, address, birthday, sex)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    {
-      replacements: [
-        name,
-        email,
-        username,
-        password,
-        role,
-        status,
-        phone,
-        address,
-        birthday,
-        sex,
-      ],
-    },
-  );
+  const createdUser = await User.create({
+    name,
+    email,
+    username,
+    password,
+    role,
+    status,
+    phone,
+    address,
+    birthday,
+    sex,
+  });
 
-  const [[user]] = await sequelize.query(
-    `SELECT person_id, name, birthday, sex, address, email, phone, username, role, status, field_id
-     FROM person WHERE person_id = ?`,
-    { replacements: [result.insertId] },
-  );
-
-  return user;
+  return createdUser.toJSON();
 };
 
 /**

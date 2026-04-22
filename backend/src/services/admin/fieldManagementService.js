@@ -112,7 +112,6 @@ export const getFieldByIdService = async (id) => {
  * Create new field
  */
 export const createFieldService = async (fieldData) => {
-  const { hasRentalPrice } = await getFieldSchema();
   const {
     field_name,
     location,
@@ -121,7 +120,7 @@ export const createFieldService = async (fieldData) => {
     status = "active",
   } = fieldData;
 
-  if (hasRentalPrice) {
+  const createWithRentalPrice = async () => {
     const [result] = await sequelize.query(
       `INSERT INTO fields (field_name, location, manager_id, rental_price, status)
        VALUES (?, ?, ?, ?, ?)
@@ -134,12 +133,39 @@ export const createFieldService = async (fieldData) => {
           rental_price || null,
           status,
         ],
-        type: sequelize.QueryTypes.INSERT,
       },
     );
 
-    const insertId = Array.isArray(result) ? result[0] : result;
-    const [[createdField]] = await sequelize.query(
+    return result?.insertId ?? result?.[0] ?? result;
+  };
+
+  const createWithoutRentalPrice = async () => {
+    const [result] = await sequelize.query(
+      `INSERT INTO fields (field_name, location, manager_id, status)
+       VALUES (?, ?, ?, ?)
+      `,
+      {
+        replacements: [field_name, location, manager_id || null, status],
+      },
+    );
+
+    return result?.insertId ?? result?.[0] ?? result;
+  };
+
+  let insertId;
+
+  try {
+    insertId = await createWithRentalPrice();
+  } catch (error) {
+    if (!String(error.message).includes("Unknown column")) {
+      throw error;
+    }
+
+    insertId = await createWithoutRentalPrice();
+  }
+
+  try {
+    const [rows] = await sequelize.query(
       `SELECT f.field_id, f.manager_id, f.field_name, f.location, f.status, f.rental_price,
               p.name as manager_name, p.email as manager_email
        FROM fields f
@@ -148,31 +174,24 @@ export const createFieldService = async (fieldData) => {
       { replacements: [insertId] },
     );
 
-    return createdField;
+    return rows[0];
+  } catch (error) {
+    if (!String(error.message).includes("Unknown column")) {
+      throw error;
+    }
+
+    const [rows] = await sequelize.query(
+      `SELECT f.field_id, f.manager_id, f.field_name, f.location, f.status,
+              NULL as rental_price,
+              p.name as manager_name, p.email as manager_email
+       FROM fields f
+       LEFT JOIN person p ON f.manager_id = p.person_id
+       WHERE f.field_id = ?`,
+      { replacements: [insertId] },
+    );
+
+    return rows[0];
   }
-
-  const [result] = await sequelize.query(
-    `INSERT INTO fields (field_name, location, manager_id, status)
-     VALUES (?, ?, ?, ?)
-    `,
-    {
-      replacements: [field_name, location, manager_id || null, status],
-      type: sequelize.QueryTypes.INSERT,
-    },
-  );
-
-  const insertId = Array.isArray(result) ? result[0] : result;
-  const [[createdField]] = await sequelize.query(
-    `SELECT f.field_id, f.manager_id, f.field_name, f.location, f.status,
-            NULL as rental_price,
-            p.name as manager_name, p.email as manager_email
-     FROM fields f
-     LEFT JOIN person p ON f.manager_id = p.person_id
-     WHERE f.field_id = ?`,
-    { replacements: [insertId] },
-  );
-
-  return createdField;
 };
 
 /**

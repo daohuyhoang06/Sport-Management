@@ -10,10 +10,34 @@ const initialUserForm = {
   phone: "",
   address: "",
   birthday: "",
-  sex: "Nam",
+  sex: "male",
   role: "user",
   status: "active",
 };
+
+function normalizeSexValue(value) {
+  const normalized = String(value || "")
+    .trim()
+    .toLowerCase();
+
+  if (normalized === "male" || normalized === "nam") {
+    return "male";
+  }
+
+  if (normalized === "female" || normalized === "nu" || normalized === "nữ") {
+    return "female";
+  }
+
+  if (
+    normalized === "other" ||
+    normalized === "khac" ||
+    normalized === "khác"
+  ) {
+    return "other";
+  }
+
+  return "other";
+}
 
 const roleOptions = [
   { value: "all", label: "Tất cả vai trò" },
@@ -171,9 +195,9 @@ function UserFormModal({
           <label className="modal-field">
             <span>Giới tính</span>
             <select name="sex" value={formState.sex} onChange={onChange}>
-              <option value="Nam">Nam</option>
-              <option value="Nữ">Nữ</option>
-              <option value="Khác">Khác</option>
+              <option value="male">Nam</option>
+              <option value="female">Nữ</option>
+              <option value="other">Khác</option>
             </select>
           </label>
 
@@ -293,7 +317,7 @@ export default function UsersPage() {
       phone: user.phone || "",
       address: user.address || "",
       birthday: user.birthday || "",
-      sex: user.sex || "Nam",
+      sex: normalizeSexValue(user.sex),
       role: user.role || "user",
       status: user.status || "active",
     });

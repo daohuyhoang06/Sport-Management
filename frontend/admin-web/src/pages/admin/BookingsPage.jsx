@@ -1,38 +1,199 @@
 import { useMemo, useState } from "react";
 import AdminTable from "../../components/admin/AdminTable";
-import ListFilters from "../../components/admin/ListFilters";
-import PageHero from "../../components/admin/PageHero";
-import StatusPill from "../../components/admin/StatusPill";
-import TableSection from "../../components/admin/TableSection";
 import useAdminBookings from "../../hooks/useAdminBookings";
-import useListFilters from "../../hooks/useListFilters";
 
-function BookingActions({
-  row,
-  onUpdateStatus,
-  onCancelBooking,
-  submittingId,
-}) {
-  const isSubmitting = submittingId === row.id;
+const statusOptions = [
+  { value: "all", label: "Tất cả trạng thái" },
+  { value: "pending", label: "Chờ xác nhận" },
+  { value: "confirmed", label: "Đã xác nhận" },
+  { value: "completed", label: "Đã hoàn thành" },
+  { value: "cancelled", label: "Đã hủy" },
+  { value: "rejected", label: "Từ chối" },
+];
+
+function renderStatusPill(status) {
+  const labels = {
+    pending: "CHỜ XÁC NHẬN",
+    confirmed: "ĐÃ XÁC NHẬN",
+    completed: "HOÀN THÀNH",
+    cancelled: "ĐÃ HỦY",
+    rejected: "TỪ CHỐI",
+  };
 
   return (
-    <div className="table-actions booking-actions">
+    <span className={`booking-status-pill ${status || "pending"}`}>
+      {labels[status] || labels.pending}
+    </span>
+  );
+}
+
+function BookingModal({
+  open,
+  mode,
+  booking,
+  selectedStatus,
+  noteText,
+  cancelReason,
+  loading,
+  error,
+  onClose,
+  onSubmit,
+  onStatusChange,
+  onNoteChange,
+  onReasonChange,
+}) {
+  if (!open || !booking) {
+    return null;
+  }
+
+  const isCancel = mode === "cancel";
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div
+        className="modal-card modal-card-bookings"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="section-head modal-head">
+          <div>
+            <h3>{isCancel ? "Hủy đặt sân" : "Cập nhật trạng thái đặt sân"}</h3>
+            <p>
+              #{booking.id} - {booking.customer} - {booking.field}
+            </p>
+          </div>
+          <button
+            type="button"
+            className="btn-secondary"
+            onClick={onClose}
+            disabled={loading}
+          >
+            Đóng
+          </button>
+        </div>
+
+        {error && <p className="dashboard-state error">{error}</p>}
+
+        <form className="modal-form" onSubmit={onSubmit}>
+          <label className="modal-field">
+            <span>Mã đặt sân</span>
+            <input type="text" value={booking.id} readOnly />
+          </label>
+
+          <label className="modal-field">
+            <span>Khách hàng</span>
+            <input type="text" value={booking.customer} readOnly />
+          </label>
+
+          <label className="modal-field">
+            <span>Sân</span>
+            <input type="text" value={booking.field} readOnly />
+          </label>
+
+          {!isCancel && (
+            <label className="modal-field">
+              <span>Trạng thái</span>
+              <select
+                value={selectedStatus}
+                onChange={(event) => onStatusChange(event.target.value)}
+              >
+                <option value="pending">Chờ xác nhận</option>
+                <option value="confirmed">Đã xác nhận</option>
+                <option value="completed">Đã hoàn thành</option>
+                <option value="cancelled">Đã hủy</option>
+                <option value="rejected">Từ chối</option>
+              </select>
+            </label>
+          )}
+
+          {isCancel ? (
+            <label className="modal-field modal-field-full">
+              <span>Lý do hủy</span>
+              <textarea
+                rows="4"
+                value={cancelReason}
+                onChange={(event) => onReasonChange(event.target.value)}
+                placeholder="Nhập lý do hủy đặt sân"
+              />
+            </label>
+          ) : (
+            <label className="modal-field modal-field-full">
+              <span>Ghi chú</span>
+              <textarea
+                rows="4"
+                value={noteText}
+                onChange={(event) => onNoteChange(event.target.value)}
+                placeholder="Ghi chú bổ sung cho thao tác cập nhật"
+              />
+            </label>
+          )}
+
+          <div className="modal-actions modal-actions-wide">
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={onClose}
+              disabled={loading}
+            >
+              Hủy
+            </button>
+            <button type="submit" className="btn-primary" disabled={loading}>
+              {loading
+                ? "Đang xử lý..."
+                : isCancel
+                  ? "Xác nhận hủy"
+                  : "Lưu thay đổi"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function BookingActions({ row, onView, onConfirm, onCancel, submittingId }) {
+  const isSubmitting = submittingId === row.id;
+  const canConfirm = row.status === "pending" || row.status === "confirmed";
+  const canCancel = row.status === "pending" || row.status === "confirmed";
+
+  return (
+    <div className="booking-actions">
       <button
         type="button"
-        className="btn-primary"
-        onClick={() => onUpdateStatus(row)}
-        disabled={isSubmitting}
+        className="booking-action view"
+        onClick={() => onView(row)}
       >
-        {isSubmitting ? "Updating..." : "Update status"}
+        👁 Xem
       </button>
-      <button
-        type="button"
-        className="btn-secondary"
-        onClick={() => onCancelBooking(row)}
-        disabled={isSubmitting}
-      >
-        Cancel
-      </button>
+      {row.status === "pending" ? (
+        <button
+          type="button"
+          className="booking-action confirm"
+          onClick={() => onConfirm(row)}
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? "Đang xử lý..." : "✅ Xác nhận"}
+        </button>
+      ) : null}
+      {canConfirm && row.status === "confirmed" && (
+        <button
+          type="button"
+          className="booking-action confirm"
+          onClick={() => onConfirm(row)}
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? "Đang xử lý..." : "✅ Hoàn tất"}
+        </button>
+      )}
+      {canCancel && (
+        <button
+          type="button"
+          className="booking-action cancel"
+          onClick={() => onCancel(row)}
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? "Đang xử lý..." : "❌ Hủy"}
+        </button>
+      )}
     </div>
   );
 }
@@ -46,6 +207,8 @@ export default function BookingsPage() {
     updateBookingStatus,
     cancelBooking,
   } = useAdminBookings();
+  const [searchText, setSearchText] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [modalMode, setModalMode] = useState("status");
   const [selectedStatus, setSelectedStatus] = useState("confirmed");
@@ -55,42 +218,76 @@ export default function BookingsPage() {
   const [actionError, setActionError] = useState("");
   const [actionSuccess, setActionSuccess] = useState("");
 
-  const {
-    searchText,
-    setSearchText,
-    statusFilter,
-    setStatusFilter,
-    filteredRows,
-    filteredCount,
-    totalCount,
-    hasActiveFilters,
-    resetFilters,
-  } = useListFilters({
-    rows: bookings,
-    searchFields: ["id", "customer", "field"],
-  });
+  const filteredRows = useMemo(() => {
+    const keyword = searchText.trim().toLowerCase();
+
+    return bookings.filter((booking) => {
+      const matchesKeyword =
+        !keyword ||
+        [
+          booking.id,
+          booking.customer,
+          booking.field,
+          booking.slot,
+          booking.date,
+        ]
+          .join(" ")
+          .toLowerCase()
+          .includes(keyword);
+
+      const matchesStatus =
+        statusFilter === "all" || booking.status === statusFilter;
+
+      return matchesKeyword && matchesStatus;
+    });
+  }, [bookings, searchText, statusFilter]);
 
   const bookingColumns = useMemo(
     () => [
-      { key: "id", label: "Booking ID" },
-      { key: "customer", label: "Customer" },
-      { key: "field", label: "Field" },
-      { key: "slot", label: "Time slot" },
-      { key: "date", label: "Date" },
+      {
+        key: "id",
+        label: "ID",
+        render: (row) => <span className="field-id-tag">#{row.id}</span>,
+      },
+      {
+        key: "customer",
+        label: "Khách hàng",
+        render: (row) => (
+          <strong className="user-name-cell">{row.customer}</strong>
+        ),
+      },
+      {
+        key: "field",
+        label: "Sân",
+        render: (row) => (
+          <span className="booking-field-pill">🏟️ {row.field}</span>
+        ),
+      },
+      {
+        key: "date",
+        label: "Ngày đặt",
+        render: (row) => <span className="user-meta-cell">📅 {row.date}</span>,
+      },
+      {
+        key: "slot",
+        label: "Khung giờ",
+        render: (row) => <span className="user-meta-cell">🕒 {row.slot}</span>,
+      },
       {
         key: "status",
-        label: "Status",
-        render: (row) => <StatusPill status={row.status} />,
+        label: "Trạng thái",
+        render: (row) => renderStatusPill(row.status),
       },
       {
         key: "actions",
-        label: "Actions",
+        label: "Thao tác",
         render: (row) => (
           <BookingActions
             row={row}
+            onView={openViewModal}
+            onConfirm={openStatusModal}
+            onCancel={openCancelModal}
             submittingId={submittingId}
-            onUpdateStatus={openStatusModal}
-            onCancelBooking={openCancelModal}
           />
         ),
       },
@@ -98,10 +295,28 @@ export default function BookingsPage() {
     [submittingId],
   );
 
+  function openViewModal(row) {
+    setSelectedBooking(row);
+    setModalMode("status");
+    setSelectedStatus(
+      row.status === "pending" ? "confirmed" : row.status || "confirmed",
+    );
+    setNoteText("");
+    setCancelReason("");
+    setActionError("");
+    setActionSuccess("");
+  }
+
   function openStatusModal(row) {
     setSelectedBooking(row);
     setModalMode("status");
-    setSelectedStatus(row.status === "pending" ? "confirmed" : "completed");
+    setSelectedStatus(
+      row.status === "pending"
+        ? "confirmed"
+        : row.status === "confirmed"
+          ? "completed"
+          : "confirmed",
+    );
     setNoteText("");
     setCancelReason("");
     setActionError("");
@@ -146,12 +361,12 @@ export default function BookingsPage() {
 
       if (modalMode === "cancel") {
         if (!cancelReason.trim()) {
-          setActionError("Please provide a cancellation reason.");
+          setActionError("Vui lòng nhập lý do hủy đặt sân.");
           return;
         }
 
         await cancelBooking(selectedBooking.id, cancelReason.trim());
-        setActionSuccess(`Booking ${selectedBooking.id} was cancelled.`);
+        setActionSuccess(`Đã hủy đặt sân #${selectedBooking.id} thành công.`);
       } else {
         await updateBookingStatus(
           selectedBooking.id,
@@ -159,166 +374,156 @@ export default function BookingsPage() {
           noteText.trim(),
         );
         setActionSuccess(
-          `Booking ${selectedBooking.id} updated to ${selectedStatus}.`,
+          `Đã cập nhật đặt sân #${selectedBooking.id} thành ${selectedStatus}.`,
         );
       }
 
       closeModal();
     } catch (submitError) {
-      setActionError(submitError.message || "Unable to update booking");
+      setActionError(submitError.message || "Không thể cập nhật đặt sân.");
     } finally {
       setSubmittingId(null);
     }
   }
 
   return (
-    <section className="page-shell">
-      <PageHero
-        badges={[
-          "Admin module",
-          "Bookings",
-          loading ? "Loading from backend" : `${stats.total} total bookings`,
-        ]}
-        title="Bookings"
-        description="Bookings page now uses backend list and stats data so the admin web follows live booking states from database records."
-      />
+    <section className="bookings-page">
+      <header className="bookings-hero">
+        <div className="dashboard-hero-left">
+          <div className="dashboard-hero-icon">📋</div>
+          <div>
+            <p className="dashboard-hero-kicker">Dashboard</p>
+            <h2>Quản Lý Đặt Sân</h2>
+          </div>
+        </div>
 
-      <TableSection
-        title="Bookings list"
-        subtitle="Live data from /api/admin/bookings and /api/admin/bookings/stats."
-        actionLabel="Create booking"
-      >
-        {error && <p className="dashboard-state error">{error}</p>}
-        {actionError && <p className="dashboard-state error">{actionError}</p>}
-        {actionSuccess && (
-          <p className="dashboard-state success">{actionSuccess}</p>
-        )}
+        <div className="dashboard-hero-right bookings-hero-right">
+          <div className="dashboard-role-switcher" aria-label="Vai trò">
+            <span className="is-active">👷 Quản trị viên</span>
+            <span>📘 Quản lý</span>
+            <span>👤 Người dùng</span>
+          </div>
+          <div className="dashboard-user-chip">
+            <span className="dashboard-user-badge">ADMIN</span>
+            <strong>Admin</strong>
+          </div>
+        </div>
+      </header>
 
-        <ListFilters
-          searchPlaceholder="Search by booking ID, customer, or field"
-          searchText={searchText}
-          onSearchChange={setSearchText}
-          statusFilter={statusFilter}
-          onStatusChange={setStatusFilter}
-          totalCount={totalCount}
-          filteredCount={filteredCount}
-          hasActiveFilters={hasActiveFilters}
-          onResetFilters={resetFilters}
-          statusOptions={[
-            "pending",
-            "confirmed",
-            "completed",
-            "cancelled",
-            "rejected",
-          ]}
-        />
+      <section className="fields-stats-grid bookings-stats-grid">
+        <article
+          className="admin-stat-card"
+          style={{ ["--accent-color"]: "#6b7cff" }}
+        >
+          <div className="admin-stat-copy">
+            <p>Tổng đặt sân</p>
+            <h3>{stats.total.toLocaleString("vi-VN")}</h3>
+            <span>Toàn bộ đơn đặt trong hệ thống</span>
+          </div>
+          <div className="admin-stat-icon">📋</div>
+        </article>
+        <article
+          className="admin-stat-card"
+          style={{ ["--accent-color"]: "#f59e0b" }}
+        >
+          <div className="admin-stat-copy">
+            <p>Chờ xác nhận</p>
+            <h3>{stats.pending.toLocaleString("vi-VN")}</h3>
+            <span>Đơn cần xử lý tiếp</span>
+          </div>
+          <div className="admin-stat-icon">⏳</div>
+        </article>
+        <article
+          className="admin-stat-card"
+          style={{ ["--accent-color"]: "#10b981" }}
+        >
+          <div className="admin-stat-copy">
+            <p>Đã xác nhận</p>
+            <h3>{stats.confirmed.toLocaleString("vi-VN")}</h3>
+            <span>Đơn đã được duyệt</span>
+          </div>
+          <div className="admin-stat-icon">✅</div>
+        </article>
+        <article
+          className="admin-stat-card"
+          style={{ ["--accent-color"]: "#8b5cf6" }}
+        >
+          <div className="admin-stat-copy">
+            <p>Đã hoàn thành</p>
+            <h3>{stats.completed.toLocaleString("vi-VN")}</h3>
+            <span>Đơn đã kết thúc</span>
+          </div>
+          <div className="admin-stat-icon">🏆</div>
+        </article>
+      </section>
+
+      <section className="fields-toolbar card-surface bookings-toolbar">
+        <div className="fields-search-wrap bookings-search-wrap">
+          <label className="fields-search-box bookings-search-box">
+            <span>🔎</span>
+            <input
+              type="search"
+              value={searchText}
+              onChange={(event) => setSearchText(event.target.value)}
+              placeholder="Tìm kiếm đặt sân..."
+            />
+          </label>
+
+          <select
+            value={statusFilter}
+            onChange={(event) => setStatusFilter(event.target.value)}
+          >
+            {statusOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      </section>
+
+      {error && <p className="dashboard-state error">{error}</p>}
+      {actionError && <p className="dashboard-state error">{actionError}</p>}
+      {actionSuccess && (
+        <p className="dashboard-state success">{actionSuccess}</p>
+      )}
+
+      <section className="fields-table-card section-card bookings-table-card">
+        <div className="fields-table-head">
+          <div>
+            <h3>Danh sách đặt sân</h3>
+            <p>
+              Hiển thị {filteredRows.length.toLocaleString("vi-VN")} /{" "}
+              {bookings.length.toLocaleString("vi-VN")} đơn đặt sân.
+            </p>
+          </div>
+          <div className="fields-table-chip">
+            {loading ? "Đang tải dữ liệu..." : "Đồng bộ backend live"}
+          </div>
+        </div>
 
         <AdminTable
           columns={bookingColumns}
           rows={filteredRows}
-          emptyMessage="No bookings match the current filters."
+          emptyMessage="Không có đặt sân nào khớp với bộ lọc hiện tại."
         />
-      </TableSection>
+      </section>
 
-      {selectedBooking && (
-        <div className="modal-backdrop" onClick={closeModal}>
-          <div
-            className="modal-card"
-            onClick={(event) => event.stopPropagation()}
-          >
-            <div className="section-head modal-head">
-              <div>
-                <h3>
-                  {modalMode === "cancel"
-                    ? "Cancel booking"
-                    : "Update booking status"}
-                </h3>
-                <p>
-                  {selectedBooking.id} - {selectedBooking.customer} -{" "}
-                  {selectedBooking.field}
-                </p>
-              </div>
-              <button
-                type="button"
-                className="btn-secondary"
-                onClick={closeModal}
-                disabled={Boolean(submittingId)}
-              >
-                Close
-              </button>
-            </div>
-
-            <form className="modal-form" onSubmit={handleModalSubmit}>
-              <label className="modal-field">
-                <span>Booking</span>
-                <input type="text" value={selectedBooking.id} readOnly />
-              </label>
-
-              {modalMode === "cancel" ? (
-                <label className="modal-field">
-                  <span>Cancellation reason</span>
-                  <textarea
-                    rows="4"
-                    value={cancelReason}
-                    onChange={(event) => setCancelReason(event.target.value)}
-                    placeholder="Enter the reason for cancellation"
-                  />
-                </label>
-              ) : (
-                <>
-                  <label className="modal-field">
-                    <span>Status</span>
-                    <select
-                      value={selectedStatus}
-                      onChange={(event) =>
-                        setSelectedStatus(event.target.value)
-                      }
-                    >
-                      <option value="pending">Pending</option>
-                      <option value="confirmed">Confirmed</option>
-                      <option value="completed">Completed</option>
-                      <option value="cancelled">Cancelled</option>
-                      <option value="rejected">Rejected</option>
-                    </select>
-                  </label>
-
-                  <label className="modal-field">
-                    <span>Note</span>
-                    <textarea
-                      rows="4"
-                      value={noteText}
-                      onChange={(event) => setNoteText(event.target.value)}
-                      placeholder="Optional note for the booking update"
-                    />
-                  </label>
-                </>
-              )}
-
-              <div className="modal-actions">
-                <button
-                  type="button"
-                  className="btn-secondary"
-                  onClick={closeModal}
-                  disabled={Boolean(submittingId)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="btn-primary"
-                  disabled={Boolean(submittingId)}
-                >
-                  {submittingId
-                    ? "Saving..."
-                    : modalMode === "cancel"
-                      ? "Confirm cancel"
-                      : "Save changes"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <BookingModal
+        open={Boolean(selectedBooking)}
+        mode={modalMode}
+        booking={selectedBooking}
+        selectedStatus={selectedStatus}
+        noteText={noteText}
+        cancelReason={cancelReason}
+        loading={Boolean(submittingId)}
+        error={actionError}
+        onClose={closeModal}
+        onSubmit={handleModalSubmit}
+        onStatusChange={setSelectedStatus}
+        onNoteChange={setNoteText}
+        onReasonChange={setCancelReason}
+      />
     </section>
   );
 }
