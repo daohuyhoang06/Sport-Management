@@ -37,23 +37,23 @@ INSERT INTO person (person_name, birthday, sex, address, email, phone, username,
 -- Insert sport fields (Hanoi - Cầu Giấy area)
 -- ============================================================
 
-INSERT INTO fields (manager_id, field_name, location, status, rental_price) VALUES
-(3, 'Sân Bóng Dịch Vọng', 'Số 123 Dịch Vọng Hậu, Cầu Giấy, Hà Nội', 'active', 300000),
-(3, 'Sân Bóng Trung Hòa', 'Số 45 Trung Hòa, Cầu Giấy, Hà Nội', 'active', 350000),
-(4, 'Sân Bóng Mỹ Đình', 'Số 89 Phạm Hùng, Nam Từ Liêm, Hà Nội', 'active', 280000),
-(4, 'Sân Bóng Nghĩa Tân', 'Số 67 Nghĩa Tân, Cầu Giấy, Hà Nội', 'active', 320000),
-(5, 'Sân Bóng Duy Tân', 'Số 156 Duy Tân, Cầu Giấy, Hà Nội', 'active', 400000),
-(5, 'Sân Bóng Yên Hòa', 'Số 234 Trần Kim Xuyến, Cầu Giấy, Hà Nội', 'active', 290000),
-(6, 'Sân Bóng Mai Dịch', 'Số 78 Phạm Văn Đồng, Cầu Giấy, Hà Nội', 'active', 380000),
-(6, 'Sân Bóng Xuân Thủy', 'Số 92 Xuân Thủy, Cầu Giấy, Hà Nội', 'active', 420000),
-(3, 'Sân Bóng Hoàng Quốc Việt', 'Số 145 Hoàng Quốc Việt, Cầu Giấy, Hà Nội', 'active', 310000),
-(4, 'Sân Bóng Cầu Giấy', 'Số 56 Cầu Giấy, Cầu Giấy, Hà Nội', 'active', 360000),
-(5, 'Sân Bóng Nguyễn Khang', 'Số 188 Nguyễn Khang, Cầu Giấy, Hà Nội', 'active', 330000),
-(6, 'Sân Bóng Trần Thái Tông', 'Số 99 Trần Thái Tông, Cầu Giấy, Hà Nội', 'active', 340000),
-(3, 'Sân Bóng Láng Hạ', 'Số 201 Láng Hạ, Đống Đa, Hà Nội', 'active', 320000),
-(4, 'Sân Bóng Chùa Bộc', 'Số 167 Chùa Bộc, Đống Đa, Hà Nội', 'active', 300000),
-(5, 'Sân Bóng Tôn Thất Thuyết', 'Số 88 Tôn Thất Thuyết, Cầu Giấy, Hà Nội', 'active', 370000),
-(NULL, 'Sân Bóng Nguyễn Văn Huyên', 'Số 210 Nguyễn Văn Huyên, Cầu Giấy, Hà Nội', 'maintenance', 350000);
+INSERT INTO fields (manager_id, field_name, location, status, rental_price, sport_id) VALUES
+(3, 'Sân Bóng Dịch Vọng', 'Số 123 Dịch Vọng Hậu, Cầu Giấy, Hà Nội', 'active', 300000, 1),
+(3, 'Sân Bóng Trung Hòa', 'Số 45 Trung Hòa, Cầu Giấy, Hà Nội', 'active', 350000, 1),
+(4, 'Sân Bóng Mỹ Đình', 'Số 89 Phạm Hùng, Nam Từ Liêm, Hà Nội', 'active', 280000, 1),
+(4, 'Sân Bóng Nghĩa Tân', 'Số 67 Nghĩa Tân, Cầu Giấy, Hà Nội', 'active', 320000, 1),
+(5, 'Sân Bóng Duy Tân', 'Số 156 Duy Tân, Cầu Giấy, Hà Nội', 'active', 400000, 1),
+(5, 'Sân Bóng Yên Hòa', 'Số 234 Trần Kim Xuyến, Cầu Giấy, Hà Nội', 'active', 290000, 1),
+(6, 'Sân Bóng Mai Dịch', 'Số 78 Phạm Văn Đồng, Cầu Giấy, Hà Nội', 'active', 380000, 1),
+(6, 'Sân Bóng Xuân Thủy', 'Số 92 Xuân Thủy, Cầu Giấy, Hà Nội', 'active', 420000, 1),
+(3, 'Sân Bóng Hoàng Quốc Việt', 'Số 145 Hoàng Quốc Việt, Cầu Giấy, Hà Nội', 'active', 310000, 1),
+(4, 'Sân Bóng Cầu Giấy', 'Số 56 Cầu Giấy, Cầu Giấy, Hà Nội', 'active', 360000, 1),
+(5, 'Sân Bóng Nguyễn Khang', 'Số 188 Nguyễn Khang, Cầu Giấy, Hà Nội', 'active', 330000, 1),
+(6, 'Sân Bóng Trần Thái Tông', 'Số 99 Trần Thái Tông, Cầu Giấy, Hà Nội', 'active', 340000, 1),
+(3, 'Sân Bóng Láng Hạ', 'Số 201 Láng Hạ, Đống Đa, Hà Nội', 'active', 320000, 1),
+(4, 'Sân Bóng Chùa Bộc', 'Số 167 Chùa Bộc, Đống Đa, Hà Nội', 'active', 300000, 1),
+(5, 'Sân Bóng Tôn Thất Thuyết', 'Số 88 Tôn Thất Thuyết, Cầu Giấy, Hà Nội', 'active', 370000, 1),
+(NULL, 'Sân Bóng Nguyễn Văn Huyên', 'Số 210 Nguyễn Văn Huyên, Cầu Giấy, Hà Nội', 'maintenance', 350000, 1);
 
 -- ============================================================
 -- Insert Field Images

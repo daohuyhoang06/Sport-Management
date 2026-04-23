@@ -1,4 +1,12 @@
 -- ============================================================
+-- Table: sport_types
+-- Description: Stores types of sports (bóng đá, bóng chuyền, pickleball, cầu lông...)
+-- ============================================================
+CREATE TABLE sport_types (
+  sport_id SERIAL PRIMARY KEY,
+  sport_name VARCHAR(50) NOT NULL UNIQUE
+);
+-- ============================================================
 -- DATABASE SCHEMA - Sport Field Management System (PostgreSQL/Supabase)
 -- Generated: December 29, 2025
 -- ============================================================
@@ -54,7 +62,9 @@ CREATE TABLE fields (
   location VARCHAR(100),
   status VARCHAR(45) DEFAULT 'active',
   rental_price DECIMAL(10,2),
-  FOREIGN KEY (manager_id) REFERENCES person(person_id) ON DELETE SET NULL
+  sport_id INTEGER,
+  FOREIGN KEY (manager_id) REFERENCES person(person_id) ON DELETE SET NULL,
+  FOREIGN KEY (sport_id) REFERENCES sport_types(sport_id) ON DELETE SET NULL
 );
 
 CREATE INDEX idx_manager_id ON fields(manager_id);
