@@ -65,7 +65,7 @@ export const rejectBooking = async (req, res) => {
     await sequelize.query(`
       UPDATE bookings 
       SET status = 'rejected', 
-          note = COALESCE(note, '') || ?
+          note = CONCAT(COALESCE(note, ''), ?)
       WHERE booking_id = ?
     `, { replacements: [noteAppend, id] });
 

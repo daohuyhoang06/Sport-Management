@@ -80,8 +80,7 @@ export const getAvailableSlots = async (field_id, dateOrDates) => {
           schedule_id: schedule.schedule_id,
           start_time: schedule.start_time,
           end_time: schedule.end_time,
-          is_available: schedule.status === "active",
-          status: schedule.status,
+          is_available: schedule.is_available,
           shift_label: getShiftLabel(schedule.start_time),
         }));
       } else {
@@ -123,9 +122,7 @@ export const getAvailableSlots = async (field_id, dateOrDates) => {
           return slotStart < bookingEnd && slotEnd > bookingStart;
         });
 
-        const isActive = slot.status
-          ? slot.status === "active"
-          : slot.is_available !== false;
+        const isActive = slot.is_available !== false;
         slot.available = isActive && !isBooked;
         slot.booking_status = isBooked ? "booked" : "available";
       });
@@ -169,8 +166,8 @@ export const checkSlotAvailability = async (field_id, startTime, endTime) => {
     // Check field_schedules if this time is marked as unavailable
     const scheduleConflict = await FieldSchedule.findOne({
       where: {
-        field_id: field_id,
-        status: "inactive",
+        field_id: fieldId,
+        is_available: false,
         [Op.or]: [
           {
             start_time: { [Op.lt]: endTime },
@@ -226,29 +223,25 @@ export const updateFieldSchedules = async (field_id, schedules) => {
     const results = [];
 
     for (const schedule of schedules) {
-      const { start_time, end_time, status, is_available } = schedule;
+      const { start_time, end_time, is_available } = schedule;
 
-      // Convert is_available to status if needed for backward compatibility
-      const scheduleStatus =
-        status || (is_available === false ? "inactive" : "active");
+      const available = is_available !== false;
 
-      const [newSchedule] = await FieldSchedule.findOrCreate({
+      const [newSchedule, created] = await FieldSchedule.findOrCreate({
         where: {
           field_id: field_id,
           start_time,
           end_time,
         },
         defaults: {
-          status: scheduleStatus,
-          date: new Date(start_time),
-          price: schedule.price || 0,
+          is_available: available,
         },
       });
 
-      if (!newSchedule) {
+      if (!created) {
         // Update existing
         await FieldSchedule.update(
-          { status: scheduleStatus },
+          { is_available: available },
           {
             where: {
               field_id: field_id,

@@ -52,10 +52,13 @@ export const getAllFieldsService = async (filters = {}, pagination = {}) => {
     : "NULL as rental_price";
 
   const [rows] = await sequelize.query(
-    `SELECT f.field_id, f.manager_id, f.field_name, f.location, f.status, ${priceSelect},
-            p.name as manager_name, p.email as manager_email
-    FROM fields f
+    `SELECT f.field_id, f.manager_id, f.field_name, f.location, f.status, f.rental_price,
+            f.sport_id, st.sport_name,
+            p.person_name as manager_name, p.email as manager_email
+     FROM fields f
+
      LEFT JOIN person p ON f.manager_id = p.person_id
+     LEFT JOIN sport_types st ON f.sport_id = st.sport_id
      ${whereClause}
      ORDER BY f.field_id ASC
      LIMIT ? OFFSET ?`,
@@ -80,11 +83,13 @@ export const getFieldByIdService = async (id) => {
     : "NULL as rental_price";
 
   const [[field]] = await sequelize.query(
-    `SELECT f.field_id, f.manager_id, f.field_name, f.location, f.status, ${priceSelect},
-            p.name as manager_name, p.email as manager_email, p.phone as manager_phone
+    `SELECT f.field_id, f.manager_id, f.field_name, f.location, f.status, f.rental_price,
+            f.sport_id, st.sport_name,
+            p.person_name as manager_name, p.email as manager_email, p.phone as manager_phone
      FROM fields f
      LEFT JOIN person p ON f.manager_id = p.person_id
-     WHERE f.field_id = ? AND f.status <> 'deleted'`,
+     LEFT JOIN sport_types st ON f.sport_id = st.sport_id
+     WHERE f.field_id = ?`,
     { replacements: [id] },
   );
 
@@ -112,102 +117,35 @@ export const getFieldByIdService = async (id) => {
  * Create new field
  */
 export const createFieldService = async (fieldData) => {
-  const normalizedFieldName = String(
-    fieldData.field_name ?? fieldData.name ?? "",
-  ).trim();
-  const normalizedLocation = String(fieldData.location ?? "").trim();
+  const {
+    field_name,
+    location,
+    manager_id,
+    rental_price,
+    status = "active",
+    sport_id,
+  } = fieldData;
 
-  const { manager_id, rental_price, status = "active" } = fieldData;
+  await sequelize.query(
+    `INSERT INTO fields (field_name, location, manager_id, rental_price, status, sport_id)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    {
+      replacements: [
+        field_name,
+        location,
+        manager_id || null,
+        rental_price || null,
+        status,
+        sport_id || null,
+      ],
+    },
+  );
 
-  if (!normalizedFieldName || !normalizedLocation) {
-    throw new Error("Field name and location are required");
-  }
+  const [[result]] = await sequelize.query(
+    `SELECT * FROM fields WHERE field_id = LAST_INSERT_ID()`,
+  );
 
-  if (!["active", "inactive", "maintenance"].includes(status)) {
-    throw new Error("Invalid field status");
-  }
-
-  if (status === "active" && (!rental_price || Number(rental_price) <= 0)) {
-    throw new Error("Rental price is required when field status is active");
-  }
-
-  const createWithRentalPrice = async () => {
-    const [result] = await sequelize.query(
-      `INSERT INTO fields (field_name, location, manager_id, rental_price, status)
-       VALUES (?, ?, ?, ?, ?)
-      `,
-      {
-        replacements: [
-          normalizedFieldName,
-          normalizedLocation,
-          manager_id || null,
-          rental_price && Number(rental_price) > 0 ? rental_price : null,
-          status,
-        ],
-      },
-    );
-
-    return result?.insertId ?? result?.[0] ?? result;
-  };
-
-  const createWithoutRentalPrice = async () => {
-    const [result] = await sequelize.query(
-      `INSERT INTO fields (field_name, location, manager_id, status)
-       VALUES (?, ?, ?, ?)
-      `,
-      {
-        replacements: [
-          normalizedFieldName,
-          normalizedLocation,
-          manager_id || null,
-          status,
-        ],
-      },
-    );
-
-    return result?.insertId ?? result?.[0] ?? result;
-  };
-
-  let insertId;
-
-  try {
-    insertId = await createWithRentalPrice();
-  } catch (error) {
-    if (!String(error.message).includes("Unknown column")) {
-      throw error;
-    }
-
-    insertId = await createWithoutRentalPrice();
-  }
-
-  try {
-    const [rows] = await sequelize.query(
-      `SELECT f.field_id, f.manager_id, f.field_name, f.location, f.status, f.rental_price,
-              p.name as manager_name, p.email as manager_email
-       FROM fields f
-       LEFT JOIN person p ON f.manager_id = p.person_id
-       WHERE f.field_id = ?`,
-      { replacements: [insertId] },
-    );
-
-    return rows[0];
-  } catch (error) {
-    if (!String(error.message).includes("Unknown column")) {
-      throw error;
-    }
-
-    const [rows] = await sequelize.query(
-      `SELECT f.field_id, f.manager_id, f.field_name, f.location, f.status,
-              NULL as rental_price,
-              p.name as manager_name, p.email as manager_email
-       FROM fields f
-       LEFT JOIN person p ON f.manager_id = p.person_id
-       WHERE f.field_id = ?`,
-      { replacements: [insertId] },
-    );
-
-    return rows[0];
-  }
+  return result;
 };
 
 /**
@@ -262,13 +200,9 @@ export const updateFieldService = async (id, fieldData) => {
     updates.push("status = ?");
     params.push(fieldData.status);
   }
-  if (hasRentalPrice && fieldData.rental_price !== undefined) {
-    updates.push("rental_price = ?");
-    params.push(
-      fieldData.rental_price && Number(fieldData.rental_price) > 0
-        ? fieldData.rental_price
-        : null,
-    );
+  if (fieldData.sport_id !== undefined) {
+    updates.push("sport_id = ?");
+    params.push(fieldData.sport_id);
   }
 
   if (updates.length > 0) {

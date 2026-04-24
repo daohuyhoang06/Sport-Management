@@ -1,6 +1,6 @@
 -- ============================================================
 -- SAMPLE DATA INSERT - Sport Field Management System
--- PostgreSQL/Supabase Version
+-- MySQL Version
 -- Generated: December 29, 2025
 -- ============================================================
 
@@ -34,26 +34,37 @@ INSERT INTO person (person_name, birthday, sex, address, email, phone, username,
 ('Trương Thị Lan', '1998-09-03', 'Nữ', '210 Nguyễn Văn Huyên, Cầu Giấy, Hà Nội', 'user10@gmail.com', '0916789012', 'user10', '$2b$10$YourHashedPasswordHere', 'user', 'active');
 
 -- ============================================================
+-- Insert Sport Types
+-- ============================================================
+
+INSERT INTO sport_types (sport_name) VALUES
+('Bóng đá'),
+('Bóng chuyền'),
+('Pickleball'),
+('Cầu lông'),
+('Tennis');
+
+-- ============================================================
 -- Insert sport fields (Hanoi - Cầu Giấy area)
 -- ============================================================
 
-INSERT INTO fields (manager_id, field_name, location, status, rental_price) VALUES
-(3, 'Sân Bóng Dịch Vọng', 'Số 123 Dịch Vọng Hậu, Cầu Giấy, Hà Nội', 'active', 300000),
-(3, 'Sân Bóng Trung Hòa', 'Số 45 Trung Hòa, Cầu Giấy, Hà Nội', 'active', 350000),
-(4, 'Sân Bóng Mỹ Đình', 'Số 89 Phạm Hùng, Nam Từ Liêm, Hà Nội', 'active', 280000),
-(4, 'Sân Bóng Nghĩa Tân', 'Số 67 Nghĩa Tân, Cầu Giấy, Hà Nội', 'active', 320000),
-(5, 'Sân Bóng Duy Tân', 'Số 156 Duy Tân, Cầu Giấy, Hà Nội', 'active', 400000),
-(5, 'Sân Bóng Yên Hòa', 'Số 234 Trần Kim Xuyến, Cầu Giấy, Hà Nội', 'active', 290000),
-(6, 'Sân Bóng Mai Dịch', 'Số 78 Phạm Văn Đồng, Cầu Giấy, Hà Nội', 'active', 380000),
-(6, 'Sân Bóng Xuân Thủy', 'Số 92 Xuân Thủy, Cầu Giấy, Hà Nội', 'active', 420000),
-(3, 'Sân Bóng Hoàng Quốc Việt', 'Số 145 Hoàng Quốc Việt, Cầu Giấy, Hà Nội', 'active', 310000),
-(4, 'Sân Bóng Cầu Giấy', 'Số 56 Cầu Giấy, Cầu Giấy, Hà Nội', 'active', 360000),
-(5, 'Sân Bóng Nguyễn Khang', 'Số 188 Nguyễn Khang, Cầu Giấy, Hà Nội', 'active', 330000),
-(6, 'Sân Bóng Trần Thái Tông', 'Số 99 Trần Thái Tông, Cầu Giấy, Hà Nội', 'active', 340000),
-(3, 'Sân Bóng Láng Hạ', 'Số 201 Láng Hạ, Đống Đa, Hà Nội', 'active', 320000),
-(4, 'Sân Bóng Chùa Bộc', 'Số 167 Chùa Bộc, Đống Đa, Hà Nội', 'active', 300000),
-(5, 'Sân Bóng Tôn Thất Thuyết', 'Số 88 Tôn Thất Thuyết, Cầu Giấy, Hà Nội', 'active', 370000),
-(NULL, 'Sân Bóng Nguyễn Văn Huyên', 'Số 210 Nguyễn Văn Huyên, Cầu Giấy, Hà Nội', 'maintenance', 350000);
+INSERT INTO fields (manager_id, field_name, location, status, rental_price, sport_id) VALUES
+(3, 'Sân Bóng Dịch Vọng', 'Số 123 Dịch Vọng Hậu, Cầu Giấy, Hà Nội', 'active', 300000, 1),
+(3, 'Sân Bóng Trung Hòa', 'Số 45 Trung Hòa, Cầu Giấy, Hà Nội', 'active', 350000, 1),
+(4, 'Sân Bóng Mỹ Đình', 'Số 89 Phạm Hùng, Nam Từ Liêm, Hà Nội', 'active', 280000, 1),
+(4, 'Sân Bóng Nghĩa Tân', 'Số 67 Nghĩa Tân, Cầu Giấy, Hà Nội', 'active', 320000, 1),
+(5, 'Sân Bóng Duy Tân', 'Số 156 Duy Tân, Cầu Giấy, Hà Nội', 'active', 400000, 1),
+(5, 'Sân Bóng Yên Hòa', 'Số 234 Trần Kim Xuyến, Cầu Giấy, Hà Nội', 'active', 290000, 1),
+(6, 'Sân Bóng Mai Dịch', 'Số 78 Phạm Văn Đồng, Cầu Giấy, Hà Nội', 'active', 380000, 1),
+(6, 'Sân Bóng Xuân Thủy', 'Số 92 Xuân Thủy, Cầu Giấy, Hà Nội', 'active', 420000, 1),
+(3, 'Sân Bóng Hoàng Quốc Việt', 'Số 145 Hoàng Quốc Việt, Cầu Giấy, Hà Nội', 'active', 310000, 1),
+(4, 'Sân Bóng Cầu Giấy', 'Số 56 Cầu Giấy, Cầu Giấy, Hà Nội', 'active', 360000, 1),
+(5, 'Sân Bóng Nguyễn Khang', 'Số 188 Nguyễn Khang, Cầu Giấy, Hà Nội', 'active', 330000, 2),
+(6, 'Sân Bóng Trần Thái Tông', 'Số 99 Trần Thái Tông, Cầu Giấy, Hà Nội', 'active', 340000, 3),
+(3, 'Sân Bóng Láng Hạ', 'Số 201 Láng Hạ, Đống Đa, Hà Nội', 'active', 320000, 4),
+(4, 'Sân Bóng Chùa Bộc', 'Số 167 Chùa Bộc, Đống Đa, Hà Nội', 'active', 300000, 5),
+(5, 'Sân Bóng Tôn Thất Thuyết', 'Số 88 Tôn Thất Thuyết, Cầu Giấy, Hà Nội', 'active', 370000, 1),
+(NULL, 'Sân Bóng Nguyễn Văn Huyên', 'Số 210 Nguyễn Văn Huyên, Cầu Giấy, Hà Nội', 'maintenance', 350000, 1);
 
 -- ============================================================
 -- Insert Field Images
@@ -83,65 +94,66 @@ INSERT INTO field_images (field_id, image_url, is_primary) VALUES
 (16, '/uploads/fields/field16_main.jpg', true);
 
 -- ============================================================
--- Insert Field Schedules (Next 7 days, 6 time slots per day)
+-- Insert Field Schedules (Next 7 days)
+-- MySQL uses DATE_ADD / CONCAT for datetime building
 -- ============================================================
 
--- Field 1 schedules for next 7 days
-INSERT INTO field_schedules (field_id, manager_id, date, start_time, end_time, status, price) VALUES
+-- Field 1 schedules
+INSERT INTO field_schedules (field_id, manager_id, start_time, end_time, is_available) VALUES
 -- Day 1
-(1, 3, CURRENT_DATE, '06:00:00', '09:00:00', 'available', 250000),
-(1, 3, CURRENT_DATE, '09:00:00', '12:00:00', 'available', 300000),
-(1, 3, CURRENT_DATE, '12:00:00', '14:00:00', 'available', 280000),
-(1, 3, CURRENT_DATE, '14:00:00', '17:00:00', 'available', 300000),
-(1, 3, CURRENT_DATE, '17:00:00', '19:00:00', 'available', 350000),
-(1, 3, CURRENT_DATE, '19:00:00', '22:00:00', 'available', 400000),
+(1, 3, CONCAT(CURDATE(), ' 06:00:00'), CONCAT(CURDATE(), ' 09:00:00'), true),
+(1, 3, CONCAT(CURDATE(), ' 09:00:00'), CONCAT(CURDATE(), ' 12:00:00'), true),
+(1, 3, CONCAT(CURDATE(), ' 12:00:00'), CONCAT(CURDATE(), ' 14:00:00'), true),
+(1, 3, CONCAT(CURDATE(), ' 14:00:00'), CONCAT(CURDATE(), ' 17:00:00'), true),
+(1, 3, CONCAT(CURDATE(), ' 17:00:00'), CONCAT(CURDATE(), ' 19:00:00'), true),
+(1, 3, CONCAT(CURDATE(), ' 19:00:00'), CONCAT(CURDATE(), ' 22:00:00'), true),
 -- Day 2
-(1, 3, CURRENT_DATE + 1, '06:00:00', '09:00:00', 'available', 250000),
-(1, 3, CURRENT_DATE + 1, '09:00:00', '12:00:00', 'available', 300000),
-(1, 3, CURRENT_DATE + 1, '12:00:00', '14:00:00', 'booked', 280000),
-(1, 3, CURRENT_DATE + 1, '14:00:00', '17:00:00', 'available', 300000),
-(1, 3, CURRENT_DATE + 1, '17:00:00', '19:00:00', 'available', 350000),
-(1, 3, CURRENT_DATE + 1, '19:00:00', '22:00:00', 'available', 400000);
+(1, 3, CONCAT(DATE_ADD(CURDATE(), INTERVAL 1 DAY), ' 06:00:00'), CONCAT(DATE_ADD(CURDATE(), INTERVAL 1 DAY), ' 09:00:00'), true),
+(1, 3, CONCAT(DATE_ADD(CURDATE(), INTERVAL 1 DAY), ' 09:00:00'), CONCAT(DATE_ADD(CURDATE(), INTERVAL 1 DAY), ' 12:00:00'), true),
+(1, 3, CONCAT(DATE_ADD(CURDATE(), INTERVAL 1 DAY), ' 12:00:00'), CONCAT(DATE_ADD(CURDATE(), INTERVAL 1 DAY), ' 14:00:00'), false),
+(1, 3, CONCAT(DATE_ADD(CURDATE(), INTERVAL 1 DAY), ' 14:00:00'), CONCAT(DATE_ADD(CURDATE(), INTERVAL 1 DAY), ' 17:00:00'), true),
+(1, 3, CONCAT(DATE_ADD(CURDATE(), INTERVAL 1 DAY), ' 17:00:00'), CONCAT(DATE_ADD(CURDATE(), INTERVAL 1 DAY), ' 19:00:00'), true),
+(1, 3, CONCAT(DATE_ADD(CURDATE(), INTERVAL 1 DAY), ' 19:00:00'), CONCAT(DATE_ADD(CURDATE(), INTERVAL 1 DAY), ' 22:00:00'), true);
 
 -- Field 2 schedules
-INSERT INTO field_schedules (field_id, manager_id, date, start_time, end_time, status, price) VALUES
-(2, 3, CURRENT_DATE, '06:00:00', '09:00:00', 'available', 280000),
-(2, 3, CURRENT_DATE, '09:00:00', '12:00:00', 'available', 350000),
-(2, 3, CURRENT_DATE, '14:00:00', '17:00:00', 'available', 350000),
-(2, 3, CURRENT_DATE, '17:00:00', '19:00:00', 'available', 380000),
-(2, 3, CURRENT_DATE, '19:00:00', '22:00:00', 'available', 450000);
+INSERT INTO field_schedules (field_id, manager_id, start_time, end_time, is_available) VALUES
+(2, 3, CONCAT(CURDATE(), ' 06:00:00'), CONCAT(CURDATE(), ' 09:00:00'), true),
+(2, 3, CONCAT(CURDATE(), ' 09:00:00'), CONCAT(CURDATE(), ' 12:00:00'), true),
+(2, 3, CONCAT(CURDATE(), ' 14:00:00'), CONCAT(CURDATE(), ' 17:00:00'), true),
+(2, 3, CONCAT(CURDATE(), ' 17:00:00'), CONCAT(CURDATE(), ' 19:00:00'), true),
+(2, 3, CONCAT(CURDATE(), ' 19:00:00'), CONCAT(CURDATE(), ' 22:00:00'), true);
 
 -- ============================================================
 -- Insert Bookings
 -- ============================================================
 
 INSERT INTO bookings (customer_id, field_id, manager_id, start_time, end_time, status, price, note) VALUES
-(7, 1, 3, CURRENT_TIMESTAMP - INTERVAL '2 days' + INTERVAL '17 hours', CURRENT_TIMESTAMP - INTERVAL '2 days' + INTERVAL '19 hours', 'completed', 350000, 'Đặt sân cho đội công ty'),
-(8, 1, 3, CURRENT_TIMESTAMP - INTERVAL '1 day' + INTERVAL '19 hours', CURRENT_TIMESTAMP - INTERVAL '1 day' + INTERVAL '22 hours', 'completed', 400000, 'Trận giao hữu cuối tuần'),
-(9, 2, 3, CURRENT_TIMESTAMP - INTERVAL '3 days' + INTERVAL '14 hours', CURRENT_TIMESTAMP - INTERVAL '3 days' + INTERVAL '17 hours', 'completed', 350000, 'Tập luyện thường xuyên'),
-(10, 3, 4, CURRENT_TIMESTAMP - INTERVAL '5 days' + INTERVAL '09 hours', CURRENT_TIMESTAMP - INTERVAL '5 days' + INTERVAL '12 hours', 'completed', 280000, 'Đặt sân cho nhóm bạn'),
-(11, 4, 4, CURRENT_TIMESTAMP + INTERVAL '1 day' + INTERVAL '17 hours', CURRENT_TIMESTAMP + INTERVAL '1 day' + INTERVAL '19 hours', 'confirmed', 320000, 'Đặt sân tối mai'),
-(12, 5, 5, CURRENT_TIMESTAMP + INTERVAL '2 days' + INTERVAL '19 hours', CURRENT_TIMESTAMP + INTERVAL '2 days' + INTERVAL '22 hours', 'pending', 400000, 'Trận đấu quan trọng'),
-(13, 6, 5, CURRENT_TIMESTAMP + INTERVAL '3 days' + INTERVAL '14 hours', CURRENT_TIMESTAMP + INTERVAL '3 days' + INTERVAL '17 hours', 'pending', 290000, NULL),
-(14, 7, 6, CURRENT_TIMESTAMP - INTERVAL '1 day' + INTERVAL '17 hours', CURRENT_TIMESTAMP - INTERVAL '1 day' + INTERVAL '19 hours', 'completed', 380000, 'Đội bóng trường'),
-(15, 8, 6, CURRENT_TIMESTAMP - INTERVAL '4 days' + INTERVAL '19 hours', CURRENT_TIMESTAMP - INTERVAL '4 days' + INTERVAL '22 hours', 'completed', 420000, 'Sinh nhật team'),
-(16, 9, 3, CURRENT_TIMESTAMP - INTERVAL '6 days' + INTERVAL '09 hours', CURRENT_TIMESTAMP - INTERVAL '6 days' + INTERVAL '12 hours', 'completed', 310000, NULL);
+(7, 1, 3, DATE_ADD(DATE_ADD(CURDATE(), INTERVAL -2 DAY), INTERVAL 17 HOUR), DATE_ADD(DATE_ADD(CURDATE(), INTERVAL -2 DAY), INTERVAL 19 HOUR), 'completed', 350000, 'Đặt sân cho đội công ty'),
+(8, 1, 3, DATE_ADD(DATE_ADD(CURDATE(), INTERVAL -1 DAY), INTERVAL 19 HOUR), DATE_ADD(DATE_ADD(CURDATE(), INTERVAL -1 DAY), INTERVAL 22 HOUR), 'completed', 400000, 'Trận giao hữu cuối tuần'),
+(9, 2, 3, DATE_ADD(DATE_ADD(CURDATE(), INTERVAL -3 DAY), INTERVAL 14 HOUR), DATE_ADD(DATE_ADD(CURDATE(), INTERVAL -3 DAY), INTERVAL 17 HOUR), 'completed', 350000, 'Tập luyện thường xuyên'),
+(10, 3, 4, DATE_ADD(DATE_ADD(CURDATE(), INTERVAL -5 DAY), INTERVAL 9 HOUR), DATE_ADD(DATE_ADD(CURDATE(), INTERVAL -5 DAY), INTERVAL 12 HOUR), 'completed', 280000, 'Đặt sân cho nhóm bạn'),
+(11, 4, 4, DATE_ADD(DATE_ADD(CURDATE(), INTERVAL 1 DAY), INTERVAL 17 HOUR), DATE_ADD(DATE_ADD(CURDATE(), INTERVAL 1 DAY), INTERVAL 19 HOUR), 'confirmed', 320000, 'Đặt sân tối mai'),
+(12, 5, 5, DATE_ADD(DATE_ADD(CURDATE(), INTERVAL 2 DAY), INTERVAL 19 HOUR), DATE_ADD(DATE_ADD(CURDATE(), INTERVAL 2 DAY), INTERVAL 22 HOUR), 'pending', 400000, 'Trận đấu quan trọng'),
+(13, 6, 5, DATE_ADD(DATE_ADD(CURDATE(), INTERVAL 3 DAY), INTERVAL 14 HOUR), DATE_ADD(DATE_ADD(CURDATE(), INTERVAL 3 DAY), INTERVAL 17 HOUR), 'pending', 290000, NULL),
+(14, 7, 6, DATE_ADD(DATE_ADD(CURDATE(), INTERVAL -1 DAY), INTERVAL 17 HOUR), DATE_ADD(DATE_ADD(CURDATE(), INTERVAL -1 DAY), INTERVAL 19 HOUR), 'completed', 380000, 'Đội bóng trường'),
+(15, 8, 6, DATE_ADD(DATE_ADD(CURDATE(), INTERVAL -4 DAY), INTERVAL 19 HOUR), DATE_ADD(DATE_ADD(CURDATE(), INTERVAL -4 DAY), INTERVAL 22 HOUR), 'completed', 420000, 'Sinh nhật team'),
+(16, 9, 3, DATE_ADD(DATE_ADD(CURDATE(), INTERVAL -6 DAY), INTERVAL 9 HOUR), DATE_ADD(DATE_ADD(CURDATE(), INTERVAL -6 DAY), INTERVAL 12 HOUR), 'completed', 310000, NULL);
 
 -- ============================================================
 -- Insert Payments
 -- ============================================================
 
 INSERT INTO payments (booking_id, customer_id, field_id, amount, payment_method, payment_status, transaction_id, paid_at) VALUES
-(1, 7, 1, 350000, 'cash', 'completed', NULL, CURRENT_TIMESTAMP - INTERVAL '2 days'),
-(2, 8, 1, 400000, 'momo', 'completed', 'MOMO123456789', CURRENT_TIMESTAMP - INTERVAL '1 day'),
-(3, 9, 2, 350000, 'bank_transfer', 'completed', 'BANK987654321', CURRENT_TIMESTAMP - INTERVAL '3 days'),
-(4, 10, 3, 280000, 'cash', 'completed', NULL, CURRENT_TIMESTAMP - INTERVAL '5 days'),
-(5, 11, 4, 320000, 'momo', 'completed', 'MOMO111222333', CURRENT_TIMESTAMP + INTERVAL '1 day'),
+(1, 7, 1, 350000, 'cash', 'completed', NULL, DATE_ADD(NOW(), INTERVAL -2 DAY)),
+(2, 8, 1, 400000, 'momo', 'completed', 'MOMO123456789', DATE_ADD(NOW(), INTERVAL -1 DAY)),
+(3, 9, 2, 350000, 'bank_transfer', 'completed', 'BANK987654321', DATE_ADD(NOW(), INTERVAL -3 DAY)),
+(4, 10, 3, 280000, 'cash', 'completed', NULL, DATE_ADD(NOW(), INTERVAL -5 DAY)),
+(5, 11, 4, 320000, 'momo', 'completed', 'MOMO111222333', DATE_ADD(NOW(), INTERVAL 1 DAY)),
 (6, 12, 5, 400000, 'momo', 'pending', NULL, NULL),
 (7, 13, 6, 290000, 'cash', 'pending', NULL, NULL),
-(8, 14, 7, 380000, 'bank_transfer', 'completed', 'BANK444555666', CURRENT_TIMESTAMP - INTERVAL '1 day'),
-(9, 15, 8, 420000, 'momo', 'completed', 'MOMO777888999', CURRENT_TIMESTAMP - INTERVAL '4 days'),
-(10, 16, 9, 310000, 'cash', 'completed', NULL, CURRENT_TIMESTAMP - INTERVAL '6 days');
+(8, 14, 7, 380000, 'bank_transfer', 'completed', 'BANK444555666', DATE_ADD(NOW(), INTERVAL -1 DAY)),
+(9, 15, 8, 420000, 'momo', 'completed', 'MOMO777888999', DATE_ADD(NOW(), INTERVAL -4 DAY)),
+(10, 16, 9, 310000, 'cash', 'completed', NULL, DATE_ADD(NOW(), INTERVAL -6 DAY));
 
 -- ============================================================
 -- Insert Reviews
@@ -215,7 +227,7 @@ INSERT INTO messages (chat_id, sender_id, message_text, is_read) VALUES
 -- Chat 5 (User 11 với Manager 5)
 (5, 11, 'Sân có cho thuê bóng và áo không anh?', 0),
 
--- Chat 6 (User 12 với Manager 6)  
+-- Chat 6 (User 12 với Manager 6)
 (6, 12, 'Anh cho em hỏi giá thuê sân theo tháng?', 0);
 
 -- ============================================================
@@ -224,50 +236,50 @@ INSERT INTO messages (chat_id, sender_id, message_text, is_read) VALUES
 
 -- Daily revenue
 INSERT INTO revenue_daily (date, field_id, total_bookings, total_revenue) VALUES
-(CURRENT_DATE - 6, 1, 2, 750000),
-(CURRENT_DATE - 6, 2, 1, 350000),
-(CURRENT_DATE - 5, 3, 1, 280000),
-(CURRENT_DATE - 4, 7, 1, 380000),
-(CURRENT_DATE - 4, 8, 1, 420000),
-(CURRENT_DATE - 3, 2, 1, 350000),
-(CURRENT_DATE - 2, 1, 1, 350000),
-(CURRENT_DATE - 1, 1, 1, 400000),
-(CURRENT_DATE - 1, 7, 1, 380000);
+(DATE_ADD(CURDATE(), INTERVAL -6 DAY), 1, 2, 750000),
+(DATE_ADD(CURDATE(), INTERVAL -6 DAY), 2, 1, 350000),
+(DATE_ADD(CURDATE(), INTERVAL -5 DAY), 3, 1, 280000),
+(DATE_ADD(CURDATE(), INTERVAL -4 DAY), 7, 1, 380000),
+(DATE_ADD(CURDATE(), INTERVAL -4 DAY), 8, 1, 420000),
+(DATE_ADD(CURDATE(), INTERVAL -3 DAY), 2, 1, 350000),
+(DATE_ADD(CURDATE(), INTERVAL -2 DAY), 1, 1, 350000),
+(DATE_ADD(CURDATE(), INTERVAL -1 DAY), 1, 1, 400000),
+(DATE_ADD(CURDATE(), INTERVAL -1 DAY), 7, 1, 380000);
 
 -- Weekly revenue (last 4 weeks)
 INSERT INTO revenue_weekly (year, week, field_id, total_bookings, total_revenue) VALUES
-(EXTRACT(YEAR FROM CURRENT_DATE), EXTRACT(WEEK FROM CURRENT_DATE) - 3, 1, 5, 1500000),
-(EXTRACT(YEAR FROM CURRENT_DATE), EXTRACT(WEEK FROM CURRENT_DATE) - 3, 2, 3, 1050000),
-(EXTRACT(YEAR FROM CURRENT_DATE), EXTRACT(WEEK FROM CURRENT_DATE) - 2, 1, 4, 1400000),
-(EXTRACT(YEAR FROM CURRENT_DATE), EXTRACT(WEEK FROM CURRENT_DATE) - 2, 3, 2, 560000),
-(EXTRACT(YEAR FROM CURRENT_DATE), EXTRACT(WEEK FROM CURRENT_DATE) - 1, 7, 3, 1140000),
-(EXTRACT(YEAR FROM CURRENT_DATE), EXTRACT(WEEK FROM CURRENT_DATE) - 1, 8, 2, 840000),
-(EXTRACT(YEAR FROM CURRENT_DATE), EXTRACT(WEEK FROM CURRENT_DATE), 1, 2, 750000);
+(YEAR(CURDATE()), WEEK(CURDATE()) - 3, 1, 5, 1500000),
+(YEAR(CURDATE()), WEEK(CURDATE()) - 3, 2, 3, 1050000),
+(YEAR(CURDATE()), WEEK(CURDATE()) - 2, 1, 4, 1400000),
+(YEAR(CURDATE()), WEEK(CURDATE()) - 2, 3, 2, 560000),
+(YEAR(CURDATE()), WEEK(CURDATE()) - 1, 7, 3, 1140000),
+(YEAR(CURDATE()), WEEK(CURDATE()) - 1, 8, 2, 840000),
+(YEAR(CURDATE()), WEEK(CURDATE()), 1, 2, 750000);
 
 -- Monthly revenue (last 3 months)
 INSERT INTO revenue_monthly (year, month, field_id, total_bookings, total_revenue) VALUES
-(EXTRACT(YEAR FROM CURRENT_DATE - INTERVAL '2 months'), EXTRACT(MONTH FROM CURRENT_DATE - INTERVAL '2 months'), 1, 18, 6300000),
-(EXTRACT(YEAR FROM CURRENT_DATE - INTERVAL '2 months'), EXTRACT(MONTH FROM CURRENT_DATE - INTERVAL '2 months'), 2, 12, 4200000),
-(EXTRACT(YEAR FROM CURRENT_DATE - INTERVAL '1 month'), EXTRACT(MONTH FROM CURRENT_DATE - INTERVAL '1 month'), 1, 20, 7000000),
-(EXTRACT(YEAR FROM CURRENT_DATE - INTERVAL '1 month'), EXTRACT(MONTH FROM CURRENT_DATE - INTERVAL '1 month'), 3, 10, 2800000),
-(EXTRACT(YEAR FROM CURRENT_DATE - INTERVAL '1 month'), EXTRACT(MONTH FROM CURRENT_DATE - INTERVAL '1 month'), 7, 15, 5700000),
-(EXTRACT(YEAR FROM CURRENT_DATE), EXTRACT(MONTH FROM CURRENT_DATE), 1, 8, 2800000),
-(EXTRACT(YEAR FROM CURRENT_DATE), EXTRACT(MONTH FROM CURRENT_DATE), 2, 5, 1750000),
-(EXTRACT(YEAR FROM CURRENT_DATE), EXTRACT(MONTH FROM CURRENT_DATE), 8, 3, 1260000);
+(YEAR(DATE_ADD(CURDATE(), INTERVAL -2 MONTH)), MONTH(DATE_ADD(CURDATE(), INTERVAL -2 MONTH)), 1, 18, 6300000),
+(YEAR(DATE_ADD(CURDATE(), INTERVAL -2 MONTH)), MONTH(DATE_ADD(CURDATE(), INTERVAL -2 MONTH)), 2, 12, 4200000),
+(YEAR(DATE_ADD(CURDATE(), INTERVAL -1 MONTH)), MONTH(DATE_ADD(CURDATE(), INTERVAL -1 MONTH)), 1, 20, 7000000),
+(YEAR(DATE_ADD(CURDATE(), INTERVAL -1 MONTH)), MONTH(DATE_ADD(CURDATE(), INTERVAL -1 MONTH)), 3, 10, 2800000),
+(YEAR(DATE_ADD(CURDATE(), INTERVAL -1 MONTH)), MONTH(DATE_ADD(CURDATE(), INTERVAL -1 MONTH)), 7, 15, 5700000),
+(YEAR(CURDATE()), MONTH(CURDATE()), 1, 8, 2800000),
+(YEAR(CURDATE()), MONTH(CURDATE()), 2, 5, 1750000),
+(YEAR(CURDATE()), MONTH(CURDATE()), 8, 3, 1260000);
 
 -- ============================================================
 -- END OF SAMPLE DATA
 -- ============================================================
--- 
+--
 -- Instructions:
 -- 1. Run database_schema.sql first to create all tables
 -- 2. Then run this file to insert sample data
 -- 3. Update passwords with actual bcrypt hashes before production use
--- 4. 6 sport fields in Hanoi (Cầu Giấy area) - 15 active, 1 maintenancetory
 --
 -- Note: This creates a complete test environment with:
 -- - 2 admins, 4 managers, 10 regular users
--- - 12 sport fields (11 active, 1 maintenance)
+-- - 5 sport types
+-- - 16 sport fields (15 active, 1 maintenance)
 -- - Field schedules, bookings, payments
 -- - Reviews, feedbacks, chats, and messages
 -- - Revenue statistics for analytics

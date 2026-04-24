@@ -120,27 +120,27 @@ export const updateBookingStatusService = async (
       throw new Error("Booking not found or unauthorized");
     }
 
-    let query = `
-      UPDATE bookings
-      SET status = ?
-      FROM fields f
-      WHERE bookings.field_id = f.field_id
-    `;
-    let replacements = [status];
+    let query;
+    let replacements;
 
     if (note) {
       query = `
-        UPDATE bookings
-        SET status = ?,
-            note = COALESCE(note, '') || ?
-        FROM fields f
-        WHERE bookings.field_id = f.field_id
+        UPDATE bookings b
+        INNER JOIN fields f ON b.field_id = f.field_id
+        SET b.status = ?,
+            b.note = CONCAT(COALESCE(b.note, ''), ?)
+        WHERE b.booking_id = ? AND f.manager_id = ?
       `;
-      replacements = [status, ` | ${note}`];
+      replacements = [status, ` | ${note}`, bookingId, managerId];
+    } else {
+      query = `
+        UPDATE bookings b
+        INNER JOIN fields f ON b.field_id = f.field_id
+        SET b.status = ?
+        WHERE b.booking_id = ? AND f.manager_id = ?
+      `;
+      replacements = [status, bookingId, managerId];
     }
-
-    query += ` AND bookings.booking_id = ? AND f.manager_id = ?`;
-    replacements.push(bookingId, managerId);
 
     await sequelize.query(query, { replacements });
 

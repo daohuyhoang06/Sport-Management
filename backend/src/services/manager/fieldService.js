@@ -7,15 +7,19 @@ export const getManagerFieldsService = async (managerId) => {
   try {
     const [fields] = await sequelize.query(
       `
-      SELECT 
-        field_id,
-        field_name,
-        location,
-        status,
-        manager_id
-      FROM fields
-      WHERE manager_id = ?
-      ORDER BY field_id DESC
+      SELECT
+        f.field_id,
+        f.field_name,
+        f.location,
+        f.status,
+        f.manager_id,
+        f.rental_price,
+        f.sport_id,
+        st.sport_name
+      FROM fields f
+      LEFT JOIN sport_types st ON f.sport_id = st.sport_id
+      WHERE f.manager_id = ?
+      ORDER BY f.field_id DESC
     `,
       { replacements: [managerId] },
     );
@@ -32,18 +36,29 @@ export const getManagerFieldsService = async (managerId) => {
  */
 export const createFieldService = async (managerId, fieldData) => {
   try {
-    const { field_name, location, rental_price } = fieldData;
+    const { field_name, location, rental_price, sport_id } = fieldData;
 
-    const [result] = await sequelize.query(
+    await sequelize.query(
       `
-      INSERT INTO fields (field_name, location, rental_price, status, manager_id)
-      VALUES (?, ?, ?, 'active', ?)
-      RETURNING *
+      INSERT INTO fields (field_name, location, rental_price, status, manager_id, sport_id)
+      VALUES (?, ?, ?, 'active', ?, ?)
     `,
-      { replacements: [field_name, location, rental_price || null, managerId] },
+      {
+        replacements: [
+          field_name,
+          location,
+          rental_price || null,
+          managerId,
+          sport_id || null,
+        ],
+      },
     );
 
-    return result[0];
+    const [[result]] = await sequelize.query(
+      `SELECT * FROM fields WHERE field_id = LAST_INSERT_ID()`,
+    );
+
+    return result;
   } catch (error) {
     console.error("Error in createFieldService:", error);
     throw error;
@@ -58,15 +73,33 @@ export const updateFieldService = async (managerId, field_id, fieldData) => {
     const field = await getManagerFieldByIdService(managerId, field_id);
     if (!field) throw new Error("Field not found or unauthorized");
 
-    const { field_name, location } = fieldData;
+    const { field_name, location, sport_id } = fieldData;
 
-    await sequelize.query(
-      `
-      UPDATE fields SET field_name = ?, location = ?
-      WHERE field_id = ? AND manager_id = ?
-    `,
-      { replacements: [field_name, location, field_id, managerId] },
-    );
+    const updates = [];
+    const params = [];
+    if (field_name !== undefined) {
+      updates.push("field_name = ?");
+      params.push(field_name);
+    }
+    if (location !== undefined) {
+      updates.push("location = ?");
+      params.push(location);
+    }
+    if (sport_id !== undefined) {
+      updates.push("sport_id = ?");
+      params.push(sport_id);
+    }
+
+    if (updates.length > 0) {
+      params.push(fieldId, managerId);
+      await sequelize.query(
+        `
+        UPDATE fields SET ${updates.join(", ")}
+        WHERE field_id = ? AND manager_id = ?
+      `,
+        { replacements: params },
+      );
+    }
 
     return { success: true };
   } catch (error) {
@@ -115,16 +148,20 @@ export const getManagerFieldByIdService = async (managerId, field_id) => {
   try {
     const [fields] = await sequelize.query(
       `
-      SELECT 
-        field_id,
-        field_name,
-        location,
-        status,
-        manager_id
-      FROM fields
-      WHERE field_id = ? AND manager_id = ?
+      SELECT
+        f.field_id,
+        f.field_name,
+        f.location,
+        f.status,
+        f.manager_id,
+        f.rental_price,
+        f.sport_id,
+        st.sport_name
+      FROM fields f
+      LEFT JOIN sport_types st ON f.sport_id = st.sport_id
+      WHERE f.field_id = ? AND f.manager_id = ?
     `,
-      { replacements: [field_id, managerId] },
+      { replacements: [fieldId, managerId] },
     );
 
     return fields[0] || null;

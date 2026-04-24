@@ -212,14 +212,15 @@ export const createBooking = async (req, res) => {
       });
     }
 
-    const [rows] = await sequelize.query(
-      `INSERT INTO bookings (customer_id, field_id, start_time, end_time, price, note, status) 
-       VALUES (?, ?, ?, ?, ?, ?, 'pending') 
-       RETURNING *`,
+    await sequelize.query(
+      `INSERT INTO bookings (customer_id, field_id, start_time, end_time, price, note, status)
+       VALUES (?, ?, ?, ?, ?, ?, 'pending')`,
       { replacements: [customer_id, field_id, mysqlStartTime, mysqlEndTime, finalPrice, finalNote] }
     );
 
-    const booking = rows?.[0] ?? null;
+    const [[booking]] = await sequelize.query(
+      `SELECT * FROM bookings WHERE booking_id = LAST_INSERT_ID()`
+    );
 
     res.status(201).json({ message: 'Booking created', booking });
   } catch (err) {
@@ -335,7 +336,7 @@ export const updateBooking = async (req, res) => {
     const replacements = [];
 
     if (payment_method) {
-      updates.push("note = COALESCE(note, '') || ' | Payment: ' || ?");
+      updates.push("note = CONCAT(COALESCE(note, ''), ' | Payment: ', ?)");
       replacements.push(payment_method);
     }
     
@@ -420,7 +421,7 @@ export const rejectBooking = async (req, res) => {
     const noteUpdate = reason ? ` | Lý do từ chối: ${reason}` : '';
 
     await sequelize.query(
-      `UPDATE bookings SET status = 'rejected', note = COALESCE(note, '') || ? WHERE booking_id = ?`,
+      `UPDATE bookings SET status = 'rejected', note = CONCAT(COALESCE(note, ''), ?) WHERE booking_id = ?`,
       { replacements: [noteUpdate, id] }
     );
 

@@ -1,15 +1,23 @@
 import sequelize from "../config/database.js";
 
 export const getAllFieldsService = async () => {
-  const [rows] = await sequelize.query("SELECT * FROM fields");
+  const [rows] = await sequelize.query(
+    `SELECT f.*, st.sport_name
+     FROM fields f
+     LEFT JOIN sport_types st ON f.sport_id = st.sport_id`
+  );
   return rows;
 };
 
 export const getFieldByIdService = async (id) => {
   try {
-    const [rows] = await sequelize.query("SELECT * FROM fields WHERE field_id = ?", {
-      replacements: [id]
-    });
+    const [rows] = await sequelize.query(
+      `SELECT f.*, st.sport_name
+       FROM fields f
+       LEFT JOIN sport_types st ON f.sport_id = st.sport_id
+       WHERE f.field_id = ?`,
+      { replacements: [id] }
+    );
 
     return rows[0] || null;
   } catch (err) {
