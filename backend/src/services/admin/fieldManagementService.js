@@ -9,16 +9,59 @@ const getFieldSchema = async () => {
   };
 };
 
+const getDefaultSportType = async () => {
+  const [[preferred]] = await sequelize.query(
+    `SELECT sport_id, sport_name
+     FROM sport_types
+     WHERE sport_name IN ('Bóng đá', 'Bong da', 'Football', 'Soccer')
+     ORDER BY FIELD(sport_name, 'Bóng đá', 'Football', 'Soccer', 'Bong da')
+     LIMIT 1`,
+  );
+
+  if (preferred) {
+    return preferred;
+  }
+
+  const [[firstSportType]] = await sequelize.query(
+    `SELECT sport_id, sport_name
+     FROM sport_types
+     ORDER BY sport_id ASC
+     LIMIT 1`,
+  );
+
+  return firstSportType || null;
+};
+
+const ensureSportTypeExists = async (sportId) => {
+  if (sportId === undefined || sportId === null || sportId === "") {
+    throw new Error("Sport type is required");
+  }
+
+  const [[sportType]] = await sequelize.query(
+    `SELECT sport_id, sport_name
+     FROM sport_types
+     WHERE sport_id = ?`,
+    { replacements: [sportId] },
+  );
+
+  if (!sportType) {
+    throw new Error("Sport type not found");
+  }
+
+  return sportType;
+};
+
 /**
  * Get all fields with filters and pagination
  */
 export const getAllFieldsService = async (filters = {}, pagination = {}) => {
-  const { hasRentalPrice } = await getFieldSchema();
+  const defaultSportType = await getDefaultSportType();
   const {
     page = 1,
     limit = 10,
     search = "",
     status = "",
+    sport_id = "",
   } = { ...filters, ...pagination };
   const offset = (parseInt(page) - 1) * parseInt(limit);
 
@@ -37,6 +80,11 @@ export const getAllFieldsService = async (filters = {}, pagination = {}) => {
     }
   }
 
+  if (sport_id) {
+    whereConditions.push("f.sport_id = ?");
+    queryParams.push(Number(sport_id));
+  }
+
   const whereClause =
     whereConditions.length > 0 ? "WHERE " + whereConditions.join(" AND ") : "";
 
@@ -46,14 +94,10 @@ export const getAllFieldsService = async (filters = {}, pagination = {}) => {
     { replacements: queryParams },
   );
 
-  // Get fields
-  const priceSelect = hasRentalPrice
-    ? "f.rental_price"
-    : "NULL as rental_price";
-
   const [rows] = await sequelize.query(
     `SELECT f.field_id, f.manager_id, f.field_name, f.location, f.status, f.rental_price,
-            f.sport_id, st.sport_name,
+            COALESCE(f.sport_id, ?) AS sport_id,
+            COALESCE(st.sport_name, ?, 'Bóng đá') AS sport_name,
             p.person_name as manager_name, p.email as manager_email
      FROM fields f
 
@@ -62,7 +106,15 @@ export const getAllFieldsService = async (filters = {}, pagination = {}) => {
      ${whereClause}
      ORDER BY f.field_id ASC
      LIMIT ? OFFSET ?`,
-    { replacements: [...queryParams, parseInt(limit), offset] },
+    {
+      replacements: [
+        defaultSportType?.sport_id || null,
+        defaultSportType?.sport_name || null,
+        ...queryParams,
+        parseInt(limit),
+        offset,
+      ],
+    },
   );
 
   return {
@@ -77,20 +129,24 @@ export const getAllFieldsService = async (filters = {}, pagination = {}) => {
  * Get field by ID with full details
  */
 export const getFieldByIdService = async (id) => {
-  const { hasRentalPrice } = await getFieldSchema();
-  const priceSelect = hasRentalPrice
-    ? "f.rental_price"
-    : "NULL as rental_price";
+  const defaultSportType = await getDefaultSportType();
 
   const [[field]] = await sequelize.query(
     `SELECT f.field_id, f.manager_id, f.field_name, f.location, f.status, f.rental_price,
-            f.sport_id, st.sport_name,
+            COALESCE(f.sport_id, ?) AS sport_id,
+            COALESCE(st.sport_name, ?, 'Bóng đá') AS sport_name,
             p.person_name as manager_name, p.email as manager_email, p.phone as manager_phone
      FROM fields f
      LEFT JOIN person p ON f.manager_id = p.person_id
      LEFT JOIN sport_types st ON f.sport_id = st.sport_id
      WHERE f.field_id = ?`,
-    { replacements: [id] },
+    {
+      replacements: [
+        defaultSportType?.sport_id || null,
+        defaultSportType?.sport_name || null,
+        id,
+      ],
+    },
   );
 
   if (!field) return null;
@@ -126,6 +182,16 @@ export const createFieldService = async (fieldData) => {
     sport_id,
   } = fieldData;
 
+  if (!field_name || !String(field_name).trim()) {
+    throw new Error("Field name is required");
+  }
+
+  if (!location || !String(location).trim()) {
+    throw new Error("Location is required");
+  }
+
+  const sportType = await ensureSportTypeExists(sport_id);
+
   await sequelize.query(
     `INSERT INTO fields (field_name, location, manager_id, rental_price, status, sport_id)
      VALUES (?, ?, ?, ?, ?, ?)`,
@@ -136,7 +202,7 @@ export const createFieldService = async (fieldData) => {
         manager_id || null,
         rental_price || null,
         status,
-        sport_id || null,
+        sportType.sport_id,
       ],
     },
   );
@@ -174,6 +240,12 @@ export const updateFieldService = async (id, fieldData) => {
       ? fieldData.rental_price
       : field.rental_price;
 
+  if (fieldData.sport_id === undefined || fieldData.sport_id === null || fieldData.sport_id === "") {
+    throw new Error("Sport type is required");
+  }
+
+  const sportType = await ensureSportTypeExists(fieldData.sport_id);
+
   if (
     nextStatus === "active" &&
     (!nextRentalPrice || Number(nextRentalPrice) <= 0)
@@ -202,7 +274,7 @@ export const updateFieldService = async (id, fieldData) => {
   }
   if (fieldData.sport_id !== undefined) {
     updates.push("sport_id = ?");
-    params.push(fieldData.sport_id);
+    params.push(sportType.sport_id);
   }
 
   if (updates.length > 0) {

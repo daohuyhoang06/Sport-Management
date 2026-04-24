@@ -15,9 +15,9 @@ import {
  */
 export const getAllFields = async (req, res) => {
   try {
-    const { page, limit, search, status } = req.query;
+    const { page, limit, search, status, sport_id } = req.query;
     const result = await getAllFieldsService(
-      { search, status },
+      { search, status, sport_id },
       { page, limit }
     );
 

@@ -8,6 +8,8 @@ function normalizeFields(rawFields = []) {
     name: item.field_name || "-",
     location: item.location || "-",
     managerName: item.manager_name || "Unassigned",
+    sportId: item.sport_id ?? null,
+    sportName: item.sport_name || "Bóng đá",
     pricePerHour:
       item.rental_price === null || item.rental_price === undefined
         ? null

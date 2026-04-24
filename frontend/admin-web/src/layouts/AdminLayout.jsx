@@ -3,7 +3,8 @@ import { NavLink, Outlet } from "react-router-dom";
 const navItems = [
   { to: "/admin/dashboard", label: "Dashboard", icon: "📊" },
   { to: "/admin/users", label: "Quản lý người dùng", icon: "👥" },
-  { to: "/admin/fields", label: "Quản lý sân bóng", icon: "🏟️" },
+  { to: "/admin/fields", label: "Quản lý sân", icon: "🏟️" },
+  { to: "/admin/sport-types", label: "Quản lý loại sân", icon: "🧩" },
   { to: "/admin/bookings", label: "Quản lý đặt sân", icon: "📋" },
   { to: "/admin/employees", label: "Quản lý nhân viên", icon: "👔" },
 ];
@@ -41,7 +42,7 @@ export default function AdminLayout() {
 
         <div className="sidebar-footer">
           <strong>Điều hướng nhanh</strong>
-          <div>Dashboard, người dùng, sân bóng, đặt sân, nhân viên</div>
+          <div>Dashboard, người dùng, sân, loại sân, đặt sân, nhân viên</div>
         </div>
       </aside>
 

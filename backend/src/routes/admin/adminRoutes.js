@@ -46,6 +46,12 @@ import {
   assignFieldToEmployee,
   getEmployeeStats,
 } from "../../controllers/admin/employeeManagementController.js";
+import {
+  getAllSportTypes,
+  createSportType,
+  updateSportType,
+  deleteSportType,
+} from "../../controllers/admin/sportTypeManagementController.js";
 
 const router = Router();
 
@@ -78,6 +84,12 @@ router.delete("/fields/:id", deleteField);
 router.patch("/fields/:id/status", toggleFieldStatus);
 router.post("/fields/:id/images", uploadFieldImages);
 router.delete("/fields/images/:imageId", deleteFieldImage);
+
+// ========== SPORT TYPE MANAGEMENT ==========
+router.get("/sport-types", getAllSportTypes);
+router.post("/sport-types", createSportType);
+router.put("/sport-types/:id", updateSportType);
+router.delete("/sport-types/:id", deleteSportType);
 
 // ========== BOOKING MANAGEMENT ==========
 router.get("/bookings", getAllBookings);
