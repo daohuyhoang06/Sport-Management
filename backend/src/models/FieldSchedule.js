@@ -16,31 +16,18 @@ const FieldSchedule = sequelize.define('FieldSchedule', {
     type: DataTypes.INTEGER,
     allowNull: true
   },
-  date: {
-    type: DataTypes.DATEONLY,
-    allowNull: false
-  },
   start_time: {
-    type: DataTypes.TIME,
+    type: DataTypes.DATE,
     allowNull: false
   },
   end_time: {
-    type: DataTypes.TIME,
+    type: DataTypes.DATE,
     allowNull: false
   },
-  status: {
-    type: DataTypes.STRING(45),
-    allowNull: true,
-    defaultValue: 'available'
-  },
-  price: {
-    type: DataTypes.DECIMAL(10, 2),
-    allowNull: true
-  },
-  created_at: {
-    type: DataTypes.DATE,
-    allowNull: true,
-    defaultValue: DataTypes.NOW
+  is_available: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: true
   }
 }, {
   tableName: 'field_schedules',
