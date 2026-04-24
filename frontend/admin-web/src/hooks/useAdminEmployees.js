@@ -2,17 +2,19 @@ import { useCallback, useEffect, useState } from "react";
 import { adminFetch } from "../services/adminApi";
 
 function normalizeEmployees(rawEmployees = []) {
-  return rawEmployees.map((item) => ({
-    id: item.person_id ?? item.id,
-    name: item.name || item.person_name || "-",
-    email: item.email || "-",
-    phone: item.phone || "-",
-    role: item.role || "manager",
-    status: item.status || "inactive",
-    assignedField:
-      item.field_names ||
-      (item.field_count ? `${item.field_count} field(s)` : "Unassigned"),
-  }));
+  return rawEmployees
+    .map((item) => ({
+      id: item.person_id ?? item.id,
+      name: item.name || item.person_name || "-",
+      email: item.email || "-",
+      phone: item.phone || "-",
+      role: item.role || "manager",
+      status: item.status || "inactive",
+      assignedField:
+        item.field_names ||
+        (item.field_count ? `${item.field_count} field(s)` : "Unassigned"),
+    }))
+    .sort((left, right) => Number(left.id) - Number(right.id));
 }
 
 export default function useAdminEmployees() {

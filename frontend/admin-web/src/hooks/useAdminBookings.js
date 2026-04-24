@@ -28,14 +28,16 @@ function formatTime(value) {
 }
 
 function normalizeBookings(rawBookings = []) {
-  return rawBookings.map((item) => ({
-    id: item.booking_id,
-    customer: item.customer_name || "-",
-    field: item.field_name || "-",
-    slot: `${formatTime(item.start_time)} - ${formatTime(item.end_time)}`,
-    date: formatDate(item.start_time),
-    status: item.status || "pending",
-  }));
+  return rawBookings
+    .map((item) => ({
+      id: item.booking_id,
+      customer: item.customer_name || "-",
+      field: item.field_name || "-",
+      slot: `${formatTime(item.start_time)} - ${formatTime(item.end_time)}`,
+      date: formatDate(item.start_time),
+      status: item.status || "pending",
+    }))
+    .sort((left, right) => Number(left.id) - Number(right.id));
 }
 
 export default function useAdminBookings() {

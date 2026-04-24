@@ -8,7 +8,10 @@ function normalizeFields(rawFields = []) {
     name: item.field_name || "-",
     location: item.location || "-",
     managerName: item.manager_name || "Unassigned",
-    pricePerHour: Number(item.rental_price || 0),
+    pricePerHour:
+      item.rental_price === null || item.rental_price === undefined
+        ? null
+        : Number(item.rental_price),
     status: item.status || "inactive",
   }));
 }

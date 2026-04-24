@@ -112,13 +112,24 @@ export const getFieldByIdService = async (id) => {
  * Create new field
  */
 export const createFieldService = async (fieldData) => {
-  const {
-    field_name,
-    location,
-    manager_id,
-    rental_price,
-    status = "active",
-  } = fieldData;
+  const normalizedFieldName = String(
+    fieldData.field_name ?? fieldData.name ?? "",
+  ).trim();
+  const normalizedLocation = String(fieldData.location ?? "").trim();
+
+  const { manager_id, rental_price, status = "active" } = fieldData;
+
+  if (!normalizedFieldName || !normalizedLocation) {
+    throw new Error("Field name and location are required");
+  }
+
+  if (!["active", "inactive", "maintenance"].includes(status)) {
+    throw new Error("Invalid field status");
+  }
+
+  if (status === "active" && (!rental_price || Number(rental_price) <= 0)) {
+    throw new Error("Rental price is required when field status is active");
+  }
 
   const createWithRentalPrice = async () => {
     const [result] = await sequelize.query(
@@ -127,10 +138,10 @@ export const createFieldService = async (fieldData) => {
       `,
       {
         replacements: [
-          field_name,
-          location,
+          normalizedFieldName,
+          normalizedLocation,
           manager_id || null,
-          rental_price || null,
+          rental_price && Number(rental_price) > 0 ? rental_price : null,
           status,
         ],
       },
@@ -145,7 +156,12 @@ export const createFieldService = async (fieldData) => {
        VALUES (?, ?, ?, ?)
       `,
       {
-        replacements: [field_name, location, manager_id || null, status],
+        replacements: [
+          normalizedFieldName,
+          normalizedLocation,
+          manager_id || null,
+          status,
+        ],
       },
     );
 
@@ -200,7 +216,9 @@ export const createFieldService = async (fieldData) => {
 export const updateFieldService = async (id, fieldData) => {
   const { hasRentalPrice } = await getFieldSchema();
   const [[field]] = await sequelize.query(
-    "SELECT field_id, status FROM fields WHERE field_id = ?",
+    hasRentalPrice
+      ? "SELECT field_id, status, rental_price FROM fields WHERE field_id = ?"
+      : "SELECT field_id, status FROM fields WHERE field_id = ?",
     { replacements: [id] },
   );
 
@@ -210,6 +228,19 @@ export const updateFieldService = async (id, fieldData) => {
 
   if (field.status === "deleted") {
     throw new Error("Field already deleted");
+  }
+
+  const nextStatus = fieldData.status || field.status;
+  const nextRentalPrice =
+    fieldData.rental_price !== undefined
+      ? fieldData.rental_price
+      : field.rental_price;
+
+  if (
+    nextStatus === "active" &&
+    (!nextRentalPrice || Number(nextRentalPrice) <= 0)
+  ) {
+    throw new Error("Rental price is required when field status is active");
   }
 
   const updates = [];
@@ -233,7 +264,11 @@ export const updateFieldService = async (id, fieldData) => {
   }
   if (hasRentalPrice && fieldData.rental_price !== undefined) {
     updates.push("rental_price = ?");
-    params.push(fieldData.rental_price);
+    params.push(
+      fieldData.rental_price && Number(fieldData.rental_price) > 0
+        ? fieldData.rental_price
+        : null,
+    );
   }
 
   if (updates.length > 0) {

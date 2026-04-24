@@ -561,7 +561,7 @@ export default function UsersPage() {
       <section className="fields-stats-grid users-stats-grid">
         <article
           className="admin-stat-card"
-          style={{ ["--accent-color"]: "#6b7cff" }}
+          style={{ ["--accent-color"]: "#1a8f5a" }}
         >
           <div className="admin-stat-copy">
             <p>Tổng người dùng</p>
@@ -572,7 +572,7 @@ export default function UsersPage() {
         </article>
         <article
           className="admin-stat-card"
-          style={{ ["--accent-color"]: "#18c48f" }}
+          style={{ ["--accent-color"]: "#0f766e" }}
         >
           <div className="admin-stat-copy">
             <p>Đang hoạt động</p>
@@ -583,7 +583,7 @@ export default function UsersPage() {
         </article>
         <article
           className="admin-stat-card"
-          style={{ ["--accent-color"]: "#ff5a4f" }}
+          style={{ ["--accent-color"]: "#ff8c42" }}
         >
           <div className="admin-stat-copy">
             <p>Không hoạt động</p>

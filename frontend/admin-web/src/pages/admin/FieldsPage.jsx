@@ -17,6 +17,8 @@ const statusOptions = [
   { value: "maintenance", label: "Bảo trì" },
 ];
 
+const isRentalPriceRequired = (status) => status === "active";
+
 function renderFieldStatus(status) {
   const labels = {
     active: "HOẠT ĐỘNG",
@@ -101,12 +103,17 @@ function FieldFormModal({
             <span>Giá thuê / giờ</span>
             <input
               type="number"
-              min="1"
+              min={isRentalPriceRequired(formState.status) ? "1" : "0"}
               name="rental_price"
               value={formState.rental_price}
               onChange={onChange}
               placeholder="Ví dụ: 300000"
             />
+            <small className="modal-field-hint">
+              {isRentalPriceRequired(formState.status)
+                ? "Bắt buộc khi sân ở trạng thái Hoạt động."
+                : "Không bắt buộc khi sân ở trạng thái Không hoạt động hoặc Bảo trì."}
+            </small>
           </label>
 
           <label className="modal-field">
@@ -215,7 +222,12 @@ export default function FieldsPage() {
     setEditForm({
       field_name: field.name || "",
       location: field.location || "",
-      rental_price: field.pricePerHour ? String(field.pricePerHour) : "",
+      rental_price:
+        field.pricePerHour !== null &&
+        field.pricePerHour !== undefined &&
+        Number(field.pricePerHour) > 0
+          ? String(field.pricePerHour)
+          : "",
       manager_id: field.managerId ? String(field.managerId) : "",
       status: field.status || "active",
     });
@@ -242,7 +254,10 @@ export default function FieldsPage() {
       return;
     }
 
-    if (!createForm.rental_price || Number(createForm.rental_price) <= 0) {
+    if (
+      isRentalPriceRequired(createForm.status) &&
+      (!createForm.rental_price || Number(createForm.rental_price) <= 0)
+    ) {
       setActionError("Vui lòng nhập giá thuê hợp lệ.");
       return;
     }
@@ -255,7 +270,10 @@ export default function FieldsPage() {
       await createField({
         field_name: createForm.field_name.trim(),
         location: createForm.location.trim(),
-        rental_price: Number(createForm.rental_price),
+        rental_price:
+          createForm.rental_price && Number(createForm.rental_price) > 0
+            ? Number(createForm.rental_price)
+            : null,
         manager_id: createForm.manager_id
           ? Number(createForm.manager_id)
           : null,
@@ -285,7 +303,10 @@ export default function FieldsPage() {
       return;
     }
 
-    if (!editForm.rental_price || Number(editForm.rental_price) <= 0) {
+    if (
+      isRentalPriceRequired(editForm.status) &&
+      (!editForm.rental_price || Number(editForm.rental_price) <= 0)
+    ) {
       setActionError("Vui lòng nhập giá thuê hợp lệ.");
       return;
     }
@@ -298,7 +319,10 @@ export default function FieldsPage() {
       await updateField(selectedField.id, {
         field_name: editForm.field_name.trim(),
         location: editForm.location.trim(),
-        rental_price: Number(editForm.rental_price),
+        rental_price:
+          editForm.rental_price && Number(editForm.rental_price) > 0
+            ? Number(editForm.rental_price)
+            : null,
         manager_id: editForm.manager_id ? Number(editForm.manager_id) : null,
         status: editForm.status,
       });
@@ -450,7 +474,7 @@ export default function FieldsPage() {
       <section className="fields-stats-grid">
         <article
           className="admin-stat-card"
-          style={{ ["--accent-color"]: "#6b7cff" }}
+          style={{ ["--accent-color"]: "#1a8f5a" }}
         >
           <div className="admin-stat-copy">
             <p>Tổng số sân</p>
@@ -461,7 +485,7 @@ export default function FieldsPage() {
         </article>
         <article
           className="admin-stat-card"
-          style={{ ["--accent-color"]: "#18c48f" }}
+          style={{ ["--accent-color"]: "#0f766e" }}
         >
           <div className="admin-stat-copy">
             <p>Đang hoạt động</p>
@@ -472,7 +496,7 @@ export default function FieldsPage() {
         </article>
         <article
           className="admin-stat-card"
-          style={{ ["--accent-color"]: "#f5b700" }}
+          style={{ ["--accent-color"]: "#ff8c42" }}
         >
           <div className="admin-stat-copy">
             <p>Bảo trì</p>

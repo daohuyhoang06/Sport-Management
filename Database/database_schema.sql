@@ -1,4 +1,12 @@
 -- ============================================================
+-- Table: sport_types
+-- Description: Stores types of sports (bóng đá, bóng chuyền, pickleball, cầu lông...)
+-- ============================================================
+CREATE TABLE sport_types (
+  sport_id SERIAL PRIMARY KEY,
+  sport_name VARCHAR(50) NOT NULL UNIQUE
+);
+-- ============================================================
 -- DATABASE SCHEMA - Sport Field Management System (PostgreSQL/Supabase)
 -- Generated: December 29, 2025
 -- ============================================================
@@ -36,7 +44,7 @@ CREATE TABLE person (
   password VARCHAR(255) NOT NULL,
   role VARCHAR(45) DEFAULT 'user',
   status VARCHAR(45) DEFAULT 'active',
-  field_id INTEGER
+  fieldId INTEGER
 );
 
 CREATE INDEX idx_username ON person(username);
@@ -54,7 +62,9 @@ CREATE TABLE fields (
   location VARCHAR(100),
   status VARCHAR(45) DEFAULT 'active',
   rental_price DECIMAL(10,2),
-  FOREIGN KEY (manager_id) REFERENCES person(person_id) ON DELETE SET NULL
+  sport_id INTEGER,
+  FOREIGN KEY (manager_id) REFERENCES person(person_id) ON DELETE SET NULL,
+  FOREIGN KEY (sport_id) REFERENCES sport_types(sport_id) ON DELETE SET NULL
 );
 
 CREATE INDEX idx_manager_id ON fields(manager_id);
@@ -308,11 +318,11 @@ CREATE INDEX idx_created_messages ON messages(created_at);
 CREATE INDEX idx_read_messages ON messages(is_read);
 
 -- ============================================================
--- Add foreign key for person.field_id
+-- Add foreign key for person.fieldId
 -- ============================================================
 ALTER TABLE person
   ADD CONSTRAINT fk_person_field
-  FOREIGN KEY (field_id) REFERENCES fields(field_id) ON DELETE SET NULL;
+  FOREIGN KEY (fieldId) REFERENCES fields(field_id) ON DELETE SET NULL;
 
 -- ============================================================
 -- Create function for updated_at trigger

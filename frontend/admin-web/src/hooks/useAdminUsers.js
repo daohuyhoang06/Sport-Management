@@ -2,18 +2,20 @@ import { useCallback, useEffect, useState } from "react";
 import { adminFetch } from "../services/adminApi";
 
 function normalizeUsers(rawUsers = []) {
-  return rawUsers.map((item) => ({
-    id: item.person_id,
-    name: item.name || item.person_name || "-",
-    email: item.email || "-",
-    username: item.username || "-",
-    phone: item.phone || "-",
-    address: item.address || "-",
-    birthday: item.birthday || "",
-    sex: item.sex || "",
-    role: item.role || "user",
-    status: item.status || "inactive",
-  }));
+  return rawUsers
+    .map((item) => ({
+      id: item.person_id,
+      name: item.name || item.person_name || "-",
+      email: item.email || "-",
+      username: item.username || "-",
+      phone: item.phone || "-",
+      address: item.address || "-",
+      birthday: item.birthday || "",
+      sex: item.sex || "",
+      role: item.role || "user",
+      status: item.status || "inactive",
+    }))
+    .sort((left, right) => Number(left.id) - Number(right.id));
 }
 
 export default function useAdminUsers() {
