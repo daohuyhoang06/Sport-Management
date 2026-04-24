@@ -265,19 +265,6 @@ textarea {
   color: #111827;
 }
 
-.fields-hero,
-.bookings-hero {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  padding: 18px 20px;
-  border-radius: 24px;
-  background: linear-gradient(135deg, #dff4e9 0%, #bfead5 45%, #fbe2c9 100%);
-  color: #111827;
-  box-shadow: var(--shadow);
-}
-
 .dashboard-hero-left {
   display: flex;
   align-items: center;
@@ -962,6 +949,15 @@ th {
 }
 
 .fields-hero {
+  background: linear-gradient(135deg, #1a8f5a 0%, #0f766e 45%, #ff8c42 100%);
+  color: #111827;
+  border-radius: 24px;
+  padding: 18px 20px;
+  box-shadow: var(--shadow);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
 }
 
 .fields-stats-grid {
@@ -1347,12 +1343,23 @@ th {
 }
 
 .bookings-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 18px 20px;
+  border-radius: 24px;
+  background: linear-gradient(135deg, #16c18f 0%, #12b981 44%, #0ea66f 100%);
+  color: #1f2937;
+  box-shadow: 0 16px 36px rgba(18, 185, 129, 0.22);
 }
 
 .bookings-hero-right {
-  display: grid;
-  justify-items: end;
+  display: inline-flex;
+  align-items: center;
   gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .bookings-stats-grid .admin-stat-card {
