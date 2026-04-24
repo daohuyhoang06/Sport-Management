@@ -26,8 +26,12 @@ fun UserApp(userViewModel: UserViewModel = viewModel()) {
         }
     ) { padding ->
         when (uiState.selectedTab) {
-            UserTab.Home -> UserHomeScreen(padding, uiState.homeFields)
-            UserTab.Map -> UserMapScreen(padding, uiState.mapCategories, uiState.nearbyFields)
+            UserTab.Home -> UserHomeScreen(
+                padding = padding,
+                fields = uiState.homeFields,
+                sportCategories = uiState.sportCategories
+            )
+            UserTab.Map -> UserMapScreen(padding, uiState.sportCategories, uiState.nearbyFields)
             UserTab.Favorites -> UserFavoriteScreen(padding, uiState.favoriteFields)
             UserTab.Profile -> UserProfileScreen(padding, uiState.profile, uiState.stats)
         }

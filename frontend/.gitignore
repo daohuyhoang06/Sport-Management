@@ -1,6 +1,8 @@
 .idea/
 .gradle/
+.gradle-user-home/
 local.properties
+build/
 **/build/
 **/.DS_Store
 node_modules/

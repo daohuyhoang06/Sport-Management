@@ -6,6 +6,11 @@ import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -18,27 +23,32 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -46,9 +56,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -64,6 +76,8 @@ import androidx.compose.foundation.text.KeyboardOptions
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
+import com.sportmanagement.user.ui.model.SportCategory
+import com.sportmanagement.user.ui.model.SportIconType
 import com.sportmanagement.user.ui.model.UserField
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
@@ -71,14 +85,17 @@ import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
 import java.text.Normalizer
 
+private val KineticBlue = Color(0xFF1A4B8E)
+
 @Composable
 fun UserMapScreen(
     padding: PaddingValues,
-    categories: List<String>,
+    sportCategories: List<SportCategory>,
     nearby: List<UserField>
 ) {
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
+    var selectedCategoryIndex by remember { mutableIntStateOf(-1) }
     val lifecycleOwner = LocalLifecycleOwner.current
     var showHighlights by rememberSaveable { mutableStateOf(false) }
     var searchQuery by rememberSaveable { mutableStateOf("") }
@@ -207,57 +224,58 @@ fun UserMapScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            TextField(
-                value = searchQuery,
-                onValueChange = {
-                    searchQuery = it
-                    showSuggestions = true
-                    selectedFieldName = null
-                },
-                singleLine = true,
-                placeholder = { Text("Nhập tên sân hoặc khu vực") },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.Search,
-                        contentDescription = "Tìm kiếm sân"
-                    )
-                },
-                trailingIcon = {
-                    if (searchQuery.isNotBlank()) {
-                        IconButton(onClick = {
-                            searchQuery = ""
-                            showSuggestions = false
-                        }) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Xóa tìm kiếm"
-                            )
-                        }
-                    }
-                },
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Text,
-                    capitalization = KeyboardCapitalization.Words,
-                    imeAction = ImeAction.Search
-                ),
-                keyboardActions = KeyboardActions(
-                    onSearch = {
-                        jumpToMatchedField()
-                        showSuggestions = false
-                        focusManager.clearFocus()
-                    }
-                ),
+            Surface(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(22.dp),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.96f),
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.96f),
-                    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.96f),
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent,
-                    disabledIndicatorColor = Color.Transparent
+                shadowElevation = 6.dp,
+                shape = RoundedCornerShape(28.dp),
+                color = Color.White
+            ) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = {
+                        searchQuery = it
+                        showSuggestions = true
+                        selectedFieldName = null
+                    },
+                    singleLine = true,
+                    placeholder = { Text("Nhập tên sân hoặc khu vực", color = Color.Gray) },
+                    leadingIcon = {
+                        Icon(Icons.Default.Search, contentDescription = null, tint = Color.Gray)
+                    },
+                    trailingIcon = {
+                        if (searchQuery.isNotBlank()) {
+                            IconButton(onClick = {
+                                searchQuery = ""
+                                showSuggestions = false
+                            }) {
+                                Icon(Icons.Default.Close, contentDescription = "Xóa tìm kiếm")
+                            }
+                        } else {
+                            Icon(Icons.Default.Tune, contentDescription = null, tint = Color.Gray)
+                        }
+                    },
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Text,
+                        capitalization = KeyboardCapitalization.Words,
+                        imeAction = ImeAction.Search
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onSearch = {
+                            jumpToMatchedField()
+                            showSuggestions = false
+                            focusManager.clearFocus()
+                        }
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(28.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        unfocusedBorderColor = Color(0xFFE0E0E0),
+                        focusedBorderColor = KineticBlue,
+                        unfocusedContainerColor = Color.White,
+                        focusedContainerColor = Color.White
+                    )
                 )
-            )
+            }
             if (showSuggestions && suggestions.isNotEmpty()) {
                 Card(
                     shape = RoundedCornerShape(14.dp),
@@ -289,23 +307,17 @@ fun UserMapScreen(
                     color = MaterialTheme.colorScheme.error
                 )
             }
-            Card(shape = RoundedCornerShape(16.dp)) {
-                LazyRow(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 10.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(categories) { category ->
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(24.dp))
-                                .background(MaterialTheme.colorScheme.secondaryContainer)
-                                .padding(horizontal = 14.dp, vertical = 8.dp)
-                        ) {
-                            Text(category)
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                items(sportCategories.size) { index ->
+                    MapSportCategoryItem(
+                        category = sportCategories[index],
+                        isSelected = selectedCategoryIndex == index,
+                        onClick = {
+                            selectedCategoryIndex = if (selectedCategoryIndex == index) -1 else index
                         }
-                    }
+                    )
                 }
             }
         }
@@ -469,6 +481,76 @@ private fun fieldPoint(field: UserField, index: Int): GeoPoint {
     )
 
     return knownPoints[field.name] ?: fallbackPoints[index % fallbackPoints.size]
+}
+
+@Composable
+private fun MapSportCategoryItem(
+    category: SportCategory,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    val bgColor by animateColorAsState(
+        targetValue = if (isSelected) KineticBlue else Color.White,
+        animationSpec = tween(300), label = "bgColor"
+    )
+    val iconColor by animateColorAsState(
+        targetValue = if (isSelected) Color.White else KineticBlue,
+        animationSpec = tween(300), label = "iconColor"
+    )
+    val elevation by animateDpAsState(
+        targetValue = if (isSelected) 8.dp else 3.dp,
+        animationSpec = tween(300), label = "elevation"
+    )
+
+    val textColor by animateColorAsState(
+        targetValue = if (isSelected) KineticBlue else Color.DarkGray,
+        animationSpec = tween(300), label = "textColor"
+    )
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.clickable(onClick = onClick)
+    ) {
+        Surface(
+            modifier = Modifier.size(60.dp),
+            shape = CircleShape,
+            shadowElevation = elevation,
+            color = bgColor,
+            border = BorderStroke(
+                width = if (isSelected) 0.dp else 1.5.dp,
+                color = if (isSelected) Color.Transparent else KineticBlue
+            )
+        ) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    painter = painterResource(id = getMapSportDrawable(category.iconType)),
+                    contentDescription = category.name,
+                    modifier = Modifier.size(30.dp),
+                    colorFilter = ColorFilter.tint(iconColor)
+                )
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        Text(
+            category.name,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+            color = textColor
+        )
+    }
+}
+
+private fun getMapSportDrawable(type: SportIconType): Int {
+    return when (type) {
+        SportIconType.FOOTBALL -> com.sportmanagement.user.R.drawable.football_25
+        SportIconType.PICKLEBALL -> com.sportmanagement.user.R.drawable.pickleball
+        SportIconType.TENNIS -> com.sportmanagement.user.R.drawable.tennis_25
+        SportIconType.BADMINTON -> com.sportmanagement.user.R.drawable.badminton_25
+        SportIconType.VOLLEYBALL -> com.sportmanagement.user.R.drawable.volleyball_25
+    }
 }
 
 private fun normalizeForSearch(text: String): String {

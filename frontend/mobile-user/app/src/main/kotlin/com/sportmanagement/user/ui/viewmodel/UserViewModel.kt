@@ -16,6 +16,7 @@ class UserViewModel(
     private val _uiState = MutableStateFlow(
         UserUiState(
             homeFields = repository.getHomeFields(),
+            sportCategories = repository.getSportCategories(),
             mapCategories = repository.getMapCategories(),
             nearbyFields = repository.getNearbyFields(),
             favoriteFields = repository.getFavoriteFields(),
