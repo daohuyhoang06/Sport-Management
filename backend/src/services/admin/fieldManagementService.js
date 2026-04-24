@@ -33,9 +33,11 @@ export const getAllFieldsService = async (filters = {}, pagination = {}) => {
   // Get fields
   const [rows] = await sequelize.query(
     `SELECT f.field_id, f.manager_id, f.field_name, f.location, f.status, f.rental_price,
+            f.sport_id, st.sport_name,
             p.person_name as manager_name, p.email as manager_email
      FROM fields f
      LEFT JOIN person p ON f.manager_id = p.person_id
+     LEFT JOIN sport_types st ON f.sport_id = st.sport_id
      ${whereClause}
      ORDER BY f.field_id DESC
      LIMIT ? OFFSET ?`,
@@ -56,9 +58,11 @@ export const getAllFieldsService = async (filters = {}, pagination = {}) => {
 export const getFieldByIdService = async (id) => {
   const [[field]] = await sequelize.query(
     `SELECT f.field_id, f.manager_id, f.field_name, f.location, f.status, f.rental_price,
+            f.sport_id, st.sport_name,
             p.person_name as manager_name, p.email as manager_email, p.phone as manager_phone
      FROM fields f
      LEFT JOIN person p ON f.manager_id = p.person_id
+     LEFT JOIN sport_types st ON f.sport_id = st.sport_id
      WHERE f.field_id = ?`,
     { replacements: [id] }
   );
@@ -87,16 +91,19 @@ export const getFieldByIdService = async (id) => {
  * Create new field
  */
 export const createFieldService = async (fieldData) => {
-  const { field_name, location, manager_id, rental_price, status = 'active' } = fieldData;
+  const { field_name, location, manager_id, rental_price, status = 'active', sport_id } = fieldData;
   
-  const [result] = await sequelize.query(
-    `INSERT INTO fields (field_name, location, manager_id, rental_price, status)
-     VALUES (?, ?, ?, ?, ?)
-     RETURNING *`,
-    { replacements: [field_name, location, manager_id || null, rental_price || null, status] }
+  await sequelize.query(
+    `INSERT INTO fields (field_name, location, manager_id, rental_price, status, sport_id)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    { replacements: [field_name, location, manager_id || null, rental_price || null, status, sport_id || null] }
   );
 
-  return result[0];
+  const [[result]] = await sequelize.query(
+    `SELECT * FROM fields WHERE field_id = LAST_INSERT_ID()`
+  );
+
+  return result;
 };
 
 /**
@@ -130,6 +137,10 @@ export const updateFieldService = async (id, fieldData) => {
   if (fieldData.status) {
     updates.push('status = ?');
     params.push(fieldData.status);
+  }
+  if (fieldData.sport_id !== undefined) {
+    updates.push('sport_id = ?');
+    params.push(fieldData.sport_id);
   }
 
   if (updates.length > 0) {
