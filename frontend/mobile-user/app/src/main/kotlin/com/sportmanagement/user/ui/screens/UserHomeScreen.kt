@@ -28,7 +28,8 @@ fun UserHomeScreen(
     padding: PaddingValues,
     fields: List<UserField>,
     sportCategories: List<SportCategory>,
-    userName: String
+    userName: String,
+    onBookFieldClick: (UserField) -> Unit
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var selectedCategoryIndex by remember { mutableIntStateOf(-1) }
@@ -61,7 +62,10 @@ fun UserHomeScreen(
         }
 
         items(fields) { field ->
-            HomeVenueCard(field = field)
+            HomeVenueCard(
+                field = field,
+                onBookClick = { onBookFieldClick(field) }
+            )
             Spacer(Modifier.height(12.dp))
         }
     }

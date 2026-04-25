@@ -24,9 +24,9 @@ import androidx.compose.ui.unit.sp
 import com.sportmanagement.user.R
 
 @Composable
-internal fun HomeBookButton() {
+internal fun HomeBookButton(onClick: () -> Unit) {
     Button(
-        onClick = {},
+        onClick = onClick,
         colors = ButtonDefaults.buttonColors(
             containerColor = HomeKineticBlue
         ),

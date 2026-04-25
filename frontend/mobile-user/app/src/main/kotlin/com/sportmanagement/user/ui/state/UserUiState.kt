@@ -1,5 +1,6 @@
 package com.sportmanagement.user.ui.state
 
+import com.sportmanagement.user.domain.model.BookingScheduleData
 import com.sportmanagement.user.domain.model.SportCategory
 import com.sportmanagement.user.domain.model.UserField
 import com.sportmanagement.user.domain.model.UserProfile
@@ -13,6 +14,7 @@ data class UserUiState(
     val mapCategories: List<String> = emptyList(),
     val nearbyFields: List<UserField> = emptyList(),
     val favoriteFields: List<UserField> = emptyList(),
+    val bookingSchedule: BookingScheduleData = BookingScheduleData("", emptyList(), emptyList()),
     val profile: UserProfile = UserProfile("", "", "", ""),
     val stats: List<UserStat> = emptyList()
 )
