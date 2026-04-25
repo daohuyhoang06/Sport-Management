@@ -1,11 +1,12 @@
-package com.sportmanagement.user.data
+package com.sportmanagement.user.data.mock
 
-import com.sportmanagement.user.ui.model.SportCategory
-import com.sportmanagement.user.ui.model.SportIconType
-import com.sportmanagement.user.ui.model.UserField
-import com.sportmanagement.user.ui.model.UserProfile
-import com.sportmanagement.user.ui.model.UserStat
-import com.sportmanagement.user.ui.model.VenueCardType
+import com.sportmanagement.user.domain.model.SportCategory
+import com.sportmanagement.user.domain.model.SportIconType
+import com.sportmanagement.user.domain.model.UserField
+import com.sportmanagement.user.domain.model.UserProfile
+import com.sportmanagement.user.domain.model.UserStat
+import com.sportmanagement.user.domain.model.VenueCardType
+import com.sportmanagement.user.domain.repository.UserRepository
 
 class MockUserRepository : UserRepository {
 

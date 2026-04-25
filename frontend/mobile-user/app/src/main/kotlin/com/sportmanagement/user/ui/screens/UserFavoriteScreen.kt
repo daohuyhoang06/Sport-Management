@@ -1,4 +1,4 @@
-package com.sportmanagement.user.ui.screens
+﻿package com.sportmanagement.user.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
@@ -14,16 +14,17 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.sportmanagement.user.ui.model.UserField
+import com.sportmanagement.user.R
+import com.sportmanagement.user.domain.model.UserField
 
 @Composable
 fun UserFavoriteScreen(
     padding: PaddingValues,
     favorites: List<UserField>
 ) {
-
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -32,7 +33,11 @@ fun UserFavoriteScreen(
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         item {
-            Text("Sân yêu thích", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+            Text(
+                stringResource(R.string.favorite_title),
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
         }
         items(favorites) { item ->
             Card(shape = RoundedCornerShape(14.dp)) {
@@ -40,7 +45,10 @@ fun UserFavoriteScreen(
                     Text(item.name, fontWeight = FontWeight.SemiBold)
                     Text(item.location)
                     Spacer(Modifier.height(3.dp))
-                    Text("${item.price}  |  ${item.rating}/5", color = MaterialTheme.colorScheme.primary)
+                    Text(
+                        stringResource(R.string.favorite_price_rating, item.price, item.rating),
+                        color = MaterialTheme.colorScheme.primary
+                    )
                 }
             }
         }

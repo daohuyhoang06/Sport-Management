@@ -1,4 +1,4 @@
-package com.sportmanagement.user.ui.screens
+﻿package com.sportmanagement.user.ui.screens
 
 import android.Manifest
 import android.content.Context
@@ -25,7 +25,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
@@ -61,6 +61,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -76,9 +77,10 @@ import androidx.compose.foundation.text.KeyboardOptions
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
-import com.sportmanagement.user.ui.model.SportCategory
-import com.sportmanagement.user.ui.model.SportIconType
-import com.sportmanagement.user.ui.model.UserField
+import com.sportmanagement.user.R
+import com.sportmanagement.user.domain.model.SportCategory
+import com.sportmanagement.user.domain.model.SportIconType
+import com.sportmanagement.user.domain.model.UserField
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
@@ -104,6 +106,14 @@ fun UserMapScreen(
     var isLocationPermissionGranted by remember { mutableStateOf(checkLocationPermission(context)) }
     var currentLocation by remember { mutableStateOf<GeoPoint?>(null) }
     val normalizedQuery = normalizeForSearch(searchQuery)
+    val currentLocationTitle = stringResource(R.string.map_current_location_title)
+    val currentLocationSnippet = stringResource(R.string.map_current_location_snippet)
+    val searchPlaceholder = stringResource(R.string.map_search_placeholder)
+    val clearSearchContentDescription = stringResource(R.string.map_clear_search_content_description)
+    val noResultText = stringResource(R.string.map_no_results)
+    val highlightsTitle = stringResource(R.string.map_highlights_title)
+    val myLocationContentDescription = stringResource(R.string.map_my_location_content_description)
+    val toggleListContentDescription = stringResource(R.string.map_toggle_list_content_description)
 
     val matchedField = remember(nearby, normalizedQuery) {
         if (normalizedQuery.isEmpty()) {
@@ -185,8 +195,8 @@ fun UserMapScreen(
     currentLocation?.let { userPoint ->
         val userMarker = Marker(mapView).apply {
             position = userPoint
-            title = "Vị trí hiện tại"
-            snippet = "Bạn đang ở đây"
+            title = currentLocationTitle
+            snippet = currentLocationSnippet
             setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
         }
         mapView.overlays.add(userMarker)
@@ -238,7 +248,7 @@ fun UserMapScreen(
                         selectedFieldName = null
                     },
                     singleLine = true,
-                    placeholder = { Text("Nhập tên sân hoặc khu vực", color = Color.Gray) },
+                    placeholder = { Text(searchPlaceholder, color = Color.Gray) },
                     leadingIcon = {
                         Icon(Icons.Default.Search, contentDescription = null, tint = Color.Gray)
                     },
@@ -248,7 +258,7 @@ fun UserMapScreen(
                                 searchQuery = ""
                                 showSuggestions = false
                             }) {
-                                Icon(Icons.Default.Close, contentDescription = "Xóa tìm kiếm")
+                                Icon(Icons.Default.Close, contentDescription = clearSearchContentDescription)
                             }
                         } else {
                             Icon(Icons.Default.Tune, contentDescription = null, tint = Color.Gray)
@@ -286,7 +296,7 @@ fun UserMapScreen(
                     Column(modifier = Modifier.padding(vertical = 6.dp)) {
                         suggestions.forEach { field ->
                             Text(
-                                text = "${field.name} - ${field.location}",
+                                text = stringResource(R.string.map_suggestion_item, field.name, field.location),
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable {
@@ -303,16 +313,16 @@ fun UserMapScreen(
             }
             if (normalizedQuery.isNotEmpty() && matchedField == null) {
                 Text(
-                    "Không có sân phù hợp trong dữ liệu hiện có",
+                    noResultText,
                     color = MaterialTheme.colorScheme.error
                 )
             }
             LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                items(sportCategories.size) { index ->
+                itemsIndexed(sportCategories) { index, category ->
                     MapSportCategoryItem(
-                        category = sportCategories[index],
+                        category = category,
                         isSelected = selectedCategoryIndex == index,
                         onClick = {
                             selectedCategoryIndex = if (selectedCategoryIndex == index) -1 else index
@@ -333,7 +343,7 @@ fun UserMapScreen(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Text("Một số sân nổi bật tại Hà Nội", fontWeight = FontWeight.SemiBold)
+                    Text(highlightsTitle, fontWeight = FontWeight.SemiBold)
                     nearby.take(3).forEach { field ->
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -344,7 +354,7 @@ fun UserMapScreen(
                                 Text(field.name, fontWeight = FontWeight.SemiBold)
                                 Text(field.location)
                             }
-                            Text("${field.price} | ${field.rating}/5")
+                            Text(stringResource(R.string.favorite_price_rating, field.price, field.rating))
                         }
                     }
                     Spacer(Modifier.height(4.dp))
@@ -382,7 +392,7 @@ fun UserMapScreen(
             ) {
                 Icon(
                     imageVector = Icons.Default.MyLocation,
-                    contentDescription = "Vị trí hiện tại",
+                    contentDescription = myLocationContentDescription,
                     tint = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             }
@@ -398,7 +408,7 @@ fun UserMapScreen(
                     } else {
                         Icons.Default.KeyboardArrowUp
                     },
-                    contentDescription = "Hiện danh sách sân",
+                    contentDescription = toggleListContentDescription,
                     tint = MaterialTheme.colorScheme.onPrimary
                 )
             }
@@ -468,11 +478,11 @@ private fun requestCurrentLocationPoint(
 
 private fun fieldPoint(field: UserField, index: Int): GeoPoint {
     val knownPoints = mapOf(
-        "Sân bóng C500 Học viện An Ninh" to GeoPoint(21.0466, 105.7868),
-        "Sân bóng Minh Kiệt" to GeoPoint(21.0368, 105.8215),
-        "Sân vận động Mỹ Đình" to GeoPoint(21.0227, 105.7630),
-        "Sân bóng Hoàng Mai" to GeoPoint(20.9748, 105.8639),
-        "Sân bóng Bách Khoa" to GeoPoint(21.0043, 105.8427)
+        "SÃ¢n bÃ³ng C500 Há»c viá»‡n An Ninh" to GeoPoint(21.0466, 105.7868),
+        "SÃ¢n bÃ³ng Minh Kiá»‡t" to GeoPoint(21.0368, 105.8215),
+        "SÃ¢n váº­n Ä‘á»™ng Má»¹ ÄÃ¬nh" to GeoPoint(21.0227, 105.7630),
+        "SÃ¢n bÃ³ng HoÃ ng Mai" to GeoPoint(20.9748, 105.8639),
+        "SÃ¢n bÃ³ng BÃ¡ch Khoa" to GeoPoint(21.0043, 105.8427)
     )
     val fallbackPoints = listOf(
         GeoPoint(21.0285, 105.8542),
@@ -556,7 +566,10 @@ private fun getMapSportDrawable(type: SportIconType): Int {
 private fun normalizeForSearch(text: String): String {
     val normalized = Normalizer.normalize(text.trim().lowercase(), Normalizer.Form.NFD)
     return normalized
-        .replace("đ", "d")
-        .replace("Đ", "D")
+        .replace("Ä‘", "d")
+        .replace("Ä", "D")
         .replace("\\p{M}+".toRegex(), "")
 }
+
+
+

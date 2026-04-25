@@ -1,9 +1,9 @@
-package com.sportmanagement.user.data
+package com.sportmanagement.user.domain.repository
 
-import com.sportmanagement.user.ui.model.SportCategory
-import com.sportmanagement.user.ui.model.UserField
-import com.sportmanagement.user.ui.model.UserProfile
-import com.sportmanagement.user.ui.model.UserStat
+import com.sportmanagement.user.domain.model.SportCategory
+import com.sportmanagement.user.domain.model.UserField
+import com.sportmanagement.user.domain.model.UserProfile
+import com.sportmanagement.user.domain.model.UserStat
 
 interface UserRepository {
     fun getHomeFields(): List<UserField>
