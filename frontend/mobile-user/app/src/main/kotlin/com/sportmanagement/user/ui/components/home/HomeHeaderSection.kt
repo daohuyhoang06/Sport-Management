@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -59,7 +60,7 @@ fun HomeHeaderSection(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(132.dp)
+            .height(156.dp)
     ) {
         Image(
             painter = painterResource(id = R.drawable.banner_app),
@@ -71,6 +72,7 @@ fun HomeHeaderSection(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .statusBarsPadding()
                 .padding(horizontal = 16.dp, vertical = 14.dp)
         ) {
             Row(

@@ -44,16 +44,22 @@ import com.sportmanagement.user.domain.model.UserField
 import com.sportmanagement.user.domain.model.VenueCardType
 
 @Composable
-fun HomeVenueCard(field: UserField) {
+fun HomeVenueCard(
+    field: UserField,
+    onBookClick: () -> Unit
+) {
     when (field.cardType) {
-        VenueCardType.LARGE_IMAGE -> LargeVenueCard(field)
-        VenueCardType.SMALL_HORIZONTAL -> SmallHorizontalCard(field)
-        VenueCardType.SMALL_HORIZONTAL_NO_IMAGE -> SmallNoImageCard(field)
+        VenueCardType.LARGE_IMAGE -> LargeVenueCard(field, onBookClick)
+        VenueCardType.SMALL_HORIZONTAL -> SmallHorizontalCard(field, onBookClick)
+        VenueCardType.SMALL_HORIZONTAL_NO_IMAGE -> SmallNoImageCard(field, onBookClick)
     }
 }
 
 @Composable
-private fun LargeVenueCard(field: UserField) {
+private fun LargeVenueCard(
+    field: UserField,
+    onBookClick: () -> Unit
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -154,14 +160,17 @@ private fun LargeVenueCard(field: UserField) {
                         Text(field.hours, fontSize = 12.sp, color = Color.Gray)
                     }
                 }
-                HomeBookButton()
+                HomeBookButton(onClick = onBookClick)
             }
         }
     }
 }
 
 @Composable
-private fun SmallHorizontalCard(field: UserField) {
+private fun SmallHorizontalCard(
+    field: UserField,
+    onBookClick: () -> Unit
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -224,14 +233,17 @@ private fun SmallHorizontalCard(field: UserField) {
                     HomeSmallCircleIcon(Icons.Default.FavoriteBorder, size = 28)
                     HomeSmallCircleIcon(Icons.Default.Share, size = 28)
                 }
-                HomeBookButton()
+                HomeBookButton(onClick = onBookClick)
             }
         }
     }
 }
 
 @Composable
-private fun SmallNoImageCard(field: UserField) {
+private fun SmallNoImageCard(
+    field: UserField,
+    onBookClick: () -> Unit
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -292,7 +304,7 @@ private fun SmallNoImageCard(field: UserField) {
                 }
             }
 
-            HomeBookButton()
+            HomeBookButton(onClick = onBookClick)
         }
     }
 }

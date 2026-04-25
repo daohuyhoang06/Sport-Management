@@ -29,6 +29,34 @@
     <string name="favorite_title">Sân yêu thích</string>
     <string name="favorite_price_rating">%1$s  |  %2$s/5</string>
 
+    <string name="booking_title">Đặt lịch ngày trực quan</string>
+    <string name="booking_back_content_description">Quay lại</string>
+    <string name="booking_notification_content_description">Thông báo</string>
+    <string name="booking_calendar_content_description">Chọn ngày</string>
+    <string name="booking_status_available">Trống</string>
+    <string name="booking_status_booked">Đã đặt</string>
+    <string name="booking_status_locked">Khóa</string>
+    <string name="booking_status_event">Sự kiện</string>
+    <string name="booking_view_field_and_price">Xem sân &amp; bảng giá</string>
+    <string name="booking_notice_title">Lưu ý:</string>
+    <string name="booking_notice_deposit">💟 Khi chuyển khoản đặt cọc</string>
+    <string name="booking_notice_student">💞 Đối với khách là học sinh, thì chỉ cần chuyển khoản đặt cọc 100.000 đ</string>
+    <string name="booking_notice_adult">💞 Đối với khách là người lớn, thì chỉ cần chuyển khoản đặt cọc 300.000 đ</string>
+    <string name="booking_estimated_price_title">Tổng tiền dự kiến</string>
+    <string name="booking_selected_court_title">Sân chọn</string>
+    <string name="booking_duration_format">Thời lượng: %1$d phút</string>
+    <string name="booking_slot_count_format">%1$d slot</string>
+    <string name="booking_time_cell_size_label">Kích thước khung giờ</string>
+    <string name="booking_time_cell_size_value_format">Độ rộng ô: %1$d dp</string>
+    <string name="booking_selected_range_format">%1$s: %2$s - %3$s</string>
+    <string name="booking_hide_selected_range">Ẩn sân + khoảng giờ</string>
+    <string name="booking_show_selected_range">Hiện sân + khoảng giờ</string>
+    <string name="booking_total_hours_format">Tổng giờ: %1$s</string>
+    <string name="booking_total_price_format">Tổng tiền: %1$s</string>
+    <string name="booking_next">TIẾP THEO</string>
+    <string name="booking_cancel">Hủy</string>
+    <string name="booking_confirm">Xác nhận</string>
+
     <string name="profile_title">Tài khoản</string>
     <string name="profile_name">Tên: %1$s</string>
     <string name="profile_email">Email: %1$s</string>

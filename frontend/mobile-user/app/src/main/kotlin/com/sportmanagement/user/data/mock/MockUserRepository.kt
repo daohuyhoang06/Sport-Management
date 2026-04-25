@@ -1,7 +1,11 @@
-package com.sportmanagement.user.data.mock
+﻿package com.sportmanagement.user.data.mock
 
+import com.sportmanagement.user.domain.model.BookingScheduleData
+import com.sportmanagement.user.domain.model.CourtRow
+import com.sportmanagement.user.domain.model.SlotStatus
 import com.sportmanagement.user.domain.model.SportCategory
 import com.sportmanagement.user.domain.model.SportIconType
+import com.sportmanagement.user.domain.model.TimeSlot
 import com.sportmanagement.user.domain.model.UserField
 import com.sportmanagement.user.domain.model.UserProfile
 import com.sportmanagement.user.domain.model.UserStat
@@ -124,4 +128,58 @@ class MockUserRepository : UserRepository {
             UserStat("12", "Lần đặt"),
             UserStat("4.8", "Điểm uy tín")
         )
+
+    override fun getBookingSchedule(): BookingScheduleData {
+        val headers = (0..48).map { index ->
+            val hour = index / 2
+            val minute = if (index % 2 == 0) "00" else "30"
+            "$hour:$minute"
+        }
+
+        return BookingScheduleData(
+            selectedDate = "25/04/2026",
+            timeHeaders = headers,
+            courts = listOf(
+                CourtRow(
+                    courtName = "Sân 1",
+                    slots = headers.mapIndexed { index, label ->
+                        val status = when (index) {
+                            in 34..37 -> SlotStatus.BOOKED
+                            in 38..41 -> SlotStatus.LOCKED
+                            else -> SlotStatus.AVAILABLE
+                        }
+                        TimeSlot(timeLabel = label, status = status)
+                    }
+                ),
+                CourtRow(
+                    courtName = "Sân 2",
+                    slots = headers.mapIndexed { index, label ->
+                        val status = when (index) {
+                            in 34..35 -> SlotStatus.BOOKED
+                            in 10..15 -> SlotStatus.LOCKED
+                            else -> SlotStatus.AVAILABLE
+                        }
+                        TimeSlot(timeLabel = label, status = status)
+                    }
+                ),
+                CourtRow(
+                    courtName = "Sân 3",
+                    slots = headers.mapIndexed { index, label ->
+                        val status = when (index) {
+                            36 -> SlotStatus.BOOKED
+                            in 0..15 -> SlotStatus.LOCKED
+                            else -> SlotStatus.AVAILABLE
+                        }
+                        TimeSlot(timeLabel = label, status = status)
+                    }
+                )
+            ),
+            selectedCourtName = "Sân 1",
+            selectedStartTime = "15:30",
+            selectedEndTime = "18:30",
+            durationMinutes = 180,
+            selectedSlotCount = 3,
+            estimatedPrice = "450.000đ"
+        )
+    }
 }

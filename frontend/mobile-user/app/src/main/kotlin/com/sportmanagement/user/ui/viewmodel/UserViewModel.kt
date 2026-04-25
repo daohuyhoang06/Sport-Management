@@ -20,6 +20,7 @@ class UserViewModel(
             mapCategories = repository.getMapCategories(),
             nearbyFields = repository.getNearbyFields(),
             favoriteFields = repository.getFavoriteFields(),
+            bookingSchedule = repository.getBookingSchedule(),
             profile = repository.getProfile(),
             stats = repository.getStats()
         )
