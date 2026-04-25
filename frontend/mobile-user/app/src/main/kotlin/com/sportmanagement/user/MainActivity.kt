@@ -12,13 +12,18 @@ import org.osmdroid.config.Configuration
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.light(
-                android.graphics.Color.WHITE,
-                android.graphics.Color.BLACK
-            )
-        )
         super.onCreate(savedInstanceState)
+        try {
+            enableEdgeToEdge(
+                statusBarStyle = SystemBarStyle.light(
+                    android.graphics.Color.WHITE,
+                    android.graphics.Color.BLACK
+                )
+            )
+        } catch (_: Exception) {
+            // Fallback: some emulators crash with Index 0 out of bounds
+            enableEdgeToEdge()
+        }
         Configuration.getInstance().userAgentValue = packageName
 
         setContent {

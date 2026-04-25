@@ -29,7 +29,8 @@ fun UserApp(userViewModel: UserViewModel = viewModel()) {
             UserTab.Home -> UserHomeScreen(
                 padding = padding,
                 fields = uiState.homeFields,
-                sportCategories = uiState.sportCategories
+                sportCategories = uiState.sportCategories,
+                userName = uiState.profile.name
             )
             UserTab.Map -> UserMapScreen(padding, uiState.sportCategories, uiState.nearbyFields)
             UserTab.Favorites -> UserFavoriteScreen(padding, uiState.favoriteFields)
