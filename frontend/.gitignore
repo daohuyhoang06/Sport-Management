@@ -1,7 +1,47 @@
+# ========================
+# IDE
+# ========================
 .idea/
+*.iml
+
+# ========================
+# Gradle
+# ========================
 .gradle/
+.gradle-user-home/
 local.properties
+
+# ========================
+# Build output
+# ========================
+build/
 **/build/
-**/.DS_Store
+
+# ========================
+# Android
+# ========================
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+captures/
+**/app/release/
+**/app/debug/
+
+# Signing keys
+*.jks
+*.keystore
+*.keystore.lock
+
+# ========================
+# Node.js (admin-web)
+# ========================
 node_modules/
 dist/
+
+# ========================
+# OS
+# ========================
+**/.DS_Store
+Thumbs.db

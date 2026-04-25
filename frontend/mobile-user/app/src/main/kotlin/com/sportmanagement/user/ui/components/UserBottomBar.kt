@@ -8,6 +8,7 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.sportmanagement.user.ui.navigation.UserTab
 
@@ -19,11 +20,12 @@ fun UserBottomBar(selectedTab: UserTab, onTabSelected: (UserTab) -> Unit) {
             tonalElevation = 2.dp
         ) {
             UserTab.entries.forEach { tab ->
+                val tabTitle = stringResource(tab.titleRes)
                 NavigationBarItem(
                     selected = selectedTab == tab,
                     onClick = { onTabSelected(tab) },
-                    icon = { Icon(tab.icon, contentDescription = tab.title) },
-                    label = { Text(tab.title) },
+                    icon = { Icon(tab.icon, contentDescription = tabTitle) },
+                    label = { Text(tabTitle) },
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = MaterialTheme.colorScheme.onPrimary,
                         selectedTextColor = MaterialTheme.colorScheme.primary,

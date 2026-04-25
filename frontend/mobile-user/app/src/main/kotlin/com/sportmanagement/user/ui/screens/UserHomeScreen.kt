@@ -1,8 +1,6 @@
 package com.sportmanagement.user.ui.screens
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -10,66 +8,61 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
-import com.sportmanagement.user.ui.model.UserField
+import com.sportmanagement.user.ui.components.home.HomeHeaderSection
+import com.sportmanagement.user.ui.components.home.HomeSportCategorySection
+import com.sportmanagement.user.ui.components.home.HomeVenueCard
+import com.sportmanagement.user.domain.model.SportCategory
+import com.sportmanagement.user.domain.model.UserField
 
 @Composable
 fun UserHomeScreen(
     padding: PaddingValues,
-    fields: List<UserField>
+    fields: List<UserField>,
+    sportCategories: List<SportCategory>,
+    userName: String
 ) {
+    var searchQuery by remember { mutableStateOf("") }
+    var selectedCategoryIndex by remember { mutableIntStateOf(-1) }
 
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
             .padding(padding)
-            .background(
-                Brush.verticalGradient(
-                    listOf(
-                        MaterialTheme.colorScheme.primaryContainer,
-                        MaterialTheme.colorScheme.background
-                    )
-                )
-            ),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+            .background(Color.White),
+        contentPadding = PaddingValues(bottom = 16.dp)
     ) {
         item {
-            Text("Xin chào, bạn A", style = MaterialTheme.typography.titleMedium)
-            Spacer(Modifier.height(8.dp))
-            Text(
-                "Đặt sân nhanh trong 30 giây",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
+            HomeHeaderSection(
+                searchQuery = searchQuery,
+                onSearchQueryChange = { searchQuery = it },
+                userName = userName
             )
+            Spacer(Modifier.height(40.dp))
+        }
+
+        item {
+            HomeSportCategorySection(
+                sportCategories = sportCategories,
+                selectedCategoryIndex = selectedCategoryIndex,
+                onCategorySelected = { index ->
+                    selectedCategoryIndex = if (selectedCategoryIndex == index) -1 else index
+                }
+            )
+            Spacer(Modifier.height(16.dp))
         }
 
         items(fields) { field ->
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                shape = RoundedCornerShape(18.dp)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        field.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Text("Khu vực: ${field.location}")
-                    Text("Giá: ${field.price}")
-                    Text("Đánh giá: ${field.rating}/5")
-                }
-            }
+            HomeVenueCard(field = field)
+            Spacer(Modifier.height(12.dp))
         }
     }
 }

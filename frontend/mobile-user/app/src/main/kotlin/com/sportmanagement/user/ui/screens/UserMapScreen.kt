@@ -1,4 +1,4 @@
-package com.sportmanagement.user.ui.screens
+﻿package com.sportmanagement.user.ui.screens
 
 import android.Manifest
 import android.content.Context
@@ -6,6 +6,11 @@ import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -18,27 +23,32 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -46,9 +56,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -64,21 +77,27 @@ import androidx.compose.foundation.text.KeyboardOptions
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
-import com.sportmanagement.user.ui.model.UserField
+import com.sportmanagement.user.R
+import com.sportmanagement.user.domain.model.SportCategory
+import com.sportmanagement.user.domain.model.SportIconType
+import com.sportmanagement.user.domain.model.UserField
 import org.osmdroid.tileprovider.tilesource.TileSourceFactory
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
 import org.osmdroid.views.overlay.Marker
 import java.text.Normalizer
 
+private val KineticBlue = Color(0xFF1A4B8E)
+
 @Composable
 fun UserMapScreen(
     padding: PaddingValues,
-    categories: List<String>,
+    sportCategories: List<SportCategory>,
     nearby: List<UserField>
 ) {
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
+    var selectedCategoryIndex by remember { mutableIntStateOf(-1) }
     val lifecycleOwner = LocalLifecycleOwner.current
     var showHighlights by rememberSaveable { mutableStateOf(false) }
     var searchQuery by rememberSaveable { mutableStateOf("") }
@@ -87,6 +106,14 @@ fun UserMapScreen(
     var isLocationPermissionGranted by remember { mutableStateOf(checkLocationPermission(context)) }
     var currentLocation by remember { mutableStateOf<GeoPoint?>(null) }
     val normalizedQuery = normalizeForSearch(searchQuery)
+    val currentLocationTitle = stringResource(R.string.map_current_location_title)
+    val currentLocationSnippet = stringResource(R.string.map_current_location_snippet)
+    val searchPlaceholder = stringResource(R.string.map_search_placeholder)
+    val clearSearchContentDescription = stringResource(R.string.map_clear_search_content_description)
+    val noResultText = stringResource(R.string.map_no_results)
+    val highlightsTitle = stringResource(R.string.map_highlights_title)
+    val myLocationContentDescription = stringResource(R.string.map_my_location_content_description)
+    val toggleListContentDescription = stringResource(R.string.map_toggle_list_content_description)
 
     val matchedField = remember(nearby, normalizedQuery) {
         if (normalizedQuery.isEmpty()) {
@@ -168,8 +195,8 @@ fun UserMapScreen(
     currentLocation?.let { userPoint ->
         val userMarker = Marker(mapView).apply {
             position = userPoint
-            title = "Vị trí hiện tại"
-            snippet = "Bạn đang ở đây"
+            title = currentLocationTitle
+            snippet = currentLocationSnippet
             setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
         }
         mapView.overlays.add(userMarker)
@@ -207,57 +234,58 @@ fun UserMapScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            TextField(
-                value = searchQuery,
-                onValueChange = {
-                    searchQuery = it
-                    showSuggestions = true
-                    selectedFieldName = null
-                },
-                singleLine = true,
-                placeholder = { Text("Nhập tên sân hoặc khu vực") },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.Search,
-                        contentDescription = "Tìm kiếm sân"
-                    )
-                },
-                trailingIcon = {
-                    if (searchQuery.isNotBlank()) {
-                        IconButton(onClick = {
-                            searchQuery = ""
-                            showSuggestions = false
-                        }) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Xóa tìm kiếm"
-                            )
-                        }
-                    }
-                },
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Text,
-                    capitalization = KeyboardCapitalization.Words,
-                    imeAction = ImeAction.Search
-                ),
-                keyboardActions = KeyboardActions(
-                    onSearch = {
-                        jumpToMatchedField()
-                        showSuggestions = false
-                        focusManager.clearFocus()
-                    }
-                ),
+            Surface(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(22.dp),
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.96f),
-                    unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.96f),
-                    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.96f),
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent,
-                    disabledIndicatorColor = Color.Transparent
+                shadowElevation = 6.dp,
+                shape = RoundedCornerShape(28.dp),
+                color = Color.White
+            ) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = {
+                        searchQuery = it
+                        showSuggestions = true
+                        selectedFieldName = null
+                    },
+                    singleLine = true,
+                    placeholder = { Text(searchPlaceholder, color = Color.Gray) },
+                    leadingIcon = {
+                        Icon(Icons.Default.Search, contentDescription = null, tint = Color.Gray)
+                    },
+                    trailingIcon = {
+                        if (searchQuery.isNotBlank()) {
+                            IconButton(onClick = {
+                                searchQuery = ""
+                                showSuggestions = false
+                            }) {
+                                Icon(Icons.Default.Close, contentDescription = clearSearchContentDescription)
+                            }
+                        } else {
+                            Icon(Icons.Default.Tune, contentDescription = null, tint = Color.Gray)
+                        }
+                    },
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Text,
+                        capitalization = KeyboardCapitalization.Words,
+                        imeAction = ImeAction.Search
+                    ),
+                    keyboardActions = KeyboardActions(
+                        onSearch = {
+                            jumpToMatchedField()
+                            showSuggestions = false
+                            focusManager.clearFocus()
+                        }
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(28.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        unfocusedBorderColor = Color(0xFFE0E0E0),
+                        focusedBorderColor = KineticBlue,
+                        unfocusedContainerColor = Color.White,
+                        focusedContainerColor = Color.White
+                    )
                 )
-            )
+            }
             if (showSuggestions && suggestions.isNotEmpty()) {
                 Card(
                     shape = RoundedCornerShape(14.dp),
@@ -268,7 +296,7 @@ fun UserMapScreen(
                     Column(modifier = Modifier.padding(vertical = 6.dp)) {
                         suggestions.forEach { field ->
                             Text(
-                                text = "${field.name} - ${field.location}",
+                                text = stringResource(R.string.map_suggestion_item, field.name, field.location),
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable {
@@ -285,27 +313,21 @@ fun UserMapScreen(
             }
             if (normalizedQuery.isNotEmpty() && matchedField == null) {
                 Text(
-                    "Không có sân phù hợp trong dữ liệu hiện có",
+                    noResultText,
                     color = MaterialTheme.colorScheme.error
                 )
             }
-            Card(shape = RoundedCornerShape(16.dp)) {
-                LazyRow(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 10.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(categories) { category ->
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(24.dp))
-                                .background(MaterialTheme.colorScheme.secondaryContainer)
-                                .padding(horizontal = 14.dp, vertical = 8.dp)
-                        ) {
-                            Text(category)
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                itemsIndexed(sportCategories) { index, category ->
+                    MapSportCategoryItem(
+                        category = category,
+                        isSelected = selectedCategoryIndex == index,
+                        onClick = {
+                            selectedCategoryIndex = if (selectedCategoryIndex == index) -1 else index
                         }
-                    }
+                    )
                 }
             }
         }
@@ -321,7 +343,7 @@ fun UserMapScreen(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
-                    Text("Một số sân nổi bật tại Hà Nội", fontWeight = FontWeight.SemiBold)
+                    Text(highlightsTitle, fontWeight = FontWeight.SemiBold)
                     nearby.take(3).forEach { field ->
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -332,7 +354,7 @@ fun UserMapScreen(
                                 Text(field.name, fontWeight = FontWeight.SemiBold)
                                 Text(field.location)
                             }
-                            Text("${field.price} | ${field.rating}/5")
+                            Text(stringResource(R.string.favorite_price_rating, field.price, field.rating))
                         }
                     }
                     Spacer(Modifier.height(4.dp))
@@ -370,7 +392,7 @@ fun UserMapScreen(
             ) {
                 Icon(
                     imageVector = Icons.Default.MyLocation,
-                    contentDescription = "Vị trí hiện tại",
+                    contentDescription = myLocationContentDescription,
                     tint = MaterialTheme.colorScheme.onPrimaryContainer
                 )
             }
@@ -386,7 +408,7 @@ fun UserMapScreen(
                     } else {
                         Icons.Default.KeyboardArrowUp
                     },
-                    contentDescription = "Hiện danh sách sân",
+                    contentDescription = toggleListContentDescription,
                     tint = MaterialTheme.colorScheme.onPrimary
                 )
             }
@@ -456,11 +478,11 @@ private fun requestCurrentLocationPoint(
 
 private fun fieldPoint(field: UserField, index: Int): GeoPoint {
     val knownPoints = mapOf(
-        "Sân bóng C500 Học viện An Ninh" to GeoPoint(21.0466, 105.7868),
-        "Sân bóng Minh Kiệt" to GeoPoint(21.0368, 105.8215),
-        "Sân vận động Mỹ Đình" to GeoPoint(21.0227, 105.7630),
-        "Sân bóng Hoàng Mai" to GeoPoint(20.9748, 105.8639),
-        "Sân bóng Bách Khoa" to GeoPoint(21.0043, 105.8427)
+        "SÃ¢n bÃ³ng C500 Há»c viá»‡n An Ninh" to GeoPoint(21.0466, 105.7868),
+        "SÃ¢n bÃ³ng Minh Kiá»‡t" to GeoPoint(21.0368, 105.8215),
+        "SÃ¢n váº­n Ä‘á»™ng Má»¹ ÄÃ¬nh" to GeoPoint(21.0227, 105.7630),
+        "SÃ¢n bÃ³ng HoÃ ng Mai" to GeoPoint(20.9748, 105.8639),
+        "SÃ¢n bÃ³ng BÃ¡ch Khoa" to GeoPoint(21.0043, 105.8427)
     )
     val fallbackPoints = listOf(
         GeoPoint(21.0285, 105.8542),
@@ -471,10 +493,83 @@ private fun fieldPoint(field: UserField, index: Int): GeoPoint {
     return knownPoints[field.name] ?: fallbackPoints[index % fallbackPoints.size]
 }
 
+@Composable
+private fun MapSportCategoryItem(
+    category: SportCategory,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    val bgColor by animateColorAsState(
+        targetValue = if (isSelected) KineticBlue else Color.White,
+        animationSpec = tween(300), label = "bgColor"
+    )
+    val iconColor by animateColorAsState(
+        targetValue = if (isSelected) Color.White else KineticBlue,
+        animationSpec = tween(300), label = "iconColor"
+    )
+    val elevation by animateDpAsState(
+        targetValue = if (isSelected) 8.dp else 3.dp,
+        animationSpec = tween(300), label = "elevation"
+    )
+
+    val textColor by animateColorAsState(
+        targetValue = if (isSelected) KineticBlue else Color.DarkGray,
+        animationSpec = tween(300), label = "textColor"
+    )
+
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.clickable(onClick = onClick)
+    ) {
+        Surface(
+            modifier = Modifier.size(60.dp),
+            shape = CircleShape,
+            shadowElevation = elevation,
+            color = bgColor,
+            border = BorderStroke(
+                width = if (isSelected) 0.dp else 1.5.dp,
+                color = if (isSelected) Color.Transparent else KineticBlue
+            )
+        ) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    painter = painterResource(id = getMapSportDrawable(category.iconType)),
+                    contentDescription = category.name,
+                    modifier = Modifier.size(30.dp),
+                    colorFilter = ColorFilter.tint(iconColor)
+                )
+            }
+        }
+        Spacer(Modifier.height(8.dp))
+        Text(
+            category.name,
+            style = MaterialTheme.typography.labelSmall,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+            color = textColor
+        )
+    }
+}
+
+private fun getMapSportDrawable(type: SportIconType): Int {
+    return when (type) {
+        SportIconType.FOOTBALL -> com.sportmanagement.user.R.drawable.football_25
+        SportIconType.PICKLEBALL -> com.sportmanagement.user.R.drawable.pickleball
+        SportIconType.TENNIS -> com.sportmanagement.user.R.drawable.tennis_25
+        SportIconType.BADMINTON -> com.sportmanagement.user.R.drawable.badminton_25
+        SportIconType.VOLLEYBALL -> com.sportmanagement.user.R.drawable.volleyball_25
+    }
+}
+
 private fun normalizeForSearch(text: String): String {
     val normalized = Normalizer.normalize(text.trim().lowercase(), Normalizer.Form.NFD)
     return normalized
-        .replace("đ", "d")
-        .replace("Đ", "D")
+        .replace("Ä‘", "d")
+        .replace("Ä", "D")
         .replace("\\p{M}+".toRegex(), "")
 }
+
+
+
