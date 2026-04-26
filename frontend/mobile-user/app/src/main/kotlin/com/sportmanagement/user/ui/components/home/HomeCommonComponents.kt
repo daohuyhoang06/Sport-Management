@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -20,20 +21,32 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.sportmanagement.user.R
+import com.sportmanagement.user.ui.theme.AppCtaAmber
+import com.sportmanagement.user.ui.theme.AppCtaCompactHorizontalPadding
+import com.sportmanagement.user.ui.theme.AppCtaCompactVerticalPadding
+import com.sportmanagement.user.ui.theme.AppCtaCornerRadius
+import com.sportmanagement.user.ui.theme.AppOnCtaAmber
 
 @Composable
 internal fun HomeBookButton(onClick: () -> Unit) {
     Button(
         onClick = onClick,
         colors = ButtonDefaults.buttonColors(
-            containerColor = HomeKineticBlue
+            containerColor = AppCtaAmber,
+            contentColor = AppOnCtaAmber
         ),
-        shape = RoundedCornerShape(20.dp),
-        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 6.dp)
+        shape = RoundedCornerShape(AppCtaCornerRadius),
+        contentPadding = PaddingValues(
+            horizontal = AppCtaCompactHorizontalPadding,
+            vertical = AppCtaCompactVerticalPadding
+        )
     ) {
-        Text(stringResource(R.string.home_book_button), fontWeight = FontWeight.Bold, fontSize = 13.sp)
+        Text(
+            text = stringResource(R.string.home_book_button),
+            style = MaterialTheme.typography.labelLarge,
+            fontWeight = FontWeight.SemiBold
+        )
     }
 }
 
@@ -41,10 +54,15 @@ internal fun HomeBookButton(onClick: () -> Unit) {
 internal fun HomeTagChip(text: String) {
     Box(
         modifier = Modifier
-            .border(1.dp, HomeTagBorder, RoundedCornerShape(12.dp))
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp))
             .padding(horizontal = 10.dp, vertical = 4.dp)
     ) {
-        Text(text, fontSize = 10.sp, color = HomeKineticBlue, fontWeight = FontWeight.Medium)
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontWeight = FontWeight.Medium
+        )
     }
 }
 
@@ -53,14 +71,14 @@ internal fun HomeSmallCircleIcon(icon: ImageVector, size: Int = 32) {
     Box(
         modifier = Modifier
             .size(size.dp)
-            .background(Color.White.copy(alpha = 0.9f), CircleShape),
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.9f), CircleShape),
         contentAlignment = Alignment.Center
     ) {
         Icon(
             icon,
             contentDescription = null,
             modifier = Modifier.size((size * 0.55f).dp),
-            tint = Color.DarkGray
+            tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }

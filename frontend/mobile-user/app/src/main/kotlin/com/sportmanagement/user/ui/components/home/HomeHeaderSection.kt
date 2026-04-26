@@ -23,7 +23,6 @@ import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -41,7 +40,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.sportmanagement.user.R
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -84,14 +82,14 @@ fun HomeHeaderSection(
                     Box(
                         modifier = Modifier
                             .size(46.dp)
-                            .background(Color.White.copy(alpha = 0.92f), CircleShape)
-                            .border(1.dp, HomeKineticBlue.copy(alpha = 0.3f), CircleShape),
+                            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.92f), CircleShape)
+                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = Icons.Default.Person,
                             contentDescription = stringResource(R.string.home_avatar_content_description),
-                            tint = HomeKineticDarkBlue,
+                            tint = MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.size(24.dp)
                         )
                     }
@@ -102,33 +100,19 @@ fun HomeHeaderSection(
                         Text(
                             text = todayLabel,
                             style = MaterialTheme.typography.bodySmall,
-                            color = Color.White
+                            color = MaterialTheme.colorScheme.onPrimary
                         )
                         Spacer(Modifier.height(2.dp))
                         Text(
                             text = displayName,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold,
-                            color = HomeAccentLemonYellow
+                            color = MaterialTheme.colorScheme.secondary
                         )
                     }
                 }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(28.dp)
-                            .background(HomeVietnamFlagRed, CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Star,
-                            contentDescription = null,
-                            tint = HomeVietnamFlagYellow,
-                            modifier = Modifier.size(16.dp)
-                        )
-                    }
-                    Spacer(Modifier.width(8.dp))
                     Box(
                         modifier = Modifier.size(32.dp),
                         contentAlignment = Alignment.Center
@@ -136,7 +120,7 @@ fun HomeHeaderSection(
                         Icon(
                             imageVector = Icons.Default.Notifications,
                             contentDescription = null,
-                            tint = Color.White,
+                            tint = MaterialTheme.colorScheme.onPrimary,
                             modifier = Modifier.size(24.dp)
                         )
                     }
@@ -159,7 +143,7 @@ fun HomeHeaderSection(
                     .height(44.dp),
                 shadowElevation = 6.dp,
                 shape = RoundedCornerShape(12.dp),
-                color = Color.White
+                color = MaterialTheme.colorScheme.surface
             ) {
                 OutlinedTextField(
                     value = searchQuery,
@@ -167,29 +151,24 @@ fun HomeHeaderSection(
                     placeholder = {
                         Text(
                             stringResource(R.string.home_search_placeholder),
-                            color = Color(0xFF616161),
-                            fontSize = 12.sp,
-                            lineHeight = 14.sp,
-                            fontWeight = FontWeight.Normal
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     },
-                    textStyle = MaterialTheme.typography.bodySmall.copy(
-                        fontSize = 12.sp,
-                        lineHeight = 14.sp
-                    ),
+                    textStyle = MaterialTheme.typography.bodySmall,
                     trailingIcon = {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
                                 Icons.Default.Tune,
                                 contentDescription = null,
-                                tint = HomeKineticBlue,
+                                tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(18.dp)
                             )
                             Spacer(Modifier.width(6.dp))
                             Icon(
                                 Icons.Default.Search,
                                 contentDescription = null,
-                                tint = HomeKineticDarkBlue,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(20.dp)
                             )
                         }
@@ -201,13 +180,13 @@ fun HomeHeaderSection(
                     colors = OutlinedTextFieldDefaults.colors(
                         unfocusedBorderColor = Color.Transparent,
                         focusedBorderColor = Color.Transparent,
-                        unfocusedContainerColor = Color.White,
-                        focusedContainerColor = Color.White,
-                        unfocusedTextColor = Color(0xFF212121),
-                        focusedTextColor = Color(0xFF212121),
-                        unfocusedPlaceholderColor = Color(0xFF616161),
-                        focusedPlaceholderColor = Color(0xFF616161),
-                        cursorColor = HomeKineticBlue
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        focusedPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                        cursorColor = MaterialTheme.colorScheme.primary
                     ),
                     singleLine = true
                 )
@@ -217,13 +196,13 @@ fun HomeHeaderSection(
                 modifier = Modifier.size(44.dp),
                 shadowElevation = 6.dp,
                 shape = RoundedCornerShape(10.dp),
-                color = Color.White
+                color = MaterialTheme.colorScheme.surface
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         Icons.Default.FavoriteBorder,
                         contentDescription = stringResource(R.string.home_favorite_content_description),
-                        tint = HomeKineticBlue,
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(22.dp)
                     )
                 }

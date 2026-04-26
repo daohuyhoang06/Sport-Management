@@ -11,8 +11,10 @@
     <string name="home_user_name_fallback">Người dùng</string>
     <string name="home_search_placeholder">Tìm kiếm</string>
     <string name="home_favorite_content_description">Yêu thích</string>
+    <string name="home_language_vi">Tiếng Việt</string>
+    <string name="home_language_en">English</string>
     <string name="home_pro_league">PRO LEAGUE</string>
-    <string name="home_book_button">Đặt lịch</string>
+    <string name="home_book_button">Đặt Lịch</string>
     <string name="home_location_distance_format">%1$s • %2$s</string>
     <string name="home_distance_bullet_format">%1$s •</string>
 
@@ -54,8 +56,31 @@
     <string name="booking_total_hours_format">Tổng giờ: %1$s</string>
     <string name="booking_total_price_format">Tổng tiền: %1$s</string>
     <string name="booking_next">TIẾP THEO</string>
+    <string name="booking_select_slot_error">Vui lòng chọn ít nhất 1 khung giờ để tiếp tục.</string>
+    <string name="booking_confirm_and_pay">XÁC NHẬN &amp; THANH TOÁN</string>
     <string name="booking_cancel">Hủy</string>
     <string name="booking_confirm">Xác nhận</string>
+    <string name="booking_confirm_field_info_title">Thông tin sân</string>
+    <string name="booking_confirm_club_name">Tên CLB:</string>
+    <string name="booking_confirm_address">Địa chỉ:</string>
+    <string name="booking_confirm_default_club_name">Pickleball</string>
+    <string name="booking_confirm_default_address">Đường Phạm Thận Duật, Phường Hoa Lư, Tỉnh Ninh Bình</string>
+    <string name="booking_confirm_booking_info_title">Thông tin lịch đặt</string>
+    <string name="booking_confirm_date">Ngày:</string>
+    <string name="booking_confirm_total_hours">Tổng giờ:</string>
+    <string name="booking_confirm_total_price">Tổng tiền:</string>
+    <string name="booking_confirm_offer">Ưu đãi</string>
+    <string name="booking_confirm_choose_offer">Chọn ưu đãi áp dụng</string>
+    <string name="booking_confirm_amount_due">Số tiền cần thanh toán</string>
+    <string name="booking_confirm_name_label">TÊN CỦA BẠN</string>
+    <string name="booking_confirm_phone_label">SỐ ĐIỆN THOẠI</string>
+    <string name="booking_confirm_note_label">GHI CHÚ CHO CHỦ SÂN</string>
+    <string name="booking_confirm_note_placeholder">Nhập ghi chú</string>
+    <string name="booking_confirm_notice_title">Lưu ý:</string>
+    <string name="booking_confirm_notice_line_1">Việc thanh toán được thực hiện trực tiếp giữa bạn và chủ sân.</string>
+    <string name="booking_confirm_notice_line_2">Hệ thống đóng vai trò kết nối, hỗ trợ bạn tìm và đặt sân dễ dàng hơn.</string>
+    <string name="booking_confirm_notice_line_3">Mỗi sân có thể có quy định riêng, hãy đọc kỹ trước khi thanh toán.</string>
+    <string name="booking_confirm_notice_terms">Bằng việc bấm Xác nhận &amp; Thanh toán, bạn xác nhận đã đọc và đồng ý với điều khoản đặt sân.</string>
 
     <string name="profile_title">Tài khoản</string>
     <string name="profile_name">Tên: %1$s</string>

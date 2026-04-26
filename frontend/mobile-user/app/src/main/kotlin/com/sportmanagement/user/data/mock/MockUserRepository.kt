@@ -12,7 +12,7 @@ import com.sportmanagement.user.domain.model.UserStat
 import com.sportmanagement.user.domain.model.VenueCardType
 import com.sportmanagement.user.domain.repository.UserRepository
 
-class MockUserRepository : UserRepository {
+class   MockUserRepository : UserRepository {
 
     override fun getSportCategories(): List<SportCategory> = listOf(
         SportCategory("Bóng đá", SportIconType.FOOTBALL),

@@ -38,7 +38,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.sportmanagement.user.R
 import com.sportmanagement.user.domain.model.UserField
 import com.sportmanagement.user.domain.model.VenueCardType
@@ -65,7 +64,7 @@ private fun LargeVenueCard(
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column {
@@ -85,13 +84,13 @@ private fun LargeVenueCard(
                     Box(
                         modifier = Modifier
                             .padding(12.dp)
-                            .background(HomeKineticDarkBlue, RoundedCornerShape(6.dp))
+                            .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(6.dp))
                             .padding(horizontal = 8.dp, vertical = 4.dp)
                     ) {
                         Text(
                             stringResource(R.string.home_pro_league),
-                            color = Color.White,
-                            fontSize = 10.sp,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
                             fontWeight = FontWeight.Bold
                         )
                     }
@@ -101,18 +100,22 @@ private fun LargeVenueCard(
                     Row(
                         modifier = Modifier
                             .padding(start = 120.dp, top = 12.dp)
-                            .background(Color(0xFF1B5E20).copy(alpha = 0.8f), RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.tertiaryContainer, RoundedCornerShape(12.dp))
                             .padding(horizontal = 8.dp, vertical = 2.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
                             Icons.Default.Star,
                             contentDescription = null,
-                            tint = Color(0xFFFFD600),
+                            tint = MaterialTheme.colorScheme.secondary,
                             modifier = Modifier.size(14.dp)
                         )
                         Spacer(Modifier.width(2.dp))
-                        Text(field.rating, color = Color.White, fontSize = 12.sp)
+                        Text(
+                            text = field.rating,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onTertiaryContainer
+                        )
                     }
                 }
 
@@ -143,8 +146,8 @@ private fun LargeVenueCard(
                     Spacer(Modifier.height(2.dp))
                     Text(
                         stringResource(R.string.home_location_distance_format, field.location, field.distance),
-                        fontSize = 12.sp,
-                        color = Color.Gray,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -154,10 +157,14 @@ private fun LargeVenueCard(
                             Icons.Default.AccessTime,
                             contentDescription = null,
                             modifier = Modifier.size(14.dp),
-                            tint = Color.Gray
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(Modifier.width(4.dp))
-                        Text(field.hours, fontSize = 12.sp, color = Color.Gray)
+                        Text(
+                            text = field.hours,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
                 HomeBookButton(onClick = onBookClick)
@@ -176,7 +183,7 @@ private fun SmallHorizontalCard(
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Row(
@@ -205,14 +212,14 @@ private fun SmallHorizontalCard(
                 Spacer(Modifier.height(2.dp))
                 Text(
                     field.distance,
-                    fontSize = 12.sp,
-                    color = Color.Gray
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 if (field.availability.isNotEmpty()) {
                     Text(
                         field.availability,
-                        fontSize = 12.sp,
-                        color = Color.Gray
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
                 if (field.tags.isNotEmpty()) {
@@ -249,7 +256,7 @@ private fun SmallNoImageCard(
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Row(
@@ -262,13 +269,13 @@ private fun SmallNoImageCard(
                 modifier = Modifier
                     .size(56.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFFE8F5E9)),
+                    .background(MaterialTheme.colorScheme.secondaryContainer),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     Icons.Default.SportsTennis,
                     contentDescription = null,
-                    tint = Color(0xFF2E7D32),
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
                     modifier = Modifier.size(28.dp)
                 )
             }
@@ -284,14 +291,14 @@ private fun SmallNoImageCard(
                 Spacer(Modifier.height(2.dp))
                 Text(
                     stringResource(R.string.home_distance_bullet_format, field.distance),
-                    fontSize = 12.sp,
-                    color = Color.Gray
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 if (field.availability.isNotEmpty()) {
                     Text(
                         field.availability,
-                        fontSize = 12.sp,
-                        color = Color(0xFF2E7D32)
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.secondary
                     )
                 }
                 if (field.tags.isNotEmpty()) {
