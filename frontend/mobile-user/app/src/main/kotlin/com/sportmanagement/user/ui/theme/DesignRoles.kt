@@ -1,6 +1,16 @@
 package com.sportmanagement.user.ui.theme
 
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 
-// Semantic role color for highlight text/actions across the app.
+// Semantic role for lemon accent text/highlights.
 val AppAccentCitrus = Color(0xFFFFF176)
+
+// Semantic role for primary CTA buttons (e.g. "Dat lich", "Tiep theo").
+val AppCtaAmber = Color(0xFFC99D4B)
+val AppOnCtaAmber = Color(0xFFFFFFFF)
+val AppCtaCornerRadius = 10.dp
+val AppCtaCompactHorizontalPadding = 12.dp
+val AppCtaCompactVerticalPadding = 6.dp
+val AppCtaWideHeight = 52.dp
+const val AppCtaWideWidthFraction = 0.92f

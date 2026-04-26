@@ -15,8 +15,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.compose.material3.MaterialTheme
 import com.sportmanagement.user.ui.components.home.HomeHeaderSection
 import com.sportmanagement.user.ui.components.home.HomeSportCategorySection
 import com.sportmanagement.user.ui.components.home.HomeVenueCard
@@ -38,7 +38,7 @@ fun UserHomeScreen(
         modifier = Modifier
             .fillMaxSize()
             .padding(padding)
-            .background(Color.White),
+            .background(MaterialTheme.colorScheme.background),
         contentPadding = PaddingValues(bottom = 16.dp)
     ) {
         item {

@@ -61,12 +61,12 @@ private fun SportCategoryItem(
     onClick: () -> Unit
 ) {
     val bgColor by animateColorAsState(
-        targetValue = if (isSelected) HomeKineticBlue else Color.White,
+        targetValue = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
         animationSpec = tween(300),
         label = "bgColor"
     )
     val textColor by animateColorAsState(
-        targetValue = if (isSelected) HomeKineticBlue else Color.DarkGray,
+        targetValue = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
         animationSpec = tween(300),
         label = "textColor"
     )
@@ -87,7 +87,7 @@ private fun SportCategoryItem(
             color = bgColor,
             border = BorderStroke(
                 width = if (isSelected) 0.dp else 1.5.dp,
-                color = if (isSelected) Color.Transparent else HomeKineticBlue.copy(alpha = 0.35f)
+                color = if (isSelected) Color.Transparent else MaterialTheme.colorScheme.outlineVariant
             )
         ) {
             Box(

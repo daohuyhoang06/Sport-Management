@@ -1,11 +1,17 @@
-﻿package com.sportmanagement.user.ui.components.home
+package com.sportmanagement.user.ui.components.home
 
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
-import com.sportmanagement.user.ui.theme.AppAccentCitrus
 
-internal val HomeKineticBlue = Color(0xFF1A4B8E)
-internal val HomeKineticDarkBlue = Color(0xFF0D3B6E)
-internal val HomeAccentLemonYellow = AppAccentCitrus
-internal val HomeVietnamFlagRed = Color(0xFFDA251D)
-internal val HomeVietnamFlagYellow = Color(0xFFFFD54F)
-internal val HomeTagBorder = Color(0xFFBBDEFB)
+@Composable
+internal fun homePrimaryColor(): Color = MaterialTheme.colorScheme.primary
+
+@Composable
+internal fun homePrimaryContainerColor(): Color = MaterialTheme.colorScheme.primaryContainer
+
+@Composable
+internal fun homeAccentColor(): Color = MaterialTheme.colorScheme.secondary
+
+@Composable
+internal fun homeTagBorderColor(): Color = MaterialTheme.colorScheme.outlineVariant
