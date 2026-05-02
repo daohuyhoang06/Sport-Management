@@ -40,7 +40,6 @@ function FieldFormModal({
   open,
   formState,
   sportTypes,
-  sportTypesLoading,
   loading,
   error,
   onClose,
@@ -104,24 +103,6 @@ function FieldFormModal({
           </label>
 
           <label className="modal-field">
-            <span>Loại sân</span>
-            <select
-              name="sport_id"
-              value={formState.sport_id}
-              onChange={onChange}
-            >
-              <option value="" disabled>
-                {sportTypesLoading ? "Đang tải loại sân..." : "Chọn loại sân"}
-              </option>
-              {sportTypes.map((sportType) => (
-                <option key={sportType.sport_id} value={String(sportType.sport_id)}>
-                  {sportType.sport_name}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="modal-field">
             <span>Giá thuê / giờ</span>
             <input
               type="number"
@@ -136,6 +117,22 @@ function FieldFormModal({
                 ? "Bắt buộc khi sân ở trạng thái Hoạt động."
                 : "Không bắt buộc khi sân ở trạng thái Không hoạt động hoặc Bảo trì."}
             </small>
+          </label>
+
+          <label className="modal-field modal-field-full">
+            <span>Loại sân</span>
+            <select
+              name="sport_id"
+              value={formState.sport_id}
+              onChange={onChange}
+            >
+              <option value="">Chọn loại sân</option>
+              {sportTypes.map((sportType) => (
+                <option key={sportType.id} value={sportType.id}>
+                  {sportType.name}
+                </option>
+              ))}
+            </select>
           </label>
 
           <label className="modal-field">
@@ -189,15 +186,10 @@ export default function FieldsPage() {
     createField,
     updateField,
   } = useAdminFields();
-  const {
-    sportTypes,
-    loading: sportTypesLoading,
-    error: sportTypesError,
-  } = useAdminSportTypes();
+  const { types: sportTypes } = useAdminSportTypes();
 
   const [searchText, setSearchText] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [sportFilter, setSportFilter] = useState("all");
   const [submittingFieldId, setSubmittingFieldId] = useState(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
@@ -215,7 +207,7 @@ export default function FieldsPage() {
     return fields.filter((field) => {
       const matchesKeyword =
         !keyword ||
-        [field.name, field.location, field.managerName, field.sportName]
+        [field.name, field.location, field.managerName]
           .join(" ")
           .toLowerCase()
           .includes(keyword);
@@ -223,12 +215,9 @@ export default function FieldsPage() {
       const matchesStatus =
         statusFilter === "all" || field.status === statusFilter;
 
-      const matchesSport =
-        sportFilter === "all" || String(field.sportId) === sportFilter;
-
-      return matchesKeyword && matchesStatus && matchesSport;
+      return matchesKeyword && matchesStatus;
     });
-  }, [fields, searchText, statusFilter, sportFilter]);
+  }, [fields, searchText, statusFilter]);
 
   const handleFieldChange = (setter) => (event) => {
     const { name, value } = event.target;
@@ -253,6 +242,7 @@ export default function FieldsPage() {
     setEditForm({
       field_name: field.name || "",
       location: field.location || "",
+      sport_id: field.sportId ? String(field.sportId) : "",
       rental_price:
         field.pricePerHour !== null &&
         field.pricePerHour !== undefined &&
@@ -260,7 +250,6 @@ export default function FieldsPage() {
           ? String(field.pricePerHour)
           : "",
       manager_id: field.managerId ? String(field.managerId) : "",
-      sport_id: field.sportId ? String(field.sportId) : "",
       status: field.status || "active",
     });
     setEditModalOpen(true);
@@ -307,6 +296,7 @@ export default function FieldsPage() {
       await createField({
         field_name: createForm.field_name.trim(),
         location: createForm.location.trim(),
+        sport_id: Number(createForm.sport_id),
         rental_price:
           createForm.rental_price && Number(createForm.rental_price) > 0
             ? Number(createForm.rental_price)
@@ -314,7 +304,6 @@ export default function FieldsPage() {
         manager_id: createForm.manager_id
           ? Number(createForm.manager_id)
           : null,
-        sport_id: Number(createForm.sport_id),
         status: createForm.status,
       });
 
@@ -362,12 +351,12 @@ export default function FieldsPage() {
       await updateField(selectedField.id, {
         field_name: editForm.field_name.trim(),
         location: editForm.location.trim(),
+        sport_id: Number(editForm.sport_id),
         rental_price:
           editForm.rental_price && Number(editForm.rental_price) > 0
             ? Number(editForm.rental_price)
             : null,
         manager_id: editForm.manager_id ? Number(editForm.manager_id) : null,
-        sport_id: Number(editForm.sport_id),
         status: editForm.status,
       });
 
@@ -432,7 +421,6 @@ export default function FieldsPage() {
         render: (row) => <span className="field-id-tag">#{row.id}</span>,
       },
       { key: "name", label: "Tên sân" },
-      { key: "sportName", label: "Loại sân" },
       {
         key: "location",
         label: "Địa chỉ",
@@ -441,6 +429,13 @@ export default function FieldsPage() {
             <span>📍</span>
             {row.location}
           </span>
+        ),
+      },
+      {
+        key: "sportName",
+        label: "Loại sân",
+        render: (row) => (
+          <span className="field-sport-type">{row.sportName}</span>
         ),
       },
       { key: "managerName", label: "Quản lý" },
@@ -499,7 +494,7 @@ export default function FieldsPage() {
           <div className="dashboard-hero-icon">🏟️</div>
           <div>
             <p className="dashboard-hero-kicker">Dashboard</p>
-            <h2>Quản Lý Sân</h2>
+            <h2>Quản Lý Sân Bóng</h2>
           </div>
         </div>
 
@@ -560,7 +555,7 @@ export default function FieldsPage() {
               type="search"
               value={searchText}
               onChange={(event) => setSearchText(event.target.value)}
-              placeholder="Tìm kiếm sân..."
+              placeholder="Tìm kiếm sân bóng..."
             />
           </label>
           <select
@@ -573,17 +568,6 @@ export default function FieldsPage() {
               </option>
             ))}
           </select>
-          <select
-            value={sportFilter}
-            onChange={(event) => setSportFilter(event.target.value)}
-          >
-            <option value="all">Tất cả loại sân</option>
-            {sportTypes.map((sportType) => (
-              <option key={sportType.sport_id} value={String(sportType.sport_id)}>
-                {sportType.sport_name}
-              </option>
-            ))}
-          </select>
         </div>
 
         <button
@@ -591,14 +575,11 @@ export default function FieldsPage() {
           className="fields-add-btn"
           onClick={openCreateModal}
         >
-          + Thêm Sân
+          + Thêm Sân Bóng
         </button>
       </section>
 
       {error && <p className="dashboard-state error">{error}</p>}
-      {sportTypesError && (
-        <p className="dashboard-state error">{sportTypesError}</p>
-      )}
       {actionError && <p className="dashboard-state error">{actionError}</p>}
       {actionSuccess && (
         <p className="dashboard-state success">{actionSuccess}</p>
@@ -607,7 +588,7 @@ export default function FieldsPage() {
       <section className="fields-table-card section-card">
         <div className="fields-table-head">
           <div>
-            <h3>Danh sách sân</h3>
+            <h3>Danh sách sân bóng</h3>
             <p>
               Hiển thị {filteredRows.length.toLocaleString("vi-VN")} /{" "}
               {fields.length.toLocaleString("vi-VN")} sân.
@@ -630,7 +611,6 @@ export default function FieldsPage() {
         open={createModalOpen}
         formState={createForm}
         sportTypes={sportTypes}
-        sportTypesLoading={sportTypesLoading}
         loading={creatingField}
         error={actionError}
         onClose={closeModals}
@@ -643,7 +623,6 @@ export default function FieldsPage() {
         open={editModalOpen}
         formState={editForm}
         sportTypes={sportTypes}
-        sportTypesLoading={sportTypesLoading}
         loading={editingField}
         error={actionError}
         onClose={closeModals}

@@ -20,7 +20,7 @@ export const getAllUsersService = async (filters = {}, pagination = {}) => {
 
   if (search) {
     whereConditions.push(
-      "(LOWER(name) LIKE LOWER(?) OR LOWER(email) LIKE LOWER(?) OR LOWER(username) LIKE LOWER(?))",
+      "(LOWER(full_name) LIKE LOWER(?) OR LOWER(email) LIKE LOWER(?) OR LOWER(username) LIKE LOWER(?))",
     );
     queryParams.push(`%${search}%`, `%${search}%`, `%${search}%`);
   }
@@ -46,7 +46,7 @@ export const getAllUsersService = async (filters = {}, pagination = {}) => {
 
   // Get users
   const [rows] = await sequelize.query(
-    `SELECT person_id, name, birthday, sex, address, email, phone, username, role, status, field_id
+    `SELECT person_id, full_name as name, birthday, gender as sex, address, email, phone, username, role, status
      FROM person 
      ${whereClause}
      ORDER BY person_id DESC
@@ -67,7 +67,7 @@ export const getAllUsersService = async (filters = {}, pagination = {}) => {
  */
 export const getUserByIdService = async (id) => {
   const [[user]] = await sequelize.query(
-    `SELECT person_id, name, birthday, sex, address, email, phone, username, role, status, field_id
+    `SELECT person_id, full_name as name, birthday, gender as sex, address, email, phone, username, role, status
      FROM person 
      WHERE person_id = ?`,
     { replacements: [id] },
@@ -152,7 +152,7 @@ export const updateUserService = async (id, userData) => {
   const params = [];
 
   if (userData.name) {
-    updates.push("name = ?");
+    updates.push("full_name = ?");
     params.push(userData.name);
   }
   if (userData.email) {
@@ -180,7 +180,7 @@ export const updateUserService = async (id, userData) => {
     params.push(userData.birthday);
   }
   if (userData.sex) {
-    updates.push("sex = ?");
+    updates.push("gender = ?");
     params.push(userData.sex);
   }
 
@@ -193,7 +193,7 @@ export const updateUserService = async (id, userData) => {
   }
 
   const [[updatedUser]] = await sequelize.query(
-    `SELECT person_id, name, birthday, sex, address, email, phone, username, role, status, field_id
+    `SELECT person_id, full_name as name, birthday, gender as sex, address, email, phone, username, role, status
      FROM person WHERE person_id = ?`,
     { replacements: [id] },
   );
@@ -202,7 +202,7 @@ export const updateUserService = async (id, userData) => {
 };
 
 /**
- * Delete user (soft delete - set status to inactive)
+ * Delete user (hard delete - DELETE from database)
  */
 export const deleteUserService = async (id) => {
   const [[user]] = await sequelize.query(
@@ -214,10 +214,10 @@ export const deleteUserService = async (id) => {
     throw new Error("User not found");
   }
 
-  await sequelize.query(
-    "UPDATE person SET status = 'inactive' WHERE person_id = ?",
-    { replacements: [id] },
-  );
+  // Delete user records (hard delete)
+  await sequelize.query("DELETE FROM person WHERE person_id = ?", {
+    replacements: [id],
+  });
 
   return { message: "User deleted successfully" };
 };

@@ -25,7 +25,7 @@ export const getAllEmployeesService = async (filters = {}, pagination = {}) => {
   const replacements = {};
   if (search) {
     searchCondition =
-      "AND (p.name LIKE :search OR p.email LIKE :search OR p.phone LIKE :search)";
+      "AND (p.full_name LIKE :search OR p.email LIKE :search OR p.phone LIKE :search)";
     replacements.search = `%${search}%`;
   }
 
@@ -51,22 +51,21 @@ export const getAllEmployeesService = async (filters = {}, pagination = {}) => {
     `
     SELECT 
       p.person_id,
-      p.name,
+      p.full_name as name,
       p.email,
       p.phone,
       p.username,
       p.role,
       p.status,
       p.birthday,
-      p.sex,
+      p.gender as sex,
       p.address,
-      p.field_id,
       COUNT(f.field_id) as field_count,
       ${fieldNamesAgg} as field_names
     FROM person p
     LEFT JOIN fields f ON f.manager_id = p.person_id
     WHERE p.role = 'manager' ${searchCondition} ${statusCondition}
-    GROUP BY p.person_id, p.name, p.email, p.phone, p.username, p.role, p.status, p.birthday, p.sex, p.address, p.field_id
+    GROUP BY p.person_id, p.full_name, p.email, p.phone, p.username, p.role, p.status, p.birthday, p.gender, p.address
     ORDER BY p.person_id DESC
     LIMIT :limit OFFSET :offset
   `,
@@ -91,7 +90,6 @@ export const getAllEmployeesService = async (filters = {}, pagination = {}) => {
     birthday: row.birthday,
     sex: row.sex,
     address: row.address,
-    field_id: row.field_id,
     field_count: parseInt(row.field_count),
     field_names: row.field_names,
   }));
@@ -111,17 +109,16 @@ export const getEmployeeByIdService = async (id) => {
   const [employees] = await User.sequelize.query(`
     SELECT 
       p.person_id,
-      p.name,
+      p.full_name as name,
       p.email,
       p.phone,
       p.username,
       p.role,
       p.status,
       p.birthday,
-      p.sex,
+      p.gender as sex,
       p.address,
-      p.field_id,
-      f.field_id,
+      f.field_id as managed_field_id,
       f.field_name,
       f.location,
       f.status as field_status
@@ -146,10 +143,10 @@ export const getEmployeeByIdService = async (id) => {
     birthday: employee.birthday,
     sex: employee.sex,
     address: employee.address,
-    field_id: employee.field_id,
-    field: employee.field_id
+    field_id: employee.managed_field_id,
+    field: employee.managed_field_id
       ? {
-          field_id: employee.field_id,
+          field_id: employee.managed_field_id,
           field_name: employee.field_name,
           location: employee.location,
           status: employee.field_status,
@@ -236,7 +233,8 @@ export const deleteEmployeeService = async (id) => {
     );
   }
 
-  await employee.update({ status: "inactive" });
+  // Hard delete - remove employee from database
+  await employee.destroy();
   return { message: "Employee deleted successfully" };
 };
 

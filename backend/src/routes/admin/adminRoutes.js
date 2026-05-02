@@ -30,6 +30,12 @@ import {
   deleteFieldImage,
 } from "../../controllers/admin/fieldManagementController.js";
 import {
+  getAllSportTypesController,
+  createSportType,
+  updateSportType,
+  deleteSportType,
+} from "../../controllers/admin/sportTypeManagementController.js";
+import {
   getAllBookings,
   getBookingById,
   updateBookingStatus,
@@ -46,12 +52,6 @@ import {
   assignFieldToEmployee,
   getEmployeeStats,
 } from "../../controllers/admin/employeeManagementController.js";
-import {
-  getAllSportTypes,
-  createSportType,
-  updateSportType,
-  deleteSportType,
-} from "../../controllers/admin/sportTypeManagementController.js";
 
 const router = Router();
 
@@ -85,8 +85,8 @@ router.patch("/fields/:id/status", toggleFieldStatus);
 router.post("/fields/:id/images", uploadFieldImages);
 router.delete("/fields/images/:imageId", deleteFieldImage);
 
-// ========== SPORT TYPE MANAGEMENT ==========
-router.get("/sport-types", getAllSportTypes);
+// ========== SPORT TYPES ==========
+router.get("/sport-types", getAllSportTypesController);
 router.post("/sport-types", createSportType);
 router.put("/sport-types/:id", updateSportType);
 router.delete("/sport-types/:id", deleteSportType);

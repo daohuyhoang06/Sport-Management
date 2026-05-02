@@ -12,8 +12,9 @@ const Person = sequelize.define(
       allowNull: false,
     },
     name: {
-      type: DataTypes.STRING(50),
+      type: DataTypes.STRING(100),
       allowNull: false,
+      field: "full_name",
       validate: {
         notEmpty: {
           msg: "TÃªn khÃ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng",
@@ -31,6 +32,7 @@ const Person = sequelize.define(
     sex: {
       type: DataTypes.STRING(10),
       allowNull: true,
+      field: "gender",
       validate: {
         isIn: {
           args: [["male", "female", "other", null]],
@@ -109,14 +111,6 @@ const Person = sequelize.define(
           args: [["active", "inactive", "banned"]],
           msg: "Status khÃ´ng há»£p lá»‡",
         },
-      },
-    },
-    field_id: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-      references: {
-        model: "fields",
-        key: "field_id",
       },
     },
   },

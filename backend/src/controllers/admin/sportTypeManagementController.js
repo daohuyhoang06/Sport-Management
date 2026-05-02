@@ -1,83 +1,80 @@
 import {
-  getAllSportTypesService,
+  getAllSportTypes,
   createSportTypeService,
   updateSportTypeService,
   deleteSportTypeService,
 } from "../../services/admin/sportTypeManagementService.js";
 
-export const getAllSportTypes = async (req, res) => {
+export const getAllSportTypesController = async (req, res) => {
   try {
-    const sportTypes = await getAllSportTypesService();
-
-    res.json({
-      success: true,
-      data: sportTypes,
-    });
-  } catch (error) {
-    console.error("Error in getAllSportTypes:", error);
-    res.status(500).json({
-      success: false,
-      message: "Loi khi lay danh sach loai san",
-      error: error.message,
-    });
+    const types = await getAllSportTypes();
+    res.json({ success: true, data: types });
+  } catch (err) {
+    console.error("Error in getAllSportTypes:", err);
+    res
+      .status(500)
+      .json({
+        success: false,
+        message: "Lỗi khi lấy loại sân",
+        error: err.message,
+      });
   }
 };
 
 export const createSportType = async (req, res) => {
   try {
-    const created = await createSportTypeService(req.body);
-
-    res.status(201).json({
-      success: true,
-      message: "Tao loai san thanh cong",
-      data: created,
-    });
-  } catch (error) {
-    console.error("Error in createSportType:", error);
-    res.status(400).json({
-      success: false,
-      message: "Loi khi tao loai san",
-      error: error.message,
-    });
+    const payload = req.body;
+    const row = await createSportTypeService(payload);
+    res
+      .status(201)
+      .json({ success: true, message: "Tạo loại sân thành công", data: row });
+  } catch (err) {
+    console.error("Error in createSportType:", err);
+    res
+      .status(400)
+      .json({
+        success: false,
+        message: "Lỗi khi tạo loại sân",
+        error: err.message,
+      });
   }
 };
 
 export const updateSportType = async (req, res) => {
   try {
     const { id } = req.params;
-    const updated = await updateSportTypeService(id, req.body);
-
+    const payload = req.body;
+    const row = await updateSportTypeService(id, payload);
     res.json({
       success: true,
-      message: "Cap nhat loai san thanh cong",
-      data: updated,
+      message: "Cập nhật loại sân thành công",
+      data: row,
     });
-  } catch (error) {
-    console.error("Error in updateSportType:", error);
-    res.status(400).json({
-      success: false,
-      message: "Loi khi cap nhat loai san",
-      error: error.message,
-    });
+  } catch (err) {
+    console.error("Error in updateSportType:", err);
+    res
+      .status(400)
+      .json({
+        success: false,
+        message: "Lỗi khi cập nhật loại sân",
+        error: err.message,
+      });
   }
 };
 
 export const deleteSportType = async (req, res) => {
   try {
     const { id } = req.params;
-    const deleted = await deleteSportTypeService(id);
-
-    res.json({
-      success: true,
-      message: "Xoa loai san thanh cong",
-      data: deleted,
-    });
-  } catch (error) {
-    console.error("Error in deleteSportType:", error);
-    res.status(400).json({
-      success: false,
-      message: "Loi khi xoa loai san",
-      error: error.message,
-    });
+    const result = await deleteSportTypeService(id);
+    res.json({ success: true, message: result.message });
+  } catch (err) {
+    console.error("Error in deleteSportType:", err);
+    res
+      .status(400)
+      .json({
+        success: false,
+        message: "Lỗi khi xóa loại sân",
+        error: err.message,
+      });
   }
 };

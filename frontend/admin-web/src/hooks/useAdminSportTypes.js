@@ -1,83 +1,65 @@
 import { useCallback, useEffect, useState } from "react";
 import { adminFetch } from "../services/adminApi";
 
-function normalizeSportTypes(rawSportTypes = []) {
-  return rawSportTypes
-    .map((item) => ({
-      sport_id: item.sport_id,
-      sport_name: item.sport_name || "",
-    }))
-    .sort((left, right) => Number(left.sport_id) - Number(right.sport_id));
+function normalize(list = []) {
+  return list.map((item) => ({
+    id: item.sport_id,
+    name: item.sport_name || "",
+  }));
 }
 
 export default function useAdminSportTypes() {
-  const [sportTypes, setSportTypes] = useState([]);
+  const [types, setTypes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const loadSportTypes = useCallback(async (signal) => {
+  const load = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
 
-      const response = await adminFetch("/api/admin/sport-types");
-      if (signal.cancelled) {
-        return;
-      }
+      const resp = await adminFetch("/api/admin/sport-types");
+      const payload = resp?.data ?? resp ?? [];
 
-      const sportTypesData = response?.data ?? [];
-      setSportTypes(normalizeSportTypes(sportTypesData));
-    } catch (fetchError) {
-      if (signal.cancelled) {
-        return;
-      }
-      setError(fetchError.message || "Unable to load sport types");
+      setTypes(normalize(Array.isArray(payload) ? payload : payload || []));
+    } catch (err) {
+      setError(err.message || "Không thể tải loại sân");
     } finally {
-      if (!signal.cancelled) {
-        setLoading(false);
-      }
+      setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    const signal = { cancelled: false };
-    loadSportTypes(signal);
+    load();
+  }, [load]);
 
-    return () => {
-      signal.cancelled = true;
-    };
-  }, [loadSportTypes]);
+  const reload = useCallback(() => load(), [load]);
 
-  const reload = useCallback(
-    () => loadSportTypes({ cancelled: false }),
-    [loadSportTypes],
-  );
-
-  const createSportType = useCallback(
-    async (sport_name) => {
+  const createType = useCallback(
+    async (payload) => {
       await adminFetch("/api/admin/sport-types", {
         method: "POST",
-        body: JSON.stringify({ sport_name }),
+        body: JSON.stringify(payload),
       });
       await reload();
     },
     [reload],
   );
 
-  const updateSportType = useCallback(
-    async (sport_id, sport_name) => {
-      await adminFetch(`/api/admin/sport-types/${sport_id}`, {
+  const updateType = useCallback(
+    async (id, payload) => {
+      await adminFetch(`/api/admin/sport-types/${id}`, {
         method: "PUT",
-        body: JSON.stringify({ sport_name }),
+        body: JSON.stringify(payload),
       });
       await reload();
     },
     [reload],
   );
 
-  const deleteSportType = useCallback(
-    async (sport_id) => {
-      await adminFetch(`/api/admin/sport-types/${sport_id}`, {
+  const deleteType = useCallback(
+    async (id) => {
+      await adminFetch(`/api/admin/sport-types/${id}`, {
         method: "DELETE",
       });
       await reload();
@@ -86,12 +68,12 @@ export default function useAdminSportTypes() {
   );
 
   return {
-    sportTypes,
+    types,
     loading,
     error,
     reload,
-    createSportType,
-    updateSportType,
-    deleteSportType,
+    createType,
+    updateType,
+    deleteType,
   };
 }

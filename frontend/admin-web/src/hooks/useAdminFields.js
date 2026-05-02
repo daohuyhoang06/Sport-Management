@@ -5,11 +5,11 @@ function normalizeFields(rawFields = []) {
   return rawFields.map((item) => ({
     id: item.field_id,
     managerId: item.manager_id ?? null,
+    sportId: item.sport_id ?? null,
+    sportName: item.sport_name || "-",
     name: item.field_name || "-",
     location: item.location || "-",
     managerName: item.manager_name || "Unassigned",
-    sportId: item.sport_id ?? null,
-    sportName: item.sport_name || "Bóng đá",
     pricePerHour:
       item.rental_price === null || item.rental_price === undefined
         ? null

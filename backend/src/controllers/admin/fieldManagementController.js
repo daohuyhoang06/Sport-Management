@@ -7,30 +7,30 @@ import {
   toggleFieldStatusService,
   getFieldStatsService,
   uploadFieldImagesService,
-  deleteFieldImageService
-} from '../../services/admin/fieldManagementService.js';
+  deleteFieldImageService,
+} from "../../services/admin/fieldManagementService.js";
 
 /**
  * Get all fields
  */
 export const getAllFields = async (req, res) => {
   try {
-    const { page, limit, search, status, sport_id } = req.query;
+    const { page, limit, search, status } = req.query;
     const result = await getAllFieldsService(
-      { search, status, sport_id },
-      { page, limit }
+      { search, status },
+      { page, limit },
     );
 
     res.json({
       success: true,
-      data: result
+      data: result,
     });
   } catch (error) {
-    console.error('Error in getAllFields:', error);
+    console.error("Error in getAllFields:", error);
     res.status(500).json({
       success: false,
-      message: 'Lỗi khi lấy danh sách sân',
-      error: error.message
+      message: "Lỗi khi lấy danh sách sân",
+      error: error.message,
     });
   }
 };
@@ -46,20 +46,20 @@ export const getFieldById = async (req, res) => {
     if (!field) {
       return res.status(404).json({
         success: false,
-        message: 'Không tìm thấy sân'
+        message: "Không tìm thấy sân",
       });
     }
 
     res.json({
       success: true,
-      data: field
+      data: field,
     });
   } catch (error) {
-    console.error('Error in getFieldById:', error);
+    console.error("Error in getFieldById:", error);
     res.status(500).json({
       success: false,
-      message: 'Lỗi khi lấy thông tin sân',
-      error: error.message
+      message: "Lỗi khi lấy thông tin sân",
+      error: error.message,
     });
   }
 };
@@ -74,15 +74,15 @@ export const createField = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: 'Tạo sân thành công',
-      data: field
+      message: "Tạo sân thành công",
+      data: field,
     });
   } catch (error) {
-    console.error('Error in createField:', error);
+    console.error("Error in createField:", error);
     res.status(400).json({
       success: false,
-      message: 'Lỗi khi tạo sân',
-      error: error.message
+      message: "Lỗi khi tạo sân",
+      error: error.message,
     });
   }
 };
@@ -98,15 +98,15 @@ export const updateField = async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Cập nhật sân thành công',
-      data: field
+      message: "Cập nhật sân thành công",
+      data: field,
     });
   } catch (error) {
-    console.error('Error in updateField:', error);
+    console.error("Error in updateField:", error);
     res.status(400).json({
       success: false,
-      message: 'Lỗi khi cập nhật sân',
-      error: error.message
+      message: "Lỗi khi cập nhật sân",
+      error: error.message,
     });
   }
 };
@@ -121,14 +121,14 @@ export const deleteField = async (req, res) => {
 
     res.json({
       success: true,
-      message: result.message
+      message: result.message,
     });
   } catch (error) {
-    console.error('Error in deleteField:', error);
+    console.error("Error in deleteField:", error);
     res.status(400).json({
       success: false,
-      message: 'Lỗi khi xóa sân',
-      error: error.message
+      message: "Lỗi khi xóa sân",
+      error: error.message,
     });
   }
 };
@@ -144,14 +144,14 @@ export const toggleFieldStatus = async (req, res) => {
     res.json({
       success: true,
       message: result.message,
-      data: { status: result.status }
+      data: { status: result.status },
     });
   } catch (error) {
-    console.error('Error in toggleFieldStatus:', error);
+    console.error("Error in toggleFieldStatus:", error);
     res.status(400).json({
       success: false,
-      message: 'Lỗi khi thay đổi trạng thái sân',
-      error: error.message
+      message: "Lỗi khi thay đổi trạng thái sân",
+      error: error.message,
     });
   }
 };
@@ -165,14 +165,14 @@ export const getFieldStats = async (req, res) => {
 
     res.json({
       success: true,
-      data: stats
+      data: stats,
     });
   } catch (error) {
-    console.error('Error in getFieldStats:', error);
+    console.error("Error in getFieldStats:", error);
     res.status(500).json({
       success: false,
-      message: 'Lỗi khi lấy thống kê sân',
-      error: error.message
+      message: "Lỗi khi lấy thống kê sân",
+      error: error.message,
     });
   }
 };
@@ -188,7 +188,7 @@ export const uploadFieldImages = async (req, res) => {
     if (!images || !Array.isArray(images) || images.length === 0) {
       return res.status(400).json({
         success: false,
-        message: 'Vui lòng cung cấp danh sách hình ảnh'
+        message: "Vui lòng cung cấp danh sách hình ảnh",
       });
     }
 
@@ -196,15 +196,15 @@ export const uploadFieldImages = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: 'Upload hình ảnh thành công',
-      data: result
+      message: "Upload hình ảnh thành công",
+      data: result,
     });
   } catch (error) {
-    console.error('Error in uploadFieldImages:', error);
+    console.error("Error in uploadFieldImages:", error);
     res.status(400).json({
       success: false,
-      message: 'Lỗi khi upload hình ảnh',
-      error: error.message
+      message: "Lỗi khi upload hình ảnh",
+      error: error.message,
     });
   }
 };
@@ -219,14 +219,14 @@ export const deleteFieldImage = async (req, res) => {
 
     res.json({
       success: true,
-      message: result.message
+      message: result.message,
     });
   } catch (error) {
-    console.error('Error in deleteFieldImage:', error);
+    console.error("Error in deleteFieldImage:", error);
     res.status(400).json({
       success: false,
-      message: 'Lỗi khi xóa hình ảnh',
-      error: error.message
+      message: "Lỗi khi xóa hình ảnh",
+      error: error.message,
     });
   }
 };

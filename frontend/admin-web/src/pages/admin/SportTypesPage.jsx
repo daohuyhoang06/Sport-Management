@@ -2,13 +2,11 @@ import { useMemo, useState } from "react";
 import AdminTable from "../../components/admin/AdminTable";
 import useAdminSportTypes from "../../hooks/useAdminSportTypes";
 
-const initialFormState = {
-  sport_name: "",
-};
+const initialForm = { sport_name: "" };
 
-function SportTypeFormModal({
-  open,
+function SportFormModal({
   mode,
+  open,
   formState,
   loading,
   error,
@@ -16,22 +14,17 @@ function SportTypeFormModal({
   onChange,
   onSubmit,
 }) {
-  if (!open) {
-    return null;
-  }
+  if (!open) return null;
 
-  const isEdit = mode === "edit";
+  const title = mode === "edit" ? "Sửa loại sân" : "Thêm loại sân";
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div
-        className="modal-card modal-card-fields"
-        onClick={(event) => event.stopPropagation()}
-      >
+      <div className="modal-card" onClick={(e) => e.stopPropagation()}>
         <div className="section-head modal-head">
           <div>
-            <h3>{isEdit ? "Sửa loại sân" : "Thêm loại sân"}</h3>
-            <p>Quản lý danh mục loại sân để mở rộng hệ thống linh hoạt.</p>
+            <h3>{title}</h3>
+            <p>Quản lý các loại sân sử dụng trong hệ thống.</p>
           </div>
           <button
             type="button"
@@ -46,18 +39,16 @@ function SportTypeFormModal({
         {error && <p className="dashboard-state error">{error}</p>}
 
         <form className="modal-form" onSubmit={onSubmit}>
-          <label className="modal-field modal-field-full">
+          <label className="modal-field">
             <span>Tên loại sân</span>
             <input
-              type="text"
               name="sport_name"
               value={formState.sport_name}
               onChange={onChange}
-              placeholder="Ví dụ: Bóng đá, Cầu lông, Tennis"
             />
           </label>
 
-          <div className="modal-actions modal-actions-wide">
+          <div className="modal-actions">
             <button
               type="button"
               className="btn-secondary"
@@ -67,11 +58,7 @@ function SportTypeFormModal({
               Hủy
             </button>
             <button type="submit" className="btn-primary" disabled={loading}>
-              {loading
-                ? "Đang xử lý..."
-                : isEdit
-                  ? "Lưu thay đổi"
-                  : "Tạo loại sân"}
+              {loading ? "Đang..." : "Lưu"}
             </button>
           </div>
         </form>
@@ -81,267 +68,166 @@ function SportTypeFormModal({
 }
 
 export default function SportTypesPage() {
-  const {
-    sportTypes,
-    loading,
-    error,
-    createSportType,
-    updateSportType,
-    deleteSportType,
-  } = useAdminSportTypes();
+  const { types, loading, error, createType, updateType, deleteType } =
+    useAdminSportTypes();
 
-  const [searchText, setSearchText] = useState("");
-  const [submittingId, setSubmittingId] = useState(null);
-  const [actionError, setActionError] = useState("");
-  const [actionSuccess, setActionSuccess] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
-  const [creating, setCreating] = useState(false);
-  const [editing, setEditing] = useState(false);
-  const [selectedSportType, setSelectedSportType] = useState(null);
-  const [createForm, setCreateForm] = useState(initialFormState);
-  const [editForm, setEditForm] = useState(initialFormState);
+  const [form, setForm] = useState(initialForm);
+  const [editing, setEditing] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [actionError, setActionError] = useState("");
 
-  const filteredRows = useMemo(() => {
-    const keyword = searchText.trim().toLowerCase();
-    if (!keyword) {
-      return sportTypes;
-    }
+  const rows = useMemo(
+    () => types.map((t) => ({ id: t.id, name: t.name })),
+    [types],
+  );
 
-    return sportTypes.filter((sportType) =>
-      `${sportType.sport_id} ${sportType.sport_name}`
-        .toLowerCase()
-        .includes(keyword),
-    );
-  }, [sportTypes, searchText]);
-
-  const openCreateModal = () => {
+  const openCreate = () => {
     setActionError("");
-    setActionSuccess("");
-    setCreateForm(initialFormState);
+    setForm(initialForm);
     setCreateOpen(true);
   };
 
-  const openEditModal = (sportType) => {
+  const openEdit = (row) => {
     setActionError("");
-    setActionSuccess("");
-    setSelectedSportType(sportType);
-    setEditForm({ sport_name: sportType.sport_name || "" });
+    setEditing(row);
+    setForm({ sport_name: row.name || "" });
     setEditOpen(true);
   };
 
-  const closeModals = () => {
-    if (creating || editing) {
-      return;
-    }
-
+  const closeAll = () => {
+    if (submitting) return;
     setCreateOpen(false);
     setEditOpen(false);
-    setSelectedSportType(null);
-    setCreateForm(initialFormState);
-    setEditForm(initialFormState);
+    setEditing(null);
+    setForm(initialForm);
   };
 
-  const onFormChange = (setter) => (event) => {
-    const { name, value } = event.target;
-    setter((current) => ({
-      ...current,
-      [name]: value,
-    }));
-  };
+  const handleChange = (e) =>
+    setForm((s) => ({ ...s, [e.target.name]: e.target.value }));
 
-  const handleCreateSubmit = async (event) => {
-    event.preventDefault();
-
-    if (!createForm.sport_name.trim()) {
-      setActionError("Vui lòng nhập tên loại sân.");
+  const handleCreate = async (e) => {
+    e.preventDefault();
+    if (!form.sport_name.trim()) {
+      setActionError("Tên loại sân không được để trống.");
       return;
     }
 
     try {
-      setCreating(true);
+      setSubmitting(true);
       setActionError("");
-      setActionSuccess("");
-      await createSportType(createForm.sport_name.trim());
-      setActionSuccess(`Đã tạo loại sân ${createForm.sport_name.trim()} thành công.`);
-      closeModals();
-    } catch (submitError) {
-      setActionError(submitError.message || "Không thể tạo loại sân.");
+      await createType({ sport_name: form.sport_name.trim() });
+      closeAll();
+    } catch (err) {
+      setActionError(err.message || "Không thể tạo loại sân.");
     } finally {
-      setCreating(false);
+      setSubmitting(false);
     }
   };
 
-  const handleEditSubmit = async (event) => {
-    event.preventDefault();
-
-    if (!selectedSportType) {
-      return;
-    }
-
-    if (!editForm.sport_name.trim()) {
-      setActionError("Vui lòng nhập tên loại sân.");
+  const handleEdit = async (e) => {
+    e.preventDefault();
+    if (!editing) return;
+    if (!form.sport_name.trim()) {
+      setActionError("Tên loại sân không được để trống.");
       return;
     }
 
     try {
-      setEditing(true);
+      setSubmitting(true);
       setActionError("");
-      setActionSuccess("");
-      await updateSportType(selectedSportType.sport_id, editForm.sport_name.trim());
-      setActionSuccess(`Đã cập nhật loại sân ${editForm.sport_name.trim()} thành công.`);
-      closeModals();
-    } catch (submitError) {
-      setActionError(submitError.message || "Không thể cập nhật loại sân.");
+      await updateType(editing.id, { sport_name: form.sport_name.trim() });
+      closeAll();
+    } catch (err) {
+      setActionError(err.message || "Không thể cập nhật loại sân.");
     } finally {
-      setEditing(false);
+      setSubmitting(false);
     }
   };
 
-  const handleDeleteSportType = async (row) => {
-    const confirmed = window.confirm(
-      `Xóa loại sân ${row.sport_name}? Thao tác này không thể hoàn tác.`,
-    );
-
-    if (!confirmed) {
-      return;
-    }
+  const handleDelete = async (row) => {
+    const ok = window.confirm(`Xóa loại sân '${row.name}'?`);
+    if (!ok) return;
 
     try {
-      setSubmittingId(row.sport_id);
+      setSubmitting(true);
       setActionError("");
-      setActionSuccess("");
-      await deleteSportType(row.sport_id);
-      setActionSuccess(`Đã xóa loại sân ${row.sport_name} thành công.`);
-    } catch (submitError) {
-      setActionError(submitError.message || "Không thể xóa loại sân.");
+      await deleteType(row.id);
+    } catch (err) {
+      setActionError(err.message || "Không thể xóa loại sân.");
     } finally {
-      setSubmittingId(null);
+      setSubmitting(false);
     }
   };
 
-  const columns = useMemo(
-    () => [
-      {
-        key: "sport_id",
-        label: "ID",
-        render: (row) => <span className="field-id-tag">#{row.sport_id}</span>,
-      },
-      { key: "sport_name", label: "Loại sân" },
-      {
-        key: "actions",
-        label: "Thao tác",
-        render: (row) => (
-          <div className="field-actions">
-            <button
-              type="button"
-              className="field-action edit"
-              onClick={() => openEditModal(row)}
-            >
-              ✏️ Sửa
-            </button>
-            <button
-              type="button"
-              className="field-action delete"
-              onClick={() => handleDeleteSportType(row)}
-              disabled={submittingId === row.sport_id}
-            >
-              {submittingId === row.sport_id ? "Đang xử lý..." : "🗑 Xóa"}
-            </button>
-          </div>
-        ),
-      },
-    ],
-    [submittingId],
-  );
+  const columns = [
+    { key: "id", label: "ID" },
+    { key: "name", label: "Tên loại" },
+    {
+      key: "actions",
+      label: "Thao tác",
+      render: (r) => (
+        <div className="field-actions">
+          <button className="field-action edit" onClick={() => openEdit(r)}>
+            ✏️ Sửa
+          </button>
+          <button
+            className="field-action delete"
+            onClick={() => handleDelete(r)}
+            disabled={submitting}
+          >
+            🗑 Xóa
+          </button>
+        </div>
+      ),
+    },
+  ];
 
   return (
-    <section className="fields-page">
-      <header className="fields-hero">
-        <div className="dashboard-hero-left">
-          <div className="dashboard-hero-icon">🧩</div>
-          <div>
-            <p className="dashboard-hero-kicker">Dashboard</p>
-            <h2>Quản Lý Loại Sân</h2>
-          </div>
+    <section className="sport-types-page">
+      <header className="section-head">
+        <div>
+          <p className="dashboard-hero-kicker">Quản trị</p>
+          <h2>Loại Sân</h2>
         </div>
-
-        <div className="dashboard-hero-right">
-          <div className="dashboard-role-switcher" aria-label="Vai trò">
-            <span className="is-active">👷 Quản trị viên</span>
-            <span>📘 Quản lý</span>
-            <span>👤 Người dùng</span>
-          </div>
-          <div className="dashboard-user-chip">
-            <span className="dashboard-user-badge">ADMIN</span>
-            <strong>Admin</strong>
-          </div>
+        <div>
+          <button className="btn-primary" onClick={openCreate}>
+            + Thêm loại sân
+          </button>
         </div>
       </header>
 
-      <section className="fields-toolbar card-surface">
-        <div className="fields-search-wrap">
-          <label className="fields-search-box">
-            <span>🔎</span>
-            <input
-              type="search"
-              value={searchText}
-              onChange={(event) => setSearchText(event.target.value)}
-              placeholder="Tìm kiếm loại sân..."
-            />
-          </label>
-        </div>
-
-        <button type="button" className="fields-add-btn" onClick={openCreateModal}>
-          + Thêm Loại Sân
-        </button>
-      </section>
-
       {error && <p className="dashboard-state error">{error}</p>}
       {actionError && <p className="dashboard-state error">{actionError}</p>}
-      {actionSuccess && <p className="dashboard-state success">{actionSuccess}</p>}
 
-      <section className="fields-table-card section-card">
-        <div className="fields-table-head">
-          <div>
-            <h3>Danh sách loại sân</h3>
-            <p>
-              Hiển thị {filteredRows.length.toLocaleString("vi-VN")} /{" "}
-              {sportTypes.length.toLocaleString("vi-VN")} loại sân.
-            </p>
-          </div>
-          <div className="fields-table-chip">
-            {loading ? "Đang tải dữ liệu..." : "Đồng bộ backend live"}
-          </div>
-        </div>
-
+      <section className="section-card">
         <AdminTable
           columns={columns}
-          rows={filteredRows}
-          emptyMessage="Không có loại sân nào khớp với bộ lọc hiện tại."
+          rows={rows}
+          emptyMessage="Không có loại sân."
         />
       </section>
 
-      <SportTypeFormModal
-        open={createOpen}
+      <SportFormModal
         mode="create"
-        formState={createForm}
-        loading={creating}
+        open={createOpen}
+        formState={form}
+        loading={submitting}
         error={actionError}
-        onClose={closeModals}
-        onChange={onFormChange(setCreateForm)}
-        onSubmit={handleCreateSubmit}
+        onClose={closeAll}
+        onChange={handleChange}
+        onSubmit={handleCreate}
       />
-
-      <SportTypeFormModal
-        open={editOpen}
+      <SportFormModal
         mode="edit"
-        formState={editForm}
-        loading={editing}
+        open={editOpen}
+        formState={form}
+        loading={submitting}
         error={actionError}
-        onClose={closeModals}
-        onChange={onFormChange(setEditForm)}
-        onSubmit={handleEditSubmit}
+        onClose={closeAll}
+        onChange={handleChange}
+        onSubmit={handleEdit}
       />
     </section>
   );

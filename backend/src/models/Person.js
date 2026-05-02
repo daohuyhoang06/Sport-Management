@@ -12,8 +12,9 @@ const Person = sequelize.define(
       allowNull: false,
     },
     name: {
-      type: DataTypes.STRING(50),
+      type: DataTypes.STRING(100),
       allowNull: false,
+      field: "full_name",
     },
     birthday: {
       type: DataTypes.DATEONLY,
@@ -22,6 +23,7 @@ const Person = sequelize.define(
     sex: {
       type: DataTypes.STRING(10),
       allowNull: true,
+      field: "gender",
     },
     address: {
       type: DataTypes.STRING(45),
@@ -54,15 +56,6 @@ const Person = sequelize.define(
       type: DataTypes.STRING(45),
       allowNull: true,
       defaultValue: "active",
-    },
-    field_id: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-      field: "field_id", // PostgreSQL column name is lowercase
-      references: {
-        model: "fields",
-        key: "field_id",
-      },
     },
   },
   {

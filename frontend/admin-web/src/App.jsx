@@ -4,9 +4,9 @@ import AdminLayout from "./layouts/AdminLayout";
 import DashboardPage from "./pages/admin/DashboardPage";
 import UsersPage from "./pages/admin/UsersPage";
 import FieldsPage from "./pages/admin/FieldsPage";
-import SportTypesPage from "./pages/admin/SportTypesPage";
 import BookingsPage from "./pages/admin/BookingsPage";
 import EmployeesPage from "./pages/admin/EmployeesPage";
+import SportTypesPage from "./pages/admin/SportTypesPage";
 import LoginPage from "./pages/auth/LoginPage";
 
 export default function App() {
