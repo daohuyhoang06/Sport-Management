@@ -431,9 +431,9 @@
  */
 export const getAllBookings = <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >as</span>ync (req, res) =&gt; {</span>
 <span class="cstat-no" title="statement not covered" >  try {</span>
-    const { page, limit, status, fieldId, startDate, endDate } = <span class="cstat-no" title="statement not covered" >req.query;</span>
+    const { page, limit, status, field_id, startDate, endDate } = <span class="cstat-no" title="statement not covered" >req.query;</span>
     const result = <span class="cstat-no" title="statement not covered" >await getAllBookingsService(</span>
-      { status, fieldId, startDate, endDate },
+      { status, field_id, startDate, endDate },
       { page, limit }
     );
 &nbsp;

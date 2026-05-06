@@ -323,16 +323,16 @@
 &nbsp;
 /**
  * Get all bookings for manager's fields
- * GET /api/manager/bookings?status=pending&amp;fieldId=1
+ * GET /api/manager/bookings?status=pending&amp;field_id=1
  */
 export const listBookings = <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >as</span>ync (req, res) =&gt; {</span>
 <span class="cstat-no" title="statement not covered" >  try {</span>
     const managerId = <span class="cstat-no" title="statement not covered" >req.user.id;</span>
-    const { status, fieldId, startDate, endDate } = <span class="cstat-no" title="statement not covered" >req.query;</span>
+    const { status, field_id, startDate, endDate } = <span class="cstat-no" title="statement not covered" >req.query;</span>
     
     const bookings = <span class="cstat-no" title="statement not covered" >await getManagerBookingsService(managerId, {</span>
       status,
-      fieldId,
+      field_id,
       startDate,
       endDate
     });

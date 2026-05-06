@@ -1,4 +1,4 @@
-import { DataTypes } from "sequelize";
+﻿import { DataTypes } from "sequelize";
 import sequelize from "../config/database.js";
 import bcrypt from "bcrypt";
 
@@ -11,9 +11,10 @@ const Person = sequelize.define(
       autoIncrement: true,
       allowNull: false,
     },
-    person_name: {
-      type: DataTypes.STRING(50),
+    name: {
+      type: DataTypes.STRING(100),
       allowNull: false,
+      field: "full_name",
     },
     birthday: {
       type: DataTypes.DATEONLY,
@@ -22,6 +23,7 @@ const Person = sequelize.define(
     sex: {
       type: DataTypes.STRING(10),
       allowNull: true,
+      field: "gender",
     },
     address: {
       type: DataTypes.STRING(45),
@@ -55,15 +57,6 @@ const Person = sequelize.define(
       allowNull: true,
       defaultValue: "active",
     },
-    fieldId: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-      field: 'fieldid', // PostgreSQL column name is lowercase
-      references: {
-        model: "fields",
-        key: "field_id",
-      },
-    },
   },
   {
     tableName: "person",
@@ -86,7 +79,7 @@ const Person = sequelize.define(
         }
       },
     },
-  }
+  },
 );
 
 // Instance method to compare password

@@ -1,40 +1,42 @@
-import sequelize from '../../config/database.js';
+﻿import sequelize from "../../config/database.js";
 
 /**
  * Get all bookings for manager's fields
  */
 export const getManagerBookingsService = async (managerId, filters = {}) => {
   try {
-    const { status, fieldId, startDate, endDate } = filters;
-    
-    let whereConditions = ['f.manager_id = ?'];
+    const { status, field_id, startDate, endDate } = filters;
+
+    let whereConditions = ["f.manager_id = ?"];
     let replacements = [managerId];
-    
-    if (status && status !== 'all') {
-      whereConditions.push('b.status = ?');
+
+    if (status && status !== "all") {
+      whereConditions.push("b.status = ?");
       replacements.push(status);
     }
-    
-    if (fieldId) {
-      whereConditions.push('b.field_id = ?');
-      replacements.push(fieldId);
+
+    if (field_id) {
+      whereConditions.push("b.field_id = ?");
+      replacements.push(field_id);
     }
-    
+
     if (startDate) {
-      whereConditions.push('DATE(b.start_time) >= ?');
+      whereConditions.push("DATE(b.start_time) >= ?");
       replacements.push(startDate);
     }
-    
+
     if (endDate) {
-      whereConditions.push('DATE(b.start_time) <= ?');
+      whereConditions.push("DATE(b.start_time) <= ?");
       replacements.push(endDate);
     }
-    
-    const whereClause = whereConditions.length > 0 
-      ? `WHERE ${whereConditions.join(' AND ')}` 
-      : '';
 
-    const [bookings] = await sequelize.query(`
+    const whereClause =
+      whereConditions.length > 0
+        ? `WHERE ${whereConditions.join(" AND ")}`
+        : "";
+
+    const [bookings] = await sequelize.query(
+      `
       SELECT 
         b.booking_id,
         b.field_id,
@@ -46,7 +48,7 @@ export const getManagerBookingsService = async (managerId, filters = {}) => {
         b.note,
         f.field_name,
         f.location,
-        p.person_name as customer_name,
+        p.name as customer_name,
         p.email as customer_email,
         p.phone as customer_phone
       FROM bookings b
@@ -54,11 +56,13 @@ export const getManagerBookingsService = async (managerId, filters = {}) => {
       LEFT JOIN person p ON b.customer_id = p.person_id
       ${whereClause}
       ORDER BY b.booking_id DESC
-    `, { replacements });
+    `,
+      { replacements },
+    );
 
     return bookings;
   } catch (error) {
-    console.error('Error in getManagerBookingsService:', error);
+    console.error("Error in getManagerBookingsService:", error);
     throw error;
   }
 };
@@ -68,7 +72,8 @@ export const getManagerBookingsService = async (managerId, filters = {}) => {
  */
 export const getManagerBookingByIdService = async (managerId, bookingId) => {
   try {
-    const [bookings] = await sequelize.query(`
+    const [bookings] = await sequelize.query(
+      `
       SELECT 
         b.booking_id,
         b.field_id,
@@ -81,18 +86,20 @@ export const getManagerBookingByIdService = async (managerId, bookingId) => {
         f.field_name,
         f.location,
         f.manager_id,
-        p.person_name as customer_name,
+        p.name as customer_name,
         p.email as customer_email,
         p.phone as customer_phone
       FROM bookings b
       INNER JOIN fields f ON b.field_id = f.field_id
       LEFT JOIN person p ON b.customer_id = p.person_id
       WHERE b.booking_id = ? AND f.manager_id = ?
-    `, { replacements: [bookingId, managerId] });
+    `,
+      { replacements: [bookingId, managerId] },
+    );
 
     return bookings[0] || null;
   } catch (error) {
-    console.error('Error in getManagerBookingByIdService:', error);
+    console.error("Error in getManagerBookingByIdService:", error);
     throw error;
   }
 };
@@ -100,12 +107,17 @@ export const getManagerBookingByIdService = async (managerId, bookingId) => {
 /**
  * Update booking status
  */
-export const updateBookingStatusService = async (managerId, bookingId, status, note = null) => {
+export const updateBookingStatusService = async (
+  managerId,
+  bookingId,
+  status,
+  note = null,
+) => {
   try {
     // Verify booking belongs to manager's field
     const booking = await getManagerBookingByIdService(managerId, bookingId);
     if (!booking) {
-      throw new Error('Booking not found or unauthorized');
+      throw new Error("Booking not found or unauthorized");
     }
 
     let query;
@@ -134,7 +146,7 @@ export const updateBookingStatusService = async (managerId, bookingId, status, n
 
     return { success: true };
   } catch (error) {
-    console.error('Error in updateBookingStatusService:', error);
+    console.error("Error in updateBookingStatusService:", error);
     throw error;
   }
 };

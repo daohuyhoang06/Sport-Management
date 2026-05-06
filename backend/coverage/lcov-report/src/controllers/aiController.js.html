@@ -567,16 +567,16 @@ export const getWeather = <span class="cstat-no" title="statement not covered" >
 &nbsp;
 /**
  * Suggest best time slots for a field
- * GET /api/ai/suggest-timeslots/:fieldId
+ * GET /api/ai/suggest-timeslots/:field_id
  */
 export const suggestTimeSlots = <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >as</span>ync (req, res) =&gt; {</span>
 <span class="cstat-no" title="statement not covered" >  try {</span>
-    const { fieldId } = <span class="cstat-no" title="statement not covered" >req.params;</span>
+    const { field_id } = <span class="cstat-no" title="statement not covered" >req.params;</span>
 &nbsp;
     // Get field data
     const [fieldResult] = <span class="cstat-no" title="statement not covered" >await sequelize.query(</span>
       `SELECT field_id, field_name, rental_price FROM fields WHERE field_id = ?`,
-      { replacements: [fieldId] }
+      { replacements: [field_id] }
     );
 &nbsp;
 <span class="cstat-no" title="statement not covered" >    if (fieldResult.length === 0) {</span>
@@ -600,7 +600,7 @@ export const suggestTimeSlots = <span class="cstat-no" title="statement not cove
        GROUP BY HOUR(start_time)
        ORDER BY count DESC
        LIMIT 5`,
-      { replacements: [fieldId] }
+      { replacements: [field_id] }
     );
 &nbsp;
     const totalBookings = <span class="cstat-no" title="statement not covered" >statsResult.reduce(<span class="fstat-no" title="function not covered" >(s</span>um, row) =&gt; <span class="cstat-no" title="statement not covered" >sum + Number(row.count),</span> 0);</span>
@@ -618,7 +618,7 @@ export const suggestTimeSlots = <span class="cstat-no" title="statement not cove
     ];
 &nbsp;
     const fieldData = <span class="cstat-no" title="statement not covered" >{</span>
-      fieldId,
+      field_id,
       fieldName: field.field_name,
       priceData,
       bookingStats: {

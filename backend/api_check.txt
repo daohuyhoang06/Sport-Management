@@ -1,0 +1,35 @@
+﻿LOGIN_OK
+CREATE_USER
+CREATE_USER_OK
+{
+    "success":  true,
+    "message":  "Tạo người dùng thành công",
+    "data":  {
+                 "person_id":  26,
+                 "name":  "UI User Check",
+                 "email":  "ui_user_check_6854@example.com",
+                 "username":  "ui_user_check_6854",
+                 "role":  "user",
+                 "status":  "active",
+                 "phone":  "0900000000",
+                 "address":  "District 1",
+                 "sex":  "male"
+             }
+}
+CREATE_EMPLOYEE
+CREATE_EMPLOYEE_OK
+{
+    "success":  true,
+    "message":  "Tạo nhân viên thành công",
+    "data":  {
+                 "status":  "active",
+                 "person_id":  27,
+                 "name":  "UI Employee Check",
+                 "phone":  "0911111111",
+                 "sex":  "female",
+                 "username":  "ui_employee_check_6854",
+                 "email":  "ui_employee_check_6854@example.com",
+                 "address":  "District 2",
+                 "role":  "manager"
+             }
+}

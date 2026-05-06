@@ -609,10 +609,10 @@ export const createReview = <span class="cstat-no" title="statement not covered"
   }
 };
 &nbsp;
-// GET /api/user/reviews/stats/:fieldId - Get review statistics for a field
+// GET /api/user/reviews/stats/:field_id - Get review statistics for a field
 export const getReviewStats = <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >as</span>ync (req, res) =&gt; {</span>
 <span class="cstat-no" title="statement not covered" >  try {</span>
-    const { fieldId } = <span class="cstat-no" title="statement not covered" >req.params;</span>
+    const { field_id } = <span class="cstat-no" title="statement not covered" >req.params;</span>
 &nbsp;
     const [stats] = <span class="cstat-no" title="statement not covered" >await sequelize.query(</span>
       `SELECT 
@@ -625,7 +625,7 @@ export const getReviewStats = <span class="cstat-no" title="statement not covere
         SUM(CASE WHEN rating = 1 THEN 1 ELSE 0 END) as one_star
       FROM reviews
       WHERE field_id = ?`,
-      { replacements: [fieldId] }
+      { replacements: [field_id] }
     );
 &nbsp;
 <span class="cstat-no" title="statement not covered" >    res.json(stats[0] || {</span>

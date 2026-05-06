@@ -1,4 +1,4 @@
-const jsonRequest = {
+﻿const jsonRequest = {
   required: true,
   content: {
     "application/json": {
@@ -72,8 +72,7 @@ const swaggerSpec = {
   info: {
     title: "Sport Management API",
     version: "1.0.0",
-    description:
-      "Complete API documentation for Sport Field Management System",
+    description: "Complete API documentation for Sport Field Management System",
   },
   servers: [
     {
@@ -118,9 +117,9 @@ const swaggerSpec = {
       },
       RegisterRequest: {
         type: "object",
-        required: ["person_name", "username", "password"],
+        required: ["name", "username", "password"],
         properties: {
-          person_name: { type: "string", example: "" },
+          name: { type: "string", example: "" },
           username: { type: "string", example: "" },
           password: { type: "string", example: "" },
           email: {
@@ -140,7 +139,7 @@ const swaggerSpec = {
         properties: {
           username: {
             type: "string",
-            description: "Username or email",
+            description: "Username",
             example: "",
           },
           password: { type: "string", example: "" },

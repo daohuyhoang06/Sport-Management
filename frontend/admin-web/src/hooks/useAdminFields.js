@@ -1,0 +1,137 @@
+import { useCallback, useEffect, useState } from "react";
+import { adminFetch } from "../services/adminApi";
+
+function normalizeFields(rawFields = []) {
+  return rawFields.map((item) => ({
+    id: item.field_id,
+    managerId: item.manager_id ?? null,
+    sportId: item.sport_id ?? null,
+    sportName: item.sport_name || "-",
+    name: item.field_name || "-",
+    location: item.location || "-",
+    managerName: item.manager_name || "Unassigned",
+    pricePerHour:
+      item.rental_price === null || item.rental_price === undefined
+        ? null
+        : Number(item.rental_price),
+    status: item.status || "inactive",
+  }));
+}
+
+export default function useAdminFields() {
+  const [fields, setFields] = useState([]);
+  const [stats, setStats] = useState({
+    total: 0,
+    active: 0,
+    inactive: 0,
+    maintenance: 0,
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const loadFields = useCallback(async (signal) => {
+    try {
+      setLoading(true);
+      setError("");
+
+      const [fieldsResponse, statsResponse] = await Promise.all([
+        adminFetch("/api/admin/fields?page=1&limit=200"),
+        adminFetch("/api/admin/fields/stats"),
+      ]);
+
+      if (signal.cancelled) {
+        return;
+      }
+
+      const fieldsData = fieldsResponse?.data?.fields ?? [];
+      const statsData = statsResponse?.data ?? {};
+
+      setFields(normalizeFields(fieldsData));
+      setStats({
+        total: Number(statsData.total ?? fieldsData.length ?? 0),
+        active: Number(statsData.active ?? 0),
+        inactive: Number(statsData.inactive ?? 0),
+        maintenance: Number(statsData.maintenance ?? 0),
+      });
+    } catch (fetchError) {
+      if (signal.cancelled) {
+        return;
+      }
+
+      setError(fetchError.message || "Unable to load fields");
+    } finally {
+      if (!signal.cancelled) {
+        setLoading(false);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    const signal = { cancelled: false };
+
+    loadFields(signal);
+
+    return () => {
+      signal.cancelled = true;
+    };
+  }, [loadFields]);
+
+  const reload = useCallback(
+    () => loadFields({ cancelled: false }),
+    [loadFields],
+  );
+
+  const toggleFieldStatus = useCallback(
+    async (field_id) => {
+      await adminFetch(`/api/admin/fields/${field_id}/status`, {
+        method: "PATCH",
+      });
+      await reload();
+    },
+    [reload],
+  );
+
+  const deleteField = useCallback(
+    async (field_id) => {
+      await adminFetch(`/api/admin/fields/${field_id}`, {
+        method: "DELETE",
+      });
+      await reload();
+    },
+    [reload],
+  );
+
+  const createField = useCallback(
+    async (fieldData) => {
+      await adminFetch("/api/admin/fields", {
+        method: "POST",
+        body: JSON.stringify(fieldData),
+      });
+      await reload();
+    },
+    [reload],
+  );
+
+  const updateField = useCallback(
+    async (fieldId, fieldData) => {
+      await adminFetch(`/api/admin/fields/${fieldId}`, {
+        method: "PUT",
+        body: JSON.stringify(fieldData),
+      });
+      await reload();
+    },
+    [reload],
+  );
+
+  return {
+    fields,
+    stats,
+    loading,
+    error,
+    reload,
+    toggleFieldStatus,
+    deleteField,
+    createField,
+    updateField,
+  };
+}

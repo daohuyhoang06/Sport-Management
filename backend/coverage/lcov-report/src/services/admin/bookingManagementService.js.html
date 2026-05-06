@@ -497,7 +497,7 @@
  * Get all bookings with filters and pagination
  */
 export const getAllBookingsService = <span class="cstat-no" title="statement not covered" ><span class="fstat-no" title="function not covered" >as</span>ync (filters = <span class="branch-0 cbranch-no" title="branch not covered" >{},</span> pagination = <span class="branch-0 cbranch-no" title="branch not covered" >{})</span> =&gt; {</span>
-  const { page = <span class="branch-0 cbranch-no" title="branch not covered" >1,</span> limit = <span class="branch-0 cbranch-no" title="branch not covered" >10,</span> status = <span class="branch-0 cbranch-no" title="branch not covered" >'',</span> fieldId = <span class="branch-0 cbranch-no" title="branch not covered" >'',</span> startDate = <span class="branch-0 cbranch-no" title="branch not covered" >'',</span> endDate = <span class="branch-0 cbranch-no" title="branch not covered" >'' </span>} = <span class="cstat-no" title="statement not covered" >{ ...filters, ...pagination };</span>
+  const { page = <span class="branch-0 cbranch-no" title="branch not covered" >1,</span> limit = <span class="branch-0 cbranch-no" title="branch not covered" >10,</span> status = <span class="branch-0 cbranch-no" title="branch not covered" >'',</span> field_id = <span class="branch-0 cbranch-no" title="branch not covered" >'',</span> startDate = <span class="branch-0 cbranch-no" title="branch not covered" >'',</span> endDate = <span class="branch-0 cbranch-no" title="branch not covered" >'' </span>} = <span class="cstat-no" title="statement not covered" >{ ...filters, ...pagination };</span>
   const offset = <span class="cstat-no" title="statement not covered" >(parseInt(page) - 1) * parseInt(limit);</span>
 &nbsp;
   let whereConditions = <span class="cstat-no" title="statement not covered" >[];</span>
@@ -507,9 +507,9 @@ export const getAllBookingsService = <span class="cstat-no" title="statement not
 <span class="cstat-no" title="statement not covered" >    whereConditions.push('b.status = ?');</span>
 <span class="cstat-no" title="statement not covered" >    queryParams.push(status);</span>
   }
-<span class="cstat-no" title="statement not covered" >  if (fieldId) {</span>
+<span class="cstat-no" title="statement not covered" >  if (field_id) {</span>
 <span class="cstat-no" title="statement not covered" >    whereConditions.push('b.field_id = ?');</span>
-<span class="cstat-no" title="statement not covered" >    queryParams.push(fieldId);</span>
+<span class="cstat-no" title="statement not covered" >    queryParams.push(field_id);</span>
   }
   
 <span class="cstat-no" title="statement not covered" >  if (startDate &amp;&amp; endDate) {</span>

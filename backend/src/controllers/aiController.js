@@ -2,10 +2,10 @@ import {
   getFieldRecommendations,
   detectBookingFraud,
   suggestBestTimeSlots,
-  chatWithAI
-} from '../services/geminiService.js';
-import { getWeatherForecast } from '../services/weatherService.js';
-import sequelize from '../config/database.js';
+  chatWithAI,
+} from "../services/geminiService.js";
+import { getWeatherForecast } from "../services/weatherService.js";
+import sequelize from "../config/database.js";
 
 /**
  * AI Chatbot endpoint
@@ -18,7 +18,7 @@ export const aiChat = async (req, res) => {
     if (!message || !message.trim()) {
       return res.status(400).json({
         success: false,
-        message: 'Tin nhắn không được để trống'
+        message: "Tin nhắn không được để trống",
       });
     }
 
@@ -26,10 +26,10 @@ export const aiChat = async (req, res) => {
 
     res.json(response);
   } catch (error) {
-    console.error('AI Chat Error:', error);
+    console.error("AI Chat Error:", error);
     res.status(500).json({
       success: false,
-      message: 'Lỗi khi xử lý tin nhắn'
+      message: "Lỗi khi xử lý tin nhắn",
     });
   }
 };
@@ -47,10 +47,10 @@ export const recommendFields = async (req, res) => {
 
     res.json(result);
   } catch (error) {
-    console.error('Field Recommendation Error:', error);
+    console.error("Field Recommendation Error:", error);
     res.status(500).json({
       success: false,
-      message: 'Lỗi khi tạo gợi ý sân'
+      message: "Lỗi khi tạo gợi ý sân",
     });
   }
 };
@@ -66,18 +66,18 @@ export const getWeather = async (req, res) => {
     if (!date) {
       return res.status(400).json({
         success: false,
-        message: 'Ngày đặt sân là bắt buộc'
+        message: "Ngày đặt sân là bắt buộc",
       });
     }
 
-    const result = await getWeatherForecast(date, location || 'Hanoi,VN');
+    const result = await getWeatherForecast(date, location || "Hanoi,VN");
 
     res.json(result);
   } catch (error) {
-    console.error('Weather Forecast Error:', error);
+    console.error("Weather Forecast Error:", error);
     res.status(500).json({
       success: false,
-      message: 'Lỗi khi lấy dự báo thời tiết'
+      message: "Lỗi khi lấy dự báo thời tiết",
     });
   }
 };
@@ -92,14 +92,14 @@ export const suggestTimeSlots = async (req, res) => {
 
     // Get field data
     const [fieldResult] = await sequelize.query(
-      `SELECT field_id, field_name, rental_price FROM fields WHERE field_id = ?`,
-      { replacements: [fieldId] }
+      `SELECT fieldId, field_name, rental_price FROM fields WHERE field_id = ?`,
+      { replacements: [fieldId] },
     );
 
     if (fieldResult.length === 0) {
       return res.status(404).json({
         success: false,
-        message: 'Không tìm thấy sân'
+        message: "Không tìm thấy sân",
       });
     }
 
@@ -117,21 +117,41 @@ export const suggestTimeSlots = async (req, res) => {
        GROUP BY HOUR(start_time)
        ORDER BY count DESC
        LIMIT 5`,
-      { replacements: [fieldId] }
+      { replacements: [fieldId] },
     );
 
-    const totalBookings = statsResult.reduce((sum, row) => sum + Number(row.count), 0);
-    const peakHours = statsResult.length > 0 
-      ? statsResult.map(r => `${r.hour}h`).join(', ')
-      : 'Chưa có dữ liệu';
+    const totalBookings = statsResult.reduce(
+      (sum, row) => sum + Number(row.count),
+      0,
+    );
+    const peakHours =
+      statsResult.length > 0
+        ? statsResult.map((r) => `${r.hour}h`).join(", ")
+        : "Chưa có dữ liệu";
 
     // Mock price data for different time slots
     const priceData = [
-      { timeSlot: '5h-9h', price: Math.round(field.rental_price * 0.7), availability: 'Còn nhiều' },
-      { timeSlot: '9h-16h', price: Math.round(field.rental_price * 0.8), availability: 'Còn trống' },
-      { timeSlot: '16h-18h', price: Math.round(field.rental_price * 0.9), availability: 'Khá đông' },
-      { timeSlot: '18h-21h', price: field.rental_price, availability: 'Đông' },
-      { timeSlot: '21h-23h', price: Math.round(field.rental_price * 0.85), availability: 'Trung bình' }
+      {
+        timeSlot: "5h-9h",
+        price: Math.round(field.rental_price * 0.7),
+        availability: "Còn nhiều",
+      },
+      {
+        timeSlot: "9h-16h",
+        price: Math.round(field.rental_price * 0.8),
+        availability: "Còn trống",
+      },
+      {
+        timeSlot: "16h-18h",
+        price: Math.round(field.rental_price * 0.9),
+        availability: "Khá đông",
+      },
+      { timeSlot: "18h-21h", price: field.rental_price, availability: "Đông" },
+      {
+        timeSlot: "21h-23h",
+        price: Math.round(field.rental_price * 0.85),
+        availability: "Trung bình",
+      },
     ];
 
     const fieldData = {
@@ -140,19 +160,20 @@ export const suggestTimeSlots = async (req, res) => {
       priceData,
       bookingStats: {
         total: totalBookings,
-        occupancyRate: totalBookings > 0 ? Math.round((totalBookings / 30) * 100 / 12) : 0,
-        peakHours
-      }
+        occupancyRate:
+          totalBookings > 0 ? Math.round(((totalBookings / 30) * 100) / 12) : 0,
+        peakHours,
+      },
     };
 
     const result = await suggestBestTimeSlots(fieldData);
 
     res.json(result);
   } catch (error) {
-    console.error('Time Slot Suggestion Error:', error);
+    console.error("Time Slot Suggestion Error:", error);
     res.status(500).json({
       success: false,
-      message: 'Lỗi khi tạo gợi ý khung giờ'
+      message: "Lỗi khi tạo gợi ý khung giờ",
     });
   }
 };
@@ -169,7 +190,7 @@ export const detectFraud = async (req, res) => {
     if (!userId) {
       return res.status(401).json({
         success: false,
-        message: 'Unauthorized'
+        message: "Unauthorized",
       });
     }
 
@@ -187,23 +208,23 @@ export const detectFraud = async (req, res) => {
        WHERE b.customer_id = ?
        ORDER BY b.created_at DESC
        LIMIT 20`,
-      { replacements: [userId] }
+      { replacements: [userId] },
     );
 
     const bookingData = {
       userId,
       bookingHistory,
-      currentBooking: bookingDetails
+      currentBooking: bookingDetails,
     };
 
     const result = await detectBookingFraud(bookingData);
 
     res.json(result);
   } catch (error) {
-    console.error('Fraud Detection Error:', error);
+    console.error("Fraud Detection Error:", error);
     res.status(500).json({
       success: false,
-      message: 'Lỗi khi phân tích booking'
+      message: "Lỗi khi phân tích booking",
     });
   }
 };

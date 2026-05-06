@@ -1,4 +1,4 @@
-import jwt from 'jsonwebtoken';
+﻿import jwt from 'jsonwebtoken';
 import Person from '../models/Person.js';
 
 // Protect routes - verify JWT token
@@ -49,7 +49,7 @@ export const protect = async (req, res, next) => {
       username: user.username,
       email: user.email,
       role: user.role,
-      name: user.person_name
+      name: user.name
     };
 
     next();
@@ -124,7 +124,7 @@ export const optionalAuth = async (req, res, next) => {
         username: user.username,
         email: user.email,
         role: user.role,
-        name: user.person_name
+        name: user.name
       };
     }
   } catch (error) {

@@ -1,4 +1,4 @@
-import sequelize from '../config/database.js';
+﻿import sequelize from '../config/database.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -47,7 +47,7 @@ export const getReviews = async (req, res) => {
         r.comment,
         r.images,
         r.created_at,
-        p.person_name as customer_name
+        p.name as customer_name
       FROM reviews r
       LEFT JOIN person p ON r.customer_id = p.person_id
       WHERE r.field_id = ?
@@ -130,7 +130,7 @@ export const createReview = async (req, res) => {
         r.comment,
         r.images,
         r.created_at,
-        p.person_name as customer_name
+        p.name as customer_name
       FROM reviews r
       LEFT JOIN person p ON r.customer_id = p.person_id
       WHERE r.review_id = ?
@@ -193,3 +193,4 @@ export const getReviewStats = async (req, res) => {
     });
   }
 };
+

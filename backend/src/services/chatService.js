@@ -1,4 +1,4 @@
-import sequelize from '../config/database.js';
+﻿import sequelize from '../config/database.js';
 
 /**
  * Get or create chat between user and manager
@@ -46,7 +46,7 @@ export const getUserChatsService = async (personId, role) => {
     if (role === 'manager') {
       query = `
         SELECT c.*, 
-               p.person_name as user_name,
+               p.name as user_name,
                p.email as user_email,
                (SELECT message_text FROM messages 
                 WHERE chat_id = c.chat_id 
@@ -64,7 +64,7 @@ export const getUserChatsService = async (personId, role) => {
     } else {
       query = `
         SELECT c.*, 
-               p.person_name as manager_name,
+               p.name as manager_name,
                p.email as manager_email,
                (SELECT message_text FROM messages 
                 WHERE chat_id = c.chat_id 
@@ -97,7 +97,7 @@ export const getUserChatsService = async (personId, role) => {
 export const getChatMessagesService = async (chatId, personId) => {
   try {
     const [messages] = await sequelize.query(
-      `SELECT m.*, p.person_name as sender_name
+      `SELECT m.*, p.name as sender_name
        FROM messages m
        JOIN person p ON m.sender_id = p.person_id
        WHERE m.chat_id = ?
@@ -155,10 +155,10 @@ export const sendMessageService = async (chatId, senderId, messageText) => {
 export const getAvailableManagersService = async () => {
   try {
     const [managers] = await sequelize.query(
-      `SELECT person_id, person_name, email 
+      `SELECT person_id, name, email 
        FROM person 
        WHERE role = 'manager' AND status = 'active'
-       ORDER BY person_name ASC`
+       ORDER BY name ASC`
     );
 
     return managers;
@@ -166,3 +166,4 @@ export const getAvailableManagersService = async () => {
     throw new Error('Lỗi khi lấy danh sách manager: ' + error.message);
   }
 };
+

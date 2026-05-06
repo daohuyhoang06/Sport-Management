@@ -125,7 +125,7 @@ Migrations phải chạy theo thứ tự sau (đã được đánh số):
 
 ### Foreign Keys
 
-- Bảng `person` có FK `fieldId` tham chiếu đến `fields.field_id`
+- Bảng `person` có FK `field_id` tham chiếu đến `fields.field_id`
 - Bảng `fields` có FK `manager_id` tham chiếu đến `person.person_id`
 - Tất cả bảng khác đều có các FK tương ứng theo sơ đồ database
 
@@ -133,9 +133,9 @@ Migrations phải chạy theo thứ tự sau (đã được đánh số):
 
 Do có circular reference giữa `person` và `fields`, cần xử lý đặc biệt:
 
-- Tạo bảng `person` trước nhưng chưa có FK `fieldId`
+- Tạo bảng `person` trước nhưng chưa có FK `field_id`
 - Tạo bảng `fields` với FK `manager_id`
-- Sau đó có thể thêm FK `fieldId` vào bảng `person` nếu cần
+- Sau đó có thể thêm FK `field_id` vào bảng `person` nếu cần
 
 ### Indexes
 
