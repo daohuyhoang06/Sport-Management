@@ -66,7 +66,7 @@ export const getAllEmployeesService = async (filters = {}, pagination = {}) => {
     LEFT JOIN fields f ON f.manager_id = p.person_id
     WHERE p.role = 'manager' ${searchCondition} ${statusCondition}
     GROUP BY p.person_id, p.full_name, p.email, p.phone, p.username, p.role, p.status, p.birthday, p.gender, p.address
-    ORDER BY p.person_id DESC
+    ORDER BY p.person_id ASC
     LIMIT :limit OFFSET :offset
   `,
     {
@@ -222,14 +222,25 @@ export const deleteEmployeeService = async (id) => {
     throw new Error("Employee not found");
   }
 
-  // Check if employee is managing any fields
-  const managedFields = await Field.count({
-    where: { manager_id: id },
-  });
+  // Reassign managed fields to unassigned before deleting employee
+  await Field.update(
+    { manager_id: null },
+    {
+      where: { manager_id: id },
+    },
+  );
 
-  if (managedFields > 0) {
-    throw new Error(
-      "Cannot delete employee who is managing fields. Please reassign fields first.",
+  // Clear manager reference from bookings only if schema has manager_id
+  const bookingColumns = await User.sequelize
+    .getQueryInterface()
+    .describeTable("bookings");
+
+  if (bookingColumns.manager_id) {
+    await User.sequelize.query(
+      `UPDATE bookings SET manager_id = NULL WHERE manager_id = :employeeId`,
+      {
+        replacements: { employeeId: id },
+      },
     );
   }
 

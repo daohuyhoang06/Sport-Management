@@ -49,7 +49,7 @@ export const getAllUsersService = async (filters = {}, pagination = {}) => {
     `SELECT person_id, full_name as name, birthday, gender as sex, address, email, phone, username, role, status
      FROM person 
      ${whereClause}
-     ORDER BY person_id DESC
+     ORDER BY person_id ASC
      LIMIT ? OFFSET ?`,
     { replacements: [...queryParams, parseInt(limit), offset] },
   );

@@ -93,7 +93,7 @@ export const getRevenuByDateRangeService = async (startDate, endDate) => {
         b.price,
         b.status,
         f.field_name,
-        p.name as customer_name
+        p.full_name as customer_name
       FROM bookings b
       LEFT JOIN fields f ON b.field_id = f.field_id
       LEFT JOIN person p ON b.customer_id = p.person_id
@@ -135,7 +135,7 @@ export const getRevenueByFieldService = async (
         b.end_time,
         b.price,
         b.status,
-        p.name as customer_name
+        p.full_name as customer_name
       FROM bookings b
       LEFT JOIN person p ON b.customer_id = p.person_id
       WHERE b.field_id = ?

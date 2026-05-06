@@ -98,7 +98,7 @@ export const getFieldByIdService = async (id) => {
   // Get recent bookings
   const [bookings] = await sequelize.query(
     `SELECT b.booking_id, b.start_time, b.end_time, b.status, b.price,
-            p.name as customer_name, p.phone as customer_phone
+            p.full_name as customer_name, p.phone as customer_phone
      FROM bookings b
      LEFT JOIN person p ON b.customer_id = p.person_id
      WHERE b.field_id = ?
@@ -225,6 +225,10 @@ export const updateFieldService = async (id, fieldData) => {
   if (fieldData.sport_id !== undefined) {
     updates.push("sport_id = ?");
     params.push(fieldData.sport_id);
+  }
+  if (hasRentalPrice && fieldData.rental_price !== undefined) {
+    updates.push("rental_price = ?");
+    params.push(fieldData.rental_price);
   }
 
   if (updates.length > 0) {
