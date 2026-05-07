@@ -1,6 +1,7 @@
 package com.sportmanagement.user.ui.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -20,6 +21,7 @@ import androidx.compose.material3.MaterialTheme
 import com.sportmanagement.user.ui.components.home.HomeHeaderSection
 import com.sportmanagement.user.ui.components.home.HomeSportCategorySection
 import com.sportmanagement.user.ui.components.home.HomeVenueCard
+import com.sportmanagement.user.ui.components.field.FieldDetailBottomSheet
 import com.sportmanagement.user.domain.model.SportCategory
 import com.sportmanagement.user.domain.model.UserField
 
@@ -33,40 +35,55 @@ fun UserHomeScreen(
 ) {
     var searchQuery by remember { mutableStateOf("") }
     var selectedCategoryIndex by remember { mutableIntStateOf(-1) }
+    var selectedFieldForDetail by remember { mutableStateOf<UserField?>(null) }
 
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(padding)
-            .background(MaterialTheme.colorScheme.background),
-        contentPadding = PaddingValues(bottom = 16.dp)
-    ) {
-        item {
-            HomeHeaderSection(
-                searchQuery = searchQuery,
-                onSearchQueryChange = { searchQuery = it },
-                userName = userName
-            )
-            Spacer(Modifier.height(40.dp))
+    Box(modifier = Modifier.fillMaxSize()) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .background(MaterialTheme.colorScheme.background),
+            contentPadding = PaddingValues(bottom = 16.dp)
+        ) {
+            item {
+                HomeHeaderSection(
+                    searchQuery = searchQuery,
+                    onSearchQueryChange = { searchQuery = it },
+                    userName = userName
+                )
+                Spacer(Modifier.height(40.dp))
+            }
+
+            item {
+                HomeSportCategorySection(
+                    sportCategories = sportCategories,
+                    selectedCategoryIndex = selectedCategoryIndex,
+                    onCategorySelected = { index ->
+                        selectedCategoryIndex = if (selectedCategoryIndex == index) -1 else index
+                    }
+                )
+                Spacer(Modifier.height(16.dp))
+            }
+
+            items(fields) { field ->
+                HomeVenueCard(
+                    field = field,
+                    onCardClick = { selectedFieldForDetail = field },
+                    onBookClick = { onBookFieldClick(field) }
+                )
+                Spacer(Modifier.height(12.dp))
+            }
         }
 
-        item {
-            HomeSportCategorySection(
-                sportCategories = sportCategories,
-                selectedCategoryIndex = selectedCategoryIndex,
-                onCategorySelected = { index ->
-                    selectedCategoryIndex = if (selectedCategoryIndex == index) -1 else index
+        selectedFieldForDetail?.let { selectedField ->
+            FieldDetailBottomSheet(
+                field = selectedField,
+                onDismissRequest = { selectedFieldForDetail = null },
+                onBookClick = { field ->
+                    selectedFieldForDetail = null
+                    onBookFieldClick(field)
                 }
             )
-            Spacer(Modifier.height(16.dp))
-        }
-
-        items(fields) { field ->
-            HomeVenueCard(
-                field = field,
-                onBookClick = { onBookFieldClick(field) }
-            )
-            Spacer(Modifier.height(12.dp))
         }
     }
 }

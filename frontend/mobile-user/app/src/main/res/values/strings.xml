@@ -14,7 +14,7 @@
     <string name="home_language_vi">Tiếng Việt</string>
     <string name="home_language_en">English</string>
     <string name="home_pro_league">PRO LEAGUE</string>
-    <string name="home_book_button">Đặt Lịch</string>
+    <string name="home_book_button">ĐẶT LỊCH</string>
     <string name="home_location_distance_format">%1$s • %2$s</string>
     <string name="home_distance_bullet_format">%1$s •</string>
 
@@ -87,4 +87,66 @@
     <string name="profile_email">Email: %1$s</string>
     <string name="profile_phone">SĐT: %1$s</string>
     <string name="profile_membership">Hạng thành viên: %1$s</string>
+
+    <string name="field_detail_tab_info">Thông tin</string>
+    <string name="field_detail_tab_services">Dịch vụ</string>
+    <string name="field_detail_tab_gallery">Hình ảnh</string>
+    <string name="field_detail_tab_policies">Điều khoản &amp; quy định</string>
+    <string name="field_detail_tab_reviews">Đánh giá</string>
+
+    <string name="field_detail_default_hotline">0333 838 389</string>
+    <string name="field_detail_open_map">Mở bản đồ</string>
+    <string name="field_detail_hours_format">%1$s • %2$s</string>
+    <string name="field_detail_hotline_format">Liên hệ: %1$s</string>
+    <string name="field_detail_call_quick">Gọi nhanh</string>
+
+    <string name="field_detail_booking_link_title">Link đặt sân online</string>
+    <string name="field_detail_link_copied">Đã sao chép link</string>
+    <string name="field_detail_copy_link">Copy link</string>
+    <string name="field_detail_open_link">Mở liên kết</string>
+
+    <string name="field_detail_info_sport">Môn thể thao</string>
+    <string name="field_detail_info_surface_type">Loại mặt sân</string>
+    <string name="field_detail_info_surface_value">Sân tiêu chuẩn thi đấu</string>
+    <string name="field_detail_info_court_count">Số lượng sân</string>
+    <string name="field_detail_info_court_count_value">4 sân</string>
+    <string name="field_detail_info_capacity">Sức chứa</string>
+    <string name="field_detail_info_capacity_value">20 - 40 người</string>
+    <string name="field_detail_info_amenities">Tiện ích cơ bản</string>
+    <string name="field_detail_info_amenities_value">Ánh sáng, nhà vệ sinh, khu nghỉ</string>
+
+    <string name="field_detail_service_racket_rental">Thuê vợt</string>
+    <string name="field_detail_service_ball_shuttle_rental">Thuê bóng/cầu</string>
+    <string name="field_detail_service_drinks">Nước uống</string>
+    <string name="field_detail_service_parking">Gửi xe</string>
+    <string name="field_detail_service_changing_room">Phòng thay đồ</string>
+    <string name="field_detail_service_coach">Huấn luyện viên</string>
+
+    <string name="field_detail_policy_1">Khách đến trước giờ đặt sân ít nhất 10 phút.</string>
+    <string name="field_detail_policy_2">Hủy lịch trước 2 giờ để được hoàn cọc.</string>
+    <string name="field_detail_policy_3">Thanh toán qua chuyển khoản hoặc ví điện tử.</string>
+    <string name="field_detail_policy_4">Không mang đồ ăn có mùi nặng vào khu vực sân.</string>
+
+    <string name="field_detail_review_summary">4.8/5 • 126 đánh giá</string>
+    <string name="field_detail_review_user_1_name">An</string>
+    <string name="field_detail_review_user_1_comment">Sân sạch, nhân viên hỗ trợ nhanh và nhiệt tình.</string>
+    <string name="field_detail_review_user_2_name">Minh</string>
+    <string name="field_detail_review_user_2_comment">Ánh sáng tốt, chỗ để xe rộng, sẽ quay lại.</string>
+    <string name="field_detail_review_user_3_name">Huyền</string>
+    <string name="field_detail_review_user_3_comment">Đặt lịch online tiện, vào sân đúng giờ.</string>
+
+    <string name="field_detail_sport_football">Bóng đá</string>
+    <string name="field_detail_sport_pickleball">Pickleball</string>
+    <string name="field_detail_sport_tennis">Tennis</string>
+    <string name="field_detail_sport_badminton">Cầu lông</string>
+    <string name="field_detail_sport_volleyball">Bóng chuyền</string>
+
+    <string name="field_detail_rating_unavailable">Chưa có đánh giá</string>
+    <string name="field_detail_rating_good_format">%1$s (đánh giá tốt)</string>
+    <string name="field_detail_opening_now">Đang mở</string>
+    <string name="field_detail_opening_schedule">Mở theo khung giờ</string>
+
+    <string name="field_detail_error_open_directions">Không mở được chỉ đường</string>
+    <string name="field_detail_error_open_call">Không mở được gọi điện</string>
+    <string name="field_detail_error_open_link">Không mở được liên kết</string>
 </resources>

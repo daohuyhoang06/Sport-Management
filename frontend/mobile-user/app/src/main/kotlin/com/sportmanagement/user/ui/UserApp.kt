@@ -131,7 +131,17 @@ fun UserApp(userViewModel: UserViewModel = viewModel()) {
                         showBookingScreen = true
                     }
                 )
-                UserTab.Map -> UserMapScreen(padding, uiState.sportCategories, uiState.nearbyFields)
+                UserTab.Map -> UserMapScreen(
+                    padding = padding,
+                    sportCategories = uiState.sportCategories,
+                    nearby = uiState.nearbyFields,
+                    onBookFieldClick = { field ->
+                        selectedCourtName = field.name
+                        showBookingConfirmationScreen = false
+                        bookingConfirmationData = null
+                        showBookingScreen = true
+                    }
+                )
                 UserTab.Favorites -> UserFavoriteScreen(padding, uiState.favoriteFields)
                 UserTab.Profile -> UserProfileScreen(padding, uiState.profile, uiState.stats)
             }

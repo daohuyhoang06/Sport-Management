@@ -2,6 +2,7 @@
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -45,24 +46,27 @@ import com.sportmanagement.user.domain.model.VenueCardType
 @Composable
 fun HomeVenueCard(
     field: UserField,
+    onCardClick: () -> Unit,
     onBookClick: () -> Unit
 ) {
     when (field.cardType) {
-        VenueCardType.LARGE_IMAGE -> LargeVenueCard(field, onBookClick)
-        VenueCardType.SMALL_HORIZONTAL -> SmallHorizontalCard(field, onBookClick)
-        VenueCardType.SMALL_HORIZONTAL_NO_IMAGE -> SmallNoImageCard(field, onBookClick)
+        VenueCardType.LARGE_IMAGE -> LargeVenueCard(field, onCardClick, onBookClick)
+        VenueCardType.SMALL_HORIZONTAL -> SmallHorizontalCard(field, onCardClick, onBookClick)
+        VenueCardType.SMALL_HORIZONTAL_NO_IMAGE -> SmallNoImageCard(field, onCardClick, onBookClick)
     }
 }
 
 @Composable
 private fun LargeVenueCard(
     field: UserField,
+    onCardClick: () -> Unit,
     onBookClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp),
+            .padding(horizontal = 16.dp)
+            .clickable(onClick = onCardClick),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
@@ -176,12 +180,14 @@ private fun LargeVenueCard(
 @Composable
 private fun SmallHorizontalCard(
     field: UserField,
+    onCardClick: () -> Unit,
     onBookClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp),
+            .padding(horizontal = 16.dp)
+            .clickable(onClick = onCardClick),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
@@ -249,12 +255,14 @@ private fun SmallHorizontalCard(
 @Composable
 private fun SmallNoImageCard(
     field: UserField,
+    onCardClick: () -> Unit,
     onBookClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp),
+            .padding(horizontal = 16.dp)
+            .clickable(onClick = onCardClick),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)

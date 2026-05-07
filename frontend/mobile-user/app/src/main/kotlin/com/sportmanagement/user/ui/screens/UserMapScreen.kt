@@ -1,10 +1,13 @@
 ﻿package com.sportmanagement.user.ui.screens
 
 import android.Manifest
+import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.content.Context
 import android.content.pm.PackageManager
+import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -13,6 +16,7 @@ import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -32,6 +36,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
@@ -55,6 +60,7 @@ import com.sportmanagement.user.R
 import com.sportmanagement.user.domain.model.SportCategory
 import com.sportmanagement.user.domain.model.SportIconType
 import com.sportmanagement.user.domain.model.UserField
+import com.sportmanagement.user.ui.components.field.FieldDetailBottomSheet
 import org.maplibre.android.MapLibre
 import org.maplibre.android.annotations.IconFactory
 import org.maplibre.android.WellKnownTileServer
@@ -80,7 +86,8 @@ private const val HANOI_KEYWORD = "ha noi"
 fun UserMapScreen(
     padding: PaddingValues,
     sportCategories: List<SportCategory>,
-    nearby: List<UserField>
+    nearby: List<UserField>,
+    onBookFieldClick: (UserField) -> Unit = {}
 ) {
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
@@ -94,6 +101,7 @@ fun UserMapScreen(
     var isLocationPermissionGranted by remember { mutableStateOf(checkLocationPermission(context)) }
     var currentLocation by remember { mutableStateOf<LatLng?>(null) }
     var showFieldList by rememberSaveable { mutableStateOf(false) }
+    var selectedFieldForDetail by remember { mutableStateOf<UserField?>(null) }
 
     val normalizedQuery = remember(searchQuery) { normalizeForSearch(searchQuery) }
     var mapLibreMap by remember { mutableStateOf<MapLibreMap?>(null) }
@@ -234,6 +242,8 @@ fun UserMapScreen(
             val clickedField = visibleFields.firstOrNull { it.name == marker.title }
             val target = clickedField?.let(::fieldPoint) ?: marker.position
             selectedFieldName = clickedField?.name
+            selectedFieldForDetail = clickedField
+            showFieldList = false
             map.animateCamera(CameraUpdateFactory.newLatLngZoom(target, 17.6))
             true
         }
@@ -358,11 +368,23 @@ fun UserMapScreen(
                     fields = visibleFields,
                     currentLocation = currentLocation,
                     onFieldClick = { field ->
+                        selectedFieldForDetail = field
                         jumpToField(field)
                         showFieldList = false
                     }
                 )
             }
+        }
+
+        selectedFieldForDetail?.let { field ->
+            FieldDetailBottomSheet(
+                field = field,
+                onDismissRequest = { selectedFieldForDetail = null },
+                onBookClick = {
+                    selectedFieldForDetail = null
+                    onBookFieldClick(it)
+                }
+            )
         }
     }
 }
@@ -545,9 +567,15 @@ private fun MapFieldListItem(
                 )
             }
             Icon(
-                imageVector = Icons.Filled.SubdirectoryArrowRight,
-                contentDescription = null,
-                tint = Color(0xFF64748B)
+                imageVector = Icons.Default.Directions,
+                contentDescription = "Mở chỉ đường",
+                tint = Color(0xFF0F172A),
+                modifier = Modifier
+                    .size(34.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xF2FFFFFF))
+                    .clickable { openDirections(context, field) }
+                    .padding(7.dp)
             )
         }
     }
@@ -637,4 +665,18 @@ private fun createSportMarkerBitmap(
     icon?.draw(canvas)
 
     return bitmap
+}
+
+private fun openDirections(context: Context, field: UserField) {
+    val uri = if (field.latitude != null && field.longitude != null) {
+        Uri.parse("google.navigation:q=${field.latitude},${field.longitude}")
+    } else {
+        Uri.parse("geo:0,0?q=${Uri.encode(field.location)}")
+    }
+    val intent = Intent(Intent.ACTION_VIEW, uri)
+    try {
+        context.startActivity(intent)
+    } catch (_: Exception) {
+        Toast.makeText(context, "Không mở được chỉ đường", Toast.LENGTH_SHORT).show()
+    }
 }
