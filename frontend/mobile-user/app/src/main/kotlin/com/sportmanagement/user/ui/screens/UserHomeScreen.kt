@@ -20,6 +20,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.material3.MaterialTheme
 import com.sportmanagement.user.ui.components.home.HomeHeaderSection
 import com.sportmanagement.user.ui.components.home.HomeSportCategorySection
@@ -40,6 +41,19 @@ fun UserHomeScreen(
     var searchQuery by remember { mutableStateOf("") }
     var selectedCategoryIndex by remember { mutableIntStateOf(-1) }
     var selectedFieldForDetail by remember { mutableStateOf<UserField?>(null) }
+    val selectedSportType = remember(selectedCategoryIndex, sportCategories) {
+        sportCategories.getOrNull(selectedCategoryIndex)?.iconType
+    }
+    val filteredFields = remember(fields, selectedSportType, searchQuery) {
+        val normalizedQuery = searchQuery.trim()
+        fields.filter { field ->
+            val byCategory = selectedSportType == null || field.sportIconType == selectedSportType
+            val bySearch = normalizedQuery.isBlank() ||
+                field.name.contains(normalizedQuery, ignoreCase = true) ||
+                field.location.contains(normalizedQuery, ignoreCase = true)
+            byCategory && bySearch
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
@@ -50,6 +64,7 @@ fun UserHomeScreen(
                     end = padding.calculateEndPadding(layoutDirection),
                     bottom = padding.calculateBottomPadding()
                 )
+                .imePadding()
                 .background(MaterialTheme.colorScheme.background),
             contentPadding = PaddingValues(bottom = 16.dp)
         ) {
@@ -73,7 +88,7 @@ fun UserHomeScreen(
                 Spacer(Modifier.height(16.dp))
             }
 
-            items(fields) { field ->
+            items(filteredFields) { field ->
                 HomeVenueCard(
                     field = field,
                     onCardClick = { selectedFieldForDetail = field },

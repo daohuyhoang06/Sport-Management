@@ -211,7 +211,7 @@ private fun BookingNextButton(
     ) {
         Text(
             text = stringResource(R.string.booking_next),
-            style = MaterialTheme.typography.titleLarge,
+            style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold
         )
     }

@@ -22,82 +22,25 @@ class   MockUserRepository : UserRepository {
         SportCategory("Tennis", SportIconType.TENNIS)
     )
 
-    override fun getHomeFields(): List<UserField> = listOf(
-        UserField(
-            name = "Sân Bóng Dịch Vọng",
-            location = "Số 123 Dịch Vọng Hậu, Cầu Giấy, Hà Nội",
-            price = "300.000đ/h",
-            rating = "5.0",
-            distance = "0.5 km",
-            hours = "06:00 - 22:00",
-            isProLeague = true,
-            cardType = VenueCardType.LARGE_IMAGE
-        ),
-        UserField(
-            name = "Sân Bóng Trung Hòa",
-            location = "Số 45 Trung Hòa, Cầu Giấy, Hà Nội",
-            price = "350.000đ/h",
-            rating = "4.5",
-            distance = "1.2 km",
-            hours = "06:00 - 22:00",
-            cardType = VenueCardType.LARGE_IMAGE
-        ),
-        UserField(
-            name = "Sân Bóng Mỹ Đình",
-            location = "Số 89 Phạm Hùng, Nam Từ Liêm, Hà Nội",
-            price = "280.000đ/h",
-            rating = "5.0",
-            distance = "2.0 km",
-            hours = "06:00 - 22:00",
-            cardType = VenueCardType.LARGE_IMAGE
-        ),
-        UserField(
-            name = "Sân Bóng Nghĩa Tân",
-            location = "Số 67 Nghĩa Tân, Cầu Giấy, Hà Nội",
-            price = "320.000đ/h",
-            rating = "4.8",
-            distance = "0.8 km",
-            hours = "06:00 - 22:00",
-            cardType = VenueCardType.LARGE_IMAGE
-        ),
-        UserField(
-            name = "Sân Bóng Duy Tân",
-            location = "Số 156 Duy Tân, Cầu Giấy, Hà Nội",
-            price = "400.000đ/h",
-            rating = "4.7",
-            distance = "1.5 km",
-            hours = "06:00 - 22:00",
-            isProLeague = true,
-            cardType = VenueCardType.LARGE_IMAGE
-        ),
-        UserField(
-            name = "Sân Bóng Yên Hòa",
-            location = "Số 234 Trần Kim Xuyến, Cầu Giấy, Hà Nội",
-            price = "290.000đ/h",
-            rating = "4.6",
-            distance = "1.0 km",
-            hours = "06:00 - 22:00",
-            cardType = VenueCardType.LARGE_IMAGE
-        ),
-        UserField(
-            name = "Sân Bóng Mai Dịch",
-            location = "Số 78 Phạm Văn Đồng, Cầu Giấy, Hà Nội",
-            price = "380.000đ/h",
-            rating = "4.0",
-            distance = "1.8 km",
-            hours = "06:00 - 22:00",
-            cardType = VenueCardType.LARGE_IMAGE
-        ),
-        UserField(
-            name = "Sân Bóng Xuân Thủy",
-            location = "Số 92 Xuân Thủy, Cầu Giấy, Hà Nội",
-            price = "420.000đ/h",
-            rating = "5.0",
-            distance = "0.3 km",
-            hours = "06:00 - 22:00",
-            cardType = VenueCardType.LARGE_IMAGE
-        )
-    )
+    override fun getHomeFields(): List<UserField> =
+        getNearbyFields().mapIndexed { index, field ->
+            val ratingScore = field.rating.toDoubleOrNull() ?: 0.0
+            UserField(
+                name = field.name,
+                location = field.location,
+                price = if (field.price == "Liên hệ") defaultPriceBySport(field.sportIconType) else field.price,
+                rating = field.rating,
+                sportIconType = field.sportIconType,
+                latitude = field.latitude,
+                longitude = field.longitude,
+                distance = homeDistanceByIndex(index),
+                hours = homeHoursBySport(field.sportIconType),
+                isProLeague = ratingScore >= 4.7 || index % 9 == 0,
+                tags = homeTagsBySport(field.sportIconType),
+                availability = if (index % 4 == 0) "Còn sân tối nay" else "",
+                cardType = VenueCardType.LARGE_IMAGE
+            )
+        }
 
     override fun getMapCategories(): List<String> =
         listOf("Bóng đá", "Bóng chuyền", "Pickleball", "Cầu lông", "Tennis")
@@ -493,5 +436,40 @@ class   MockUserRepository : UserRepository {
             selectedSlotCount = 3,
             estimatedPrice = "450.000đ"
         )
+    }
+
+    private fun homeDistanceByIndex(index: Int): String {
+        val distances = listOf("0.3 km", "0.5 km", "0.8 km", "1.1 km", "1.4 km", "1.8 km", "2.2 km")
+        return distances[index % distances.size]
+    }
+
+    private fun homeHoursBySport(type: SportIconType): String {
+        return when (type) {
+            SportIconType.FOOTBALL -> "06:00 - 23:00"
+            SportIconType.VOLLEYBALL -> "06:00 - 22:30"
+            SportIconType.PICKLEBALL -> "05:30 - 22:00"
+            SportIconType.BADMINTON -> "05:00 - 23:00"
+            SportIconType.TENNIS -> "06:00 - 22:00"
+        }
+    }
+
+    private fun defaultPriceBySport(type: SportIconType): String {
+        return when (type) {
+            SportIconType.FOOTBALL -> "320.000đ/h"
+            SportIconType.VOLLEYBALL -> "220.000đ/h"
+            SportIconType.PICKLEBALL -> "280.000đ/h"
+            SportIconType.BADMINTON -> "180.000đ/h"
+            SportIconType.TENNIS -> "380.000đ/h"
+        }
+    }
+
+    private fun homeTagsBySport(type: SportIconType): List<String> {
+        return when (type) {
+            SportIconType.FOOTBALL -> listOf("7 người", "Cỏ nhân tạo")
+            SportIconType.VOLLEYBALL -> listOf("Trong nhà", "Sàn gỗ")
+            SportIconType.PICKLEBALL -> listOf("Indoor", "Đèn LED")
+            SportIconType.BADMINTON -> listOf("Tiêu chuẩn", "Điều hòa")
+            SportIconType.TENNIS -> listOf("Hard court", "Huấn luyện")
+        }
     }
 }

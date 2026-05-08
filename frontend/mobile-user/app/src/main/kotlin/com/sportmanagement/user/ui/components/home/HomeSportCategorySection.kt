@@ -1,10 +1,9 @@
 ﻿package com.sportmanagement.user.ui.components.home
 
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,13 +23,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.sportmanagement.user.R
 import com.sportmanagement.user.domain.model.SportCategory
-import com.sportmanagement.user.domain.model.SportIconType
+import com.sportmanagement.user.ui.components.SportMarkerIcon
 
 @Composable
 fun HomeSportCategorySection(
@@ -61,19 +58,19 @@ private fun SportCategoryItem(
     onClick: () -> Unit
 ) {
     val bgColor by animateColorAsState(
-        targetValue = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surface,
+        targetValue = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surface,
         animationSpec = tween(300),
         label = "bgColor"
     )
     val textColor by animateColorAsState(
-        targetValue = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+        targetValue = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
         animationSpec = tween(300),
         label = "textColor"
     )
-    val elevation by animateDpAsState(
-        targetValue = if (isSelected) 8.dp else 3.dp,
-        animationSpec = tween(300),
-        label = "elevation"
+    val chipScale by animateFloatAsState(
+        targetValue = if (isSelected) 1.12f else 1f,
+        animationSpec = tween(220),
+        label = "chipScale"
     )
 
     Column(
@@ -81,23 +78,26 @@ private fun SportCategoryItem(
         modifier = Modifier.clickable(onClick = onClick)
     ) {
         Surface(
-            modifier = Modifier.size(48.dp),
+            modifier = Modifier
+                .size(48.dp)
+                .graphicsLayer {
+                    scaleX = chipScale
+                    scaleY = chipScale
+                },
             shape = RoundedCornerShape(10.dp),
-            shadowElevation = elevation,
             color = bgColor,
             border = BorderStroke(
-                width = if (isSelected) 0.dp else 1.5.dp,
-                color = if (isSelected) Color.Transparent else MaterialTheme.colorScheme.outlineVariant
+                width = if (isSelected) 2.dp else 1.5.dp,
+                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
             )
         ) {
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
-                Image(
-                    painter = painterResource(id = getSportDrawable(category.iconType)),
-                    contentDescription = category.name,
-                    modifier = Modifier.size(24.dp)
+                SportMarkerIcon(
+                    iconType = category.iconType,
+                    contentDescription = category.name
                 )
             }
         }
@@ -108,15 +108,5 @@ private fun SportCategoryItem(
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
             color = textColor
         )
-    }
-}
-
-private fun getSportDrawable(type: SportIconType): Int {
-    return when (type) {
-        SportIconType.FOOTBALL -> R.drawable.football_25
-        SportIconType.PICKLEBALL -> R.drawable.pickleball
-        SportIconType.TENNIS -> R.drawable.tennis_25
-        SportIconType.BADMINTON -> R.drawable.badminton_25
-        SportIconType.VOLLEYBALL -> R.drawable.volleyball_25
     }
 }

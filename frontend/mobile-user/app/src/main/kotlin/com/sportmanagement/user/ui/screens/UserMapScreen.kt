@@ -15,7 +15,6 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -38,12 +37,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalLifecycleOwner
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -61,6 +58,9 @@ import com.sportmanagement.user.R
 import com.sportmanagement.user.domain.model.SportCategory
 import com.sportmanagement.user.domain.model.SportIconType
 import com.sportmanagement.user.domain.model.UserField
+import com.sportmanagement.user.ui.components.SportMarkerIcon
+import com.sportmanagement.user.ui.components.sportIconDrawableRes
+import com.sportmanagement.user.ui.components.sportMarkerBaseDrawableRes
 import com.sportmanagement.user.ui.components.field.FieldDetailBottomSheet
 import org.maplibre.android.MapLibre
 import org.maplibre.android.annotations.IconFactory
@@ -226,7 +226,6 @@ fun UserMapScreen(
                         iconFactory.fromBitmap(
                             createSportMarkerBitmap(
                                 context = context,
-                                sportDrawableRes = getMapSportDrawable(field.sportIconType),
                                 sportIconType = field.sportIconType,
                                 markerWidthDp = 42f,
                                 markerHeightDp = 52f,
@@ -425,7 +424,6 @@ private fun requestCurrentLocationPoint(context: Context, onResult: (LatLng?) ->
 
 @Composable
 private fun MapSportCategoryItem(category: SportCategory, isSelected: Boolean, onClick: () -> Unit) {
-    val context = LocalContext.current
     val accent = getSportMarkerColor(category.iconType)
     val containerColor by animateColorAsState(
         targetValue = if (isSelected) accent.copy(alpha = 0.14f) else Color.White.copy(alpha = 0.97f),
@@ -447,17 +445,6 @@ private fun MapSportCategoryItem(category: SportCategory, isSelected: Boolean, o
         animationSpec = tween(300),
         label = "borderColor"
     )
-    val markerBitmap = remember(category.iconType) {
-        createSportMarkerBitmap(
-            context = context,
-            sportDrawableRes = getMapSportDrawable(category.iconType),
-            sportIconType = category.iconType,
-            markerWidthDp = 32f,
-            markerHeightDp = 40f,
-            centerYDp = 14f,
-            iconSizeDp = 18f
-        )
-    }
 
     Surface(
         modifier = Modifier
@@ -476,10 +463,11 @@ private fun MapSportCategoryItem(category: SportCategory, isSelected: Boolean, o
                 .padding(horizontal = 12.dp, vertical = 7.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Image(
-                bitmap = markerBitmap.asImageBitmap(),
+            SportMarkerIcon(
+                iconType = category.iconType,
                 contentDescription = "Sân ${category.name}",
-                modifier = Modifier.size(30.dp)
+                markerSize = 34.dp,
+                iconSize = 16.dp
             )
             Spacer(Modifier.width(8.dp))
             Text(
@@ -529,17 +517,6 @@ private fun MapFieldListItem(
     onClick: () -> Unit
 ) {
     val context = LocalContext.current
-    val markerBitmap = remember(field.sportIconType, context) {
-        createSportMarkerBitmap(
-            context = context,
-            sportDrawableRes = getMapSportDrawable(field.sportIconType),
-            sportIconType = field.sportIconType,
-            markerWidthDp = 24f,
-            markerHeightDp = 30f,
-            centerYDp = 10.4f,
-            iconSizeDp = 13f
-        )
-    }
     val distanceText = remember(currentLocation, field.latitude, field.longitude) {
         formatDistanceLabel(currentLocation, field)
     }
@@ -558,10 +535,12 @@ private fun MapFieldListItem(
                 .padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Image(
-                bitmap = markerBitmap.asImageBitmap(),
+            SportMarkerIcon(
+                iconType = field.sportIconType,
                 contentDescription = field.name,
-                modifier = Modifier.size(24.dp)
+                markerSize = 26.dp,
+                iconSize = 12.dp,
+                iconOffsetY = (-1).dp
             )
             Spacer(Modifier.width(10.dp))
             Column(
@@ -594,16 +573,6 @@ private fun MapFieldListItem(
     }
 }
 
-private fun getMapSportDrawable(type: SportIconType): Int {
-    return when (type) {
-        SportIconType.FOOTBALL -> R.drawable.football_25
-        SportIconType.PICKLEBALL -> R.drawable.pickleball
-        SportIconType.TENNIS -> R.drawable.tennis_25
-        SportIconType.BADMINTON -> R.drawable.badminton_25
-        SportIconType.VOLLEYBALL -> R.drawable.volleyball_25
-    }
-}
-
 private fun normalizeForSearch(text: String): String {
     val normalized = Normalizer.normalize(text.trim().lowercase(), Normalizer.Form.NFD)
     return normalized.replace("đ", "d").replace("\\p{M}+".toRegex(), "")
@@ -628,16 +597,6 @@ private fun haversineMeters(lat1: Double, lon1: Double, lat2: Double, lon2: Doub
     return earthRadius * c
 }
 
-private fun getMapMarkerBaseDrawable(type: SportIconType): Int {
-    return when (type) {
-        SportIconType.FOOTBALL -> R.drawable.map_marker_base_football
-        SportIconType.PICKLEBALL -> R.drawable.map_marker_base_pickleball
-        SportIconType.TENNIS -> R.drawable.map_marker_base_tennis
-        SportIconType.BADMINTON -> R.drawable.map_marker_base_badminton
-        SportIconType.VOLLEYBALL -> R.drawable.map_marker_base_volleyball
-    }
-}
-
 private fun getSportMarkerColor(type: SportIconType): Color {
     return when (type) {
         SportIconType.FOOTBALL -> Color(0xFF3B82F6)
@@ -650,7 +609,6 @@ private fun getSportMarkerColor(type: SportIconType): Color {
 
 private fun createSportMarkerBitmap(
     context: Context,
-    sportDrawableRes: Int,
     sportIconType: SportIconType,
     markerWidthDp: Float,
     markerHeightDp: Float,
@@ -666,11 +624,11 @@ private fun createSportMarkerBitmap(
     val bitmap = Bitmap.createBitmap(markerWidth, markerHeight, Bitmap.Config.ARGB_8888)
     val canvas = Canvas(bitmap)
 
-    val baseMarker = ContextCompat.getDrawable(context, getMapMarkerBaseDrawable(sportIconType))
+    val baseMarker = ContextCompat.getDrawable(context, sportMarkerBaseDrawableRes(sportIconType))
     baseMarker?.setBounds(0, 0, markerWidth, markerHeight)
     baseMarker?.draw(canvas)
 
-    val icon = ContextCompat.getDrawable(context, sportDrawableRes)
+    val icon = ContextCompat.getDrawable(context, sportIconDrawableRes(sportIconType))
     val iconSize = (iconSizeDp * density).toInt()
     val iconLeft = (centerX - iconSize / 2f).toInt()
     val iconTop = (centerY - iconSize / 2f).toInt()

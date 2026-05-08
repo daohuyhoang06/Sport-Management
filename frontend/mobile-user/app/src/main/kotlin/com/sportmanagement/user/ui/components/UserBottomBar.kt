@@ -1,5 +1,7 @@
 package com.sportmanagement.user.ui.components
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -11,6 +13,9 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.ripple.LocalRippleTheme
+import androidx.compose.material.ripple.RippleAlpha
+import androidx.compose.material.ripple.RippleTheme
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -19,8 +24,15 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
@@ -28,6 +40,22 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sportmanagement.user.ui.navigation.UserTab
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+
+private object NoRippleTheme : RippleTheme {
+    @Composable
+    override fun defaultColor(): Color = Color.Transparent
+
+    @Composable
+    override fun rippleAlpha(): RippleAlpha =
+        RippleAlpha(
+            draggedAlpha = 0f,
+            focusedAlpha = 0f,
+            hoveredAlpha = 0f,
+            pressedAlpha = 0f
+        )
+}
 
 @Composable
 fun UserBottomBar(selectedTab: UserTab, onTabSelected: (UserTab) -> Unit) {
@@ -36,6 +64,8 @@ fun UserBottomBar(selectedTab: UserTab, onTabSelected: (UserTab) -> Unit) {
     val inactiveColor = Color(0xFF7A8A9A)
     val containerColor = Color.White.copy(alpha = 0.94f)
     val containerShape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+    val scope = rememberCoroutineScope()
+    var animatingTab by remember { mutableStateOf<UserTab?>(null) }
     val glowBrush = Brush.horizontalGradient(
         listOf(
             Color.Transparent,
@@ -73,36 +103,55 @@ fun UserBottomBar(selectedTab: UserTab, onTabSelected: (UserTab) -> Unit) {
                 UserTab.entries.forEach { tab ->
                     val isSelected = selectedTab == tab
                     val tabTitle = stringResource(tab.titleRes)
-                    NavigationBarItem(
-                        selected = isSelected,
-                        onClick = { onTabSelected(tab) },
-                        icon = {
-                            Box(
-                                modifier = Modifier.size(30.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Icon(
-                                    imageVector = if (isSelected) tab.selectedIcon else tab.unselectedIcon,
-                                    contentDescription = tabTitle,
-                                    modifier = Modifier.size(27.dp)
-                                )
-                            }
-                        },
-                        label = {
-                            Text(
-                                text = tabTitle,
-                                fontSize = 14.sp,
-                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium
-                            )
-                        },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = accentColor,
-                            selectedTextColor = accentColor,
-                            unselectedIconColor = inactiveColor,
-                            unselectedTextColor = inactiveColor,
-                            indicatorColor = Color.Transparent
-                        )
+                    val iconScale by animateFloatAsState(
+                        targetValue = if (animatingTab == tab) 1.2f else 1f,
+                        animationSpec = tween(durationMillis = 140),
+                        label = "bottom_tab_icon_scale"
                     )
+                    CompositionLocalProvider(LocalRippleTheme provides NoRippleTheme) {
+                        NavigationBarItem(
+                            selected = isSelected,
+                            onClick = {
+                                animatingTab = tab
+                                onTabSelected(tab)
+                                scope.launch {
+                                    delay(170)
+                                    if (animatingTab == tab) animatingTab = null
+                                }
+                            },
+                            icon = {
+                                Box(
+                                    modifier = Modifier
+                                        .size(30.dp)
+                                        .graphicsLayer {
+                                            scaleX = iconScale
+                                            scaleY = iconScale
+                                        },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        imageVector = if (isSelected) tab.selectedIcon else tab.unselectedIcon,
+                                        contentDescription = tabTitle,
+                                        modifier = Modifier.size(27.dp)
+                                    )
+                                }
+                            },
+                            label = {
+                                Text(
+                                    text = tabTitle,
+                                    fontSize = 14.sp,
+                                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium
+                                )
+                            },
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = accentColor,
+                                selectedTextColor = accentColor,
+                                unselectedIconColor = inactiveColor,
+                                unselectedTextColor = inactiveColor,
+                                indicatorColor = Color.Transparent
+                            )
+                        )
+                    }
                 }
             }
         }

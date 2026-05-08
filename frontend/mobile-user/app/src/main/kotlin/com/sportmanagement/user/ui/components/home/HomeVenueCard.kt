@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -22,7 +21,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.SportsTennis
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -41,9 +39,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.sportmanagement.user.R
+import com.sportmanagement.user.domain.model.SportIconType
 import com.sportmanagement.user.domain.model.UserField
 import com.sportmanagement.user.domain.model.VenueCardType
+import com.sportmanagement.user.ui.components.SportCircleAvatar
+import com.sportmanagement.user.ui.components.sportFieldDrawableRes
+import com.sportmanagement.user.R
 
 @Composable
 fun HomeVenueCard(
@@ -80,7 +81,7 @@ private fun LargeVenueCard(
                     .aspectRatio(16f / 7.4f)
             ) {
                 Image(
-                    painter = painterResource(id = R.drawable.field_default),
+                    painter = painterResource(id = sportFieldDrawableRes(field.sportIconType)),
                     contentDescription = field.name,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop
@@ -151,11 +152,14 @@ private fun LargeVenueCard(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    SportCircleAvatar(iconType = field.sportIconType)
+                    Spacer(Modifier.width(10.dp))
+
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             field.name,
                             style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
+                            fontWeight = FontWeight.ExtraBold
                         )
                         Spacer(Modifier.height(2.dp))
                         Text(
@@ -210,7 +214,7 @@ private fun SmallHorizontalCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Image(
-                painter = painterResource(id = R.drawable.field_default),
+                painter = painterResource(id = sportFieldDrawableRes(field.sportIconType)),
                 contentDescription = field.name,
                 modifier = Modifier
                     .size(90.dp)
@@ -220,11 +224,18 @@ private fun SmallHorizontalCard(
 
             Spacer(Modifier.width(12.dp))
 
+            SportCircleAvatar(
+                iconType = field.sportIconType,
+                size = 48.dp,
+                iconSize = 24.dp
+            )
+            Spacer(Modifier.width(10.dp))
+
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     field.name,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.ExtraBold
                 )
                 Spacer(Modifier.height(2.dp))
                 Text(
@@ -254,8 +265,8 @@ private fun SmallHorizontalCard(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    HomeSmallCircleIcon(Icons.Default.FavoriteBorder, size = 28)
-                    HomeSmallCircleIcon(Icons.Default.Share, size = 28)
+                    HomeSmallCircleIcon(Icons.Default.FavoriteBorder)
+                    HomeSmallCircleIcon(Icons.Default.Share)
                 }
                 HomeBookButton(onClick = onBookClick)
             }
@@ -284,28 +295,15 @@ private fun SmallNoImageCard(
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.secondaryContainer),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.Default.SportsTennis,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                    modifier = Modifier.size(28.dp)
-                )
-            }
+            SportCircleAvatar(iconType = field.sportIconType, size = 60.dp, iconSize = 30.dp)
 
             Spacer(Modifier.width(12.dp))
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     field.name,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.ExtraBold
                 )
                 Spacer(Modifier.height(2.dp))
                 Text(

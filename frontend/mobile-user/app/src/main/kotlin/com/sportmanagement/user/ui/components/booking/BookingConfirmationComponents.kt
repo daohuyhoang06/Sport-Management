@@ -71,7 +71,7 @@ fun BookingConfirmationBottomBar(onConfirmPaymentClick: () -> Unit) {
         ) {
             Text(
                 text = stringResource(R.string.booking_confirm_and_pay),
-                style = MaterialTheme.typography.titleLarge,
+                style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )
         }
