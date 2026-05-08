@@ -1,16 +1,6 @@
-# Root level gitignore
-node_modules/
-.env
-.env.local
-.env.*.local
-
-# IDE settings
-.idea/
-.vscode/
-*.swp
-*.swo
-
+# ========================
 # OS generated files
+# ========================
 .DS_Store
 .DS_Store?
 ._*
@@ -18,17 +8,100 @@ node_modules/
 .Trashes
 ehthumbs.db
 Thumbs.db
+Desktop.ini
 
-# Logs
-logs
-*.log
+# ========================
+# IDE / Editor settings
+# ========================
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+*.iml
+
+# ========================
+# Environment / Secrets
+# ========================
+.env
+.env.local
+.env.*.local
+*.local
+
+# ========================
+# Node.js
+# ========================
+node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
 
-# Build directories
+# ========================
+# Logs
+# ========================
+logs/
+*.log
+
+# ========================
+# Build / Output
+# ========================
 dist/
 build/
+**/build/
 
-# Local development files
-*.local
+# ========================
+# Test coverage
+# ========================
+coverage/
+**/coverage/
+*.lcov
+
+# ========================
+# Android / Gradle
+# ========================
+.android/
+.gradle/
+.gradle-user-home/
+local.properties
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+*.hprof
+
+# Gradle wrapper JAR (optional — some teams commit this)
+# Uncomment the next line if you do NOT want to commit gradle-wrapper.jar
+# **/gradle/wrapper/gradle-wrapper.jar
+
+# Signing
+*.jks
+*.keystore
+*.keystore.lock
+debug.keystore
+
+# Generated files
+**/app/release/
+**/app/debug/
+captures/
+
+# ========================
+# Backend specific
+# ========================
+backend/node_modules/
+backend/coverage/
+backend/public/uploads/
+
+# ========================
+# Misc / Temp
+# ========================
+response.json
+*.tmp
+*.bak
+*.orig
+
+# ========================
+# Local Database folder
+# ========================
+Database/
