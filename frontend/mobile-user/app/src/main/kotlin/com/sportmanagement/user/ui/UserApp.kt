@@ -133,7 +133,10 @@ fun UserApp(userViewModel: UserViewModel = viewModel()) {
                 )
                 UserTab.Map -> UserMapScreen(padding, uiState.sportCategories, uiState.nearbyFields)
                 UserTab.Favorites -> UserFavoriteScreen(padding, uiState.favoriteFields)
-                UserTab.Profile -> UserProfileScreen(padding, uiState.profile, uiState.stats)
+                UserTab.Profile -> UserProfileScreen(
+                    padding = padding,
+                    profile = uiState.profile
+                )
             }
         }
     }

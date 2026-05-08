@@ -1,7 +1,6 @@
 package com.sportmanagement.user.data.repository
 
 import com.sportmanagement.user.data.remote.api.UserApi
-import com.sportmanagement.user.data.remote.mapper.UserMapper.toDomain
 import com.sportmanagement.user.domain.model.BookingScheduleData
 import com.sportmanagement.user.domain.model.SportCategory
 import com.sportmanagement.user.domain.model.UserField
@@ -39,7 +38,12 @@ class UserRepositoryImpl(
     }
 
     override fun getProfile(): UserProfile {
-        return UserProfile("", "", "", "")
+        return UserProfile(
+            name = "Người dùng",
+            email = "user@example.com",
+            phone = "0123456789",
+            membership = "Thành viên Đồng"
+        )
     }
 
     override fun getStats(): List<UserStat> {

@@ -15,6 +15,11 @@ data class UserUiState(
     val nearbyFields: List<UserField> = emptyList(),
     val favoriteFields: List<UserField> = emptyList(),
     val bookingSchedule: BookingScheduleData = BookingScheduleData("", emptyList(), emptyList()),
-    val profile: UserProfile = UserProfile("", "", "", ""),
+    val profile: UserProfile = UserProfile(
+        name = "",
+        email = "",
+        phone = "",
+        membership = ""
+    ),
     val stats: List<UserStat> = emptyList()
 )

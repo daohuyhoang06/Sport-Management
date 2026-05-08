@@ -36,10 +36,16 @@ data class UserBooking(
 )
 
 data class UserProfile(
+    val id: String = "",
     val name: String,
     val email: String,
     val phone: String,
-    val membership: String
+    val membership: String,
+    val birthday: String = "",
+    val gender: String = "Nam",
+    val location: String = "",
+    val bookingCount: String = "0",
+    val rating: String = "0.0"
 )
 
 data class UserStat(
