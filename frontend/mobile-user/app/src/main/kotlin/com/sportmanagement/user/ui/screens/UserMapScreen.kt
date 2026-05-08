@@ -41,6 +41,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -92,6 +93,8 @@ fun UserMapScreen(
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    val layoutDirection = LocalLayoutDirection.current
+    val topInsetPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
 
     var selectedCategoryIndex by remember { mutableIntStateOf(-1) }
     var showHighlights by rememberSaveable { mutableStateOf(false) }
@@ -146,12 +149,12 @@ fun UserMapScreen(
                 map.setStyle(MAP_STYLE) { style ->
                     style.layers.forEach { layer ->
                         val layerId = layer.id.lowercase()
-
-                        if (layerId.contains("pedestrian") || layerId.contains("path") || layerId.contains("footway")) {
-                            layer.setProperties(PropertyFactory.visibility(Property.NONE))
-                        }
-
                         if (layer is LineLayer) {
+                            if (layerId.contains("pedestrian") || layerId.contains("path") || layerId.contains("footway")) {
+                                layer.setProperties(PropertyFactory.visibility(Property.NONE))
+                                return@forEach
+                            }
+
                             if (layerId.contains("motorway") || 
                                 layerId.contains("trunk") || 
                                 layerId.contains("primary") ||
@@ -179,7 +182,7 @@ fun UserMapScreen(
                         }
                     }
                 }
-                
+
                 map.cameraPosition = CameraPosition.Builder()
                     .target(LatLng(21.0285, 105.8542))
                     .zoom(12.0)
@@ -257,11 +260,21 @@ fun UserMapScreen(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(
+                start = padding.calculateStartPadding(layoutDirection),
+                end = padding.calculateEndPadding(layoutDirection),
+                bottom = padding.calculateBottomPadding()
+            )
+    ) {
         AndroidView(factory = { mapView }, modifier = Modifier.fillMaxSize())
 
         Column(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 16.dp, end = 16.dp, top = topInsetPadding + 12.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Surface(

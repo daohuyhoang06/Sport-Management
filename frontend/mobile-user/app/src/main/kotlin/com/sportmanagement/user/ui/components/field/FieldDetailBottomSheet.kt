@@ -117,7 +117,8 @@ fun FieldDetailBottomSheet(
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
         dragHandle = null,
-        containerColor = colors.surfaceContainerLow
+        containerColor = colors.surfaceContainerLow,
+        shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxWidth(),
@@ -131,6 +132,7 @@ fun FieldDetailBottomSheet(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(232.dp)
+                                .clip(RoundedCornerShape(topStart = 10.dp, topEnd = 10.dp))
                         ) {
                             Image(
                                 painter = painterResource(id = R.drawable.field_default),
