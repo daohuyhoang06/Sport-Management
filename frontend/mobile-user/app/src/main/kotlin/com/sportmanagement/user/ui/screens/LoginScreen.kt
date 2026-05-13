@@ -1,4 +1,4 @@
-package com.sportmanagement.user.ui.screens
+﻿package com.sportmanagement.user.ui.screens
 
 import android.widget.Toast
 import androidx.compose.foundation.Image
@@ -19,12 +19,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Facebook
-import androidx.compose.material.icons.outlined.Favorite
 import androidx.compose.material.icons.outlined.Lock
-import androidx.compose.material.icons.outlined.MailOutline
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Phone
 import androidx.compose.material.icons.outlined.Visibility
@@ -52,15 +50,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.text.KeyboardOptions
 import com.sportmanagement.user.R
+import com.sportmanagement.user.ui.theme.AppCardCornerRadius
+import com.sportmanagement.user.ui.theme.AppControlCornerRadius
+import com.sportmanagement.user.ui.theme.AppHeroCornerRadius
+import com.sportmanagement.user.ui.theme.AppPanelCornerRadius
 
 val SportPrimary = Color(0xFF1A428A)
 val SportAccent = Color(0xFFD4A352)
@@ -68,7 +72,6 @@ val SportBackground = Color(0xFFF8F9FA)
 val SportSurface = Color(0xFFFFFFFF)
 val SportHeaderStart = Color(0xFF23C17E)
 val SportHeaderEnd = Color(0xFF0B2D63)
-val SportCardShadow = Color(0x1A0B2D63)
 
 @Composable
 fun LoginScreen(
@@ -82,17 +85,17 @@ fun LoginScreen(
     var passwordVisible by rememberSaveable { mutableStateOf(false) }
 
     AuthScreenScaffold(
-        title = "Chào mừng bạn",
-        subtitle = "Đăng nhập để tiếp tục trải nghiệm",
-        heroTitle = "Đăng nhập",
+        title = stringResource(R.string.auth_login_welcome),
+        subtitle = stringResource(R.string.auth_login_subtitle),
+        heroTitle = stringResource(R.string.auth_login_hero),
         modifier = modifier
     ) {
         AuthTextField(
             value = phone,
             onValueChange = { phone = it },
-            label = "Số điện thoại",
+            label = stringResource(R.string.auth_phone_label),
             leadingIcon = Icons.Outlined.Phone,
-            keyboardType = androidx.compose.ui.text.input.KeyboardType.Phone
+            keyboardType = KeyboardType.Phone
         )
 
         Spacer(Modifier.height(12.dp))
@@ -100,7 +103,7 @@ fun LoginScreen(
         AuthTextField(
             value = password,
             onValueChange = { password = it },
-            label = "Mật khẩu",
+            label = stringResource(R.string.auth_password_label),
             leadingIcon = Icons.Outlined.Lock,
             isPassword = true,
             passwordVisible = passwordVisible,
@@ -110,9 +113,9 @@ fun LoginScreen(
         Spacer(Modifier.height(10.dp))
 
         Text(
-            text = "Quên mật khẩu?",
+            text = stringResource(R.string.auth_forgot_password),
             color = SportPrimary,
-            fontSize = 14.sp,
+            style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier
                 .align(Alignment.End)
@@ -121,24 +124,31 @@ fun LoginScreen(
 
         Spacer(Modifier.height(18.dp))
 
-        AuthPrimaryButton(text = "Đăng nhập", onClick = {
-            Toast.makeText(context, "Đăng nhập thành công", Toast.LENGTH_SHORT).show()
-            onLoginSuccess()
-        })
+        AuthPrimaryButton(
+            text = stringResource(R.string.auth_login_button),
+            onClick = {
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.auth_login_success_toast),
+                    Toast.LENGTH_SHORT
+                ).show()
+                onLoginSuccess()
+            }
+        )
 
         AuthDivider()
 
         SocialAuthButton(
-            text = "Đăng nhập với Google",
-            accentText = "G",
+            text = stringResource(R.string.auth_login_google),
+            accentText = stringResource(R.string.auth_social_google_short),
             accentColor = Color(0xFFDB4437)
         )
 
         Spacer(Modifier.height(10.dp))
 
         SocialAuthButton(
-            text = "Đăng nhập với Facebook",
-            accentText = "f",
+            text = stringResource(R.string.auth_login_facebook),
+            accentText = stringResource(R.string.auth_social_facebook_short),
             accentColor = Color(0xFF1877F2)
         )
 
@@ -150,14 +160,14 @@ fun LoginScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "Bạn chưa có tài khoản? ",
+                text = stringResource(R.string.auth_no_account),
                 color = Color(0xFF6B7280),
-                fontSize = 14.sp
+                style = MaterialTheme.typography.bodyMedium
             )
             Text(
-                text = "Đăng ký ngay",
+                text = stringResource(R.string.auth_register_now),
                 color = SportPrimary,
-                fontSize = 14.sp,
+                style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.clickable { onNavigateToRegister() }
             )
@@ -196,7 +206,7 @@ fun AuthScreenScaffold(
                     .fillMaxWidth()
                     .offset(y = (-22).dp)
                     .padding(horizontal = 16.dp),
-                shape = RoundedCornerShape(24.dp),
+                shape = RoundedCornerShape(AppPanelCornerRadius),
                 colors = CardDefaults.cardColors(containerColor = SportSurface),
                 elevation = CardDefaults.cardElevation(defaultElevation = 10.dp)
             ) {
@@ -208,7 +218,7 @@ fun AuthScreenScaffold(
                     Text(
                         text = heroTitle,
                         color = SportPrimary,
-                        fontSize = 28.sp,
+                        style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(Modifier.height(18.dp))
@@ -252,7 +262,7 @@ fun AuthHeader(
                 .align(Alignment.CenterEnd)
                 .padding(end = 6.dp, top = 8.dp)
                 .size(180.dp)
-                .clip(RoundedCornerShape(36.dp))
+                .clip(RoundedCornerShape(AppHeroCornerRadius))
         ) {
             Image(
                 painter = painterResource(id = R.drawable.banner_app),
@@ -271,23 +281,21 @@ fun AuthHeader(
             Text(
                 text = title,
                 color = Color.White,
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
-                lineHeight = 34.sp
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold
             )
             Spacer(Modifier.height(6.dp))
             Text(
                 text = subtitle,
                 color = Color.White.copy(alpha = 0.92f),
-                fontSize = 15.sp,
-                lineHeight = 20.sp
+                style = MaterialTheme.typography.bodyMedium
             )
         }
 
         Text(
             text = heroTitle,
             color = Color.White.copy(alpha = 0.16f),
-            fontSize = 34.sp,
+            style = MaterialTheme.typography.displaySmall,
             fontWeight = FontWeight.Black,
             modifier = Modifier
                 .align(Alignment.CenterStart)
@@ -301,9 +309,9 @@ fun AuthTextField(
     value: String,
     onValueChange: (String) -> Unit,
     label: String,
-    leadingIcon: androidx.compose.ui.graphics.vector.ImageVector,
+    leadingIcon: ImageVector,
     modifier: Modifier = Modifier,
-    keyboardType: androidx.compose.ui.text.input.KeyboardType = androidx.compose.ui.text.input.KeyboardType.Text,
+    keyboardType: KeyboardType = KeyboardType.Text,
     isPassword: Boolean = false,
     passwordVisible: Boolean = false,
     onTogglePasswordVisible: (() -> Unit)? = null,
@@ -324,7 +332,7 @@ fun AuthTextField(
         modifier = containerModifier,
         readOnly = readOnly,
         singleLine = true,
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(AppControlCornerRadius),
         label = { Text(label) },
         leadingIcon = {
             Icon(
@@ -336,16 +344,20 @@ fun AuthTextField(
             if (isPassword && onTogglePasswordVisible != null) {
                 IconButton(onClick = onTogglePasswordVisible) {
                     Icon(
-                        imageVector = if (passwordVisible) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
+                        imageVector = if (passwordVisible) {
+                            Icons.Outlined.VisibilityOff
+                        } else {
+                            Icons.Outlined.Visibility
+                        },
                         contentDescription = null
                     )
                 }
             }
         },
         visualTransformation = if (isPassword && !passwordVisible) {
-            androidx.compose.ui.text.input.PasswordVisualTransformation()
+            PasswordVisualTransformation()
         } else {
-            androidx.compose.ui.text.input.VisualTransformation.None
+            VisualTransformation.None
         },
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
         colors = OutlinedTextFieldDefaults.colors(
@@ -375,13 +387,13 @@ fun AuthPrimaryButton(
         modifier = modifier
             .fillMaxWidth()
             .height(52.dp),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(AppControlCornerRadius),
         colors = ButtonDefaults.buttonColors(containerColor = SportPrimary)
     ) {
         Text(
             text = text,
             color = Color.White,
-            fontSize = 16.sp,
+            style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.Bold
         )
     }
@@ -402,10 +414,10 @@ fun AuthDivider() {
                 .background(Color(0xFFE5E7EB))
         )
         Text(
-            text = "Hoặc đăng nhập với",
+            text = stringResource(R.string.auth_divider_login_with),
             modifier = Modifier.padding(horizontal = 12.dp),
             color = Color(0xFF8A94A6),
-            fontSize = 13.sp
+            style = MaterialTheme.typography.bodySmall
         )
         Box(
             modifier = Modifier
@@ -428,7 +440,7 @@ fun SocialAuthButton(
         modifier = modifier
             .fillMaxWidth()
             .height(48.dp),
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(AppCardCornerRadius),
         border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE3E8EF)),
         colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White)
     ) {
@@ -442,7 +454,7 @@ fun SocialAuthButton(
                     text = accentText,
                     color = accentColor,
                     fontWeight = FontWeight.Bold,
-                    fontSize = 15.sp
+                    style = MaterialTheme.typography.titleSmall
                 )
             }
         }
@@ -450,7 +462,7 @@ fun SocialAuthButton(
         Text(
             text = text,
             color = SportPrimary,
-            fontSize = 15.sp,
+            style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.SemiBold
         )
     }

@@ -38,8 +38,8 @@ fun BookingGridSection(
 ) {
     val horizontalScroll = rememberScrollState()
     val cellWidth = cellWidthValue.dp
-    val cellHeight = 56.dp
-    val timeHeaderHeight = 40.dp
+    val cellHeight = 52.dp
+    val timeHeaderHeight = 34.dp
     val leftLabelWidth = 68.dp
     val borderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)
 
@@ -78,7 +78,7 @@ fun BookingGridSection(
                         ) {
                             Text(
                                 text = header,
-                                style = MaterialTheme.typography.bodySmall,
+                                style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onPrimaryContainer,
                                 fontWeight = FontWeight.Medium
                             )

@@ -32,14 +32,18 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.sportmanagement.user.ui.navigation.UserTab
+import com.sportmanagement.user.ui.theme.AppControlCornerRadius
+import com.sportmanagement.user.ui.theme.AppNavIconGradientEnd
+import com.sportmanagement.user.ui.theme.AppNavIconGradientStart
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -63,7 +67,10 @@ fun UserBottomBar(selectedTab: UserTab, onTabSelected: (UserTab) -> Unit) {
     val outlineColor = accentColor.copy(alpha = 0.38f)
     val inactiveColor = Color(0xFF7A8A9A)
     val containerColor = Color.White.copy(alpha = 0.94f)
-    val containerShape = RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+    val containerShape = RoundedCornerShape(
+        topStart = AppControlCornerRadius,
+        topEnd = AppControlCornerRadius
+    )
     val scope = rememberCoroutineScope()
     var animatingTab by remember { mutableStateOf<UserTab?>(null) }
     val glowBrush = Brush.horizontalGradient(
@@ -72,6 +79,9 @@ fun UserBottomBar(selectedTab: UserTab, onTabSelected: (UserTab) -> Unit) {
             accentColor.copy(alpha = 0.28f),
             Color.Transparent
         )
+    )
+    val selectedIconBrush = Brush.horizontalGradient(
+        colors = listOf(AppNavIconGradientStart, AppNavIconGradientEnd)
     )
 
     Surface(
@@ -132,19 +142,36 @@ fun UserBottomBar(selectedTab: UserTab, onTabSelected: (UserTab) -> Unit) {
                                     Icon(
                                         imageVector = if (isSelected) tab.selectedIcon else tab.unselectedIcon,
                                         contentDescription = tabTitle,
-                                        modifier = Modifier.size(27.dp)
+                                        tint = if (isSelected) Color.White else inactiveColor,
+                                        modifier = Modifier
+                                            .size(27.dp)
+                                            .then(
+                                                if (isSelected) {
+                                                    Modifier.drawWithCache {
+                                                        onDrawWithContent {
+                                                            drawContent()
+                                                            drawRect(
+                                                                brush = selectedIconBrush,
+                                                                blendMode = BlendMode.SrcAtop
+                                                            )
+                                                        }
+                                                    }
+                                                } else {
+                                                    Modifier
+                                                }
+                                            )
                                     )
                                 }
                             },
                             label = {
                                 Text(
                                     text = tabTitle,
-                                    fontSize = 14.sp,
+                                    style = MaterialTheme.typography.labelMedium,
                                     fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium
                                 )
                             },
                             colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = accentColor,
+                                selectedIconColor = Color.White,
                                 selectedTextColor = accentColor,
                                 unselectedIconColor = inactiveColor,
                                 unselectedTextColor = inactiveColor,

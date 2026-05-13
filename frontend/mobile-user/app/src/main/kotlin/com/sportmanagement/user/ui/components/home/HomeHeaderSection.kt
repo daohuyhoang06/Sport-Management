@@ -42,6 +42,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sportmanagement.user.R
+import com.sportmanagement.user.ui.theme.AppInputCornerRadius
+import com.sportmanagement.user.ui.theme.AppMediaCornerRadius
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -143,7 +145,7 @@ fun HomeHeaderSection(
                     .weight(1f)
                     .height(44.dp),
                 shadowElevation = 6.dp,
-                shape = RoundedCornerShape(12.dp),
+                shape = RoundedCornerShape(AppMediaCornerRadius),
                 color = MaterialTheme.colorScheme.surface
             ) {
                 BasicTextField(
@@ -195,7 +197,7 @@ fun HomeHeaderSection(
             Surface(
                 modifier = Modifier.size(44.dp),
                 shadowElevation = 6.dp,
-                shape = RoundedCornerShape(10.dp),
+                shape = RoundedCornerShape(AppInputCornerRadius),
                 color = MaterialTheme.colorScheme.surface
             ) {
                 Box(contentAlignment = Alignment.Center) {

@@ -1,6 +1,7 @@
 ﻿package com.sportmanagement.user.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -25,6 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.sportmanagement.user.R
 import com.sportmanagement.user.domain.model.UserField
+import com.sportmanagement.user.ui.theme.AppCardCornerRadius
 
 @Composable
 fun UserFavoriteScreen(
@@ -53,8 +55,8 @@ fun UserFavoriteScreen(
             )
         }
         items(favorites) { item ->
-            Card(shape = RoundedCornerShape(14.dp)) {
-                androidx.compose.foundation.layout.Column(modifier = Modifier.padding(14.dp)) {
+            Card(shape = RoundedCornerShape(AppCardCornerRadius)) {
+                Column(modifier = Modifier.padding(14.dp)) {
                     Text(item.name, fontWeight = FontWeight.SemiBold)
                     Text(item.location)
                     Spacer(Modifier.height(3.dp))

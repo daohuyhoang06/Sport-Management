@@ -1,4 +1,4 @@
-package com.sportmanagement.user.ui
+﻿package com.sportmanagement.user.ui
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -7,7 +7,6 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -15,6 +14,7 @@ import com.sportmanagement.user.domain.model.BookingConfirmationData
 import com.sportmanagement.user.ui.components.UserBottomBar
 import com.sportmanagement.user.ui.navigation.UserTab
 import com.sportmanagement.user.ui.screens.BookingConfirmationScreen
+import com.sportmanagement.user.ui.screens.BookingPaymentScreen
 import com.sportmanagement.user.ui.screens.BookingScheduleScreen
 import com.sportmanagement.user.ui.screens.LoginScreen
 import com.sportmanagement.user.ui.screens.RegisterScreen
@@ -27,11 +27,12 @@ import com.sportmanagement.user.ui.viewmodel.UserViewModel
 @Composable
 fun UserApp(userViewModel: UserViewModel = viewModel()) {
     val uiState by userViewModel.uiState.collectAsState()
-    var isAuthenticated by rememberSaveable { mutableStateOf(false) }
-    var showRegister by rememberSaveable { mutableStateOf(false) }
-    var showBookingScreen by rememberSaveable { mutableStateOf(false) }
-    var showBookingConfirmationScreen by rememberSaveable { mutableStateOf(false) }
-    var selectedCourtName by rememberSaveable { mutableStateOf("") }
+    var isAuthenticated by remember { mutableStateOf(false) }
+    var showRegister by remember { mutableStateOf(false) }
+    var showBookingScreen by remember { mutableStateOf(false) }
+    var showBookingConfirmationScreen by remember { mutableStateOf(false) }
+    var showBookingPaymentScreen by remember { mutableStateOf(false) }
+    var selectedCourtName by remember { mutableStateOf("") }
     var bookingConfirmationData by remember { mutableStateOf<BookingConfirmationData?>(null) }
 
     if (!isAuthenticated) {
@@ -63,10 +64,13 @@ fun UserApp(userViewModel: UserViewModel = viewModel()) {
     }
 
     val statusBarColor = when {
-        showBookingScreen || showBookingConfirmationScreen -> MaterialTheme.colorScheme.primary
+        showBookingScreen || showBookingConfirmationScreen || showBookingPaymentScreen -> MaterialTheme.colorScheme.primary
         else -> Color.Transparent
     }
-    val useDarkStatusBarIcons = !showBookingScreen && !showBookingConfirmationScreen && uiState.selectedTab != UserTab.Home
+    val useDarkStatusBarIcons = !showBookingScreen &&
+        !showBookingConfirmationScreen &&
+        !showBookingPaymentScreen &&
+        uiState.selectedTab != UserTab.Home
 
     AppStatusBarEffect(
         statusBarColor = statusBarColor,
@@ -80,7 +84,7 @@ fun UserApp(userViewModel: UserViewModel = viewModel()) {
 
     Scaffold(
         bottomBar = {
-            if (!showBookingScreen && !showBookingConfirmationScreen) {
+            if (!showBookingScreen && !showBookingConfirmationScreen && !showBookingPaymentScreen) {
                 UserBottomBar(
                     selectedTab = uiState.selectedTab,
                     onTabSelected = userViewModel::onTabSelected
@@ -88,7 +92,30 @@ fun UserApp(userViewModel: UserViewModel = viewModel()) {
             }
         }
     ) { padding ->
-        if (showBookingConfirmationScreen && bookingConfirmationData != null) {
+        if (showBookingPaymentScreen && bookingConfirmationData != null) {
+            BookingPaymentScreen(
+                confirmationData = bookingConfirmationData!!,
+                userName = uiState.profile.name,
+                userPhone = uiState.profile.phone,
+                onBackClick = {
+                    showBookingPaymentScreen = false
+                    showBookingConfirmationScreen = true
+                },
+                onConfirmBookingClick = {
+                    showBookingPaymentScreen = false
+                    showBookingConfirmationScreen = false
+                    showBookingScreen = false
+                    bookingConfirmationData = null
+                },
+                onReturnHomeClick = {
+                    showBookingPaymentScreen = false
+                    showBookingConfirmationScreen = false
+                    showBookingScreen = false
+                    bookingConfirmationData = null
+                    userViewModel.onTabSelected(UserTab.Home)
+                }
+            )
+        } else if (showBookingConfirmationScreen && bookingConfirmationData != null) {
             BookingConfirmationScreen(
                 confirmationData = bookingConfirmationData!!,
                 userName = uiState.profile.name,
@@ -99,8 +126,7 @@ fun UserApp(userViewModel: UserViewModel = viewModel()) {
                 },
                 onConfirmPaymentClick = {
                     showBookingConfirmationScreen = false
-                    showBookingScreen = false
-                    bookingConfirmationData = null
+                    showBookingPaymentScreen = true
                 }
             )
         } else if (showBookingScreen) {
@@ -113,6 +139,7 @@ fun UserApp(userViewModel: UserViewModel = viewModel()) {
                 onNextClick = { confirmationData ->
                     bookingConfirmationData = confirmationData
                     showBookingScreen = false
+                    showBookingPaymentScreen = false
                     showBookingConfirmationScreen = true
                 }
             )
@@ -125,6 +152,7 @@ fun UserApp(userViewModel: UserViewModel = viewModel()) {
                     userName = uiState.profile.name,
                     onBookFieldClick = { field ->
                         selectedCourtName = field.name
+                        showBookingPaymentScreen = false
                         showBookingConfirmationScreen = false
                         bookingConfirmationData = null
                         showBookingScreen = true
@@ -136,6 +164,7 @@ fun UserApp(userViewModel: UserViewModel = viewModel()) {
                     nearby = uiState.nearbyFields,
                     onBookFieldClick = { field ->
                         selectedCourtName = field.name
+                        showBookingPaymentScreen = false
                         showBookingConfirmationScreen = false
                         bookingConfirmationData = null
                         showBookingScreen = true

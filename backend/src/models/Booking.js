@@ -53,8 +53,12 @@ const Booking = sequelize.define('Booking', {
     allowNull: false,
     defaultValue: 'pending',
     validate: {
-      isIn: [['pending', 'approved', 'rejected', 'cancelled', 'completed']]
+      isIn: [['pending', 'confirmed', 'approved', 'rejected', 'cancelled', 'completed']]
     }
+  },
+  pending_expires_at: {
+    type: DataTypes.DATE,
+    allowNull: true
   },
   note: {
     type: DataTypes.TEXT,
@@ -71,6 +75,7 @@ const Booking = sequelize.define('Booking', {
     { fields: ['customer_id'] },
     { fields: ['field_id'] },
     { fields: ['status'] },
+    { fields: ['status', 'pending_expires_at'] },
     { fields: ['start_time', 'end_time'] }
   ]
 });
