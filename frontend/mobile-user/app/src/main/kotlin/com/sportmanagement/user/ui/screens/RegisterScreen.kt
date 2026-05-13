@@ -1,4 +1,4 @@
-package com.sportmanagement.user.ui.screens
+﻿package com.sportmanagement.user.ui.screens
 
 import android.app.DatePickerDialog
 import android.widget.Toast
@@ -31,8 +31,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.sportmanagement.user.R
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
@@ -50,20 +52,20 @@ fun RegisterScreen(
     var confirmPassword by rememberSaveable { mutableStateOf("") }
     var passwordVisible by rememberSaveable { mutableStateOf(false) }
     var confirmPasswordVisible by rememberSaveable { mutableStateOf(false) }
-    var selectedDate by rememberSaveable { mutableStateOf("Ngày sinh") }
+    var selectedDate by rememberSaveable { mutableStateOf(context.getString(R.string.auth_birth_date_label)) }
     var isAccepted by rememberSaveable { mutableStateOf(false) }
     val dateFormatter = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
 
     AuthScreenScaffold(
-        title = "Tạo tài khoản",
-        subtitle = "Tham gia và khám phá những sân bóng tuyệt vời",
-        heroTitle = "Đăng ký",
+        title = stringResource(R.string.auth_register_title),
+        subtitle = stringResource(R.string.auth_register_subtitle),
+        heroTitle = stringResource(R.string.auth_register_hero),
         modifier = modifier
     ) {
         AuthTextField(
             value = fullName,
             onValueChange = { fullName = it },
-            label = "Họ và tên",
+            label = stringResource(R.string.auth_full_name_label),
             leadingIcon = Icons.Outlined.Person
         )
 
@@ -72,7 +74,7 @@ fun RegisterScreen(
         AuthTextField(
             value = phone,
             onValueChange = { phone = it },
-            label = "Số điện thoại",
+            label = stringResource(R.string.auth_phone_label),
             leadingIcon = Icons.Outlined.Phone,
             keyboardType = androidx.compose.ui.text.input.KeyboardType.Phone
         )
@@ -82,7 +84,7 @@ fun RegisterScreen(
         AuthTextField(
             value = password,
             onValueChange = { password = it },
-            label = "Mật khẩu",
+            label = stringResource(R.string.auth_password_label),
             leadingIcon = Icons.Outlined.Lock,
             isPassword = true,
             passwordVisible = passwordVisible,
@@ -94,7 +96,7 @@ fun RegisterScreen(
         AuthTextField(
             value = confirmPassword,
             onValueChange = { confirmPassword = it },
-            label = "Nhập lại mật khẩu",
+            label = stringResource(R.string.auth_confirm_password_label),
             leadingIcon = Icons.Outlined.CheckCircleOutline,
             isPassword = true,
             passwordVisible = confirmPasswordVisible,
@@ -121,37 +123,45 @@ fun RegisterScreen(
                 colors = CheckboxDefaults.colors(
                     checkedColor = SportPrimary,
                     uncheckedColor = SportPrimary,
-                    checkmarkColor = androidx.compose.ui.graphics.Color.White
+                    checkmarkColor = Color.White
                 )
             )
             Spacer(Modifier.width(4.dp))
             Text(
-                text = "Tôi đồng ý với điều khoản sử dụng",
+                text = stringResource(R.string.auth_terms_accept),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyMedium,
                 fontWeight = FontWeight.Medium
             )
         }
 
         Spacer(Modifier.height(10.dp))
 
-        AuthPrimaryButton(text = "Đăng ký", onClick = {
-            Toast.makeText(context, "Đăng ký thành công", Toast.LENGTH_SHORT).show()
-            onRegisterSuccess()
-        })
+        AuthPrimaryButton(
+            text = stringResource(R.string.auth_register_button),
+            onClick = {
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.auth_register_success_toast),
+                    Toast.LENGTH_SHORT
+                ).show()
+                onRegisterSuccess()
+            }
+        )
 
         AuthDivider()
 
         SocialAuthButton(
-            text = "Đăng ký với Google",
-            accentText = "G",
+            text = stringResource(R.string.auth_register_google),
+            accentText = stringResource(R.string.auth_social_google_short),
             accentColor = Color(0xFFDB4437)
         )
 
         Spacer(Modifier.height(10.dp))
 
         SocialAuthButton(
-            text = "Đăng ký với Facebook",
-            accentText = "f",
+            text = stringResource(R.string.auth_register_facebook),
+            accentText = stringResource(R.string.auth_social_facebook_short),
             accentColor = Color(0xFF1877F2)
         )
 
@@ -163,12 +173,14 @@ fun RegisterScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "Đã có tài khoản? ",
-                color = Color(0xFF6B7280)
+                text = stringResource(R.string.auth_have_account),
+                color = Color(0xFF6B7280),
+                style = MaterialTheme.typography.bodyMedium
             )
             Text(
-                text = "Đăng nhập ngay",
+                text = stringResource(R.string.auth_login_now),
                 color = SportPrimary,
+                style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.clickable { onNavigateToLogin() }
             )
@@ -188,7 +200,7 @@ private fun AuthDateField(
     AuthTextField(
         value = value,
         onValueChange = onValueChange,
-        label = "Ngày sinh",
+        label = stringResource(R.string.auth_birth_date_label),
         leadingIcon = Icons.Outlined.CalendarMonth,
         readOnly = true,
         onClick = {

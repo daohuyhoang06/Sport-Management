@@ -2,6 +2,27 @@ import sequelize from "../../config/database.js";
 import FieldSchedule from "../../models/FieldSchedule.js";
 import { Op } from "sequelize";
 
+const ACTIVE_BOOKING_STATUS_CONDITION = `
+  (
+    status = 'confirmed'
+    OR (
+      status = 'pending'
+      AND (pending_expires_at IS NULL OR pending_expires_at > NOW())
+    )
+  )
+`;
+
+export const releaseExpiredPendingBookings = async (transaction = null) => {
+  await sequelize.query(
+    `UPDATE bookings
+     SET status = 'cancelled'
+     WHERE status = 'pending'
+       AND pending_expires_at IS NOT NULL
+       AND pending_expires_at <= NOW()`,
+    transaction ? { transaction } : undefined,
+  );
+};
+
 /**
  * Get available time slots for a field on a specific date or date range
  * Combines field_schedules with bookings to determine availability
@@ -11,6 +32,8 @@ import { Op } from "sequelize";
  */
 export const getAvailableSlots = async (field_id, dateOrDates) => {
   try {
+    await releaseExpiredPendingBookings();
+
     const dates = Array.isArray(dateOrDates) ? dateOrDates : [dateOrDates];
     const firstDate = dates[0];
     const lastDate = dates[dates.length - 1];
@@ -49,7 +72,7 @@ export const getAvailableSlots = async (field_id, dateOrDates) => {
        FROM bookings 
        WHERE field_id = ? 
        AND start_time >= ? AND start_time < ?
-       AND status IN ('pending', 'confirmed')`,
+       AND ${ACTIVE_BOOKING_STATUS_CONDITION}`,
       {
         replacements: [field_id, startOfDay, endOfDay],
         type: sequelize.QueryTypes.SELECT,
@@ -163,10 +186,12 @@ function getShiftLabel(datetime) {
  */
 export const checkSlotAvailability = async (field_id, startTime, endTime) => {
   try {
+    await releaseExpiredPendingBookings();
+
     // Check field_schedules if this time is marked as unavailable
     const scheduleConflict = await FieldSchedule.findOne({
       where: {
-        field_id: fieldId,
+        field_id: field_id,
         is_available: false,
         [Op.or]: [
           {
@@ -189,7 +214,7 @@ export const checkSlotAvailability = async (field_id, startTime, endTime) => {
       `SELECT booking_id, start_time, end_time, status 
        FROM bookings 
        WHERE field_id = ? 
-       AND status IN ('pending', 'confirmed')
+       AND ${ACTIVE_BOOKING_STATUS_CONDITION}
        AND start_time < ?
        AND end_time > ?`,
       {
@@ -266,4 +291,5 @@ export default {
   getAvailableSlots,
   checkSlotAvailability,
   updateFieldSchedules,
+  releaseExpiredPendingBookings,
 };

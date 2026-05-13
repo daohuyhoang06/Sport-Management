@@ -28,6 +28,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.sportmanagement.user.domain.model.SportCategory
 import com.sportmanagement.user.ui.components.SportMarkerIcon
+import com.sportmanagement.user.ui.theme.AppInputCornerRadius
 
 @Composable
 fun HomeSportCategorySection(
@@ -84,7 +85,7 @@ private fun SportCategoryItem(
                     scaleX = chipScale
                     scaleY = chipScale
                 },
-            shape = RoundedCornerShape(10.dp),
+            shape = RoundedCornerShape(AppInputCornerRadius),
             color = bgColor,
             border = BorderStroke(
                 width = if (isSelected) 2.dp else 1.5.dp,

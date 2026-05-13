@@ -62,6 +62,9 @@ import com.sportmanagement.user.ui.components.SportMarkerIcon
 import com.sportmanagement.user.ui.components.sportIconDrawableRes
 import com.sportmanagement.user.ui.components.sportMarkerBaseDrawableRes
 import com.sportmanagement.user.ui.components.field.FieldDetailBottomSheet
+import com.sportmanagement.user.ui.theme.AppCardCornerRadius
+import com.sportmanagement.user.ui.theme.AppPillCornerRadius
+import com.sportmanagement.user.ui.theme.AppSearchCornerRadius
 import org.maplibre.android.MapLibre
 import org.maplibre.android.annotations.IconFactory
 import org.maplibre.android.WellKnownTileServer
@@ -214,7 +217,13 @@ fun UserMapScreen(
         val map = mapLibreMap ?: return@LaunchedEffect
         val iconFactory = IconFactory.getInstance(context)
         map.clear()
-        currentLocation?.let { map.addMarker(MarkerOptions().position(it).title("Vị trí của bạn")) }
+        currentLocation?.let {
+            map.addMarker(
+                MarkerOptions()
+                    .position(it)
+                    .title(context.getString(R.string.map_my_location_marker_title))
+            )
+        }
         visibleFields.forEach { field ->
             val point = fieldPoint(field) ?: return@forEach
             map.addMarker(
@@ -279,13 +288,13 @@ fun UserMapScreen(
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shadowElevation = 6.dp,
-                shape = RoundedCornerShape(28.dp),
+                shape = RoundedCornerShape(AppSearchCornerRadius),
                 color = Color.White
             ) {
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it; showSuggestions = true },
-                    placeholder = { Text("Tìm kiếm sân thể thao...") },
+                    placeholder = { Text(stringResource(R.string.map_search_placeholder_fields)) },
                     leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                     trailingIcon = {
                         if (searchQuery.isNotEmpty()) {
@@ -295,7 +304,7 @@ fun UserMapScreen(
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(28.dp),
+                    shape = RoundedCornerShape(AppSearchCornerRadius),
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                     keyboardActions = KeyboardActions(onSearch = {
@@ -306,7 +315,7 @@ fun UserMapScreen(
             }
 
             if (showSuggestions && suggestions.isNotEmpty()) {
-                Card(shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()) {
+                Card(shape = RoundedCornerShape(AppCardCornerRadius), modifier = Modifier.fillMaxWidth()) {
                     Column(modifier = Modifier.padding(6.dp)) {
                         suggestions.forEach { field ->
                             Text(
@@ -350,7 +359,7 @@ fun UserMapScreen(
             ) {
                 Icon(
                     imageVector = if (showFieldList) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                    contentDescription = "Bật/tắt danh sách sân"
+                    contentDescription = stringResource(R.string.map_toggle_list_content_description)
                 )
             }
             SmallFloatingActionButton(
@@ -367,7 +376,10 @@ fun UserMapScreen(
                 containerColor = actionButtonContainer,
                 contentColor = actionButtonContent
             ) {
-                Icon(Icons.Default.MyLocation, contentDescription = "Vị trí của tôi")
+                Icon(
+                    Icons.Default.MyLocation,
+                    contentDescription = stringResource(R.string.map_my_location_content_description)
+                )
             }
         } 
 
@@ -450,7 +462,7 @@ private fun MapSportCategoryItem(category: SportCategory, isSelected: Boolean, o
         modifier = Modifier
             .height(52.dp)
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(999.dp),
+        shape = RoundedCornerShape(AppPillCornerRadius),
         shadowElevation = shadow,
         color = containerColor,
         border = BorderStroke(
@@ -465,13 +477,16 @@ private fun MapSportCategoryItem(category: SportCategory, isSelected: Boolean, o
         ) {
             SportMarkerIcon(
                 iconType = category.iconType,
-                contentDescription = "Sân ${category.name}",
+                contentDescription = stringResource(R.string.map_category_field_format, category.name),
                 markerSize = 34.dp,
                 iconSize = 16.dp
             )
             Spacer(Modifier.width(8.dp))
             Text(
-                text = "Sân ${category.name.lowercase()}",
+                text = stringResource(
+                    R.string.map_category_field_format,
+                    category.name.lowercase()
+                ),
                 style = MaterialTheme.typography.bodyMedium,
                 fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
                 color = textColor
@@ -518,14 +533,14 @@ private fun MapFieldListItem(
 ) {
     val context = LocalContext.current
     val distanceText = remember(currentLocation, field.latitude, field.longitude) {
-        formatDistanceLabel(currentLocation, field)
+        formatDistanceLabel(context, currentLocation, field)
     }
 
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(AppCardCornerRadius),
         color = Color(0xFFF8FAFC),
         border = BorderStroke(1.dp, Color(0xFFE2E8F0))
     ) {
@@ -553,14 +568,18 @@ private fun MapFieldListItem(
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
-                    text = "$distanceText • ${field.location}",
+                    text = stringResource(
+                        R.string.map_field_distance_location_format,
+                        distanceText,
+                        field.location
+                    ),
                     style = MaterialTheme.typography.bodySmall,
                     color = Color(0xFF64748B)
                 )
             }
             Icon(
                 imageVector = Icons.Default.Directions,
-                contentDescription = "Mở chỉ đường",
+                contentDescription = stringResource(R.string.map_directions_content_description),
                 tint = Color(0xFF0F172A),
                 modifier = Modifier
                     .size(34.dp)
@@ -578,12 +597,16 @@ private fun normalizeForSearch(text: String): String {
     return normalized.replace("đ", "d").replace("\\p{M}+".toRegex(), "")
 }
 
-private fun formatDistanceLabel(currentLocation: LatLng?, field: UserField): String {
-    val lat = field.latitude ?: return "Khoảng cách N/A"
-    val lon = field.longitude ?: return "Khoảng cách N/A"
+private fun formatDistanceLabel(context: Context, currentLocation: LatLng?, field: UserField): String {
+    val lat = field.latitude ?: return context.getString(R.string.map_distance_na)
+    val lon = field.longitude ?: return context.getString(R.string.map_distance_na)
     val from = currentLocation ?: LatLng(21.0285, 105.8542)
     val meters = haversineMeters(from.latitude, from.longitude, lat, lon)
-    return if (meters < 1000) "${meters.toInt()}m" else String.format("%.1fkm", meters / 1000.0)
+    return if (meters < 1000) {
+        context.getString(R.string.map_distance_meter_format, meters.toInt())
+    } else {
+        context.getString(R.string.map_distance_km_format, meters / 1000.0)
+    }
 }
 
 private fun haversineMeters(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
@@ -648,6 +671,10 @@ private fun openDirections(context: Context, field: UserField) {
     try {
         context.startActivity(intent)
     } catch (_: Exception) {
-        Toast.makeText(context, "Không mở được chỉ đường", Toast.LENGTH_SHORT).show()
+        Toast.makeText(
+            context,
+            context.getString(R.string.field_detail_error_open_directions),
+            Toast.LENGTH_SHORT
+        ).show()
     }
 }

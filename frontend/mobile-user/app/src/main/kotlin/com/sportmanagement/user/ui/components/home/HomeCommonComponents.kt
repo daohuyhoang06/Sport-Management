@@ -27,6 +27,7 @@ import com.sportmanagement.user.ui.theme.AppCtaAmber
 import com.sportmanagement.user.ui.theme.AppCtaCompactHorizontalPadding
 import com.sportmanagement.user.ui.theme.AppCtaCompactVerticalPadding
 import com.sportmanagement.user.ui.theme.AppCtaCornerRadius
+import com.sportmanagement.user.ui.theme.AppMediaCornerRadius
 import com.sportmanagement.user.ui.theme.AppOnCtaAmber
 
 @Composable
@@ -56,7 +57,7 @@ internal fun HomeBookButton(onClick: () -> Unit) {
 internal fun HomeTagChip(text: String) {
     Box(
         modifier = Modifier
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp))
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(AppMediaCornerRadius))
             .padding(horizontal = 10.dp, vertical = 4.dp)
     ) {
         Text(

@@ -15,6 +15,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.sportmanagement.user.ui.theme.AppCardCornerRadius
 
 @Composable
 fun StatPill(value: String, label: String) {
@@ -22,7 +23,7 @@ fun StatPill(value: String, label: String) {
         modifier = Modifier
             .width(150.dp)
             .height(82.dp),
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(AppCardCornerRadius),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer)
     ) {
         Column(

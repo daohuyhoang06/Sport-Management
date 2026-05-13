@@ -22,9 +22,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.sportmanagement.user.R
-import com.sportmanagement.user.ui.components.StatPill
 import com.sportmanagement.user.domain.model.UserProfile
 import com.sportmanagement.user.domain.model.UserStat
+import com.sportmanagement.user.ui.components.StatPill
+import com.sportmanagement.user.ui.theme.AppCardCornerRadius
 
 @Composable
 fun UserProfileScreen(
@@ -52,7 +53,7 @@ fun UserProfileScreen(
             fontWeight = FontWeight.Bold
         )
 
-        Card(shape = RoundedCornerShape(16.dp)) {
+        Card(shape = RoundedCornerShape(AppCardCornerRadius)) {
             Column(
                 modifier = Modifier.padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)

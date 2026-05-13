@@ -45,6 +45,10 @@ import com.sportmanagement.user.domain.model.VenueCardType
 import com.sportmanagement.user.ui.components.SportCircleAvatar
 import com.sportmanagement.user.ui.components.sportFieldDrawableRes
 import com.sportmanagement.user.R
+import com.sportmanagement.user.ui.theme.AppBadgeCornerRadius
+import com.sportmanagement.user.ui.theme.AppCardCornerRadius
+import com.sportmanagement.user.ui.theme.AppHomeVenueCornerRadius
+import com.sportmanagement.user.ui.theme.AppMediaCornerRadius
 
 @Composable
 fun HomeVenueCard(
@@ -70,7 +74,7 @@ private fun LargeVenueCard(
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
             .clickable(onClick = onCardClick),
-        shape = RoundedCornerShape(12.dp),
+        shape = RoundedCornerShape(AppHomeVenueCornerRadius),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
     ) {
@@ -91,7 +95,7 @@ private fun LargeVenueCard(
                     Box(
                         modifier = Modifier
                             .padding(12.dp)
-                            .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(6.dp))
+                            .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(AppBadgeCornerRadius))
                             .padding(horizontal = 8.dp, vertical = 4.dp)
                     ) {
                         Text(
@@ -107,7 +111,7 @@ private fun LargeVenueCard(
                     Row(
                         modifier = Modifier
                             .padding(start = 120.dp, top = 12.dp)
-                            .background(MaterialTheme.colorScheme.tertiaryContainer, RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.tertiaryContainer, RoundedCornerShape(AppCardCornerRadius))
                             .padding(horizontal = 8.dp, vertical = 2.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -143,7 +147,7 @@ private fun LargeVenueCard(
                 color = Color.White,
                 shadowElevation = 0.dp,
                 tonalElevation = 0.dp,
-                shape = RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp, bottomStart = 10.dp, bottomEnd = 10.dp)
+                shape = RoundedCornerShape(AppHomeVenueCornerRadius)
             ) {
                 Row(
                     modifier = Modifier
@@ -203,7 +207,7 @@ private fun SmallHorizontalCard(
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
             .clickable(onClick = onCardClick),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(AppHomeVenueCornerRadius),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
@@ -218,7 +222,7 @@ private fun SmallHorizontalCard(
                 contentDescription = field.name,
                 modifier = Modifier
                     .size(90.dp)
-                    .clip(RoundedCornerShape(12.dp)),
+                    .clip(RoundedCornerShape(AppMediaCornerRadius)),
                 contentScale = ContentScale.Crop
             )
 
@@ -285,7 +289,7 @@ private fun SmallNoImageCard(
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
             .clickable(onClick = onCardClick),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(AppHomeVenueCornerRadius),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {

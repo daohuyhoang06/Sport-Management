@@ -1,10 +1,38 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Sport User</string>
     <string name="tab_home">Trang chủ</string>
     <string name="tab_map">Bản đồ</string>
     <string name="tab_favorites">Yêu thích</string>
     <string name="tab_profile">Tài khoản</string>
+    <string name="auth_login_welcome">Chào mừng bạn</string>
+    <string name="auth_login_subtitle">Đăng nhập để tiếp tục trải nghiệm</string>
+    <string name="auth_login_hero">Đăng nhập</string>
+    <string name="auth_register_title">Tạo tài khoản</string>
+    <string name="auth_register_subtitle">Tham gia và khám phá những sân bóng tuyệt vời</string>
+    <string name="auth_register_hero">Đăng ký</string>
+    <string name="auth_phone_label">Số điện thoại</string>
+    <string name="auth_password_label">Mật khẩu</string>
+    <string name="auth_confirm_password_label">Nhập lại mật khẩu</string>
+    <string name="auth_full_name_label">Họ và tên</string>
+    <string name="auth_birth_date_label">Ngày sinh</string>
+    <string name="auth_forgot_password">Quên mật khẩu?</string>
+    <string name="auth_login_button">Đăng nhập</string>
+    <string name="auth_register_button">Đăng ký</string>
+    <string name="auth_login_success_toast">Đăng nhập thành công</string>
+    <string name="auth_register_success_toast">Đăng ký thành công</string>
+    <string name="auth_login_google">Đăng nhập với Google</string>
+    <string name="auth_login_facebook">Đăng nhập với Facebook</string>
+    <string name="auth_register_google">Đăng ký với Google</string>
+    <string name="auth_register_facebook">Đăng ký với Facebook</string>
+    <string name="auth_no_account">Bạn chưa có tài khoản? </string>
+    <string name="auth_register_now">Đăng ký ngay</string>
+    <string name="auth_have_account">Đã có tài khoản? </string>
+    <string name="auth_login_now">Đăng nhập ngay</string>
+    <string name="auth_terms_accept">Tôi đồng ý với điều khoản sử dụng</string>
+    <string name="auth_divider_login_with">Hoặc đăng nhập với</string>
+    <string name="auth_social_google_short">G</string>
+    <string name="auth_social_facebook_short">f</string>
 
     <string name="home_banner_content_description">Banner</string>
     <string name="home_avatar_content_description">Avatar người dùng</string>
@@ -27,6 +55,14 @@
     <string name="map_my_location_content_description">Vị trí hiện tại</string>
     <string name="map_toggle_list_content_description">Hiện danh sách sân</string>
     <string name="map_suggestion_item">%1$s - %2$s</string>
+    <string name="map_search_placeholder_fields">Tìm kiếm sân thể thao...</string>
+    <string name="map_my_location_marker_title">Vị trí của bạn</string>
+    <string name="map_directions_content_description">Mở chỉ đường</string>
+    <string name="map_category_field_format">Sân %1$s</string>
+    <string name="map_distance_na">Khoảng cách N/A</string>
+    <string name="map_distance_meter_format">%1$dm</string>
+    <string name="map_distance_km_format">%1$.1fkm</string>
+    <string name="map_field_distance_location_format">%1$s • %2$s</string>
 
     <string name="favorite_title">Sân yêu thích</string>
     <string name="favorite_price_rating">%1$s  |  %2$s/5</string>
@@ -80,7 +116,42 @@
     <string name="booking_confirm_notice_line_1">Việc thanh toán được thực hiện trực tiếp giữa bạn và chủ sân.</string>
     <string name="booking_confirm_notice_line_2">Hệ thống đóng vai trò kết nối, hỗ trợ bạn tìm và đặt sân dễ dàng hơn.</string>
     <string name="booking_confirm_notice_line_3">Mỗi sân có thể có quy định riêng, hãy đọc kỹ trước khi thanh toán.</string>
-    <string name="booking_confirm_notice_terms">Bằng việc bấm Xác nhận &amp; Thanh toán, bạn xác nhận đã đọc và đồng ý với điều khoản đặt sân.</string>
+    <string name="booking_confirm_notice_short">Thanh toán trực tiếp với chủ sân, vui lòng kiểm tra kỹ thông tin trước khi chuyển khoản.</string>
+    <string name="booking_confirm_notice_terms">Bấm Xác nhận &amp; Thanh toán là bạn đồng ý điều khoản đặt sân.</string>
+    <string name="payment_title">Thanh toán</string>
+    <string name="payment_booking_info_title">Thông tin lịch đặt</string>
+    <string name="payment_customer_name_label">Tên</string>
+    <string name="payment_customer_phone_label">SĐT</string>
+    <string name="payment_order_code_label">Mã đơn</string>
+    <string name="payment_order_code_pending">Đang tạo giao dịch...</string>
+    <string name="payment_booking_detail_label">Chi tiết đơn</string>
+    <string name="payment_total_amount_label">Tổng đơn</string>
+    <string name="payment_due_amount_label">Cần thanh toán</string>
+    <string name="payment_bank_info_title">1. Tài khoản thanh toán</string>
+    <string name="payment_bank_name_label">Tên tài khoản:</string>
+    <string name="payment_bank_number_label">Số tài khoản:</string>
+    <string name="payment_bank_label">Ngân hàng:</string>
+    <string name="payment_copy_content_description">Sao chép số tài khoản</string>
+    <string name="payment_copy_success">Đã sao chép số tài khoản</string>
+    <string name="payment_qr_content_description">Mã QR MoMo sandbox</string>
+    <string name="payment_sandbox_creating">Đang tạo giao dịch MoMo sandbox...</string>
+    <string name="payment_sandbox_create_error">Không tạo được giao dịch MoMo sandbox</string>
+    <string name="payment_sandbox_notice">Đây là môi trường sandbox: giao dịch test không trừ tiền thật.</string>
+    <string name="payment_open_momo_button">Mở MoMo Sandbox</string>
+    <string name="payment_open_link_error">MoMo chưa trả về link thanh toán</string>
+    <string name="payment_open_link_fail">Không mở được link thanh toán MoMo</string>
+    <string name="payment_retry_button">Tạo lại QR</string>
+    <string name="payment_confirm_booking">XÁC NHẬN ĐẶT</string>
+    <string name="payment_transfer_notice_prefix">Vui lòng chuyển khoản </string>
+    <string name="payment_transfer_notice_suffix"> và gửi ảnh vào ô bên dưới để hoàn tất đặt lịch!</string>
+    <string name="payment_pending_instruction_line_1">Sau khi gửi ảnh, vui lòng kiểm tra trạng thái lịch đặt tại tab \"Tài khoản\" tới khi chủ sân xác nhận đơn.</string>
+    <string name="payment_pending_instruction_line_2">Đơn của bạn còn được giữ chỗ trong</string>
+    <string name="payment_pending_time_format">%1$02d:%2$02d</string>
+    <string name="payment_upload_proof_placeholder">Nhấn vào để tải hình thanh toán (*)</string>
+    <string name="payment_upload_proof_content_description">Ảnh minh chứng thanh toán</string>
+    <string name="payment_pending_expired_message">Đơn đã quá giờ thanh toán. Vui lòng tạo đơn mới</string>
+    <string name="payment_view_cancelled_booking">XEM LỊCH ĐÃ HỦY</string>
+    <string name="payment_back_home">QUAY VỀ</string>
 
     <string name="profile_title">Tài khoản</string>
     <string name="profile_name">Tên: %1$s</string>
@@ -143,6 +214,9 @@
 
     <string name="field_detail_rating_unavailable">Chưa có đánh giá</string>
     <string name="field_detail_rating_good_format">%1$s (đánh giá tốt)</string>
+    <string name="field_detail_label_with_colon">%1$s:</string>
+    <string name="field_detail_bullet_line">• %1$s</string>
+    <string name="field_detail_rating_value">%1$d.0</string>
     <string name="field_detail_opening_now">Đang mở</string>
     <string name="field_detail_opening_schedule">Mở theo khung giờ</string>
 

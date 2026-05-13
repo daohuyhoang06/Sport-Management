@@ -12,6 +12,7 @@
         android:label="Sport User"
         android:roundIcon="@android:drawable/sym_def_app_icon"
         android:supportsRtl="true"
+        android:usesCleartextTraffic="true"
         android:theme="@style/Theme.SportUser">
         <activity
             android:name=".MainActivity"

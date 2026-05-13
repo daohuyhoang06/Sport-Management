@@ -23,6 +23,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -30,6 +31,9 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.sportmanagement.user.R
 import com.sportmanagement.user.domain.model.SlotStatus
+import com.sportmanagement.user.ui.theme.AppHeaderGradientEnd
+import com.sportmanagement.user.ui.theme.AppHeaderGradientStart
+import com.sportmanagement.user.ui.theme.AppInputCornerRadius
 
 @Composable
 fun BookingHeaderSection(
@@ -40,9 +44,13 @@ fun BookingHeaderSection(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.primary)
+            .background(
+                brush = Brush.horizontalGradient(
+                    colors = listOf(AppHeaderGradientStart, AppHeaderGradientEnd)
+                )
+            )
             .statusBarsPadding()
-            .padding(horizontal = 16.dp, vertical = 14.dp)
+            .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
         Box(modifier = Modifier.fillMaxWidth()) {
             IconButton(
@@ -57,7 +65,7 @@ fun BookingHeaderSection(
             }
             Text(
                 text = stringResource(R.string.booking_title),
-                style = MaterialTheme.typography.headlineSmall,
+                style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier.align(Alignment.Center),
                 color = MaterialTheme.colorScheme.onPrimary,
                 fontWeight = FontWeight.SemiBold
@@ -67,28 +75,29 @@ fun BookingHeaderSection(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 12.dp),
+                .padding(top = 8.dp),
             horizontalArrangement = Arrangement.End
         ) {
             Surface(
                 onClick = onDateClick,
-                shape = RoundedCornerShape(10.dp),
+                shape = RoundedCornerShape(AppInputCornerRadius),
                 color = MaterialTheme.colorScheme.primaryContainer
             ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
                         text = selectedDateText,
-                        style = MaterialTheme.typography.titleMedium,
+                        style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                     Spacer(modifier = Modifier.width(10.dp))
                     Icon(
                         imageVector = Icons.Default.CalendarMonth,
                         contentDescription = stringResource(R.string.booking_calendar_content_description),
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.size(18.dp)
                     )
                 }
             }
@@ -97,7 +106,7 @@ fun BookingHeaderSection(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 14.dp),
+                .padding(top = 10.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             BookingLegendItem(SlotStatus.AVAILABLE, stringResource(R.string.booking_status_available))
@@ -107,11 +116,11 @@ fun BookingHeaderSection(
 
         Text(
             text = stringResource(R.string.booking_view_field_and_price),
-            modifier = Modifier.padding(top = 14.dp),
-            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(top = 10.dp),
+            style = MaterialTheme.typography.bodyMedium,
             textDecoration = TextDecoration.Underline,
             color = MaterialTheme.colorScheme.secondary,
-            fontWeight = FontWeight.SemiBold
+            fontWeight = FontWeight.Medium
         )
     }
 }

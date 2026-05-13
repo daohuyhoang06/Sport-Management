@@ -92,10 +92,16 @@ import com.sportmanagement.user.domain.model.UserField
 import com.sportmanagement.user.ui.components.SportCircleAvatar
 import com.sportmanagement.user.ui.components.SportMarkerIcon
 import com.sportmanagement.user.ui.theme.AppCtaAmber
+import com.sportmanagement.user.ui.theme.AppBadgeCornerRadius
+import com.sportmanagement.user.ui.theme.AppCardCornerRadius
 import com.sportmanagement.user.ui.theme.AppCtaCompactHorizontalPadding
 import com.sportmanagement.user.ui.theme.AppCtaCompactVerticalPadding
 import com.sportmanagement.user.ui.theme.AppCtaCornerRadius
+import com.sportmanagement.user.ui.theme.AppInputCornerRadius
 import com.sportmanagement.user.ui.theme.AppOnCtaAmber
+import com.sportmanagement.user.ui.theme.AppPillCornerRadius
+import com.sportmanagement.user.ui.theme.AppMediaCornerRadius
+import com.sportmanagement.user.ui.theme.AppSheetTopCornerRadius
 import kotlinx.coroutines.launch
 import java.text.Normalizer
 import java.util.Locale
@@ -138,7 +144,7 @@ fun FieldDetailBottomSheet(
         sheetState = sheetState,
         dragHandle = null,
         containerColor = colors.surfaceContainerLow,
-        shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)
+        shape = RoundedCornerShape(topStart = AppSheetTopCornerRadius, topEnd = AppSheetTopCornerRadius)
     ) {
         LazyColumn(
             modifier = Modifier
@@ -154,7 +160,7 @@ fun FieldDetailBottomSheet(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(232.dp)
-                                .clip(RoundedCornerShape(topStart = 10.dp, topEnd = 10.dp))
+                                .clip(RoundedCornerShape(topStart = AppInputCornerRadius, topEnd = AppInputCornerRadius))
                         ) {
                             Image(
                                 painter = painterResource(id = R.drawable.field_football),
@@ -228,7 +234,7 @@ fun FieldDetailBottomSheet(
                                 .fillMaxWidth()
                                 .padding(horizontal = 16.dp)
                                 .offset(y = (-28).dp),
-                            shape = RoundedCornerShape(16.dp),
+                            shape = RoundedCornerShape(AppCardCornerRadius),
                             colors = CardDefaults.cardColors(containerColor = colors.surfaceContainerLowest),
                             elevation = CardDefaults.cardElevation(defaultElevation = 10.dp)
                         ) {
@@ -286,7 +292,7 @@ fun FieldDetailBottomSheet(
                             .align(Alignment.TopCenter)
                             .offset(y = 168.dp)
                             .zIndex(2f),
-                        shape = RoundedCornerShape(999.dp),
+                        shape = RoundedCornerShape(AppPillCornerRadius),
                         color = colors.primary,
                         shadowElevation = 8.dp
                     ) {
@@ -384,7 +390,7 @@ fun FieldDetailBottomSheet(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp))
+                        .clip(RoundedCornerShape(AppCardCornerRadius))
                         .background(Color.Black)
                 ) {
                     Image(
@@ -429,7 +435,7 @@ private fun CircleActionButton(
 private fun SportTypeSelectedPill(type: SportIconType) {
     val accent = sportAccentColor(type)
     Surface(
-        shape = RoundedCornerShape(999.dp),
+        shape = RoundedCornerShape(AppPillCornerRadius),
         color = accent.copy(alpha = 0.14f),
         border = androidx.compose.foundation.BorderStroke(
             width = 1.8.dp,
@@ -504,7 +510,7 @@ private fun InfoTabContent(field: UserField) {
         stringResource(R.string.field_detail_info_amenities) to stringResource(R.string.field_detail_info_amenities_value)
     )
     Card(
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(AppCardCornerRadius),
         colors = CardDefaults.cardColors(containerColor = colors.surfaceContainerLowest)
     ) {
         Column(
@@ -516,7 +522,7 @@ private fun InfoTabContent(field: UserField) {
             infoItems.forEach { (label, value) ->
                 Row(modifier = Modifier.fillMaxWidth()) {
                     Text(
-                        text = "$label:",
+                        text = stringResource(R.string.field_detail_label_with_colon, label),
                         modifier = Modifier.widthIn(min = 120.dp),
                         style = MaterialTheme.typography.bodyMedium,
                         color = colors.onSurfaceVariant,
@@ -545,7 +551,7 @@ private fun ServiceTabContent() {
         stringResource(R.string.field_detail_service_coach) to Icons.Default.Person
     )
     Card(
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(AppCardCornerRadius),
         colors = CardDefaults.cardColors(containerColor = colors.surfaceContainerLowest)
     ) {
         Column(
@@ -588,7 +594,7 @@ private fun GalleryTabContent(onPreview: (Int) -> Unit) {
                 contentDescription = null,
                 modifier = Modifier
                     .size(width = 200.dp, height = 120.dp)
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(RoundedCornerShape(AppMediaCornerRadius))
                     .clickable { onPreview(imageRes) },
                 contentScale = ContentScale.Crop
             )
@@ -606,7 +612,7 @@ private fun PolicyTabContent() {
         stringResource(R.string.field_detail_policy_4)
     )
     Card(
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(AppCardCornerRadius),
         colors = CardDefaults.cardColors(containerColor = colors.surfaceContainerLowest)
     ) {
         Column(
@@ -617,7 +623,7 @@ private fun PolicyTabContent() {
         ) {
             policies.forEach { line ->
                 Text(
-                    text = "• $line",
+                    text = stringResource(R.string.field_detail_bullet_line, line),
                     style = MaterialTheme.typography.bodyMedium,
                     color = colors.onSurfaceVariant
                 )
@@ -652,7 +658,7 @@ private fun ReviewTabContent(
         )
     )
     Card(
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(AppCardCornerRadius),
         colors = CardDefaults.cardColors(containerColor = colors.surfaceContainerLowest)
     ) {
         Column(
@@ -686,7 +692,7 @@ private fun OnlineBookingLinkCard(
 ) {
     val colors = MaterialTheme.colorScheme
     Card(
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(AppCardCornerRadius),
         colors = CardDefaults.cardColors(containerColor = colors.surfaceContainerLow),
         border = androidx.compose.foundation.BorderStroke(1.dp, colors.outlineVariant)
     ) {
@@ -762,7 +768,7 @@ private fun ReviewItemWithDrawableImages(
 
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = "${rating}.0",
+                text = stringResource(R.string.field_detail_rating_value, rating),
                 style = MaterialTheme.typography.labelMedium,
                 color = Color(0xFFE59C00),
                 fontWeight = FontWeight.SemiBold
@@ -788,7 +794,7 @@ private fun ReviewItemWithDrawableImages(
                         contentScale = ContentScale.Crop,
                         modifier = Modifier
                             .size(68.dp)
-                            .clip(RoundedCornerShape(8.dp))
+                            .clip(RoundedCornerShape(AppBadgeCornerRadius))
                     )
                 }
             }
@@ -883,3 +889,4 @@ private fun openExternalUrl(context: android.content.Context, url: String) {
         Toast.makeText(context, context.getString(R.string.field_detail_error_open_link), Toast.LENGTH_SHORT).show()
     }
 }
+
