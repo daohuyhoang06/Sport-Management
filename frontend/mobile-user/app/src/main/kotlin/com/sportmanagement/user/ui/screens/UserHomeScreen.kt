@@ -23,6 +23,7 @@ import com.sportmanagement.user.ui.components.home.HomeVenueCard
 import com.sportmanagement.user.domain.model.SportCategory
 import com.sportmanagement.user.domain.model.UserField
 
+
 @Composable
 fun UserHomeScreen(
     padding: PaddingValues,

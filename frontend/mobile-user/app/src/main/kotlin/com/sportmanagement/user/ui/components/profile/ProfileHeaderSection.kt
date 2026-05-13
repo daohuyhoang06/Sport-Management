@@ -38,7 +38,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -46,10 +45,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.sportmanagement.user.R
 import com.sportmanagement.user.domain.model.UserProfile
-
-private val ProfileAmber = Color(0xFFFFE66A)
-private val ProfileAmberText = Color(0xFF9D7600)
-private val ProfileTeal = Color(0xFF06A9A2)
+import com.sportmanagement.user.ui.theme.AppAccentCitrus
+import com.sportmanagement.user.ui.theme.AppCardCornerRadius
+import com.sportmanagement.user.ui.theme.AppPillCornerRadius
 
 @Composable
 fun ProfileHeaderSection(
@@ -104,7 +102,7 @@ fun ProfileHeaderSection(
                 text = "Tài khoản",
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
-                color = Color.White
+                color = MaterialTheme.colorScheme.onPrimary
             )
 
             // =========================
@@ -113,7 +111,7 @@ fun ProfileHeaderSection(
             Icon(
                 imageVector = Icons.Default.Notifications,
                 contentDescription = null,
-                tint = Color.White,
+                tint = MaterialTheme.colorScheme.onPrimary,
                 modifier = Modifier.size(24.dp)
             )
         }
@@ -134,8 +132,8 @@ fun ProfileHeaderSection(
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
                 .offset(y = 110.dp),
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
+            shape = RoundedCornerShape(AppCardCornerRadius),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
         ) {
 
@@ -162,14 +160,14 @@ fun ProfileHeaderSection(
                         Box(
                             modifier = Modifier
                                 .size(72.dp)
-                                .background(ProfileTeal, CircleShape),
+                                .background(MaterialTheme.colorScheme.primary, CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
 
                             Icon(
                                 imageVector = Icons.Outlined.Person,
                                 contentDescription = null,
-                                tint = Color.White,
+                                tint = MaterialTheme.colorScheme.onPrimary,
                                 modifier = Modifier.size(40.dp)
                             )
 
@@ -180,15 +178,15 @@ fun ProfileHeaderSection(
                                 modifier = Modifier
                                     .align(Alignment.BottomEnd)
                                     .size(22.dp)
-                                    .background(Color.White, CircleShape)
-                                    .border(1.dp, Color.LightGray, CircleShape),
+                                    .background(MaterialTheme.colorScheme.surface, CircleShape)
+                                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
 
                                 Icon(
                                     imageVector = Icons.Outlined.CameraAlt,
                                     contentDescription = null,
-                                    tint = Color.Gray,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.size(13.dp)
                                 )
                             }
@@ -225,9 +223,9 @@ fun ProfileHeaderSection(
                             .wrapContentWidth()
                             .height(42.dp)
                             .clickable(onClick = onEditClick),
-                        shape = RoundedCornerShape(999.dp),
-                        color = Color.White,
-                        border = BorderStroke(1.dp, ProfileTeal),
+                        shape = RoundedCornerShape(AppPillCornerRadius),
+                        color = MaterialTheme.colorScheme.surface,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
                         shadowElevation = 2.dp
                     ) {
                         Row(
@@ -240,7 +238,7 @@ fun ProfileHeaderSection(
                             Icon(
                                 imageVector = Icons.Filled.Edit,
                                 contentDescription = null,
-                                tint = ProfileTeal,
+                                tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(16.dp)
                             )
 
@@ -250,7 +248,7 @@ fun ProfileHeaderSection(
                             Text(
                                 text = "Chỉnh sửa",
                                 style = MaterialTheme.typography.labelLarge,
-                                color = ProfileTeal,
+                                color = MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.SemiBold,
                                 maxLines = 1
                             )
@@ -290,7 +288,7 @@ fun ProfileHeaderSection(
                     Icon(
                         imageVector = Icons.Outlined.Star,
                         contentDescription = null,
-                        tint = Color.Gray,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(16.dp)
                     )
 
@@ -299,13 +297,13 @@ fun ProfileHeaderSection(
                     Text(
                         text = "Hạng thành viên: ",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color.Gray
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
                     Text(
                         text = profile.membership.ifBlank { "Vàng" },
                         style = MaterialTheme.typography.bodyMedium,
-                        color = ProfileAmberText,
+                        color = MaterialTheme.colorScheme.primary,
                         fontWeight = FontWeight.Bold
                     )
                 }
@@ -363,7 +361,7 @@ private fun ProfileInfoRow(
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = Color.Gray,
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(16.dp)
         )
 
@@ -372,7 +370,7 @@ private fun ProfileInfoRow(
         Text(
             text = text,
             style = MaterialTheme.typography.bodyMedium,
-            color = Color(0xFF4B5667)
+            color = MaterialTheme.colorScheme.onSurface
         )
     }
 }
@@ -394,9 +392,9 @@ private fun StatsItem(
 
     Card(
         modifier = modifier,
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(AppCardCornerRadius),
         colors = CardDefaults.cardColors(
-            containerColor = ProfileAmber
+            containerColor = AppAccentCitrus
         )
     ) {
 
@@ -414,13 +412,13 @@ private fun StatsItem(
                     text = value,
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.Bold,
-                    color = Color.Black
+                    color = MaterialTheme.colorScheme.onSurface
                 )
 
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = Color(0xFFB78F00),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(24.dp)
                 )
             }
@@ -430,7 +428,7 @@ private fun StatsItem(
             Text(
                 text = label,
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color.Black
+                color = MaterialTheme.colorScheme.onSurface
             )
         }
     }
