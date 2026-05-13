@@ -50,6 +50,9 @@ fun HomeHeaderSection(
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
     userName: String,
+    isLoggedIn: Boolean,
+    onLoginClick: () -> Unit,
+    onRegisterClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val todayLabel = remember { formatCurrentDateLabel() }
@@ -97,18 +100,25 @@ fun HomeHeaderSection(
                     Spacer(Modifier.width(10.dp))
 
                     Column {
-                        Text(
-                            text = todayLabel,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onPrimary
-                        )
-                        Spacer(Modifier.height(2.dp))
-                        Text(
-                            text = displayName,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.secondary
-                        )
+                        if (isLoggedIn) {
+                            Text(
+                                text = todayLabel,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onPrimary
+                            )
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                text = displayName,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.secondary
+                            )
+                        } else {
+                            HomeGuestSection(
+                                onLoginClick = onLoginClick,
+                                onRegisterClick = onRegisterClick
+                            )
+                        }
                     }
                 }
 

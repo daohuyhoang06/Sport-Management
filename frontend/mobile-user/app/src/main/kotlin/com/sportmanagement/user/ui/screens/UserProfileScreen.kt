@@ -33,6 +33,10 @@ import com.sportmanagement.user.ui.components.profile.ProfileHeaderSection
 fun UserProfileScreen(
     padding: PaddingValues,
     profile: UserProfile,
+    isLoggedIn: Boolean,
+    onLoginClick: () -> Unit,
+    onRegisterClick: () -> Unit,
+    onLogoutClick: () -> Unit,
     onProfileUpdate: (UserProfile) -> Unit = {}
 ) {
 
@@ -66,7 +70,10 @@ fun UserProfileScreen(
                     profile = profile,
                     onEditClick = {
                         showEditSheet = true
-                    }
+                    },
+                    isLoggedIn = isLoggedIn,
+                    onLoginClick = onLoginClick,
+                    onRegisterClick = onRegisterClick
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -86,7 +93,7 @@ fun UserProfileScreen(
             // =========================
 
             item {
-                LogoutButton()
+                LogoutButton(onLogoutClick = onLogoutClick)
             }
         }
 
@@ -94,7 +101,7 @@ fun UserProfileScreen(
         // Bottom Sheet Edit Profile
         // =========================
 
-        if (showEditSheet) {
+        if (showEditSheet && isLoggedIn) {
 
             EditProfileBottomSheet(
                 profile = profile,

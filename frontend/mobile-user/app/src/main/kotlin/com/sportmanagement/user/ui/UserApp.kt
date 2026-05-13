@@ -27,47 +27,24 @@ import com.sportmanagement.user.ui.viewmodel.UserViewModel
 @Composable
 fun UserApp(userViewModel: UserViewModel = viewModel()) {
     val uiState by userViewModel.uiState.collectAsState()
-    var isAuthenticated by rememberSaveable { mutableStateOf(false) }
+    var isLoggedIn by rememberSaveable { mutableStateOf(false) }
+    var showAuthScreen by rememberSaveable { mutableStateOf(false) }
     var showRegister by rememberSaveable { mutableStateOf(false) }
     var showBookingScreen by rememberSaveable { mutableStateOf(false) }
     var showBookingConfirmationScreen by rememberSaveable { mutableStateOf(false) }
     var selectedCourtName by rememberSaveable { mutableStateOf("") }
     var bookingConfirmationData by remember { mutableStateOf<BookingConfirmationData?>(null) }
 
-    if (!isAuthenticated) {
-        AppStatusBarEffect(
-            statusBarColor = Color.Transparent,
-            useDarkIcons = false
-        )
-
-        if (showRegister) {
-            RegisterScreen(
-                onRegisterSuccess = {
-                    showRegister = false
-                },
-                onNavigateToLogin = {
-                    showRegister = false
-                }
-            )
-        } else {
-            LoginScreen(
-                onLoginSuccess = {
-                    isAuthenticated = true
-                },
-                onNavigateToRegister = {
-                    showRegister = true
-                }
-            )
-        }
-        return
-    }
-
     val statusBarColor = when {
+        showAuthScreen -> Color.Transparent
         showBookingScreen || showBookingConfirmationScreen -> MaterialTheme.colorScheme.primary
         uiState.selectedTab == UserTab.Home -> Color.Transparent
         else -> MaterialTheme.colorScheme.surface
     }
-    val useDarkStatusBarIcons = !showBookingScreen && !showBookingConfirmationScreen && uiState.selectedTab != UserTab.Home
+    val useDarkStatusBarIcons = !showAuthScreen &&
+        !showBookingScreen &&
+        !showBookingConfirmationScreen &&
+        uiState.selectedTab != UserTab.Home
 
     AppStatusBarEffect(
         statusBarColor = statusBarColor,
@@ -81,7 +58,7 @@ fun UserApp(userViewModel: UserViewModel = viewModel()) {
 
     Scaffold(
         bottomBar = {
-            if (!showBookingScreen && !showBookingConfirmationScreen) {
+            if (!showBookingScreen && !showBookingConfirmationScreen && !showAuthScreen) {
                 UserBottomBar(
                     selectedTab = uiState.selectedTab,
                     onTabSelected = userViewModel::onTabSelected
@@ -89,7 +66,30 @@ fun UserApp(userViewModel: UserViewModel = viewModel()) {
             }
         }
     ) { padding ->
-        if (showBookingConfirmationScreen && bookingConfirmationData != null) {
+        if (showAuthScreen) {
+            if (showRegister) {
+                RegisterScreen(
+                    onRegisterSuccess = {
+                        showRegister = false
+                        showAuthScreen = true
+                    },
+                    onNavigateToLogin = {
+                        showRegister = false
+                    }
+                )
+            } else {
+                LoginScreen(
+                    onLoginSuccess = {
+                        isLoggedIn = true
+                        showAuthScreen = false
+                        showRegister = false
+                    },
+                    onNavigateToRegister = {
+                        showRegister = true
+                    }
+                )
+            }
+        } else if (showBookingConfirmationScreen && bookingConfirmationData != null) {
             BookingConfirmationScreen(
                 confirmationData = bookingConfirmationData!!,
                 userName = uiState.profile.name,
@@ -124,6 +124,15 @@ fun UserApp(userViewModel: UserViewModel = viewModel()) {
                     fields = uiState.homeFields,
                     sportCategories = uiState.sportCategories,
                     userName = uiState.profile.name,
+                    isLoggedIn = isLoggedIn,
+                    onLoginClick = {
+                        showRegister = false
+                        showAuthScreen = true
+                    },
+                    onRegisterClick = {
+                        showRegister = true
+                        showAuthScreen = true
+                    },
                     onBookFieldClick = { field ->
                         selectedCourtName = field.name
                         showBookingConfirmationScreen = false
@@ -135,7 +144,21 @@ fun UserApp(userViewModel: UserViewModel = viewModel()) {
                 UserTab.Favorites -> UserFavoriteScreen(padding, uiState.favoriteFields)
                 UserTab.Profile -> UserProfileScreen(
                     padding = padding,
-                    profile = uiState.profile
+                    profile = uiState.profile,
+                    isLoggedIn = isLoggedIn,
+                    onLoginClick = {
+                        showRegister = false
+                        showAuthScreen = true
+                    },
+                    onRegisterClick = {
+                        showRegister = true
+                        showAuthScreen = true
+                    },
+                    onLogoutClick = {
+                        isLoggedIn = false
+                        showRegister = false
+                        showAuthScreen = false
+                    }
                 )
             }
         }

@@ -30,6 +30,9 @@ fun UserHomeScreen(
     fields: List<UserField>,
     sportCategories: List<SportCategory>,
     userName: String,
+    isLoggedIn: Boolean,
+    onLoginClick: () -> Unit,
+    onRegisterClick: () -> Unit,
     onBookFieldClick: (UserField) -> Unit
 ) {
     var searchQuery by remember { mutableStateOf("") }
@@ -46,7 +49,10 @@ fun UserHomeScreen(
             HomeHeaderSection(
                 searchQuery = searchQuery,
                 onSearchQueryChange = { searchQuery = it },
-                userName = userName
+                userName = userName,
+                isLoggedIn = isLoggedIn,
+                onLoginClick = onLoginClick,
+                onRegisterClick = onRegisterClick
             )
             Spacer(Modifier.height(40.dp))
         }

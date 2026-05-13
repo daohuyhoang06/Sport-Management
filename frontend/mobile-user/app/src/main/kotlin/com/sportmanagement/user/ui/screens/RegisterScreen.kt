@@ -119,9 +119,9 @@ fun RegisterScreen(
                 checked = isAccepted,
                 onCheckedChange = { isAccepted = it },
                 colors = CheckboxDefaults.colors(
-                    checkedColor = SportPrimary,
-                    uncheckedColor = SportPrimary,
-                    checkmarkColor = androidx.compose.ui.graphics.Color.White
+                    checkedColor = MaterialTheme.colorScheme.primary,
+                    uncheckedColor = MaterialTheme.colorScheme.primary,
+                    checkmarkColor = MaterialTheme.colorScheme.onPrimary
                 )
             )
             Spacer(Modifier.width(4.dp))
@@ -164,11 +164,11 @@ fun RegisterScreen(
         ) {
             Text(
                 text = "Đã có tài khoản? ",
-                color = Color(0xFF6B7280)
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
                 text = "Đăng nhập ngay",
-                color = SportPrimary,
+                color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.clickable { onNavigateToLogin() }
             )

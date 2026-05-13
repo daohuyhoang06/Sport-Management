@@ -24,7 +24,7 @@ import androidx.compose.ui.unit.dp
 import com.sportmanagement.user.ui.theme.AppCardCornerRadius
 
 @Composable
-fun LogoutButton() {
+fun LogoutButton(onLogoutClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -35,7 +35,7 @@ fun LogoutButton() {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { }
+                .clickable(onClick = onLogoutClick)
                 .padding(vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center
