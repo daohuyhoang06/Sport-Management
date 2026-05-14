@@ -10,8 +10,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -23,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.material3.MaterialTheme
 import com.sportmanagement.user.ui.components.home.HomeHeaderSection
+import com.sportmanagement.user.ui.components.home.HomeStickyHeaderSection
 import com.sportmanagement.user.ui.components.home.HomeSportCategorySection
 import com.sportmanagement.user.ui.components.home.HomeVenueCard
 import com.sportmanagement.user.ui.components.field.FieldDetailBottomSheet
@@ -39,12 +42,20 @@ fun UserHomeScreen(
     isLoggedIn: Boolean,
     onLoginClick: () -> Unit,
     onRegisterClick: () -> Unit,
+    onFilterClick: () -> Unit,
     onBookFieldClick: (UserField) -> Unit
 ) {
     val layoutDirection = LocalLayoutDirection.current
     var searchQuery by remember { mutableStateOf("") }
     var selectedCategoryIndex by remember { mutableIntStateOf(-1) }
     var selectedFieldForDetail by remember { mutableStateOf<UserField?>(null) }
+    val listState = rememberLazyListState()
+    val showStickyHeader by remember {
+        derivedStateOf {
+            listState.firstVisibleItemIndex > 0 ||
+                listState.firstVisibleItemScrollOffset > 140
+        }
+    }
     val selectedSportType = remember(selectedCategoryIndex, sportCategories) {
         sportCategories.getOrNull(selectedCategoryIndex)?.iconType
     }
@@ -61,6 +72,7 @@ fun UserHomeScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
+            state = listState,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(
@@ -76,6 +88,7 @@ fun UserHomeScreen(
                 HomeHeaderSection(
                     searchQuery = searchQuery,
                     onSearchQueryChange = { searchQuery = it },
+                    onFilterClick = onFilterClick,
                     userName = userName,
                     isLoggedIn = isLoggedIn,
                     onLoginClick = onLoginClick,
@@ -103,6 +116,15 @@ fun UserHomeScreen(
                 )
                 Spacer(Modifier.height(12.dp))
             }
+        }
+
+        if (showStickyHeader) {
+            HomeStickyHeaderSection(
+                searchQuery = searchQuery,
+                onSearchQueryChange = { searchQuery = it },
+                onFilterClick = onFilterClick,
+                modifier = Modifier.align(androidx.compose.ui.Alignment.TopCenter)
+            )
         }
 
         selectedFieldForDetail?.let { selectedField ->
