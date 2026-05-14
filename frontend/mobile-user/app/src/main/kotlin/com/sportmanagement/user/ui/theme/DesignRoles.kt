@@ -6,9 +6,9 @@ import androidx.compose.ui.unit.dp
 // Semantic role for lemon accent text/highlights.
 val AppAccentCitrus = Color(0xFFFFF176)
 val AppHeaderGradientStart = Color(0xFF0B376A)
-val AppHeaderGradientEnd = Color(0xFF1F9CE6)
-val AppNavIconGradientStart = Color(0xFF56D4FF)
-val AppNavIconGradientEnd = Color(0xFF1D4E89)
+val AppHeaderGradientEnd = Color(0xFF2C6EB1)
+val AppNavIconGradientStart = Color(0xFF77A8E6)
+val AppNavIconGradientEnd = Color(0xFF0B376A)
 
 // Semantic role for primary CTA buttons (e.g. "Dat lich", "Tiep theo").
 val AppCtaAmber = Color(0xFFC99D4B)
