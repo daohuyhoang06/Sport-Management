@@ -219,38 +219,26 @@ fun AuthHeader(
         modifier = Modifier
             .fillMaxWidth()
             .height(240.dp)
-            .background(
-                brush = Brush.linearGradient(
-                    colors = listOf(
-                        MaterialTheme.colorScheme.primary,
-                        MaterialTheme.colorScheme.primaryContainer
-                    )
-                )
-            )
     ) {
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(top = 16.dp, end = 16.dp)
-                .size(112.dp)
-                .clip(CircleShape)
-                .background(Color.White.copy(alpha = 0.10f))
+        Image(
+            painter = painterResource(id = R.drawable.banner_app),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
         )
 
         Box(
             modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .padding(end = 6.dp, top = 8.dp)
-                .size(180.dp)
-                .clip(RoundedCornerShape(36.dp))
-        ) {
-            Image(
-                painter = painterResource(id = R.drawable.banner_app),
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
-            )
-        }
+                .fillMaxSize()
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
+                        )
+                    )
+                )
+        )
 
         Column(
             modifier = Modifier
@@ -296,7 +284,9 @@ fun AuthTextField(
     passwordVisible: Boolean = false,
     onTogglePasswordVisible: (() -> Unit)? = null,
     readOnly: Boolean = false,
-    onClick: (() -> Unit)? = null
+    onClick: (() -> Unit)? = null,
+    isError: Boolean = false,
+    errorText: String? = null
 ) {
     val containerModifier = if (onClick != null) {
         modifier
@@ -310,6 +300,7 @@ fun AuthTextField(
         value = value,
         onValueChange = onValueChange,
         modifier = containerModifier,
+        isError = isError,
         readOnly = readOnly,
         singleLine = true,
         shape = RoundedCornerShape(16.dp),
@@ -348,7 +339,16 @@ fun AuthTextField(
             focusedContainerColor = MaterialTheme.colorScheme.surface,
             unfocusedContainerColor = MaterialTheme.colorScheme.surface,
             cursorColor = MaterialTheme.colorScheme.primary
-        )
+        ),
+        supportingText = {
+            if (errorText != null) {
+                Text(
+                    text = errorText,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+        }
     )
 }
 
