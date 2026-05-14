@@ -100,3 +100,8 @@ response.json
 *.tmp
 *.bak
 *.orig
+
+# ========================
+# Local database
+# ========================
+Database/
