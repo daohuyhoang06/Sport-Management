@@ -76,6 +76,10 @@ dependencies {
     implementation("org.osmdroid:osmdroid-android:6.1.16")
     implementation("org.maplibre.gl:android-sdk:11.0.0")
 
+    implementation("androidx.compose.material3:material3")
+
+    implementation("androidx.compose.material:material-icons-extended")
+
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 

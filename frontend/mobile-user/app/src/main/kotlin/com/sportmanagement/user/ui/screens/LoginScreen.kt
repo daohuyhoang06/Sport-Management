@@ -56,15 +56,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.text.KeyboardOptions
 import com.sportmanagement.user.R
-import com.sportmanagement.user.ui.theme.AppCardCornerRadius
-import com.sportmanagement.user.ui.theme.AppControlCornerRadius
-import com.sportmanagement.user.ui.theme.AppHeroCornerRadius
-import com.sportmanagement.user.ui.theme.AppPanelCornerRadius
 
 val SportPrimary = Color(0xFF1A428A)
 val SportAccent = Color(0xFFD4A352)
@@ -72,6 +68,7 @@ val SportBackground = Color(0xFFF8F9FA)
 val SportSurface = Color(0xFFFFFFFF)
 val SportHeaderStart = Color(0xFF23C17E)
 val SportHeaderEnd = Color(0xFF0B2D63)
+val SportCardShadow = Color(0x1A0B2D63)
 
 @Composable
 fun LoginScreen(
@@ -113,9 +110,9 @@ fun LoginScreen(
         Spacer(Modifier.height(10.dp))
 
         Text(
-            text = stringResource(R.string.auth_forgot_password),
+            text = "Quên mật khẩu?",
             color = SportPrimary,
-            style = MaterialTheme.typography.labelLarge,
+            fontSize = 14.sp,
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier
                 .align(Alignment.End)
@@ -160,14 +157,14 @@ fun LoginScreen(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = stringResource(R.string.auth_no_account),
+                text = "Bạn chưa có tài khoản? ",
                 color = Color(0xFF6B7280),
-                style = MaterialTheme.typography.bodyMedium
+                fontSize = 14.sp
             )
             Text(
-                text = stringResource(R.string.auth_register_now),
+                text = "Đăng ký ngay",
                 color = SportPrimary,
-                style = MaterialTheme.typography.labelLarge,
+                fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.clickable { onNavigateToRegister() }
             )
@@ -188,7 +185,7 @@ fun AuthScreenScaffold(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(SportBackground)
+            .background(MaterialTheme.colorScheme.background)
     ) {
         Column(
             modifier = Modifier
@@ -206,7 +203,7 @@ fun AuthScreenScaffold(
                     .fillMaxWidth()
                     .offset(y = (-22).dp)
                     .padding(horizontal = 16.dp),
-                shape = RoundedCornerShape(AppPanelCornerRadius),
+                shape = RoundedCornerShape(24.dp),
                 colors = CardDefaults.cardColors(containerColor = SportSurface),
                 elevation = CardDefaults.cardElevation(defaultElevation = 10.dp)
             ) {
@@ -218,7 +215,7 @@ fun AuthScreenScaffold(
                     Text(
                         text = heroTitle,
                         color = SportPrimary,
-                        style = MaterialTheme.typography.headlineMedium,
+                        fontSize = 28.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Spacer(Modifier.height(18.dp))
@@ -262,7 +259,7 @@ fun AuthHeader(
                 .align(Alignment.CenterEnd)
                 .padding(end = 6.dp, top = 8.dp)
                 .size(180.dp)
-                .clip(RoundedCornerShape(AppHeroCornerRadius))
+                .clip(RoundedCornerShape(36.dp))
         ) {
             Image(
                 painter = painterResource(id = R.drawable.banner_app),
@@ -281,21 +278,23 @@ fun AuthHeader(
             Text(
                 text = title,
                 color = Color.White,
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold,
+                lineHeight = 34.sp
             )
             Spacer(Modifier.height(6.dp))
             Text(
                 text = subtitle,
                 color = Color.White.copy(alpha = 0.92f),
-                style = MaterialTheme.typography.bodyMedium
+                fontSize = 15.sp,
+                lineHeight = 20.sp
             )
         }
 
         Text(
             text = heroTitle,
             color = Color.White.copy(alpha = 0.16f),
-            style = MaterialTheme.typography.displaySmall,
+            fontSize = 34.sp,
             fontWeight = FontWeight.Black,
             modifier = Modifier
                 .align(Alignment.CenterStart)
@@ -316,7 +315,9 @@ fun AuthTextField(
     passwordVisible: Boolean = false,
     onTogglePasswordVisible: (() -> Unit)? = null,
     readOnly: Boolean = false,
-    onClick: (() -> Unit)? = null
+    onClick: (() -> Unit)? = null,
+    isError: Boolean = false,
+    errorText: String? = null
 ) {
     val containerModifier = if (onClick != null) {
         modifier
@@ -330,6 +331,7 @@ fun AuthTextField(
         value = value,
         onValueChange = onValueChange,
         modifier = containerModifier,
+        isError = isError,
         readOnly = readOnly,
         singleLine = true,
         shape = RoundedCornerShape(AppControlCornerRadius),
@@ -361,18 +363,27 @@ fun AuthTextField(
         },
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
         colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = SportPrimary,
-            unfocusedBorderColor = Color(0xFFE3E8EF),
-            focusedLabelColor = SportPrimary,
-            unfocusedLabelColor = Color(0xFF8A94A6),
-            focusedLeadingIconColor = SportPrimary,
-            unfocusedLeadingIconColor = Color(0xFF8A94A6),
-            focusedTrailingIconColor = SportPrimary,
-            unfocusedTrailingIconColor = Color(0xFF8A94A6),
-            focusedContainerColor = Color.White,
-            unfocusedContainerColor = Color.White,
-            cursorColor = SportPrimary
-        )
+            focusedBorderColor = MaterialTheme.colorScheme.primary,
+            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
+            focusedLabelColor = MaterialTheme.colorScheme.primary,
+            unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            focusedLeadingIconColor = MaterialTheme.colorScheme.primary,
+            unfocusedLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            focusedTrailingIconColor = MaterialTheme.colorScheme.primary,
+            unfocusedTrailingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,
+            focusedContainerColor = MaterialTheme.colorScheme.surface,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surface,
+            cursorColor = MaterialTheme.colorScheme.primary
+        ),
+        supportingText = {
+            if (errorText != null) {
+                Text(
+                    text = errorText,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+        }
     )
 }
 
@@ -387,13 +398,13 @@ fun AuthPrimaryButton(
         modifier = modifier
             .fillMaxWidth()
             .height(52.dp),
-        shape = RoundedCornerShape(AppControlCornerRadius),
+        shape = RoundedCornerShape(16.dp),
         colors = ButtonDefaults.buttonColors(containerColor = SportPrimary)
     ) {
         Text(
             text = text,
             color = Color.White,
-            style = MaterialTheme.typography.labelLarge,
+            fontSize = 16.sp,
             fontWeight = FontWeight.Bold
         )
     }
@@ -411,19 +422,19 @@ fun AuthDivider() {
             modifier = Modifier
                 .weight(1f)
                 .height(1.dp)
-                .background(Color(0xFFE5E7EB))
+                .background(MaterialTheme.colorScheme.outlineVariant)
         )
         Text(
             text = stringResource(R.string.auth_divider_login_with),
             modifier = Modifier.padding(horizontal = 12.dp),
             color = Color(0xFF8A94A6),
-            style = MaterialTheme.typography.bodySmall
+            fontSize = 13.sp
         )
         Box(
             modifier = Modifier
                 .weight(1f)
                 .height(1.dp)
-                .background(Color(0xFFE5E7EB))
+                .background(MaterialTheme.colorScheme.outlineVariant)
         )
     }
 }
@@ -440,7 +451,7 @@ fun SocialAuthButton(
         modifier = modifier
             .fillMaxWidth()
             .height(48.dp),
-        shape = RoundedCornerShape(AppCardCornerRadius),
+        shape = RoundedCornerShape(14.dp),
         border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE3E8EF)),
         colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White)
     ) {
@@ -454,7 +465,7 @@ fun SocialAuthButton(
                     text = accentText,
                     color = accentColor,
                     fontWeight = FontWeight.Bold,
-                    style = MaterialTheme.typography.titleSmall
+                    fontSize = 15.sp
                 )
             }
         }
@@ -462,7 +473,7 @@ fun SocialAuthButton(
         Text(
             text = text,
             color = SportPrimary,
-            style = MaterialTheme.typography.titleSmall,
+            fontSize = 15.sp,
             fontWeight = FontWeight.SemiBold
         )
     }

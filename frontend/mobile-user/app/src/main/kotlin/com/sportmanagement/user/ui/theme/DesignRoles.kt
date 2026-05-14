@@ -27,6 +27,8 @@ val AppPanelCornerRadius = 24.dp
 val AppSearchCornerRadius = 28.dp
 val AppHeroCornerRadius = 36.dp
 val AppHomeVenueCornerRadius = 10.dp
+
+
 val AppInputCornerRadius = 10.dp
 val AppMediaCornerRadius = 12.dp
 val AppBadgeCornerRadius = 8.dp
@@ -37,3 +39,4 @@ val AppSheetTopCornerRadius = 12.dp
 val AppScreenHorizontalPadding = 16.dp
 val AppFieldHorizontalPadding = 12.dp
 val AppFieldVerticalPadding = 14.dp
+
