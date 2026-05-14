@@ -40,8 +40,7 @@ fun UserApp(userViewModel: UserViewModel = viewModel()) {
 
     val statusBarColor = when {
         showAuthScreen -> Color.Transparent
-        showBookingScreen || showBookingPaymentScreen -> AppHeaderGradientStart
-        showBookingConfirmationScreen -> MaterialTheme.colorScheme.primary
+        showBookingScreen || showBookingPaymentScreen || showBookingConfirmationScreen -> Color.Transparent
         uiState.selectedTab == UserTab.Home -> Color.Transparent
         else -> MaterialTheme.colorScheme.surface
     }

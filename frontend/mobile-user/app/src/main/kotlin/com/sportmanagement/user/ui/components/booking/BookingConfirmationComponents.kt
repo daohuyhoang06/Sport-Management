@@ -41,6 +41,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.sportmanagement.user.R
@@ -62,7 +63,6 @@ fun BookingConfirmationBottomBar(onConfirmPaymentClick: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.primary)
             .navigationBarsPadding()
             .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
@@ -89,28 +89,33 @@ fun BookingConfirmationBottomBar(onConfirmPaymentClick: () -> Unit) {
 
 @Composable
 fun BookingConfirmationHeader(onBackClick: () -> Unit) {
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.primary)
-            .statusBarsPadding()
-            .padding(horizontal = 16.dp, vertical = 14.dp)
     ) {
-        Box(modifier = Modifier.fillMaxWidth()) {
-            IconButton(onClick = onBackClick, modifier = Modifier.size(36.dp)) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = stringResource(R.string.booking_back_content_description),
-                    tint = MaterialTheme.colorScheme.onPrimary
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .padding(horizontal = 16.dp, vertical = 6.dp)
+        ) {
+            Box(modifier = Modifier.fillMaxWidth()) {
+                IconButton(onClick = onBackClick, modifier = Modifier.size(36.dp)) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = stringResource(R.string.booking_back_content_description),
+                        tint = MaterialTheme.colorScheme.onPrimary
+                    )
+                }
+                Text(
+                    text = stringResource(R.string.booking_title),
+                    style = MaterialTheme.typography.titleLarge.copy(fontFamily = FontFamily.Default),
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.align(Alignment.Center)
                 )
             }
-            Text(
-                text = stringResource(R.string.booking_title),
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onPrimary,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.align(Alignment.Center)
-            )
         }
     }
 }

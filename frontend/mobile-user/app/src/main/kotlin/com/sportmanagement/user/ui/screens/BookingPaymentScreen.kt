@@ -70,6 +70,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
@@ -436,22 +437,27 @@ private fun PaymentHeader(onBackClick: () -> Unit) {
                     colors = listOf(AppHeaderGradientStart, AppHeaderGradientEnd)
                 )
             )
-            .statusBarsPadding()
-            .padding(horizontal = 12.dp, vertical = 10.dp)
     ) {
-        IconButton(onClick = onBackClick, modifier = Modifier.align(Alignment.CenterStart)) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = stringResource(R.string.booking_back_content_description),
-                tint = MaterialTheme.colorScheme.onPrimary
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .padding(horizontal = 12.dp, vertical = 6.dp)
+        ) {
+            IconButton(onClick = onBackClick, modifier = Modifier.align(Alignment.CenterStart)) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = stringResource(R.string.booking_back_content_description),
+                    tint = MaterialTheme.colorScheme.onPrimary
+                )
+            }
+            Text(
+                text = stringResource(R.string.payment_title),
+                modifier = Modifier.align(Alignment.Center),
+                style = MaterialTheme.typography.titleLarge.copy(fontFamily = FontFamily.Default),
+                color = MaterialTheme.colorScheme.onPrimary
             )
         }
-        Text(
-            text = stringResource(R.string.payment_title),
-            modifier = Modifier.align(Alignment.Center),
-            style = MaterialTheme.typography.titleLarge,
-            color = MaterialTheme.colorScheme.onPrimary
-        )
     }
 }
 

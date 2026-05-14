@@ -29,6 +29,7 @@ import androidx.compose.ui.unit.dp
 import com.sportmanagement.user.R
 import com.sportmanagement.user.ui.components.auth.SportOption
 import com.sportmanagement.user.ui.components.auth.SportSelectionGrid
+import com.sportmanagement.user.ui.theme.AppCardCornerRadius
 
 @Composable
 fun RegisterStepTwoScreen(
@@ -70,7 +71,7 @@ fun RegisterStepTwoScreen(
 
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(18.dp),
+            shape = RoundedCornerShape(AppCardCornerRadius),
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
             ),

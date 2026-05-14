@@ -20,10 +20,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Lock
-import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Phone
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
@@ -42,7 +42,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -56,19 +55,19 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.foundation.text.KeyboardOptions
 import com.sportmanagement.user.R
-
-val SportPrimary = Color(0xFF1A428A)
-val SportAccent = Color(0xFFD4A352)
-val SportBackground = Color(0xFFF8F9FA)
-val SportSurface = Color(0xFFFFFFFF)
-val SportHeaderStart = Color(0xFF23C17E)
-val SportHeaderEnd = Color(0xFF0B2D63)
-val SportCardShadow = Color(0x1A0B2D63)
+import com.sportmanagement.user.ui.theme.AppControlCornerRadius
+import com.sportmanagement.user.ui.theme.AppCtaCornerRadius
+import com.sportmanagement.user.ui.theme.AppCtaWideHeight
+import com.sportmanagement.user.ui.theme.AppHeaderGradientEnd
+import com.sportmanagement.user.ui.theme.AppHeaderGradientStart
+import com.sportmanagement.user.ui.theme.AppPanelCornerRadius
+import com.sportmanagement.user.ui.theme.AppScreenHorizontalPadding
 
 @Composable
 fun LoginScreen(
@@ -111,7 +110,7 @@ fun LoginScreen(
 
         Text(
             text = "Quên mật khẩu?",
-            color = SportPrimary,
+            color = MaterialTheme.colorScheme.primary,
             fontSize = 14.sp,
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier
@@ -126,7 +125,7 @@ fun LoginScreen(
             onClick = {
                 Toast.makeText(
                     context,
-                    context.getString(R.string.auth_login_success_toast),
+                    R.string.auth_login_success_toast,
                     Toast.LENGTH_SHORT
                 ).show()
                 onLoginSuccess()
@@ -158,12 +157,12 @@ fun LoginScreen(
         ) {
             Text(
                 text = "Bạn chưa có tài khoản? ",
-                color = Color(0xFF6B7280),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 fontSize = 14.sp
             )
             Text(
                 text = "Đăng ký ngay",
-                color = SportPrimary,
+                color = MaterialTheme.colorScheme.primary,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.clickable { onNavigateToRegister() }
@@ -202,9 +201,9 @@ fun AuthScreenScaffold(
                 modifier = Modifier
                     .fillMaxWidth()
                     .offset(y = (-22).dp)
-                    .padding(horizontal = 16.dp),
-                shape = RoundedCornerShape(24.dp),
-                colors = CardDefaults.cardColors(containerColor = SportSurface),
+                    .padding(horizontal = AppScreenHorizontalPadding),
+                shape = RoundedCornerShape(AppPanelCornerRadius),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                 elevation = CardDefaults.cardElevation(defaultElevation = 10.dp)
             ) {
                 Column(
@@ -214,7 +213,7 @@ fun AuthScreenScaffold(
                 ) {
                     Text(
                         text = heroTitle,
-                        color = SportPrimary,
+                        color = MaterialTheme.colorScheme.primary,
                         fontSize = 28.sp,
                         fontWeight = FontWeight.Bold
                     )
@@ -241,7 +240,7 @@ fun AuthHeader(
             .height(240.dp)
             .background(
                 brush = Brush.linearGradient(
-                    colors = listOf(SportHeaderStart, SportHeaderEnd)
+                    colors = listOf(AppHeaderGradientStart, AppHeaderGradientEnd)
                 )
             )
     ) {
@@ -272,7 +271,7 @@ fun AuthHeader(
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .padding(horizontal = 20.dp, vertical = 26.dp)
+                .padding(horizontal = AppScreenHorizontalPadding, vertical = 26.dp)
                 .fillMaxWidth(0.72f)
         ) {
             Text(
@@ -298,7 +297,7 @@ fun AuthHeader(
             fontWeight = FontWeight.Black,
             modifier = Modifier
                 .align(Alignment.CenterStart)
-                .padding(start = 20.dp, top = 8.dp)
+                .padding(start = AppScreenHorizontalPadding, top = 8.dp)
         )
     }
 }
@@ -397,13 +396,16 @@ fun AuthPrimaryButton(
         onClick = onClick,
         modifier = modifier
             .fillMaxWidth()
-            .height(52.dp),
-        shape = RoundedCornerShape(16.dp),
-        colors = ButtonDefaults.buttonColors(containerColor = SportPrimary)
+            .height(AppCtaWideHeight),
+        shape = RoundedCornerShape(AppCtaCornerRadius),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = MaterialTheme.colorScheme.primary,
+            contentColor = MaterialTheme.colorScheme.onPrimary
+        )
     ) {
         Text(
             text = text,
-            color = Color.White,
+            color = MaterialTheme.colorScheme.onPrimary,
             fontSize = 16.sp,
             fontWeight = FontWeight.Bold
         )
@@ -427,7 +429,7 @@ fun AuthDivider() {
         Text(
             text = stringResource(R.string.auth_divider_login_with),
             modifier = Modifier.padding(horizontal = 12.dp),
-            color = Color(0xFF8A94A6),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontSize = 13.sp
         )
         Box(
@@ -451,9 +453,12 @@ fun SocialAuthButton(
         modifier = modifier
             .fillMaxWidth()
             .height(48.dp),
-        shape = RoundedCornerShape(14.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE3E8EF)),
-        colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White)
+        shape = RoundedCornerShape(AppControlCornerRadius),
+        border = androidx.compose.foundation.BorderStroke(
+            1.dp,
+            MaterialTheme.colorScheme.outlineVariant
+        ),
+        colors = ButtonDefaults.outlinedButtonColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Surface(
             color = accentColor.copy(alpha = 0.12f),
@@ -472,7 +477,7 @@ fun SocialAuthButton(
         Spacer(Modifier.width(12.dp))
         Text(
             text = text,
-            color = SportPrimary,
+            color = MaterialTheme.colorScheme.primary,
             fontSize = 15.sp,
             fontWeight = FontWeight.SemiBold
         )
