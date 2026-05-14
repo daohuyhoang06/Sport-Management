@@ -34,6 +34,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -42,6 +43,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.sportmanagement.user.ui.navigation.UserTab
 import com.sportmanagement.user.ui.theme.AppControlCornerRadius
+import com.sportmanagement.user.ui.theme.AppHeaderGradientEnd
+import com.sportmanagement.user.ui.theme.AppHeaderGradientStart
 import com.sportmanagement.user.ui.theme.AppNavIconGradientEnd
 import com.sportmanagement.user.ui.theme.AppNavIconGradientStart
 import kotlinx.coroutines.delay
@@ -63,7 +66,8 @@ private object NoRippleTheme : RippleTheme {
 
 @Composable
 fun UserBottomBar(selectedTab: UserTab, onTabSelected: (UserTab) -> Unit) {
-    val accentColor = MaterialTheme.colorScheme.primary
+    val accentColor = AppHeaderGradientEnd
+    val selectedTextColor = AppHeaderGradientStart
     val outlineColor = accentColor.copy(alpha = 0.38f)
     val inactiveColor = Color(0xFF7A8A9A)
     val containerColor = Color.White.copy(alpha = 0.94f)
@@ -147,15 +151,19 @@ fun UserBottomBar(selectedTab: UserTab, onTabSelected: (UserTab) -> Unit) {
                                             .size(27.dp)
                                             .then(
                                                 if (isSelected) {
-                                                    Modifier.drawWithCache {
-                                                        onDrawWithContent {
-                                                            drawContent()
-                                                            drawRect(
-                                                                brush = selectedIconBrush,
-                                                                blendMode = BlendMode.SrcAtop
-                                                            )
+                                                    Modifier
+                                                        .graphicsLayer {
+                                                            compositingStrategy = CompositingStrategy.Offscreen
                                                         }
-                                                    }
+                                                        .drawWithCache {
+                                                            onDrawWithContent {
+                                                                drawContent()
+                                                                drawRect(
+                                                                    brush = selectedIconBrush,
+                                                                    blendMode = BlendMode.SrcIn
+                                                                )
+                                                            }
+                                                        }
                                                 } else {
                                                     Modifier
                                                 }
@@ -172,7 +180,7 @@ fun UserBottomBar(selectedTab: UserTab, onTabSelected: (UserTab) -> Unit) {
                             },
                             colors = NavigationBarItemDefaults.colors(
                                 selectedIconColor = Color.White,
-                                selectedTextColor = accentColor,
+                                selectedTextColor = selectedTextColor,
                                 unselectedIconColor = inactiveColor,
                                 unselectedTextColor = inactiveColor,
                                 indicatorColor = Color.Transparent

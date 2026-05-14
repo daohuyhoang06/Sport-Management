@@ -52,8 +52,6 @@ import com.sportmanagement.user.ui.theme.AppBadgeCornerRadius
 import com.sportmanagement.user.ui.theme.AppCardCornerRadius
 import com.sportmanagement.user.ui.theme.AppFieldHorizontalPadding
 import com.sportmanagement.user.ui.theme.AppFieldVerticalPadding
-import com.sportmanagement.user.ui.theme.AppHeaderGradientEnd
-import com.sportmanagement.user.ui.theme.AppHeaderGradientStart
 import com.sportmanagement.user.ui.theme.AppOnCtaAmber
 import com.sportmanagement.user.ui.theme.AppScreenHorizontalPadding
 import java.text.NumberFormat
@@ -94,11 +92,7 @@ fun BookingConfirmationHeader(onBackClick: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(
-                brush = Brush.horizontalGradient(
-                    colors = listOf(AppHeaderGradientStart, AppHeaderGradientEnd)
-                )
-            )
+            .background(MaterialTheme.colorScheme.primary)
             .statusBarsPadding()
             .padding(horizontal = 16.dp, vertical = 14.dp)
     ) {

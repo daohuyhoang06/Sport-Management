@@ -22,6 +22,7 @@ import com.sportmanagement.user.ui.screens.UserFavoriteScreen
 import com.sportmanagement.user.ui.screens.UserHomeScreen
 import com.sportmanagement.user.ui.screens.UserMapScreen
 import com.sportmanagement.user.ui.screens.UserProfileScreen
+import com.sportmanagement.user.ui.theme.AppHeaderGradientStart
 import com.sportmanagement.user.ui.viewmodel.UserViewModel
 
 @Composable
@@ -64,7 +65,8 @@ fun UserApp(userViewModel: UserViewModel = viewModel()) {
     }
 
     val statusBarColor = when {
-        showBookingScreen || showBookingConfirmationScreen || showBookingPaymentScreen -> MaterialTheme.colorScheme.primary
+        showBookingScreen || showBookingPaymentScreen -> AppHeaderGradientStart
+        showBookingConfirmationScreen -> MaterialTheme.colorScheme.primary
         else -> Color.Transparent
     }
     val useDarkStatusBarIcons = !showBookingScreen &&
