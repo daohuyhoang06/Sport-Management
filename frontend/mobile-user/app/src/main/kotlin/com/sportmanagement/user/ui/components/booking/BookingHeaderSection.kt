@@ -27,6 +27,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.sportmanagement.user.R
@@ -41,7 +42,7 @@ fun BookingHeaderSection(
     onBackClick: () -> Unit,
     onDateClick: () -> Unit
 ) {
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
             .background(
@@ -49,79 +50,84 @@ fun BookingHeaderSection(
                     colors = listOf(AppHeaderGradientStart, AppHeaderGradientEnd)
                 )
             )
-            .statusBarsPadding()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
-        Box(modifier = Modifier.fillMaxWidth()) {
-            IconButton(
-                onClick = onBackClick,
-                modifier = Modifier.size(36.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.ArrowBack,
-                    contentDescription = stringResource(R.string.booking_back_content_description),
-                    tint = MaterialTheme.colorScheme.onPrimary
-                )
-            }
-            Text(
-                text = stringResource(R.string.booking_title),
-                style = MaterialTheme.typography.titleLarge,
-                modifier = Modifier.align(Alignment.Center),
-                color = MaterialTheme.colorScheme.onPrimary,
-                fontWeight = FontWeight.SemiBold
-            )
-        }
-
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 8.dp),
-            horizontalArrangement = Arrangement.End
+                .statusBarsPadding()
+                .padding(horizontal = 16.dp, vertical = 4.dp)
         ) {
-            Surface(
-                onClick = onDateClick,
-                shape = RoundedCornerShape(AppInputCornerRadius),
-                color = MaterialTheme.colorScheme.primaryContainer
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+            Box(modifier = Modifier.fillMaxWidth()) {
+                IconButton(
+                    onClick = onBackClick,
+                    modifier = Modifier.size(36.dp)
                 ) {
-                    Text(
-                        text = selectedDateText,
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                    Spacer(modifier = Modifier.width(10.dp))
                     Icon(
-                        imageVector = Icons.Default.CalendarMonth,
-                        contentDescription = stringResource(R.string.booking_calendar_content_description),
-                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.size(18.dp)
+                        imageVector = Icons.Default.ArrowBack,
+                        contentDescription = stringResource(R.string.booking_back_content_description),
+                        tint = MaterialTheme.colorScheme.onPrimary
                     )
                 }
+                Text(
+                    text = stringResource(R.string.booking_title),
+                    style = MaterialTheme.typography.titleLarge.copy(fontFamily = FontFamily.Default),
+                    modifier = Modifier.align(Alignment.Center),
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    fontWeight = FontWeight.SemiBold
+                )
             }
-        }
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 10.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            BookingLegendItem(SlotStatus.AVAILABLE, stringResource(R.string.booking_status_available))
-            BookingLegendItem(SlotStatus.BOOKED, stringResource(R.string.booking_status_booked))
-            BookingLegendItem(SlotStatus.LOCKED, stringResource(R.string.booking_status_locked))
-        }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+                horizontalArrangement = Arrangement.End
+            ) {
+                Surface(
+                    onClick = onDateClick,
+                    shape = RoundedCornerShape(AppInputCornerRadius),
+                    color = MaterialTheme.colorScheme.primaryContainer
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = selectedDateText,
+                            style = MaterialTheme.typography.titleSmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Icon(
+                            imageVector = Icons.Default.CalendarMonth,
+                            contentDescription = stringResource(R.string.booking_calendar_content_description),
+                            tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            }
 
-        Text(
-            text = stringResource(R.string.booking_view_field_and_price),
-            modifier = Modifier.padding(top = 10.dp),
-            style = MaterialTheme.typography.bodyMedium,
-            textDecoration = TextDecoration.Underline,
-            color = MaterialTheme.colorScheme.secondary,
-            fontWeight = FontWeight.Medium
-        )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                BookingLegendItem(SlotStatus.AVAILABLE, stringResource(R.string.booking_status_available))
+                BookingLegendItem(SlotStatus.BOOKED, stringResource(R.string.booking_status_booked))
+                BookingLegendItem(SlotStatus.LOCKED, stringResource(R.string.booking_status_locked))
+            }
+
+            Text(
+                text = stringResource(R.string.booking_view_field_and_price),
+                modifier = Modifier.padding(top = 10.dp),
+                style = MaterialTheme.typography.bodyMedium,
+                textDecoration = TextDecoration.Underline,
+                color = MaterialTheme.colorScheme.secondary,
+                fontWeight = FontWeight.Medium
+            )
+        }
     }
 }
 

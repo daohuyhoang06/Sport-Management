@@ -5,216 +5,234 @@ import android.widget.Toast
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material.icons.outlined.CheckCircleOutline
-import androidx.compose.material.icons.outlined.Lock
-import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material.icons.outlined.Phone
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.sportmanagement.user.R
+import com.sportmanagement.user.ui.components.auth.AuthStepProgress
+
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 
+data class RegisterFormState(
+    val fullName: String = "",
+    val email: String = "",
+    val password: String = "",
+    val confirmPassword: String = "",
+    val phone: String = "",
+    val birthDate: String = "Ngày sinh",
+    val passwordVisible: Boolean = false,
+    val confirmPasswordVisible: Boolean = false
+)
+
+data class RegisterFormErrors(
+    val fullName: String? = null,
+    val email: String? = null,
+    val password: String? = null,
+    val confirmPassword: String? = null,
+    val phone: String? = null
+)
+
+data class RegisterProfileState(
+    val region: String = "Quận 1",
+    val notifyEnabled: Boolean = true,
+    val emailOffers: Boolean = true
+)
+
 @Composable
 fun RegisterScreen(
     onRegisterSuccess: () -> Unit,
-    onNavigateToLogin: () -> Unit,
-    modifier: Modifier = Modifier
+    onNavigateToLogin: () -> Unit
 ) {
     val context = LocalContext.current
-    var fullName by rememberSaveable { mutableStateOf("") }
-    var phone by rememberSaveable { mutableStateOf("") }
-    var password by rememberSaveable { mutableStateOf("") }
-    var confirmPassword by rememberSaveable { mutableStateOf("") }
-    var passwordVisible by rememberSaveable { mutableStateOf(false) }
-    var confirmPasswordVisible by rememberSaveable { mutableStateOf(false) }
-    var selectedDate by rememberSaveable { mutableStateOf(context.getString(R.string.auth_birth_date_label)) }
-    var isAccepted by rememberSaveable { mutableStateOf(false) }
     val dateFormatter = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
+    val calendar = remember { Calendar.getInstance() }
 
-    AuthScreenScaffold(
-        title = stringResource(R.string.auth_register_title),
-        subtitle = stringResource(R.string.auth_register_subtitle),
-        heroTitle = stringResource(R.string.auth_register_hero),
-        modifier = modifier
-    ) {
-        AuthTextField(
-            value = fullName,
-            onValueChange = { fullName = it },
-            label = stringResource(R.string.auth_full_name_label),
-            leadingIcon = Icons.Outlined.Person
+    var currentStep by rememberSaveable { androidx.compose.runtime.mutableIntStateOf(1) }
+    var formState by remember { mutableStateOf(RegisterFormState()) }
+    var formErrors by remember { mutableStateOf(RegisterFormErrors()) }
+    var profileState by remember { mutableStateOf(RegisterProfileState()) }
+    val selectedSports = rememberSaveable(
+        saver = listSaver(
+            save = { it.toList() },
+            restore = { mutableStateListOf<String>().apply { addAll(it) } }
         )
+    ) { mutableStateListOf<String>() }
 
-        Spacer(Modifier.height(12.dp))
-
-        AuthTextField(
-            value = phone,
-            onValueChange = { phone = it },
-            label = stringResource(R.string.auth_phone_label),
-            leadingIcon = Icons.Outlined.Phone,
-            keyboardType = androidx.compose.ui.text.input.KeyboardType.Phone
-        )
-
-        Spacer(Modifier.height(12.dp))
-
-        AuthTextField(
-            value = password,
-            onValueChange = { password = it },
-            label = stringResource(R.string.auth_password_label),
-            leadingIcon = Icons.Outlined.Lock,
-            isPassword = true,
-            passwordVisible = passwordVisible,
-            onTogglePasswordVisible = { passwordVisible = !passwordVisible }
-        )
-
-        Spacer(Modifier.height(12.dp))
-
-        AuthTextField(
-            value = confirmPassword,
-            onValueChange = { confirmPassword = it },
-            label = stringResource(R.string.auth_confirm_password_label),
-            leadingIcon = Icons.Outlined.CheckCircleOutline,
-            isPassword = true,
-            passwordVisible = confirmPasswordVisible,
-            onTogglePasswordVisible = { confirmPasswordVisible = !confirmPasswordVisible }
-        )
-
-        Spacer(Modifier.height(12.dp))
-
-        AuthDateField(
-            value = selectedDate,
-            onValueChange = { selectedDate = it },
-            dateFormatter = dateFormatter
-        )
-
-        Spacer(Modifier.height(8.dp))
-
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(top = 2.dp)
-        ) {
-            Checkbox(
-                checked = isAccepted,
-                onCheckedChange = { isAccepted = it },
-                colors = CheckboxDefaults.colors(
-                    checkedColor = SportPrimary,
-                    uncheckedColor = SportPrimary,
-                    checkmarkColor = Color.White
-                )
-            )
-            Spacer(Modifier.width(4.dp))
-            Text(
-                text = stringResource(R.string.auth_terms_accept),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium
-            )
+    fun validateStepOne(): Boolean {
+        val fullNameError = if (formState.fullName.isBlank()) "Vui lòng nhập họ tên" else null
+        val emailError = when {
+            formState.email.isBlank() -> "Vui lòng nhập email"
+            !android.util.Patterns.EMAIL_ADDRESS.matcher(formState.email).matches() -> "Email không hợp lệ"
+            else -> null
+        }
+        val passwordError = when {
+            formState.password.length < 6 -> "Mật khẩu tối thiểu 6 ký tự"
+            else -> null
+        }
+        val confirmError = when {
+            formState.confirmPassword != formState.password -> "Mật khẩu xác nhận chưa khớp"
+            else -> null
+        }
+        val phoneError = when {
+            formState.phone.length < 9 -> "Số điện thoại không hợp lệ"
+            else -> null
         }
 
-        Spacer(Modifier.height(10.dp))
-
-        AuthPrimaryButton(
-            text = stringResource(R.string.auth_register_button),
-            onClick = {
-                Toast.makeText(
+        formErrors = RegisterFormErrors(
+            fullName = fullNameError,
+            email = emailError,
+            password = passwordError,
+            confirmPassword = confirmError,
+            phone = phoneError
+        )
+        return listOf(fullNameError, emailError, passwordError, confirmError, phoneError).all { it == null }
+    }
+    when (currentStep) {
+        1 -> RegisterStepOneScreen(
+            formState = formState,
+            errors = formErrors,
+            onFormChange = { formState = it },
+            onBackClick = onNavigateToLogin,
+            onNextClick = {
+                if (validateStepOne()) currentStep = 2
+            },
+            onPickDateClick = {
+                val now = Calendar.getInstance()
+                DatePickerDialog(
                     context,
-                    context.getString(R.string.auth_register_success_toast),
-                    Toast.LENGTH_SHORT
+                    { _, year, month, dayOfMonth ->
+                        calendar.set(year, month, dayOfMonth)
+                        formState = formState.copy(birthDate = dateFormatter.format(calendar.time))
+                    },
+                    now.get(Calendar.YEAR),
+                    now.get(Calendar.MONTH),
+                    now.get(Calendar.DAY_OF_MONTH)
                 ).show()
-                onRegisterSuccess()
             }
         )
 
-        AuthDivider()
-
-        SocialAuthButton(
-            text = stringResource(R.string.auth_register_google),
-            accentText = stringResource(R.string.auth_social_google_short),
-            accentColor = Color(0xFFDB4437)
+        2 -> RegisterStepTwoScreen(
+            selectedSports = selectedSports.toSet(),
+            onToggleSport = { sport ->
+                if (selectedSports.contains(sport)) selectedSports.remove(sport) else selectedSports.add(sport)
+            },
+            onBackClick = { currentStep = 1 },
+            onSkipClick = { currentStep = 3 },
+            onNextClick = { currentStep = 3 }
         )
 
-        Spacer(Modifier.height(10.dp))
-
-        SocialAuthButton(
-            text = stringResource(R.string.auth_register_facebook),
-            accentText = stringResource(R.string.auth_social_facebook_short),
-            accentColor = Color(0xFF1877F2)
+        else -> RegisterStepThreeScreen(
+            profile = profileState,
+            onProfileChange = { profileState = it },
+            onBackClick = { currentStep = 2 },
+            onSkipClick = {
+                Toast.makeText(context, "Đăng ký thành công", Toast.LENGTH_SHORT).show()
+                onRegisterSuccess()
+            },
+            onCompleteClick = {
+                Toast.makeText(context, "Đăng ký thành công", Toast.LENGTH_SHORT).show()
+                onRegisterSuccess()
+            }
         )
-
-        Spacer(Modifier.height(18.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = stringResource(R.string.auth_have_account),
-                color = Color(0xFF6B7280),
-                style = MaterialTheme.typography.bodyMedium
-            )
-            Text(
-                text = stringResource(R.string.auth_login_now),
-                color = SportPrimary,
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.clickable { onNavigateToLogin() }
-            )
-        }
     }
 }
 
 @Composable
-private fun AuthDateField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    dateFormatter: SimpleDateFormat
+fun RegisterStepScaffold(
+    currentStep: Int,
+    title: String,
+    subtitle: String,
+    onBackClick: () -> Unit,
+    primaryButtonText: String,
+    onPrimaryClick: () -> Unit,
+    secondaryButtonText: String? = null,
+    onSecondaryClick: (() -> Unit)? = null,
+    content: @Composable () -> Unit
 ) {
-    val context = LocalContext.current
-    val calendar = remember { Calendar.getInstance() }
-
-    AuthTextField(
-        value = value,
-        onValueChange = onValueChange,
-        label = stringResource(R.string.auth_birth_date_label),
-        leadingIcon = Icons.Outlined.CalendarMonth,
-        readOnly = true,
-        onClick = {
-            val now = Calendar.getInstance()
-            DatePickerDialog(
-                context,
-                { _, year, month, dayOfMonth ->
-                    calendar.set(year, month, dayOfMonth)
-                    onValueChange(dateFormatter.format(calendar.time))
-                },
-                now.get(Calendar.YEAR),
-                now.get(Calendar.MONTH),
-                now.get(Calendar.DAY_OF_MONTH)
-            ).show()
+    val scrollState = rememberScrollState()
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        containerColor = MaterialTheme.colorScheme.background,
+        topBar = {
+            IconButton(
+                onClick = onBackClick,
+                modifier = Modifier.padding(start = 8.dp, top = 12.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                    contentDescription = "Back",
+                    tint = MaterialTheme.colorScheme.onBackground
+                )
+            }
         }
-    )
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .padding(horizontal = 20.dp)
+                .verticalScroll(scrollState),
+            verticalArrangement = Arrangement.Top
+        ) {
+            Spacer(Modifier.height(10.dp))
+            AuthStepProgress(currentStep = currentStep, totalSteps = 3)
+            Spacer(Modifier.height(16.dp))
+            Text(
+                text = title,
+                style = MaterialTheme.typography.headlineMedium,
+                color = MaterialTheme.colorScheme.onBackground,
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(Modifier.height(14.dp))
+            content()
+            Spacer(Modifier.height(14.dp))
+            AuthPrimaryButton(text = primaryButtonText, onClick = onPrimaryClick)
+            if (secondaryButtonText != null && onSecondaryClick != null) {
+                Text(
+                    text = secondaryButtonText,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 10.dp, bottom = 6.dp)
+                        .clickable { onSecondaryClick() }
+                )
+            }
+            Spacer(Modifier.height(14.dp))
+        }
+    }
 }
