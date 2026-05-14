@@ -15,6 +15,7 @@ import com.sportmanagement.user.domain.model.BookingConfirmationData
 import com.sportmanagement.user.ui.components.UserBottomBar
 import com.sportmanagement.user.ui.navigation.UserTab
 import com.sportmanagement.user.ui.screens.BookingConfirmationScreen
+import com.sportmanagement.user.ui.screens.HomeSearchFilterScreen
 import com.sportmanagement.user.ui.screens.BookingPaymentScreen
 import com.sportmanagement.user.ui.screens.BookingScheduleScreen
 import com.sportmanagement.user.ui.screens.LoginScreen
@@ -23,7 +24,6 @@ import com.sportmanagement.user.ui.screens.UserFavoriteScreen
 import com.sportmanagement.user.ui.screens.UserHomeScreen
 import com.sportmanagement.user.ui.screens.UserMapScreen
 import com.sportmanagement.user.ui.screens.UserProfileScreen
-import com.sportmanagement.user.ui.theme.AppHeaderGradientStart
 import com.sportmanagement.user.ui.viewmodel.UserViewModel
 
 @Composable
@@ -35,16 +35,18 @@ fun UserApp(userViewModel: UserViewModel = viewModel()) {
     var showBookingScreen by rememberSaveable { mutableStateOf(false) }
     var showBookingConfirmationScreen by rememberSaveable { mutableStateOf(false) }
     var showBookingPaymentScreen by rememberSaveable { mutableStateOf(false) }
-    var selectedCourtName by rememberSaveable { mutableStateOf("") }
+    var showHomeSearchFilterScreen by rememberSaveable { mutableStateOf(false) }
     var bookingConfirmationData by remember { mutableStateOf<BookingConfirmationData?>(null) }
 
     val statusBarColor = when {
         showAuthScreen -> Color.Transparent
+        showHomeSearchFilterScreen -> Color.Transparent
         showBookingScreen || showBookingPaymentScreen || showBookingConfirmationScreen -> Color.Transparent
         uiState.selectedTab == UserTab.Home -> Color.Transparent
         else -> MaterialTheme.colorScheme.surface
     }
     val useDarkStatusBarIcons = !showAuthScreen &&
+        !showHomeSearchFilterScreen &&
         !showBookingScreen &&
         !showBookingConfirmationScreen &&
         !showBookingPaymentScreen &&
@@ -55,14 +57,14 @@ fun UserApp(userViewModel: UserViewModel = viewModel()) {
         useDarkIcons = useDarkStatusBarIcons
     )
 
-    val bookingData = uiState.bookingSchedule.let { schedule ->
-        if (selectedCourtName.isBlank()) schedule
-        else schedule.copy(selectedCourtName = selectedCourtName)
-    }
-
     Scaffold(
         bottomBar = {
-            if (!showBookingScreen && !showBookingConfirmationScreen && !showBookingPaymentScreen && !showAuthScreen) {
+            if (!showBookingScreen &&
+                !showBookingConfirmationScreen &&
+                !showBookingPaymentScreen &&
+                !showAuthScreen &&
+                !showHomeSearchFilterScreen
+            ) {
                 UserBottomBar(
                     selectedTab = uiState.selectedTab,
                     onTabSelected = userViewModel::onTabSelected
@@ -130,9 +132,19 @@ fun UserApp(userViewModel: UserViewModel = viewModel()) {
                     showBookingPaymentScreen = true
                 }
             )
+        } else if (showHomeSearchFilterScreen) {
+            HomeSearchFilterScreen(
+                filterOptions = uiState.homeSearchFilterOptions,
+                initialCriteria = uiState.activeHomeSearchCriteria,
+                onBackClick = { showHomeSearchFilterScreen = false },
+                onApplyFilters = { criteria ->
+                    userViewModel.onApplyHomeSearchCriteria(criteria)
+                    showHomeSearchFilterScreen = false
+                }
+            )
         } else if (showBookingScreen) {
             BookingScheduleScreen(
-                scheduleData = bookingData,
+                scheduleData = uiState.bookingSchedule,
                 onBackClick = {
                     showBookingScreen = false
                     bookingConfirmationData = null
@@ -160,8 +172,10 @@ fun UserApp(userViewModel: UserViewModel = viewModel()) {
                         showRegister = true
                         showAuthScreen = true
                     },
-                    onBookFieldClick = { field ->
-                        selectedCourtName = field.name
+                    onFilterClick = {
+                        showHomeSearchFilterScreen = true
+                    },
+                    onBookFieldClick = { _ ->
                         showBookingPaymentScreen = false
                         showBookingConfirmationScreen = false
                         bookingConfirmationData = null
@@ -172,8 +186,7 @@ fun UserApp(userViewModel: UserViewModel = viewModel()) {
                     padding = padding,
                     sportCategories = uiState.sportCategories,
                     nearby = uiState.nearbyFields,
-                    onBookFieldClick = { field ->
-                        selectedCourtName = field.name
+                    onBookFieldClick = { _ ->
                         showBookingPaymentScreen = false
                         showBookingConfirmationScreen = false
                         bookingConfirmationData = null
