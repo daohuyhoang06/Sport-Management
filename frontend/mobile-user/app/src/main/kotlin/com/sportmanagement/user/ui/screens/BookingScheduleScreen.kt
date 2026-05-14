@@ -32,12 +32,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sportmanagement.user.R
 import com.sportmanagement.user.domain.model.BookingConfirmationData
 import com.sportmanagement.user.domain.model.BookingScheduleData
-import com.sportmanagement.user.domain.model.CourtRow
-import com.sportmanagement.user.domain.model.SlotStatus
-import com.sportmanagement.user.domain.model.TimeSlot
+import com.sportmanagement.user.domain.model.BookingSubCourt
+import com.sportmanagement.user.domain.model.BookingTimeGridData
+import com.sportmanagement.user.domain.model.BookingTimeRange
 import com.sportmanagement.user.ui.components.booking.BookingBottomActionBar
-import com.sportmanagement.user.ui.components.booking.BookingGridSection
 import com.sportmanagement.user.ui.components.booking.BookingHeaderSection
+import com.sportmanagement.user.ui.components.booking.BookingTimeGrid
 import com.sportmanagement.user.ui.theme.SportUserTheme
 import com.sportmanagement.user.ui.viewmodel.BookingScheduleViewModel
 import kotlinx.coroutines.launch
@@ -96,11 +96,11 @@ fun BookingScheduleScreen(
                 )
             }
             item {
-                BookingGridSection(
-                    scheduleData = scheduleData,
-                    cellWidthValue = uiState.sliderValue,
+                BookingTimeGrid(
+                    gridData = scheduleData.grid,
+                    cellWidth = uiState.sliderValue.dp,
                     selectedSlots = uiState.selectedSlots,
-                    onSlotToggle = viewModel::onToggleSlot
+                    onSlotClick = viewModel::onSlotClick
                 )
             }
             item {
@@ -122,7 +122,9 @@ fun BookingScheduleScreen(
                             viewModel.onDatePicked(formatDateFromMillis(millis))
                         } ?: viewModel.onDatePickerVisibilityChange(false)
                     }
-                ) { Text(stringResource(R.string.booking_confirm)) }
+                ) {
+                    Text(stringResource(R.string.booking_confirm))
+                }
             },
             dismissButton = {
                 TextButton(onClick = { viewModel.onDatePickerVisibilityChange(false) }) {
@@ -143,7 +145,7 @@ private fun rememberBookingScheduleViewModel(
     scheduleData: BookingScheduleData
 ): BookingScheduleViewModel {
     val key = remember(scheduleData) {
-        "booking_schedule_${scheduleData.selectedDate}_${scheduleData.timeHeaders.size}_${scheduleData.courts.size}"
+        "booking_schedule_${scheduleData.selectedDate}_${scheduleData.grid.openTime}_${scheduleData.grid.closeTime}_${scheduleData.grid.courts.size}"
     }
     return viewModel(
         key = key,
@@ -171,58 +173,33 @@ private fun formatDateFromMillis(millis: Long): String {
 @Preview(showBackground = true, widthDp = 390, heightDp = 844)
 @Composable
 private fun BookingScheduleScreenPreview() {
-    val previewHeaders = (0..48).map { index ->
-        val hour = index / 2
-        val minute = if (index % 2 == 0) "00" else "30"
-        "$hour:$minute"
-    }
-
     SportUserTheme {
         BookingScheduleScreen(
             scheduleData = BookingScheduleData(
                 selectedDate = "25/04/2026",
-                timeHeaders = previewHeaders,
-                courts = listOf(
-                    CourtRow(
-                        courtName = "Sân 1",
-                        slots = previewHeaders.mapIndexed { index, label ->
-                            val status = when (index) {
-                                in 34..37 -> SlotStatus.BOOKED
-                                in 38..41 -> SlotStatus.LOCKED
-                                else -> SlotStatus.AVAILABLE
-                            }
-                            TimeSlot(label, status)
-                        }
+                grid = BookingTimeGridData(
+                    openTime = "06:00",
+                    closeTime = "22:00",
+                    gridStepMinutes = 30,
+                    minBookingMinutes = 60,
+                    courts = listOf(
+                        BookingSubCourt("court-1", "Sân 1"),
+                        BookingSubCourt("court-2", "Sân 2"),
+                        BookingSubCourt("court-3", "Sân 3")
                     ),
-                    CourtRow(
-                        courtName = "Sân 2",
-                        slots = previewHeaders.mapIndexed { index, label ->
-                            val status = when (index) {
-                                in 34..35 -> SlotStatus.BOOKED
-                                in 10..15 -> SlotStatus.LOCKED
-                                else -> SlotStatus.AVAILABLE
-                            }
-                            TimeSlot(label, status)
-                        }
+                    bookedSlots = listOf(
+                        BookingTimeRange("court-1", "17:00", "18:00"),
+                        BookingTimeRange("court-2", "17:00", "18:00"),
+                        BookingTimeRange("court-3", "18:00", "18:30")
                     ),
-                    CourtRow(
-                        courtName = "Sân 3",
-                        slots = previewHeaders.mapIndexed { index, label ->
-                            val status = when (index) {
-                                36 -> SlotStatus.BOOKED
-                                in 0..15 -> SlotStatus.LOCKED
-                                else -> SlotStatus.AVAILABLE
-                            }
-                            TimeSlot(label, status)
-                        }
+                    blockedSlots = listOf(
+                        BookingTimeRange("court-1", "19:00", "20:00"),
+                        BookingTimeRange("court-2", "11:00", "14:00"),
+                        BookingTimeRange("court-3", "06:00", "14:00")
                     )
                 ),
-                selectedCourtName = "Sân 1",
-                selectedStartTime = "15:30",
-                selectedEndTime = "18:30",
-                durationMinutes = 180,
-                selectedSlotCount = 3,
-                estimatedPrice = "450.000đ"
+                pricePerHour = 150_000,
+                estimatedPrice = "150.000đ"
             ),
             onBackClick = {},
             onNextClick = {}
