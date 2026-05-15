@@ -48,6 +48,7 @@ import com.sportmanagement.user.domain.model.UserProfile
 import com.sportmanagement.user.ui.theme.AppAccentCitrus
 import com.sportmanagement.user.ui.theme.AppCardCornerRadius
 import com.sportmanagement.user.ui.theme.AppPillCornerRadius
+import com.sportmanagement.user.ui.theme.AppCtaWideHeight
 
 @Composable
 fun ProfileHeaderSection(
@@ -225,7 +226,7 @@ fun ProfileHeaderSection(
                         Surface(
                             modifier = Modifier
                                 .wrapContentWidth()
-                                .height(42.dp)
+                                .height(AppCtaWideHeight)
                                 .clickable(onClick = onEditClick),
                             shape = RoundedCornerShape(AppPillCornerRadius),
                             color = MaterialTheme.colorScheme.surface,

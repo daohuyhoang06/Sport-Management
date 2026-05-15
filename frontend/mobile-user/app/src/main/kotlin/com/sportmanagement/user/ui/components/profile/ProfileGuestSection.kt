@@ -29,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.sportmanagement.user.ui.theme.AppPillCornerRadius
+import com.sportmanagement.user.ui.theme.AppCtaWideHeight
 
 @Composable
 internal fun ProfileGuestSection(
@@ -152,7 +153,7 @@ private fun ProfileGuestActionButton(
 
     Surface(
         modifier = modifier
-            .height(36.dp)
+            .height(AppCtaWideHeight)
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(AppPillCornerRadius),
         color = backgroundColor,
