@@ -14,7 +14,11 @@ data class UserField(
     val isProLeague: Boolean = false,
     val tags: List<String> = emptyList(),
     val availability: String = "",
-    val cardType: VenueCardType = VenueCardType.LARGE_IMAGE
+    val cardType: VenueCardType = VenueCardType.LARGE_IMAGE,
+    val region: String = "",
+    val province: String = "",
+    val district: String = "",
+    val distanceKm: Double? = null
 )
 
 enum class VenueCardType {

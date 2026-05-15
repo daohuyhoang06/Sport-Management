@@ -17,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.sportmanagement.user.ui.theme.AppCtaCornerRadius
 
 @Composable
 internal fun HomeGuestSection(
@@ -71,7 +72,7 @@ private fun HomeGuestActionButton(
         modifier = Modifier
             .height(30.dp)
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(10.dp),
+        shape = RoundedCornerShape(AppCtaCornerRadius),
         color = backgroundColor,
         border = if (filled) null else BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
         shadowElevation = 2.dp

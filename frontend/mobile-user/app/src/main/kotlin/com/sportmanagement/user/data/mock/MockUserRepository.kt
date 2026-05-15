@@ -1,11 +1,13 @@
 ﻿package com.sportmanagement.user.data.mock
 
 import com.sportmanagement.user.domain.model.BookingScheduleData
-import com.sportmanagement.user.domain.model.CourtRow
-import com.sportmanagement.user.domain.model.SlotStatus
+import com.sportmanagement.user.domain.model.BookingSubCourt
+import com.sportmanagement.user.domain.model.BookingTimeGridData
+import com.sportmanagement.user.domain.model.BookingTimeRange
+import com.sportmanagement.user.domain.model.HomeSearchFilterOptions
+import com.sportmanagement.user.domain.model.HomeSearchProvinceOption
 import com.sportmanagement.user.domain.model.SportCategory
 import com.sportmanagement.user.domain.model.SportIconType
-import com.sportmanagement.user.domain.model.TimeSlot
 import com.sportmanagement.user.domain.model.UserField
 import com.sportmanagement.user.domain.model.UserProfile
 import com.sportmanagement.user.domain.model.UserStat
@@ -25,6 +27,7 @@ class   MockUserRepository : UserRepository {
     override fun getHomeFields(): List<UserField> =
         getNearbyFields().mapIndexed { index, field ->
             val ratingScore = field.rating.toDoubleOrNull() ?: 0.0
+            val distanceKm = homeDistanceKmByIndex(index)
             UserField(
                 name = field.name,
                 location = field.location,
@@ -33,12 +36,16 @@ class   MockUserRepository : UserRepository {
                 sportIconType = field.sportIconType,
                 latitude = field.latitude,
                 longitude = field.longitude,
-                distance = homeDistanceByIndex(index),
+                distance = formatDistanceKm(distanceKm),
                 hours = homeHoursBySport(field.sportIconType),
                 isProLeague = ratingScore >= 4.7 || index % 9 == 0,
                 tags = homeTagsBySport(field.sportIconType),
                 availability = if (index % 4 == 0) "Còn sân tối nay" else "",
-                cardType = VenueCardType.LARGE_IMAGE
+                cardType = VenueCardType.LARGE_IMAGE,
+                region = field.region,
+                province = field.province,
+                district = field.district,
+                distanceKm = distanceKm
             )
         }
 
@@ -361,8 +368,80 @@ class   MockUserRepository : UserRepository {
                 sportIconType = SportIconType.PICKLEBALL,
                 latitude = 21.0053,
                 longitude = 105.8463
+            ),
+            UserField(
+                name = "Sân bóng Phú Thọ Arena",
+                location = "Lý Thường Kiệt, Quận 11, TP Hồ Chí Minh",
+                price = "360.000đ/h",
+                rating = "4.6",
+                sportIconType = SportIconType.FOOTBALL,
+                latitude = 10.7646,
+                longitude = 106.6641
+            ),
+            UserField(
+                name = "Sân Pickleball Thủ Đức Hub",
+                location = "Xa lộ Hà Nội, Thủ Đức, TP Hồ Chí Minh",
+                price = "320.000đ/h",
+                rating = "4.7",
+                sportIconType = SportIconType.PICKLEBALL,
+                latitude = 10.8516,
+                longitude = 106.7713
+            ),
+            UserField(
+                name = "Sân Tennis Sơn Trà",
+                location = "Võ Nguyên Giáp, Sơn Trà, Đà Nẵng",
+                price = "410.000đ/h",
+                rating = "4.5",
+                sportIconType = SportIconType.TENNIS,
+                latitude = 16.0700,
+                longitude = 108.2430
+            ),
+            UserField(
+                name = "Nhà thi đấu Hải Châu",
+                location = "Phan Đăng Lưu, Hải Châu, Đà Nẵng",
+                price = "230.000đ/h",
+                rating = "4.4",
+                sportIconType = SportIconType.VOLLEYBALL,
+                latitude = 16.0471,
+                longitude = 108.2068
+            ),
+            UserField(
+                name = "Sân cầu lông Lê Chân Center",
+                location = "Tô Hiệu, Lê Chân, Hải Phòng",
+                price = "190.000đ/h",
+                rating = "4.3",
+                sportIconType = SportIconType.BADMINTON,
+                latitude = 20.8449,
+                longitude = 106.6881
+            ),
+            UserField(
+                name = "Sân bóng Hồng Bàng Sports Park",
+                location = "Hùng Vương, Hồng Bàng, Hải Phòng",
+                price = "330.000đ/h",
+                rating = "4.4",
+                sportIconType = SportIconType.FOOTBALL,
+                latitude = 20.8648,
+                longitude = 106.6834
+            ),
+            UserField(
+                name = "Sân Tennis Ninh Kiều Riverside",
+                location = "Hai Bà Trưng, Ninh Kiều, Cần Thơ",
+                price = "350.000đ/h",
+                rating = "4.5",
+                sportIconType = SportIconType.TENNIS,
+                latitude = 10.0342,
+                longitude = 105.7882
+            ),
+            UserField(
+                name = "Sân bóng Cái Răng Stadium",
+                location = "Nam Kỳ Khởi Nghĩa, Cái Răng, Cần Thơ",
+                price = "300.000đ/h",
+                rating = "4.2",
+                sportIconType = SportIconType.FOOTBALL,
+                latitude = 10.0018,
+                longitude = 105.7507
             )
-        )
+        ).map(::enrichFieldLocation)
 
     override fun getFavoriteFields(): List<UserField> =
         listOf(
@@ -385,62 +464,83 @@ class   MockUserRepository : UserRepository {
         )
 
     override fun getBookingSchedule(): BookingScheduleData {
-        val headers = (0..48).map { index ->
-            val hour = index / 2
-            val minute = if (index % 2 == 0) "00" else "30"
-            "$hour:$minute"
-        }
-
         return BookingScheduleData(
             selectedDate = "25/04/2026",
-            timeHeaders = headers,
-            courts = listOf(
-                CourtRow(
-                    courtName = "Sân 1",
-                    slots = headers.mapIndexed { index, label ->
-                        val status = when (index) {
-                            in 34..37 -> SlotStatus.BOOKED
-                            in 38..41 -> SlotStatus.LOCKED
-                            else -> SlotStatus.AVAILABLE
-                        }
-                        TimeSlot(timeLabel = label, status = status)
-                    }
+            grid = BookingTimeGridData(
+                openTime = "06:00",
+                closeTime = "22:00",
+                gridStepMinutes = 30,
+                minBookingMinutes = 60,
+                courts = listOf(
+                    BookingSubCourt("court-1", "Sân 1"),
+                    BookingSubCourt("court-2", "Sân 2"),
+                    BookingSubCourt("court-3", "Sân 3")
                 ),
-                CourtRow(
-                    courtName = "Sân 2",
-                    slots = headers.mapIndexed { index, label ->
-                        val status = when (index) {
-                            in 34..35 -> SlotStatus.BOOKED
-                            in 10..15 -> SlotStatus.LOCKED
-                            else -> SlotStatus.AVAILABLE
-                        }
-                        TimeSlot(timeLabel = label, status = status)
-                    }
+                bookedSlots = listOf(
+                    BookingTimeRange("court-1", "17:00", "18:00"),
+                    BookingTimeRange("court-2", "17:00", "18:00"),
+                    BookingTimeRange("court-3", "18:00", "18:30")
                 ),
-                CourtRow(
-                    courtName = "Sân 3",
-                    slots = headers.mapIndexed { index, label ->
-                        val status = when (index) {
-                            36 -> SlotStatus.BOOKED
-                            in 0..15 -> SlotStatus.LOCKED
-                            else -> SlotStatus.AVAILABLE
-                        }
-                        TimeSlot(timeLabel = label, status = status)
-                    }
+                blockedSlots = listOf(
+                    BookingTimeRange("court-1", "19:00", "20:00"),
+                    BookingTimeRange("court-2", "11:00", "14:00"),
+                    BookingTimeRange("court-3", "06:00", "14:00")
                 )
             ),
-            selectedCourtName = "Sân 1",
-            selectedStartTime = "15:30",
-            selectedEndTime = "18:30",
-            durationMinutes = 180,
-            selectedSlotCount = 3,
-            estimatedPrice = "450.000đ"
+            pricePerHour = 150_000,
+            estimatedPrice = "150.000đ"
         )
     }
 
-    private fun homeDistanceByIndex(index: Int): String {
-        val distances = listOf("0.3 km", "0.5 km", "0.8 km", "1.1 km", "1.4 km", "1.8 km", "2.2 km")
+    override fun getHomeSearchFilterOptions(): HomeSearchFilterOptions {
+        val provinceOptions = getNearbyFields()
+            .filter { it.province.isNotBlank() }
+            .groupBy { it.province }
+            .mapNotNull { (_, fields) ->
+                val sample = fields.firstOrNull() ?: return@mapNotNull null
+                HomeSearchProvinceOption(
+                    regionName = sample.region,
+                    provinceName = sample.province,
+                    districtNames = fields.map { it.district }.filter { it.isNotBlank() }.distinct().sorted()
+                )
+            }
+            .sortedWith(
+                compareBy<HomeSearchProvinceOption> {
+                    LARGE_PROVINCE_ORDER.indexOf(it.provinceName).let { index ->
+                        if (index >= 0) index else Int.MAX_VALUE
+                    }
+                }.thenBy { it.provinceName }
+            )
+
+        return HomeSearchFilterOptions(
+            sports = getSportCategories(),
+            provinces = provinceOptions,
+            radiusOptionsKm = listOf(3, 5, 10, 20, 30)
+        )
+    }
+
+    private fun homeDistanceKmByIndex(index: Int): Double {
+        val distances = listOf(0.4, 0.8, 1.2, 2.5, 4.0, 6.5, 9.0, 14.0, 22.0)
         return distances[index % distances.size]
+    }
+
+    private fun formatDistanceKm(distanceKm: Double): String {
+        return if (distanceKm >= 10) {
+            "${distanceKm.toInt()} km"
+        } else {
+            String.format("%.1f km", distanceKm)
+        }
+    }
+
+    private fun enrichFieldLocation(field: UserField): UserField {
+        val segments = field.location.split(",").map { it.trim() }.filter { it.isNotBlank() }
+        val province = segments.lastOrNull().orEmpty()
+        val district = segments.getOrNull(segments.lastIndex - 1).orEmpty()
+        return field.copy(
+            province = province,
+            district = district,
+            region = regionForProvince(province)
+        )
     }
 
     private fun homeHoursBySport(type: SportIconType): String {
@@ -471,5 +571,24 @@ class   MockUserRepository : UserRepository {
             SportIconType.BADMINTON -> listOf("Tiêu chuẩn", "Điều hòa")
             SportIconType.TENNIS -> listOf("Hard court", "Huấn luyện")
         }
+    }
+
+    private fun regionForProvince(province: String): String {
+        return when (province) {
+            "Hà Nội", "Hải Phòng" -> "Miền Bắc"
+            "Đà Nẵng" -> "Miền Trung"
+            "TP Hồ Chí Minh", "Cần Thơ" -> "Miền Nam"
+            else -> "Toàn quốc"
+        }
+    }
+
+    companion object {
+        private val LARGE_PROVINCE_ORDER = listOf(
+            "Hà Nội",
+            "TP Hồ Chí Minh",
+            "Đà Nẵng",
+            "Hải Phòng",
+            "Cần Thơ"
+        )
     }
 }
