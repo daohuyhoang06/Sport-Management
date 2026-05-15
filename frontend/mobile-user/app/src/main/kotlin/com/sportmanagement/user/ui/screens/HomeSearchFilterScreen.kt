@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
@@ -41,6 +42,7 @@ import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -81,6 +83,7 @@ import com.sportmanagement.user.domain.model.SportIconType
 import com.sportmanagement.user.ui.components.SportMarkerIcon
 import com.sportmanagement.user.ui.theme.AppCardCornerRadius
 import com.sportmanagement.user.ui.theme.AppCtaCornerRadius
+import com.sportmanagement.user.ui.theme.AppCtaWideHeight
 import com.sportmanagement.user.ui.theme.AppHeaderGradientEnd
 import com.sportmanagement.user.ui.theme.AppHeaderGradientStart
 import com.sportmanagement.user.ui.theme.AppSearchCornerRadius
@@ -498,16 +501,16 @@ private fun AreaModeSection(
         Surface(
             onClick = onOpenPicker,
             shape = RoundedCornerShape(AppCtaCornerRadius),
-            color = MaterialTheme.colorScheme.surface,
+            color = Color.Transparent,
             border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
             modifier = Modifier
-                .weight(1f)
-                .height(54.dp)
+                .fillMaxWidth(0.94f)
+                .height(AppCtaWideHeight)
         ) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                    .padding(horizontal = 12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 FilterSelectionCompact(
@@ -540,12 +543,12 @@ private fun FilterSelectionCompact(
     Row(
         modifier = modifier
             .clickable(onClick = onClick)
-            .padding(horizontal = 6.dp, vertical = 4.dp),
+            .padding(horizontal = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             text = value,
-            style = MaterialTheme.typography.bodyLarge,
+            style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1f),
             maxLines = 1,
@@ -585,16 +588,25 @@ private fun DistanceModeSection(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            TextButton(onClick = onRequestCurrentLocation) {
-                Icon(
-                    imageVector = Icons.Default.MyLocation,
-                    contentDescription = null
+            Surface(
+                onClick = onRequestCurrentLocation,
+                shape = RoundedCornerShape(AppSearchCornerRadius),
+                color = MaterialTheme.colorScheme.surfaceContainerLow,
+                border = androidx.compose.foundation.BorderStroke(
+                    width = 1.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant
                 )
-                Spacer(modifier = Modifier.size(6.dp))
-                Text(
-                    text = stringResource(R.string.home_search_filter_gps_button),
-                    style = MaterialTheme.typography.bodyLarge
-                )
+            ) {
+                Box(
+                    modifier = Modifier.size(40.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.MyLocation,
+                        contentDescription = stringResource(R.string.home_search_filter_gps_button),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
             }
         }
         Row(
@@ -657,68 +669,91 @@ private fun AreaPickerDialog(
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(modifier = Modifier.padding(12.dp)) {
-                Text(
-                    text = stringResource(R.string.home_search_filter_picker_title),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    PickerSearchField(
-                        value = provinceSearch,
-                        placeholder = stringResource(R.string.home_search_filter_picker_search_province),
-                        modifier = Modifier.weight(1f),
-                        onValueChange = onProvinceSearchChange
-                    )
-                    PickerSearchField(
-                        value = districtSearch,
-                        placeholder = stringResource(R.string.home_search_filter_picker_search_district),
-                        modifier = Modifier.weight(1f),
-                        onValueChange = onDistrictSearchChange
-                    )
-                }
-                Spacer(modifier = Modifier.height(10.dp))
-                Row(
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(280.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        .height(338.dp)
                 ) {
-                    Surface(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight(),
-                        shape = RoundedCornerShape(AppCardCornerRadius),
-                        color = MaterialTheme.colorScheme.surfaceContainerLow
-                    ) {
-                        LazyColumn {
-                            items(provinces) { province ->
-                                PickerOptionRow(
-                                    text = province.provinceName,
-                                    selected = selectedProvince == province.provinceName,
-                                    onClick = { onSelectProvince(province) }
-                                )
+                    Column(modifier = Modifier.fillMaxSize()) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(AppCtaWideHeight),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            PickerSearchField(
+                                value = provinceSearch,
+                                placeholder = stringResource(R.string.home_search_filter_picker_search_province),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(end = 8.dp),
+                                onValueChange = onProvinceSearchChange
+                            )
+                            PickerSearchField(
+                                value = districtSearch,
+                                placeholder = stringResource(R.string.home_search_filter_picker_search_district),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(start = 8.dp),
+                                onValueChange = onDistrictSearchChange
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(280.dp),
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            LazyColumn(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
+                            ) {
+                                itemsIndexed(provinces) { index, province ->
+                                    PickerOptionRow(
+                                        text = province.provinceName,
+                                        selected = selectedProvince == province.provinceName,
+                                        onClick = { onSelectProvince(province) }
+                                    )
+                                    if (index < provinces.lastIndex) {
+                                        HorizontalDivider(
+                                            modifier = Modifier.padding(end = 6.dp),
+                                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                                            thickness = 1.dp
+                                        )
+                                    }
+                                }
+                            }
+                            LazyColumn(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .fillMaxHeight()
+                            ) {
+                                itemsIndexed(districts) { index, district ->
+                                    PickerOptionRow(
+                                        text = district,
+                                        selected = selectedDistrict == district,
+                                        onClick = { onSelectDistrict(district) }
+                                    )
+                                    if (index < districts.lastIndex) {
+                                        HorizontalDivider(
+                                            modifier = Modifier.padding(start = 6.dp),
+                                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
+                                            thickness = 1.dp
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
-                    Surface(
+                    Spacer(
                         modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight(),
-                        shape = RoundedCornerShape(AppCardCornerRadius),
-                        color = MaterialTheme.colorScheme.surfaceContainerLow
-                    ) {
-                        LazyColumn {
-                            items(districts) { district ->
-                                PickerOptionRow(
-                                    text = district,
-                                    selected = selectedDistrict == district,
-                                    onClick = { onSelectDistrict(district) }
-                                )
-                            }
-                        }
-                    }
+                            .align(Alignment.TopCenter)
+                            .fillMaxHeight()
+                            .width(1.dp)
+                            .background(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
+                    )
                 }
                 Spacer(modifier = Modifier.height(10.dp))
                 Row(
@@ -753,8 +788,8 @@ private fun PickerSearchField(
     onValueChange: (String) -> Unit
 ) {
     Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(AppCardCornerRadius),
+        modifier = modifier.fillMaxHeight(),
+        shape = RoundedCornerShape(AppCtaCornerRadius),
         color = MaterialTheme.colorScheme.surfaceContainerLow,
         border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     ) {
@@ -762,17 +797,24 @@ private fun PickerSearchField(
             value = value,
             onValueChange = onValueChange,
             singleLine = true,
-            textStyle = MaterialTheme.typography.bodyMedium.copy(color = MaterialTheme.colorScheme.onSurface),
+            textStyle = MaterialTheme.typography.bodyMedium.copy(
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center
+            ),
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 12.dp),
+                .fillMaxSize()
+                .padding(horizontal = 10.dp),
             decorationBox = { innerTextField ->
-                Box {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
                     if (value.isBlank()) {
                         Text(
                             text = placeholder,
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center
                         )
                     }
                     innerTextField()
@@ -792,9 +834,6 @@ private fun PickerOptionRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
-            .background(
-                if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f) else Color.Transparent
-            )
             .padding(horizontal = 12.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
