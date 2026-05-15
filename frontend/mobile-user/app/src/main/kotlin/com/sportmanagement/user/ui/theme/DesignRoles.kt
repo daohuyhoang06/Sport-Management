@@ -16,7 +16,7 @@ val AppOnCtaAmber = Color(0xFFFFFFFF)
 val AppCtaCornerRadius = 6.dp
 val AppCtaCompactHorizontalPadding = 10.dp
 val AppCtaCompactVerticalPadding = 5.dp
-val AppCtaWideHeight = 40.dp
+val AppCtaWideHeight = 48.dp
 const val AppCtaWideWidthFraction = 0.92f
 
 // Shared corner radius tokens for cards/surfaces in user app.

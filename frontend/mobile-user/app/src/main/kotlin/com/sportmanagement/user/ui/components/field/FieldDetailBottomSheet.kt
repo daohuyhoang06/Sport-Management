@@ -76,6 +76,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -83,6 +84,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.window.Dialog
@@ -130,14 +132,23 @@ fun FieldDetailBottomSheet(
 ) {
     val context = LocalContext.current
     val clipboard = LocalClipboardManager.current
+    val density = LocalDensity.current
     val colors = MaterialTheme.colorScheme
     val sheetState = rememberModalBottomSheetState()
     val scope = rememberCoroutineScope()
     var selectedTab by rememberSaveable(field.name) { mutableIntStateOf(0) }
     var isFavorite by rememberSaveable(field.name) { mutableStateOf(false) }
     var previewImage by remember { mutableStateOf<Int?>(null) }
+    var ratingBadgeHeightPx by remember { mutableIntStateOf(0) }
     val bookingLink = remember(field.name) { bookingLinkFor(field.name) }
     val hotline = remember(field.name) { context.getString(R.string.field_detail_default_hotline) }
+    val headerImageHeight = 232.dp
+    val infoCardOverlap = 28.dp
+    val ratingBadgeOffsetY = remember(ratingBadgeHeightPx, density) {
+        val badgeHeightDp = with(density) { ratingBadgeHeightPx.toDp() }
+        val cardTopBoundaryY = headerImageHeight - infoCardOverlap
+        cardTopBoundaryY - (badgeHeightDp / 2)
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
@@ -159,7 +170,7 @@ fun FieldDetailBottomSheet(
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(232.dp)
+                                .height(headerImageHeight)
                                 .clip(RoundedCornerShape(topStart = AppInputCornerRadius, topEnd = AppInputCornerRadius))
                         ) {
                             Image(
@@ -233,7 +244,7 @@ fun FieldDetailBottomSheet(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 16.dp)
-                                .offset(y = (-28).dp),
+                                .offset(y = -infoCardOverlap),
                             shape = RoundedCornerShape(AppCardCornerRadius),
                             colors = CardDefaults.cardColors(containerColor = colors.surfaceContainerLowest),
                             elevation = CardDefaults.cardElevation(defaultElevation = 10.dp)
@@ -287,31 +298,39 @@ fun FieldDetailBottomSheet(
                         }
                     }
 
-                    Surface(
+                    Box(
                         modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
                             .align(Alignment.TopCenter)
-                            .offset(y = 168.dp)
+                            .offset(y = ratingBadgeOffsetY)
                             .zIndex(2f),
-                        shape = RoundedCornerShape(AppPillCornerRadius),
-                        color = colors.primary,
-                        shadowElevation = 8.dp
+                        contentAlignment = Alignment.TopCenter
                     ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                        Surface(
+                            modifier = Modifier
+                                .onSizeChanged { size -> ratingBadgeHeightPx = size.height },
+                            shape = RoundedCornerShape(AppPillCornerRadius),
+                            color = colors.primary,
+                            shadowElevation = 8.dp
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Star,
-                                contentDescription = null,
-                                tint = Color.White
-                            )
-                            Spacer(Modifier.width(6.dp))
-                            Text(
-                                text = ratingLabel(context, field.rating),
-                                style = MaterialTheme.typography.labelLarge,
-                                color = colors.onPrimary,
-                                fontWeight = FontWeight.SemiBold
-                            )
+                            Row(
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Star,
+                                    contentDescription = null,
+                                    tint = Color.White
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    text = ratingLabel(context, field.rating),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = colors.onPrimary,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
                         }
                     }
                 }

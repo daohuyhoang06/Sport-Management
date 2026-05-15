@@ -92,6 +92,9 @@ fun UserApp(userViewModel: UserViewModel = viewModel()) {
                     },
                     onNavigateToRegister = {
                         showRegister = true
+                    },
+                    onBackClick = {
+                        showAuthScreen = false
                     }
                 )
             }
