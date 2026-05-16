@@ -23,6 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -89,7 +90,15 @@ private fun SportCategoryItem(
             color = bgColor,
             border = BorderStroke(
                 width = if (isSelected) 2.dp else 1.5.dp,
-                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
+                color = if (isSelected) {
+                    lerp(
+                        MaterialTheme.colorScheme.primaryContainer,
+                        MaterialTheme.colorScheme.primary,
+                        0.2f
+                    )
+                } else {
+                    MaterialTheme.colorScheme.outlineVariant
+                }
             )
         ) {
             Box(

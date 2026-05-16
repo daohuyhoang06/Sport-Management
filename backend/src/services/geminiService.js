@@ -8,23 +8,23 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
 export const getFieldRecommendations = async (preferences) => {
   try {
     const { location, budget, time, playerCount } = preferences;
-
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-    const prompt = `Bạn là chuyên gia tư vấn sân bóng đá. Hãy phân tích và đưa ra gợi ý dựa trên thông tin sau:
-    
-    - Vị trí mong muốn: ${location || "Không xác định"}
-    - Ngân sách: ${budget || "Linh hoạt"}
-    - Thời gian chơi: ${time || "Chưa xác định"}
-    - Số người chơi: ${playerCount || "Chưa biết"}
-    
-    Hãy đưa ra 3-5 gợi ý cụ thể về:
-    1. Loại sân phù hợp (5 người, 7 người, 11 người)
-    2. Khung giờ nên đặt để tối ưu giá
-    3. Các tiện ích nên ưu tiên
-    4. Lưu ý khi đặt sân
-    
-    Trả lời ngắn gọn, dễ hiểu, tối đa 200 từ.`;
+    const prompt = `Ban la chuyen gia tu van dat san the thao da mon.
+
+Thong tin nguoi dung:
+- Vi tri mong muon: ${location || "Khong xac dinh"}
+- Ngan sach: ${budget || "Linh hoat"}
+- Thoi gian choi: ${time || "Chua xac dinh"}
+- So nguoi choi: ${playerCount || "Chua biet"}
+
+Hay dua ra 3-5 goi y cu the ve:
+1. Mon/san phu hop (bong da, cau long, tennis, bong ro, bong chuyen, pickleball...)
+2. Khung gio nen dat de toi uu chi phi
+3. Tien ich nen uu tien theo tung mon
+4. Luu y khi dat san
+
+Tra loi ngan gon, de hieu, toi da 200 tu.`;
 
     const result = await model.generateContent(prompt);
     const response = await result.response;
@@ -38,7 +38,7 @@ export const getFieldRecommendations = async (preferences) => {
     console.error("Gemini API Error:", error);
     return {
       success: false,
-      message: "Không thể tạo gợi ý lúc này",
+      message: "Khong the tao goi y luc nay",
       error: error.message,
     };
   }
@@ -49,39 +49,37 @@ export const getFieldRecommendations = async (preferences) => {
  */
 export const detectBookingFraud = async (bookingData) => {
   try {
-    const { userId, bookingHistory, currentBooking } = bookingData;
-
+    const { bookingHistory, currentBooking } = bookingData;
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-    const prompt = `Phân tích hành vi đặt sân để phát hiện gian lận:
-    
-    Lịch sử đặt sân (${bookingHistory.length} lần):
-    ${bookingHistory.map((b, i) => `${i + 1}. Sân: ${b.field_name}, Giá: ${b.price}đ, Trạng thái: ${b.status}, Ngày: ${b.date}`).join("\n")}
-    
-    Booking hiện tại:
-    - Sân: ${currentBooking.field_name}
-    - Giá: ${currentBooking.price}đ
-    - Thời gian: ${currentBooking.time}
-    
-    Đánh giá các dấu hiệu bất thường:
-    1. Đặt quá nhiều sân cùng lúc
-    2. Hủy liên tục
-    3. Pattern đặt giờ cao điểm rồi hủy
-    4. Thay đổi bất thường về giá trị booking
-    
-    Trả về JSON format:
-    {
-      "riskLevel": "low|medium|high",
-      "score": 0-100,
-      "reasons": ["lý do 1", "lý do 2"],
-      "recommendation": "Cho phép/Cần xem xét/Từ chối"
-    }`;
+    const prompt = `Phan tich hanh vi dat san de phat hien gian lan:
+
+Lich su dat san (${bookingHistory.length} lan):
+${bookingHistory.map((b, i) => `${i + 1}. San: ${b.field_name}, Gia: ${b.price}d, Trang thai: ${b.status}, Ngay: ${b.date}`).join("\n")}
+
+Booking hien tai:
+- San: ${currentBooking.field_name}
+- Gia: ${currentBooking.price}d
+- Thoi gian: ${currentBooking.time}
+
+Danh gia cac dau hieu bat thuong:
+1. Dat qua nhieu san cung luc
+2. Huy lien tuc
+3. Pattern dat gio cao diem roi huy
+4. Thay doi bat thuong ve gia tri booking
+
+Tra ve JSON format:
+{
+  "riskLevel": "low|medium|high",
+  "score": 0-100,
+  "reasons": ["ly do 1", "ly do 2"],
+  "recommendation": "Cho phep/Can xem xet/Tu choi"
+}`;
 
     const result = await model.generateContent(prompt);
     const response = await result.response;
-    let text = response.text();
+    const text = response.text();
 
-    // Extract JSON from response
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
       const analysis = JSON.parse(jsonMatch[0]);
@@ -91,13 +89,12 @@ export const detectBookingFraud = async (bookingData) => {
       };
     }
 
-    // Fallback if JSON parsing fails
     return {
       success: true,
       riskLevel: "low",
       score: 10,
-      reasons: ["Không phát hiện dấu hiệu bất thường"],
-      recommendation: "Cho phép",
+      reasons: ["Khong phat hien dau hieu bat thuong"],
+      recommendation: "Cho phep",
     };
   } catch (error) {
     console.error("Fraud Detection Error:", error);
@@ -105,7 +102,7 @@ export const detectBookingFraud = async (bookingData) => {
       success: false,
       riskLevel: "low",
       score: 0,
-      message: "Không thể phân tích lúc này",
+      message: "Khong the phan tich luc nay",
     };
   }
 };
@@ -115,29 +112,28 @@ export const detectBookingFraud = async (bookingData) => {
  */
 export const suggestBestTimeSlots = async (fieldData) => {
   try {
-    const { field_id, fieldName, priceData, bookingStats } = fieldData;
-
+    const { fieldName, priceData, bookingStats } = fieldData;
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-    const prompt = `Phân tích dữ liệu sân bóng và đưa ra gợi ý khung giờ tốt nhất:
-    
-    Sân: ${fieldName}
-    
-    Thống kê đặt sân:
-    - Tổng số booking: ${bookingStats.total || 0}
-    - Tỷ lệ lấp đầy: ${bookingStats.occupancyRate || 0}%
-    - Khung giờ đông nhất: ${bookingStats.peakHours || "N/A"}
-    
-    Bảng giá theo khung giờ:
-    ${priceData && priceData.length > 0 ? priceData.map((p) => `- ${p.timeSlot}: ${p.price}đ (${p.availability})`).join("\n") : "Chưa có dữ liệu"}
-    
-    Hãy đưa ra:
-    1. Top 3 khung giờ tốt nhất (cân bằng giá và chất lượng)
-    2. Khung giờ tiết kiệm nhất
-    3. Khung giờ tốt nhất cho chất lượng sân
-    4. Lời khuyên cho từng mục đích (luyện tập, thi đấu, giải trí)
-    
-    Trả lời ngắn gọn, dễ hiểu.`;
+    const prompt = `Phan tich du lieu dat san the thao va dua ra goi y khung gio tot nhat:
+
+San: ${fieldName}
+
+Thong ke dat san:
+- Tong so booking: ${bookingStats.total || 0}
+- Ty le lap day: ${bookingStats.occupancyRate || 0}%
+- Khung gio dong nhat: ${bookingStats.peakHours || "N/A"}
+
+Bang gia theo khung gio:
+${priceData && priceData.length > 0 ? priceData.map((p) => `- ${p.timeSlot}: ${p.price}d (${p.availability})`).join("\n") : "Chua co du lieu"}
+
+Hay dua ra:
+1. Top 3 khung gio tot nhat (can bang gia va chat luong)
+2. Khung gio tiet kiem nhat
+3. Khung gio tot nhat cho chat luong san
+4. Loi khuyen theo muc dich (luyen tap, thi dau, giai tri)
+
+Tra loi ngan gon, de hieu.`;
 
     const result = await model.generateContent(prompt);
     const response = await result.response;
@@ -151,7 +147,7 @@ export const suggestBestTimeSlots = async (fieldData) => {
     console.error("Time Slot Suggestion Error:", error);
     return {
       success: false,
-      message: "Không thể tạo gợi ý lúc này",
+      message: "Khong the tao goi y luc nay",
     };
   }
 };
@@ -163,18 +159,21 @@ export const chatWithAI = async (userMessage, conversationHistory = []) => {
   try {
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-    const systemPrompt = `Bạn là trợ lý AI thông minh của hệ thống đặt sân bóng đá. 
-    Nhiệm vụ: Tư vấn, hỗ trợ khách hàng về:
-    - Tìm và gợi ý sân phù hợp
-    - Giải đáp thắc mắc về giá, chính sách
-    - Hướng dẫn đặt sân
-    - Gợi ý thời gian và loại sân
-    
-    Luôn thân thiện, chuyên nghiệp, trả lời ngắn gọn (< 150 từ).`;
+    const systemPrompt = `Ban la tro ly AI cua he thong dat san the thao da mon.
+Nhiem vu:
+- Tu van tim va chon san cho nhieu mon: bong da, cau long, tennis, bong ro, bong chuyen, pickleball va cac mon the thao khac trong he thong.
+- Giai dap thac mac ve gia, khung gio, chinh sach, cach dat/huy/doi lich.
+- Dua ra goi y dua tren nhu cau nguoi dung (so nguoi, ngan sach, thoi gian, muc dich choi).
+
+Huong dan tra loi:
+- Neu nguoi dung hoi ve mon the thao khac bong da nhung van lien quan den dat san the thao, van tra loi binh thuong.
+- Neu cau hoi khong lien quan den dat san the thao, lich su dung san, hoac ho tro khach hang trong he thong, phan hoi ngan gon va huong nguoi dung ve noi dung the thao.
+- Tra loi than thien, ro rang, ngan gon (toi da 180 tu).
+- Uu tien ngon ngu giong nguoi dung dang su dung.`;
 
     const fullPrompt =
       conversationHistory.length > 0
-        ? `${systemPrompt}\n\nLịch sử hội thoại:\n${conversationHistory.map((h) => `${h.role}: ${h.message}`).join("\n")}\n\nUser: ${userMessage}\nAI:`
+        ? `${systemPrompt}\n\nLich su hoi thoai:\n${conversationHistory.map((h) => `${h.role}: ${h.message}`).join("\n")}\n\nUser: ${userMessage}\nAI:`
         : `${systemPrompt}\n\nUser: ${userMessage}\nAI:`;
 
     const result = await model.generateContent(fullPrompt);
@@ -189,7 +188,7 @@ export const chatWithAI = async (userMessage, conversationHistory = []) => {
     console.error("AI Chat Error:", error);
     return {
       success: false,
-      message: "Xin lỗi, tôi không thể trả lời lúc này. Vui lòng thử lại sau.",
+      message: "Xin loi, toi khong the tra loi luc nay. Vui long thu lai sau.",
     };
   }
 };
