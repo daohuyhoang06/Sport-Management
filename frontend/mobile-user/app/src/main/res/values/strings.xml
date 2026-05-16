@@ -254,4 +254,18 @@
     <string name="field_detail_error_open_directions">Không mở được chỉ đường</string>
     <string name="field_detail_error_open_call">Không mở được gọi điện</string>
     <string name="field_detail_error_open_link">Không mở được liên kết</string>
+    <string name="chatbot_toggle_content_description">Mở trợ lý đặt sân</string>
+    <string name="chatbot_window_title">Trợ lý đặt sân</string>
+    <string name="chatbot_window_subtitle">Hỏi đáp nhanh về sân, giá và khung giờ</string>
+    <string name="chatbot_close_content_description">Đóng cửa sổ trợ lý</string>
+    <string name="chatbot_input_placeholder">Nhập câu hỏi của bạn...</string>
+    <string name="chatbot_send_content_description">Gửi tin nhắn chatbot</string>
+    <string name="chatbot_empty_title">Sẵn sàng hỗ trợ lịch đặt sân</string>
+    <string name="chatbot_empty_body">Hỏi về khung giờ tiết kiệm, cách đặt sân hoặc thông tin sân gần bạn.</string>
+    <string name="chatbot_loading">Chatbot đang trả lời...</string>
+    <string name="chatbot_error_dismiss">Đóng</string>
+    <string name="chatbot_sender_user">Bạn</string>
+    <string name="chatbot_sender_bot">Trợ lý</string>
+    <string name="chatbot_failed_state">Chưa gửi được</string>
+    <string name="chatbot_retry">Thử lại</string>
 </resources>

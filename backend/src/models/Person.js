@@ -14,7 +14,7 @@ const Person = sequelize.define(
     name: {
       type: DataTypes.STRING(100),
       allowNull: false,
-      field: "full_name",
+      field: "person_name",
     },
     birthday: {
       type: DataTypes.DATEONLY,
@@ -23,7 +23,7 @@ const Person = sequelize.define(
     sex: {
       type: DataTypes.STRING(10),
       allowNull: true,
-      field: "gender",
+      field: "sex",
     },
     address: {
       type: DataTypes.STRING(45),
