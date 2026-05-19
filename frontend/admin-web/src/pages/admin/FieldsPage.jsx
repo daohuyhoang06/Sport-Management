@@ -6,7 +6,7 @@ import useAdminSportTypes from "../../hooks/useAdminSportTypes";
 const initialFieldForm = {
   field_name: "",
   location: "",
-  rental_price: "",
+  slot_price: "",
   manager_id: "",
   sport_id: "",
   status: "active",
@@ -107,8 +107,8 @@ function FieldFormModal({
             <input
               type="number"
               min={isRentalPriceRequired(formState.status) ? "1" : "0"}
-              name="rental_price"
-              value={formState.rental_price}
+              name="slot_price"
+              value={formState.slot_price}
               onChange={onChange}
               placeholder="Ví dụ: 300000"
             />
@@ -243,7 +243,7 @@ export default function FieldsPage() {
       field_name: field.name || "",
       location: field.location || "",
       sport_id: field.sportId ? String(field.sportId) : "",
-      rental_price:
+      slot_price:
         field.pricePerHour !== null &&
         field.pricePerHour !== undefined &&
         Number(field.pricePerHour) > 0
@@ -282,7 +282,7 @@ export default function FieldsPage() {
 
     if (
       isRentalPriceRequired(createForm.status) &&
-      (!createForm.rental_price || Number(createForm.rental_price) <= 0)
+      (!createForm.slot_price || Number(createForm.slot_price) <= 0)
     ) {
       setActionError("Vui lòng nhập giá thuê hợp lệ.");
       return;
@@ -297,9 +297,9 @@ export default function FieldsPage() {
         field_name: createForm.field_name.trim(),
         location: createForm.location.trim(),
         sport_id: Number(createForm.sport_id),
-        rental_price:
-          createForm.rental_price && Number(createForm.rental_price) > 0
-            ? Number(createForm.rental_price)
+        slot_price:
+          createForm.slot_price && Number(createForm.slot_price) > 0
+            ? Number(createForm.slot_price)
             : null,
         manager_id: createForm.manager_id
           ? Number(createForm.manager_id)
@@ -337,7 +337,7 @@ export default function FieldsPage() {
 
     if (
       isRentalPriceRequired(editForm.status) &&
-      (!editForm.rental_price || Number(editForm.rental_price) <= 0)
+      (!editForm.slot_price || Number(editForm.slot_price) <= 0)
     ) {
       setActionError("Vui lòng nhập giá thuê hợp lệ.");
       return;
@@ -352,9 +352,9 @@ export default function FieldsPage() {
         field_name: editForm.field_name.trim(),
         location: editForm.location.trim(),
         sport_id: Number(editForm.sport_id),
-        rental_price:
-          editForm.rental_price && Number(editForm.rental_price) > 0
-            ? Number(editForm.rental_price)
+        slot_price:
+          editForm.slot_price && Number(editForm.slot_price) > 0
+            ? Number(editForm.slot_price)
             : null,
         manager_id: editForm.manager_id ? Number(editForm.manager_id) : null,
         status: editForm.status,

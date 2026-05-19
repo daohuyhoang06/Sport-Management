@@ -20,15 +20,60 @@ const Field = sequelize.define('Field', {
     type: DataTypes.STRING(100),
     allowNull: true
   },
+  latitude: {
+    type: DataTypes.DECIMAL(10, 7),
+    allowNull: true
+  },
+  longitude: {
+    type: DataTypes.DECIMAL(10, 7),
+    allowNull: true
+  },
+  phone: {
+    type: DataTypes.STRING(20),
+    allowNull: true
+  },
+  open_time: {
+    type: DataTypes.TIME,
+    allowNull: true
+  },
+  close_time: {
+    type: DataTypes.TIME,
+    allowNull: true
+  },
+  avatar_image_url: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+    defaultValue: null
+  },
+  card_image_url: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+    defaultValue: null
+  },
+  slot_minutes: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 60
+  },
+  slot_price: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: true,
+    defaultValue: null
+  },
   status: {
     type: DataTypes.STRING(45),
     allowNull: true,
     defaultValue: 'active'
   },
-  rental_price: {
-    type: DataTypes.DECIMAL(10, 2),
-    allowNull: true,
-    defaultValue: null
+  created_at: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW
+  },
+  updated_at: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW
   }
 }, {
   tableName: 'fields',

@@ -1,11 +1,10 @@
-﻿import { Field, FieldImage, User, Booking } from "../../models/index.js";
-import { Op } from "sequelize";
+import { Field, FieldImage } from "../../models/index.js";
 import sequelize from "../../config/database.js";
 
 const getFieldSchema = async () => {
   const columns = await sequelize.getQueryInterface().describeTable("fields");
   return {
-    hasRentalPrice: Boolean(columns.rental_price),
+    hasSlotPrice: Boolean(columns.slot_price),
   };
 };
 
@@ -13,7 +12,7 @@ const getFieldSchema = async () => {
  * Get all fields with filters and pagination
  */
 export const getAllFieldsService = async (filters = {}, pagination = {}) => {
-  const { hasRentalPrice } = await getFieldSchema();
+  const { hasSlotPrice } = await getFieldSchema();
   const {
     page = 1,
     limit = 10,
@@ -47,12 +46,12 @@ export const getAllFieldsService = async (filters = {}, pagination = {}) => {
   );
 
   // Get fields
-  const priceSelect = hasRentalPrice
-    ? "f.rental_price"
-    : "NULL as rental_price";
+  const priceSelect = hasSlotPrice
+    ? "f.slot_price"
+    : "NULL as slot_price";
 
   const [rows] = await sequelize.query(
-    `SELECT f.field_id, f.manager_id, f.field_name, f.location, f.status, f.rental_price,
+    `SELECT f.field_id, f.manager_id, f.field_name, f.location, f.status, ${priceSelect},
             f.sport_id, st.sport_name,
                   p.full_name as manager_name, p.email as manager_email
      FROM fields f
@@ -77,13 +76,13 @@ export const getAllFieldsService = async (filters = {}, pagination = {}) => {
  * Get field by ID with full details
  */
 export const getFieldByIdService = async (id) => {
-  const { hasRentalPrice } = await getFieldSchema();
-  const priceSelect = hasRentalPrice
-    ? "f.rental_price"
-    : "NULL as rental_price";
+  const { hasSlotPrice } = await getFieldSchema();
+  const priceSelect = hasSlotPrice
+    ? "f.slot_price"
+    : "NULL as slot_price";
 
   const [[field]] = await sequelize.query(
-    `SELECT f.field_id, f.manager_id, f.field_name, f.location, f.status, f.rental_price,
+    `SELECT f.field_id, f.manager_id, f.field_name, f.location, f.status, ${priceSelect},
             f.sport_id, st.sport_name,
             p.full_name as manager_name, p.email as manager_email, p.phone as manager_phone
      FROM fields f
@@ -121,7 +120,7 @@ export const createFieldService = async (fieldData) => {
     field_name,
     location,
     manager_id,
-    rental_price,
+    slot_price,
     status = "active",
     sport_id,
   } = fieldData;
@@ -140,14 +139,14 @@ export const createFieldService = async (fieldData) => {
   }
 
   await sequelize.query(
-    `INSERT INTO fields (field_name, location, manager_id, rental_price, status, sport_id)
+    `INSERT INTO fields (field_name, location, manager_id, slot_price, status, sport_id)
      VALUES (?, ?, ?, ?, ?, ?)`,
     {
       replacements: [
         field_name,
         location,
         manager_id || null,
-        rental_price || null,
+        slot_price || null,
         status,
         sport_id || null,
       ],
@@ -165,10 +164,10 @@ export const createFieldService = async (fieldData) => {
  * Update field
  */
 export const updateFieldService = async (id, fieldData) => {
-  const { hasRentalPrice } = await getFieldSchema();
+  const { hasSlotPrice } = await getFieldSchema();
   const [[field]] = await sequelize.query(
-    hasRentalPrice
-      ? "SELECT field_id, status, rental_price FROM fields WHERE field_id = ?"
+    hasSlotPrice
+      ? "SELECT field_id, status, slot_price FROM fields WHERE field_id = ?"
       : "SELECT field_id, status FROM fields WHERE field_id = ?",
     { replacements: [id] },
   );
@@ -191,16 +190,16 @@ export const updateFieldService = async (id, fieldData) => {
   // 'deleted' status not used in schema; proceed normally
 
   const nextStatus = fieldData.status || field.status;
-  const nextRentalPrice =
-    fieldData.rental_price !== undefined
-      ? fieldData.rental_price
-      : field.rental_price;
+  const nextSlotPrice =
+    fieldData.slot_price !== undefined
+      ? fieldData.slot_price
+      : field.slot_price;
 
   if (
     nextStatus === "active" &&
-    (!nextRentalPrice || Number(nextRentalPrice) <= 0)
+    (!nextSlotPrice || Number(nextSlotPrice) <= 0)
   ) {
-    throw new Error("Rental price is required when field status is active");
+    throw new Error("Slot price is required when field status is active");
   }
 
   const updates = [];
@@ -226,9 +225,9 @@ export const updateFieldService = async (id, fieldData) => {
     updates.push("sport_id = ?");
     params.push(fieldData.sport_id);
   }
-  if (hasRentalPrice && fieldData.rental_price !== undefined) {
-    updates.push("rental_price = ?");
-    params.push(fieldData.rental_price);
+  if (hasSlotPrice && fieldData.slot_price !== undefined) {
+    updates.push("slot_price = ?");
+    params.push(fieldData.slot_price);
   }
 
   if (updates.length > 0) {
