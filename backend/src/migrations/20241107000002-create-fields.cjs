@@ -28,10 +28,50 @@ module.exports = {
         type: Sequelize.STRING(100),
         allowNull: true
       },
+      latitude: {
+        type: Sequelize.DECIMAL(10, 7),
+        allowNull: true
+      },
+      longitude: {
+        type: Sequelize.DECIMAL(10, 7),
+        allowNull: true
+      },
+      phone: {
+        type: Sequelize.STRING(20),
+        allowNull: true
+      },
+      open_time: {
+        type: Sequelize.TIME,
+        allowNull: true
+      },
+      close_time: {
+        type: Sequelize.TIME,
+        allowNull: true
+      },
+      slot_minutes: {
+        type: Sequelize.INTEGER,
+        allowNull: false,
+        defaultValue: 60
+      },
+      slot_price: {
+        type: Sequelize.DECIMAL(10, 2),
+        allowNull: true,
+        defaultValue: null
+      },
       status: {
         type: Sequelize.STRING(45),
         allowNull: true,
         defaultValue: 'active'
+      },
+      created_at: {
+        type: Sequelize.DATE,
+        allowNull: false,
+        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
+      },
+      updated_at: {
+        type: Sequelize.DATE,
+        allowNull: false,
+        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
       }
     });
 

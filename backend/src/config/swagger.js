@@ -1,4 +1,4 @@
-﻿const jsonRequest = {
+const jsonRequest = {
   required: true,
   content: {
     "application/json": {
@@ -244,11 +244,21 @@ const swaggerSpec = {
       },
       ManagerCreateFieldRequest: {
         type: "object",
-        required: ["field_name", "location", "rental_price"],
+        required: ["field_name", "location", "slot_price"],
         properties: {
           field_name: { type: "string", example: "" },
           location: { type: "string", example: "" },
-          rental_price: { type: "number", example: 0 },
+          sport_id: { type: "integer", example: 1 },
+          latitude: { type: "number", example: 21.028511 },
+          longitude: { type: "number", example: 105.804817 },
+          phone: { type: "string", example: "0901234567" },
+          open_time: { type: "string", example: "06:00:00" },
+          close_time: { type: "string", example: "23:00:00" },
+          slot_price: { type: "number", example: 0 },
+          slot_minutes: { type: "integer", example: 60 },
+          avatar_image_url: { type: "string", example: "" },
+          card_image_url: { type: "string", example: "" },
+          status: { type: "string", example: "active" },
         },
       },
       ManagerUpdateFieldRequest: {
@@ -256,6 +266,17 @@ const swaggerSpec = {
         properties: {
           field_name: { type: "string", example: "" },
           location: { type: "string", example: "" },
+          sport_id: { type: "integer", example: 1 },
+          latitude: { type: "number", example: 21.028511 },
+          longitude: { type: "number", example: 105.804817 },
+          phone: { type: "string", example: "0901234567" },
+          open_time: { type: "string", example: "06:00:00" },
+          close_time: { type: "string", example: "23:00:00" },
+          slot_price: { type: "number", example: 0 },
+          slot_minutes: { type: "integer", example: 60 },
+          avatar_image_url: { type: "string", example: "" },
+          card_image_url: { type: "string", example: "" },
+          status: { type: "string", example: "active" },
         },
       },
       ManagerFieldStatusRequest: {
@@ -263,6 +284,52 @@ const swaggerSpec = {
         required: ["status"],
         properties: {
           status: { type: "string", example: "" },
+        },
+      },
+      ManagerFieldCourtRequest: {
+        type: "object",
+        required: ["court_code", "court_name"],
+        properties: {
+          court_code: { type: "string", example: "SAN-A-01" },
+          court_name: { type: "string", example: "San A1" },
+          status: { type: "string", example: "active" },
+          sort_order: { type: "integer", example: 1 },
+        },
+      },
+      ManagerFieldCourtReorderRequest: {
+        type: "object",
+        required: ["courts"],
+        properties: {
+          courts: {
+            type: "array",
+            items: {
+              type: "object",
+              required: ["court_id", "sort_order"],
+              properties: {
+                court_id: { type: "integer", example: 1 },
+                sort_order: { type: "integer", example: 1 },
+              },
+            },
+          },
+        },
+      },
+      ManagerFieldServiceRequest: {
+        type: "object",
+        required: ["service_name"],
+        properties: {
+          service_name: { type: "string", example: "Nuoc uong" },
+          description: { type: "string", example: "Ban nuoc tai san" },
+          is_free: { type: "boolean", example: false },
+          price: { type: "number", example: 15000 },
+        },
+      },
+      ManagerFieldPolicyRequest: {
+        type: "object",
+        required: ["title", "content", "policy_type"],
+        properties: {
+          title: { type: "string", example: "Khong hut thuoc" },
+          content: { type: "string", example: "Khong hut thuoc trong khuon vien san" },
+          policy_type: { type: "string", example: "general" },
         },
       },
       CreateChatRequest: {
@@ -1168,6 +1235,19 @@ const swaggerSpec = {
           403: errorResponse,
         },
       },
+      patch: {
+        tags: ["Manager"],
+        summary: "Patch field configuration",
+        security: authSecurity,
+        parameters: [idParam("id", "Field ID")],
+        requestBody: schemaRequest("ManagerUpdateFieldRequest"),
+        responses: {
+          200: okResponse,
+          400: errorResponse,
+          401: errorResponse,
+          403: errorResponse,
+        },
+      },
       delete: {
         tags: ["Manager"],
         summary: "Delete field",
@@ -1179,6 +1259,15 @@ const swaggerSpec = {
           401: errorResponse,
           403: errorResponse,
         },
+      },
+    },
+    "/api/manager/fields/{id}/config": {
+      get: {
+        tags: ["Manager"],
+        summary: "Get full field configuration",
+        security: authSecurity,
+        parameters: [idParam("id", "Field ID")],
+        responses: { 200: okResponse, 404: errorResponse, 401: errorResponse, 403: errorResponse },
       },
     },
     "/api/manager/fields/{id}/status": {
@@ -1203,6 +1292,118 @@ const swaggerSpec = {
         security: authSecurity,
         parameters: [idParam("id", "Field ID")],
         responses: { 200: okResponse, 401: errorResponse, 403: errorResponse },
+      },
+    },
+    "/api/manager/fields/{id}/courts": {
+      get: {
+        tags: ["Manager"],
+        summary: "List field courts",
+        security: authSecurity,
+        parameters: [idParam("id", "Field ID")],
+        responses: { 200: okResponse, 401: errorResponse, 403: errorResponse },
+      },
+      post: {
+        tags: ["Manager"],
+        summary: "Create field court",
+        security: authSecurity,
+        parameters: [idParam("id", "Field ID")],
+        requestBody: schemaRequest("ManagerFieldCourtRequest"),
+        responses: { 201: okResponse, 400: errorResponse, 401: errorResponse, 403: errorResponse },
+      },
+    },
+    "/api/manager/fields/{id}/courts/reorder": {
+      patch: {
+        tags: ["Manager"],
+        summary: "Reorder field courts",
+        security: authSecurity,
+        parameters: [idParam("id", "Field ID")],
+        requestBody: schemaRequest("ManagerFieldCourtReorderRequest"),
+        responses: { 200: okResponse, 400: errorResponse, 401: errorResponse, 403: errorResponse },
+      },
+    },
+    "/api/manager/fields/{id}/courts/{courtId}": {
+      put: {
+        tags: ["Manager"],
+        summary: "Update field court",
+        security: authSecurity,
+        parameters: [idParam("id", "Field ID"), idParam("courtId", "Court ID")],
+        requestBody: schemaRequest("ManagerFieldCourtRequest"),
+        responses: { 200: okResponse, 400: errorResponse, 401: errorResponse, 403: errorResponse },
+      },
+      delete: {
+        tags: ["Manager"],
+        summary: "Delete field court",
+        security: authSecurity,
+        parameters: [idParam("id", "Field ID"), idParam("courtId", "Court ID")],
+        responses: { 200: okResponse, 404: errorResponse, 401: errorResponse, 403: errorResponse },
+      },
+    },
+    "/api/manager/fields/{id}/services": {
+      get: {
+        tags: ["Manager"],
+        summary: "List field services",
+        security: authSecurity,
+        parameters: [idParam("id", "Field ID")],
+        responses: { 200: okResponse, 401: errorResponse, 403: errorResponse },
+      },
+      post: {
+        tags: ["Manager"],
+        summary: "Create field service",
+        security: authSecurity,
+        parameters: [idParam("id", "Field ID")],
+        requestBody: schemaRequest("ManagerFieldServiceRequest"),
+        responses: { 201: okResponse, 400: errorResponse, 401: errorResponse, 403: errorResponse },
+      },
+    },
+    "/api/manager/fields/{id}/services/{serviceId}": {
+      put: {
+        tags: ["Manager"],
+        summary: "Update field service",
+        security: authSecurity,
+        parameters: [idParam("id", "Field ID"), idParam("serviceId", "Service ID")],
+        requestBody: schemaRequest("ManagerFieldServiceRequest"),
+        responses: { 200: okResponse, 400: errorResponse, 401: errorResponse, 403: errorResponse },
+      },
+      delete: {
+        tags: ["Manager"],
+        summary: "Delete field service",
+        security: authSecurity,
+        parameters: [idParam("id", "Field ID"), idParam("serviceId", "Service ID")],
+        responses: { 200: okResponse, 404: errorResponse, 401: errorResponse, 403: errorResponse },
+      },
+    },
+    "/api/manager/fields/{id}/policies": {
+      get: {
+        tags: ["Manager"],
+        summary: "List field policies",
+        security: authSecurity,
+        parameters: [idParam("id", "Field ID")],
+        responses: { 200: okResponse, 401: errorResponse, 403: errorResponse },
+      },
+      post: {
+        tags: ["Manager"],
+        summary: "Create field policy",
+        security: authSecurity,
+        parameters: [idParam("id", "Field ID")],
+        requestBody: schemaRequest("ManagerFieldPolicyRequest"),
+        responses: { 201: okResponse, 400: errorResponse, 401: errorResponse, 403: errorResponse },
+      },
+    },
+    "/api/manager/fields/{id}/policies/{policyId}": {
+      put: {
+        tags: ["Manager"],
+        summary: "Update field policy",
+        security: authSecurity,
+        parameters: [idParam("id", "Field ID"), idParam("policyId", "Policy ID")],
+        requestBody: schemaRequest("ManagerFieldPolicyRequest"),
+        responses: { 200: okResponse, 400: errorResponse, 401: errorResponse, 403: errorResponse },
+      },
+      delete: {
+        tags: ["Manager"],
+        summary: "Delete field policy",
+        security: authSecurity,
+        parameters: [idParam("id", "Field ID"), idParam("policyId", "Policy ID")],
+        responses: { 200: okResponse, 404: errorResponse, 401: errorResponse, 403: errorResponse },
       },
     },
 

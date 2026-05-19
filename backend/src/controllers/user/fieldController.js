@@ -1,4 +1,4 @@
-﻿import Field from '../../models/Field.js';
+import Field from '../../models/Field.js';
 import { Op } from 'sequelize';
 import sequelize from '../../config/database.js';
 import { getAvailableSlots, releaseExpiredPendingBookings } from '../../services/user/scheduleService.js';
@@ -43,16 +43,16 @@ export const listFields = async (req, res) => {
     const data = fields.map(f => ({
       field_id: f.field_id,
       field_name: f.field_name,
-      location: f.location || 'Chưa cập nhật',
+      location: f.location || 'Chua c?p nh?t',
       status: f.status,
-      rental_price: f.rental_price,
+      slot_price: f.slot_price,
       image: '/images/fields/placeholder.svg',
-      price: f.rental_price || 'Liên hệ',
-      pricePerHour: f.rental_price,
+      price: f.slot_price || 'Li�n h?',
+      pricePerHour: f.slot_price,
       rating: (Math.random() * 1.5 + 3.5).toFixed(1),
       reviews: Math.floor(Math.random() * 200 + 10),
-      type: 'Sân 7 người',
-      facilities: ['Bãi đỗ xe', 'Đèn chiếu sáng', 'Phòng thay đồ'],
+      type: 'S�n 7 ngu?i',
+      facilities: ['B�i d? xe', '��n chi?u s�ng', 'Ph�ng thay d?'],
       openTime: '5h - 23h',
       distance: '2.5km',
       isOpen: true
@@ -117,11 +117,11 @@ export const getField = async (req, res) => {
       field_name: f.field_name,
       location: f.location,
       status: f.status,
-      rental_price: f.rental_price,
+      slot_price: f.slot_price,
       manager_id: f.manager_id,
       image: '/images/fields/placeholder.svg',
-      price: f.rental_price || 'Liên hệ',
-      facilities: ['Bãi đỗ xe', 'Đèn chiếu sáng'],
+      price: f.slot_price || 'Li�n h?',
+      facilities: ['B�i d? xe', '��n chi?u s�ng'],
       slots: allSlots
     };
 
@@ -156,9 +156,9 @@ export const createBooking = async (req, res) => {
     // Combine customer info with note
     let finalNote = '';
     if (customer_name || customer_phone) {
-      finalNote += `Tên: ${customer_name || 'N/A'}, SĐT: ${customer_phone || 'N/A'}`;
+      finalNote += `T�n: ${customer_name || 'N/A'}, S�T: ${customer_phone || 'N/A'}`;
       if (note) {
-        finalNote += ` - Ghi chú: ${note}`;
+        finalNote += ` - Ghi ch�: ${note}`;
       }
     } else {
       finalNote = note || '';
@@ -279,7 +279,7 @@ export const createBooking = async (req, res) => {
   } catch (err) {
     if (err?.code === 'SLOT_NOT_AVAILABLE') {
       return res.status(409).json({
-        message: 'Khung giờ này không khả dụng',
+        message: 'Khung gi? n�y kh�ng kh? d?ng',
         error: 'SLOT_NOT_AVAILABLE'
       });
     }
@@ -494,7 +494,7 @@ export const rejectBooking = async (req, res) => {
     const { id } = req.params;
     const { reason } = req.body;
 
-    const noteUpdate = reason ? ` | Lý do từ chối: ${reason}` : '';
+    const noteUpdate = reason ? ` | L� do t? ch?i: ${reason}` : '';
 
     await sequelize.query(
       `UPDATE bookings SET status = 'rejected', note = CONCAT(COALESCE(note, ''), ?) WHERE booking_id = ?`,
