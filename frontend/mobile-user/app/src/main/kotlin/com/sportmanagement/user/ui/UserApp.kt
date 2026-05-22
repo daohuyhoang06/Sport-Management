@@ -1,4 +1,8 @@
-﻿package com.sportmanagement.user.ui
+package com.sportmanagement.user.ui
+
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.Modifier
@@ -14,6 +18,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sportmanagement.user.domain.model.BookingConfirmationData
 import com.sportmanagement.user.ui.components.UserBottomBar
@@ -31,17 +36,23 @@ import com.sportmanagement.user.ui.screens.UserMapScreen
 import com.sportmanagement.user.ui.screens.UserProfileScreen
 import com.sportmanagement.user.ui.viewmodel.ChatbotViewModel
 import com.sportmanagement.user.ui.viewmodel.UserViewModel
+import com.sportmanagement.user.ui.viewmodel.UserViewModelFactory
 
 @Composable
 fun UserApp(
-    userViewModel: UserViewModel = viewModel(),
+    userViewModel: UserViewModel? = null,
     chatbotViewModel: ChatbotViewModel = viewModel()
 ) {
-    val uiState by userViewModel.uiState.collectAsState()
+    val appContext = LocalContext.current.applicationContext
+    val resolvedUserViewModel = userViewModel ?: viewModel(
+        factory = remember(appContext) { UserViewModelFactory(appContext) }
+    )
+    val uiState by resolvedUserViewModel.uiState.collectAsState()
     val chatbotUiState by chatbotViewModel.uiState.collectAsState()
     var isLoggedIn by rememberSaveable { mutableStateOf(false) }
     var showAuthScreen by rememberSaveable { mutableStateOf(false) }
     var showRegister by rememberSaveable { mutableStateOf(false) }
+    var selectedFieldId by rememberSaveable { mutableStateOf<Int?>(null) }
     var showBookingScreen by rememberSaveable { mutableStateOf(false) }
     var showBookingConfirmationScreen by rememberSaveable { mutableStateOf(false) }
     var showBookingPaymentScreen by rememberSaveable { mutableStateOf(false) }
@@ -82,7 +93,7 @@ fun UserApp(
             if (shouldShowBottomBar) {
                 UserBottomBar(
                     selectedTab = uiState.selectedTab,
-                    onTabSelected = userViewModel::onTabSelected
+                    onTabSelected = resolvedUserViewModel::onTabSelected
                 )
             }
         }
@@ -134,7 +145,7 @@ fun UserApp(
                         showBookingConfirmationScreen = false
                         showBookingScreen = false
                         bookingConfirmationData = null
-                        userViewModel.onTabSelected(UserTab.Home)
+                        resolvedUserViewModel.onTabSelected(UserTab.Home)
                     }
                 )
             } else if (showBookingConfirmationScreen && bookingConfirmationData != null) {
@@ -157,13 +168,15 @@ fun UserApp(
                     initialCriteria = uiState.activeHomeSearchCriteria,
                     onBackClick = { showHomeSearchFilterScreen = false },
                     onApplyFilters = { criteria ->
-                        userViewModel.onApplyHomeSearchCriteria(criteria)
+                        resolvedUserViewModel.onApplyHomeSearchCriteria(criteria)
                         showHomeSearchFilterScreen = false
                     }
                 )
-            } else if (showBookingScreen) {
+            } else if (showBookingScreen && selectedFieldId != null) {
+                val todayStr = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date()) }
                 BookingScheduleScreen(
-                    scheduleData = uiState.bookingSchedule,
+                    fieldId = selectedFieldId!!,
+                    initialDateText = todayStr,
                     onBackClick = {
                         showBookingScreen = false
                         bookingConfirmationData = null
@@ -183,6 +196,14 @@ fun UserApp(
                         sportCategories = uiState.sportCategories,
                         userName = uiState.profile.name,
                         isLoggedIn = isLoggedIn,
+                        isInitialLoading = uiState.isHomeLoading,
+                        isLoadingMore = uiState.isHomeLoadingMore,
+                        hasMoreData = uiState.hasMoreHomeFields,
+                        searchResults = uiState.fieldSearchResults,
+                        recentSearches = uiState.recentFieldSearches,
+                        isSearchLoading = uiState.isFieldSearchLoading,
+                        isSearchLoadingMore = uiState.isFieldSearchLoadingMore,
+                        hasMoreSearchResults = uiState.hasMoreFieldSearchResults,
                         onLoginClick = {
                             showRegister = false
                             showAuthScreen = true
@@ -194,7 +215,36 @@ fun UserApp(
                         onFilterClick = {
                             showHomeSearchFilterScreen = true
                         },
-                        onBookFieldClick = { _ ->
+                        onSearchOpened = {
+                            resolvedUserViewModel.onFieldSearchOpened()
+                        },
+                        onSearchRequest = { keyword, address, sportType ->
+                            resolvedUserViewModel.searchFields(
+                                keyword = keyword,
+                                address = address,
+                                sportType = sportType
+                            )
+                        },
+                        onClearSearch = {
+                            resolvedUserViewModel.clearFieldSearchResults()
+                        },
+                        onLoadMoreSearchResults = {
+                            resolvedUserViewModel.loadMoreFieldSearchResults()
+                        },
+                        onRememberSearch = { query ->
+                            resolvedUserViewModel.rememberFieldSearch(query)
+                        },
+                        onCurrentLocationDetected = { latitude, longitude ->
+                            resolvedUserViewModel.onHomeLocationUpdated(latitude, longitude)
+                        },
+                        onLocationUnavailable = {
+                            resolvedUserViewModel.onHomeLocationUnavailable()
+                        },
+                        onLoadMore = {
+                            resolvedUserViewModel.loadMoreHomeFields()
+                        },
+                        onBookFieldClick = { field ->
+                            selectedFieldId = field.fieldId
                             showBookingPaymentScreen = false
                             showBookingConfirmationScreen = false
                             bookingConfirmationData = null
@@ -205,7 +255,35 @@ fun UserApp(
                         padding = padding,
                         sportCategories = uiState.sportCategories,
                         nearby = uiState.nearbyFields,
-                        onBookFieldClick = { _ ->
+                        searchResults = uiState.fieldSearchResults,
+                        recentSearches = uiState.recentFieldSearches,
+                        isSearchLoading = uiState.isFieldSearchLoading,
+                        isSearchLoadingMore = uiState.isFieldSearchLoadingMore,
+                        hasMoreSearchResults = uiState.hasMoreFieldSearchResults,
+                        onSearchOpened = {
+                            resolvedUserViewModel.onFieldSearchOpened()
+                        },
+                        onSearchRequest = { keyword, address, sportType ->
+                            resolvedUserViewModel.searchFields(
+                                keyword = keyword,
+                                address = address,
+                                sportType = sportType
+                            )
+                        },
+                        onClearSearch = {
+                            resolvedUserViewModel.clearFieldSearchResults()
+                        },
+                        onLoadMoreSearchResults = {
+                            resolvedUserViewModel.loadMoreFieldSearchResults()
+                        },
+                        onRememberSearch = { query ->
+                            resolvedUserViewModel.rememberFieldSearch(query)
+                        },
+                        onCurrentLocationDetected = { latitude, longitude ->
+                            resolvedUserViewModel.onHomeLocationUpdated(latitude, longitude)
+                        },
+                        onBookFieldClick = { field ->
+                            selectedFieldId = field.fieldId
                             showBookingPaymentScreen = false
                             showBookingConfirmationScreen = false
                             bookingConfirmationData = null

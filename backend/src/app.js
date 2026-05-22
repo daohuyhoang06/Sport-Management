@@ -18,6 +18,7 @@ import authRoutes from "./routes/user/authRoutes.js";
 import chatRoutes from "./routes/chatRoutes.js";
 import aiRoutes from "./routes/aiRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
+import { searchFields } from "./controllers/user/fieldController.js";
 
 const app = express();
 app.use(cors());
@@ -35,6 +36,7 @@ app.use("/api/manager", managerRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
+app.get("/api/fields/search", searchFields);
 app.use("/api/chat", chatRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/payments", paymentRoutes);

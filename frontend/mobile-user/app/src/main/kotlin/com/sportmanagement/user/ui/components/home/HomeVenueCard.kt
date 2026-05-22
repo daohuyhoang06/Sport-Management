@@ -166,13 +166,7 @@ private fun LargeVenueCard(
                             fontWeight = FontWeight.ExtraBold
                         )
                         Spacer(Modifier.height(2.dp))
-                        Text(
-                            stringResource(R.string.home_location_distance_format, field.location, field.distance),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                        HomeDistanceLocationText(field = field)
                         Spacer(Modifier.height(2.dp))
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
@@ -242,11 +236,7 @@ private fun SmallHorizontalCard(
                     fontWeight = FontWeight.ExtraBold
                 )
                 Spacer(Modifier.height(2.dp))
-                Text(
-                    field.distance,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                HomeDistanceLocationText(field = field)
                 if (field.availability.isNotEmpty()) {
                     Text(
                         field.availability,
@@ -310,11 +300,7 @@ private fun SmallNoImageCard(
                     fontWeight = FontWeight.ExtraBold
                 )
                 Spacer(Modifier.height(2.dp))
-                Text(
-                    stringResource(R.string.home_distance_bullet_format, field.distance),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                HomeDistanceLocationText(field = field)
                 if (field.availability.isNotEmpty()) {
                     Text(
                         field.availability,
@@ -334,5 +320,30 @@ private fun SmallNoImageCard(
 
             HomeBookButton(onClick = onBookClick)
         }
+    }
+}
+
+@Composable
+private fun HomeDistanceLocationText(field: UserField) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        if (field.distance.isNotBlank()) {
+            Text(
+                text = "(${field.distance}) ",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color(0xFFD62828),
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1
+            )
+        }
+        Text(
+            text = field.location,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }

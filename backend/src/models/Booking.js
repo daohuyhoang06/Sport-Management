@@ -24,6 +24,14 @@ const Booking = sequelize.define('Booking', {
       key: 'field_id'
     }
   },
+  court_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: {
+      model: 'field_courts',
+      key: 'court_id'
+    }
+  },
   schedule_id: {
     type: DataTypes.INTEGER,
     allowNull: true,

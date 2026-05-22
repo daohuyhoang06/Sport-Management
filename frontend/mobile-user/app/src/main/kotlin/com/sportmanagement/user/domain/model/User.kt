@@ -1,6 +1,7 @@
 package com.sportmanagement.user.domain.model
 
 data class UserField(
+    val fieldId: Int = 0,
     val name: String,
     val location: String,
     val price: String,
@@ -8,7 +9,7 @@ data class UserField(
     val sportIconType: SportIconType = SportIconType.FOOTBALL,
     val latitude: Double? = null,
     val longitude: Double? = null,
-    val distance: String = "0.8 miles away",
+    val distance: String = "",
     val hours: String = "00:00 - 24:00",
     val imageUrl: String = "",
     val isProLeague: Boolean = false,

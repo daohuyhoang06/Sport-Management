@@ -50,6 +50,46 @@ const Field = sequelize.define('Field', {
     allowNull: true,
     defaultValue: null
   },
+  sport_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    defaultValue: null
+  },
+  display_rating: {
+    type: DataTypes.DECIMAL(3, 1),
+    allowNull: true,
+    defaultValue: null
+  },
+  featured: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false
+  },
+  availability_note: {
+    type: DataTypes.STRING(255),
+    allowNull: true,
+    defaultValue: null
+  },
+  card_type: {
+    type: DataTypes.STRING(50),
+    allowNull: false,
+    defaultValue: 'LARGE_IMAGE'
+  },
+  region: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+    defaultValue: null
+  },
+  province: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+    defaultValue: null
+  },
+  district: {
+    type: DataTypes.STRING(100),
+    allowNull: true,
+    defaultValue: null
+  },
   slot_minutes: {
     type: DataTypes.INTEGER,
     allowNull: false,

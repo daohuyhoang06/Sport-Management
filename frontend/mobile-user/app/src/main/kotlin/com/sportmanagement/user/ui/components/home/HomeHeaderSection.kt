@@ -1,4 +1,4 @@
-﻿package com.sportmanagement.user.ui.components.home
+package com.sportmanagement.user.ui.components.home
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -253,6 +253,7 @@ private fun HomeSearchActionRow(
             BasicTextField(
                 value = searchQuery,
                 onValueChange = onSearchQueryChange,
+                enabled = true,
                 textStyle = MaterialTheme.typography.bodySmall.copy(
                     color = MaterialTheme.colorScheme.onSurface,
                     lineHeight = 18.sp

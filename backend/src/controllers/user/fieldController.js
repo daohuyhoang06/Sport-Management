@@ -1,67 +1,338 @@
-import Field from '../../models/Field.js';
-import { Op } from 'sequelize';
 import sequelize from '../../config/database.js';
 import { getAvailableSlots, releaseExpiredPendingBookings } from '../../services/user/scheduleService.js';
 
 const PENDING_HOLD_MINUTES = 5;
+const SPORT_NAME_TO_ICON = {
+  'BÃ³ng Ä‘Ã¡': 'FOOTBALL',
+  'BÃ³ng chuyá»n': 'VOLLEYBALL',
+  Pickleball: 'PICKLEBALL',
+  'Cáº§u lÃ´ng': 'BADMINTON',
+  Tennis: 'TENNIS',
+};
+const DEFAULT_IMAGE_URL = '/images/fields/placeholder.svg';
+const EARTH_RADIUS_KM = 6371;
+
+const formatPriceLabel = (slotPrice) => {
+  if (slotPrice === null || slotPrice === undefined || Number(slotPrice) <= 0) {
+    return 'Lien he';
+  }
+  const value = Number(slotPrice);
+  return `${value.toLocaleString('vi-VN')}Ä‘/h`;
+};
+
+const formatHoursLabel = (openTime, closeTime) => {
+  if (!openTime || !closeTime) return '00:00 - 24:00';
+  const open = String(openTime).slice(0, 5);
+  const close = String(closeTime).slice(0, 5);
+  return `${open} - ${close}`;
+};
+
+const parseCoordinate = (value) => {
+  if (value === undefined || value === null || value === '') return null;
+  const parsed = Number.parseFloat(value);
+  if (!Number.isFinite(parsed)) return null;
+  return parsed;
+};
+
+const formatDistanceLabel = (distanceKm) => {
+  if (distanceKm === null || distanceKm === undefined) return '';
+  const numeric = Number(distanceKm);
+  if (!Number.isFinite(numeric)) return '';
+  if (numeric < 1) {
+    return `${Math.round(numeric * 1000)} m`;
+  }
+  return `${numeric.toFixed(1)} km`;
+};
+
+const parseTags = (tagsCsv) => {
+  if (!tagsCsv) return [];
+  return String(tagsCsv)
+    .split('|||')
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+};
+
+const normalizeForSearch = (value) =>
+  String(value || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/Ä‘/g, 'd');
+
+const compactForSearch = (value) => normalizeForSearch(value).replace(/[\s,.\-_]/g, '');
+
+const compactSqlExpression = (expression) => (
+  `REPLACE(REPLACE(REPLACE(REPLACE(LOWER(COALESCE(${expression}, '')) COLLATE utf8mb4_unicode_ci, 'Ä‘', 'd'), ' ', ''), ',', ''), '.', '')`
+);
+
+const buildTextSearchClause = (columns, value, replacements) => {
+  const normalized = normalizeForSearch(value);
+  const compact = compactForSearch(value);
+  if (!normalized) return null;
+
+  const parts = [];
+  columns.forEach((column) => {
+    parts.push(`LOWER(COALESCE(${column}, '')) COLLATE utf8mb4_unicode_ci LIKE ?`);
+    replacements.push(`%${normalized}%`);
+    if (compact) {
+      parts.push(`${compactSqlExpression(column)} LIKE ?`);
+      replacements.push(`%${compact}%`);
+    }
+  });
+
+  return `(${parts.join(' OR ')})`;
+};
+
+const sportTypeAliases = (sportType) => {
+  const normalized = compactForSearch(sportType);
+  const aliases = {
+    football: ['football', 'bongda', 'soccer'],
+    bongda: ['football', 'bongda', 'soccer'],
+    soccer: ['football', 'bongda', 'soccer'],
+    badminton: ['badminton', 'caulong'],
+    caulong: ['badminton', 'caulong'],
+    tennis: ['tennis'],
+    pickleball: ['pickleball'],
+    volleyball: ['volleyball', 'bongchuyen'],
+    bongchuyen: ['volleyball', 'bongchuyen'],
+    basketball: ['basketball', 'bongro'],
+    bongro: ['basketball', 'bongro'],
+  };
+  return aliases[normalized] || [normalized];
+};
+
+const mapFieldRowToListPayload = (row) => {
+  const ratingValue = Number(row.rating_value || 0);
+  const priceLabel = formatPriceLabel(row.slot_price);
+  const hoursLabel = formatHoursLabel(row.open_time, row.close_time);
+  const tags = parseTags(row.tags_csv);
+  const sportName = row.sport_name || '';
+  const sportIconType = SPORT_NAME_TO_ICON[sportName] || 'FOOTBALL';
+  const image = row.card_image_url || row.avatar_image_url || DEFAULT_IMAGE_URL;
+  const distanceKm = row.distance_km === null || row.distance_km === undefined
+    ? null
+    : Number(row.distance_km);
+
+  return {
+    field_id: row.field_id,
+    field_name: row.field_name,
+    name: row.field_name,
+    location: row.location || 'Chua cap nhat',
+    status: row.status,
+    sport_id: row.sport_id,
+    sport_name: sportName,
+    sport_icon_type: sportIconType,
+    latitude: row.latitude,
+    longitude: row.longitude,
+    slot_price: row.slot_price,
+    price_per_hour: row.slot_price,
+    price: priceLabel,
+    rating: ratingValue.toFixed(1),
+    reviews: Number(row.review_count || 0),
+    is_pro_league: Boolean(row.featured),
+    availability: row.availability_note || '',
+    card_type: row.card_type || 'LARGE_IMAGE',
+    tags,
+    facilities: tags,
+    region: row.region || '',
+    province: row.province || '',
+    district: row.district || '',
+    distance_km: distanceKm,
+    distance: formatDistanceLabel(distanceKm),
+    hours: hoursLabel,
+    openTime: hoursLabel,
+    image,
+    imageUrl: image,
+    isOpen: row.status === 'active',
+    type: sportName || 'San the thao',
+  };
+};
+
+const queryFieldList = async (query, options = {}) => {
+  const { requireUserPoint = false, excludeNoCoordinate = false } = options;
+  const {
+    q,
+    keyword,
+    location,
+    address,
+    category,
+    sportType,
+    lat,
+    lng,
+    user_lat,
+    user_lng,
+    radius,
+    radius_km,
+    sortBy,
+    limit = 50,
+    page = 1,
+  } = query;
+  const safeLimit = Math.max(1, Math.min(Number.parseInt(limit, 10) || 50, 100));
+  const safePage = Math.max(1, Number.parseInt(page, 10) || 1);
+  const offset = (safePage - 1) * safeLimit;
+  const userLat = parseCoordinate(lat ?? user_lat);
+  const userLng = parseCoordinate(lng ?? user_lng);
+  const hasUserPoint = userLat !== null && userLng !== null;
+  const radiusKm = parseCoordinate(radius ?? radius_km);
+
+  if (requireUserPoint && !hasUserPoint) {
+    return { error: { status: 400, message: 'lat and lng are required' } };
+  }
+
+  const whereClauses = ['f.status = ?'];
+  const replacements = ['active'];
+
+  if (excludeNoCoordinate) {
+    whereClauses.push('f.latitude IS NOT NULL');
+    whereClauses.push('f.longitude IS NOT NULL');
+  }
+
+  const keywordTerm = String(keyword ?? q ?? '').trim();
+  if (keywordTerm) {
+    const clause = buildTextSearchClause(
+      ['f.field_name', 'f.location', 'f.province', 'f.district', 'st.sport_name'],
+      keywordTerm,
+      replacements,
+    );
+    if (clause) whereClauses.push(clause);
+  }
+
+  const addressTerm = String(address ?? location ?? '').trim();
+  if (addressTerm) {
+    const clause = buildTextSearchClause(
+      ['f.location', 'f.region', 'f.province', 'f.district'],
+      addressTerm,
+      replacements,
+    );
+    if (clause) whereClauses.push(clause);
+  }
+
+  const sportTerm = String(sportType ?? category ?? '').trim();
+  if (sportTerm) {
+    const aliases = sportTypeAliases(sportTerm).filter(Boolean);
+    if (aliases.length > 0) {
+      whereClauses.push(`(${aliases.map(() => `${compactSqlExpression('st.sport_name')} LIKE ?`).join(' OR ')})`);
+      aliases.forEach((alias) => replacements.push(`%${alias}%`));
+    }
+  }
+
+  const distanceSql = hasUserPoint
+    ? `(${EARTH_RADIUS_KM} * ACOS(LEAST(1, GREATEST(-1,
+        COS(RADIANS(?)) * COS(RADIANS(f.latitude)) * COS(RADIANS(f.longitude) - RADIANS(?)) +
+        SIN(RADIANS(?)) * SIN(RADIANS(f.latitude))
+    ))))`
+    : 'NULL';
+
+  const distanceReplacements = hasUserPoint ? [userLat, userLng, userLat] : [];
+  const havingClauses = [];
+  const havingReplacements = [];
+  if (hasUserPoint && radiusKm !== null && radiusKm > 0) {
+    havingClauses.push('distance_km <= ?');
+    havingReplacements.push(radiusKm);
+  }
+
+  let orderBy = hasUserPoint
+    ? '(distance_km IS NULL) ASC, distance_km ASC, f.field_id ASC'
+    : 'f.field_id ASC';
+  if (String(sortBy || '').toLowerCase() === 'rating') {
+    orderBy = 'rating_value DESC, f.field_id ASC';
+  } else if (String(sortBy || '').toLowerCase() === 'name') {
+    orderBy = 'f.field_name ASC, f.field_id ASC';
+  } else if (String(sortBy || '').toLowerCase() === 'newest') {
+    orderBy = 'f.created_at DESC, f.field_id DESC';
+  }
+
+  const [rows] = await sequelize.query(
+    `
+    SELECT
+      f.field_id,
+      f.field_name,
+      f.location,
+      f.status,
+      f.latitude,
+      f.longitude,
+      f.open_time,
+      f.close_time,
+      f.slot_price,
+      f.avatar_image_url,
+      f.card_image_url,
+      f.sport_id,
+      f.display_rating,
+      f.featured,
+      f.availability_note,
+      f.card_type,
+      f.region,
+      f.province,
+      f.district,
+      ${distanceSql} AS distance_km,
+      st.sport_name,
+      COALESCE(f.display_rating, AVG(r.rating), 0) AS rating_value,
+      COUNT(DISTINCT r.review_id) AS review_count,
+      GROUP_CONCAT(DISTINCT ft.tag_name ORDER BY ft.sort_order SEPARATOR '|||') AS tags_csv
+    FROM fields f
+    LEFT JOIN sport_types st ON st.sport_id = f.sport_id
+    LEFT JOIN reviews r ON r.field_id = f.field_id
+    LEFT JOIN field_tags ft ON ft.field_id = f.field_id
+    WHERE ${whereClauses.join(' AND ')}
+    GROUP BY
+      f.field_id, f.field_name, f.location, f.status, f.latitude, f.longitude,
+      f.open_time, f.close_time, f.slot_price, f.avatar_image_url, f.card_image_url,
+      f.sport_id, f.display_rating, f.featured, f.availability_note, f.card_type,
+      f.region, f.province, f.district, st.sport_name
+    ${havingClauses.length > 0 ? `HAVING ${havingClauses.join(' AND ')}` : ''}
+    ORDER BY ${orderBy}
+    LIMIT ? OFFSET ?
+    `,
+    { replacements: [...distanceReplacements, ...replacements, ...havingReplacements, safeLimit, offset] },
+  );
+
+  return { rows };
+};
 
 // GET /api/user/fields
 export const listFields = async (req, res) => {
   try {
-    const { q, location, category, limit = 50, page = 1 } = req.query;
-    const offset = (page - 1) * limit;
-
-    const where = { status: 'active' };
-    
-    // Handle search query - support both 'q' and 'location' parameters
-    const searchTerm = (q || location || '').trim();
-    
-    if (searchTerm) {
-      // Case-insensitive search using LOWER() function
-      // This handles Vietnamese characters with diacritics correctly
-      where[Op.or] = [
-        sequelize.where(
-          sequelize.fn('LOWER', sequelize.col('field_name')),
-          'LIKE',
-          `%${searchTerm.toLowerCase()}%`
-        ),
-        sequelize.where(
-          sequelize.fn('LOWER', sequelize.col('location')),
-          'LIKE',
-          `%${searchTerm.toLowerCase()}%`
-        )
-      ];
+    const result = await queryFieldList(req.query);
+    if (result.error) {
+      return res.status(result.error.status).json({ message: result.error.message });
     }
-
-    const fields = await Field.findAll({
-      where,
-      order: [['field_id', 'ASC']],
-      limit: Number.parseInt(limit, 10),
-      offset: Number.parseInt(offset, 10)
-    });
-
-    const data = fields.map(f => ({
-      field_id: f.field_id,
-      field_name: f.field_name,
-      location: f.location || 'Chua c?p nh?t',
-      status: f.status,
-      slot_price: f.slot_price,
-      image: '/images/fields/placeholder.svg',
-      price: f.slot_price || 'Liên h?',
-      pricePerHour: f.slot_price,
-      rating: (Math.random() * 1.5 + 3.5).toFixed(1),
-      reviews: Math.floor(Math.random() * 200 + 10),
-      type: 'Sân 7 ngu?i',
-      facilities: ['Bãi d? xe', 'Ðèn chi?u sáng', 'Phòng thay d?'],
-      openTime: '5h - 23h',
-      distance: '2.5km',
-      isOpen: true
-    }));
-
-    res.json(data);
+    return res.json(result.rows.map(mapFieldRowToListPayload));
   } catch (error) {
     console.error('List fields error:', error);
-    res.status(500).json({ message: 'Server error when fetching fields' });
+    return res.status(500).json({ message: 'Server error when fetching fields' });
+  }
+};
+
+// GET /api/user/fields/nearby
+export const listNearbyFields = async (req, res) => {
+  try {
+    const result = await queryFieldList(req.query, {
+      requireUserPoint: true,
+      excludeNoCoordinate: true,
+    });
+
+    if (result.error) {
+      return res.status(result.error.status).json({ message: result.error.message });
+    }
+    return res.json(result.rows.map(mapFieldRowToListPayload));
+  } catch (error) {
+    console.error('List nearby fields error:', error);
+    return res.status(500).json({ message: 'Server error when fetching nearby fields' });
+  }
+};
+
+// GET /api/fields/search
+export const searchFields = async (req, res) => {
+  try {
+    const result = await queryFieldList(req.query);
+    if (result.error) {
+      return res.status(result.error.status).json({ message: result.error.message });
+    }
+    return res.json(result.rows.map(mapFieldRowToListPayload));
+  } catch (error) {
+    console.error('Search fields error:', error);
+    return res.status(500).json({ message: 'Server error when searching fields' });
   }
 };
 
@@ -69,60 +340,141 @@ export const listFields = async (req, res) => {
 export const getField = async (req, res) => {
   try {
     const { id } = req.params;
-    const { date } = req.query; // Optional date parameter
-    
-    const f = await Field.findOne({ where: { field_id: id } });
-    if (!f) return res.status(404).json({ message: 'Field not found' });
+    const { date, lat, lng, user_lat, user_lng } = req.query;
+    const userLat = parseCoordinate(lat ?? user_lat);
+    const userLng = parseCoordinate(lng ?? user_lng);
+    const hasUserPoint = userLat !== null && userLng !== null;
+    const distanceSql = hasUserPoint
+      ? `(${EARTH_RADIUS_KM} * ACOS(LEAST(1, GREATEST(-1,
+          COS(RADIANS(?)) * COS(RADIANS(f.latitude)) * COS(RADIANS(f.longitude) - RADIANS(?)) +
+          SIN(RADIANS(?)) * SIN(RADIANS(f.latitude))
+      ))))`
+      : 'NULL';
+    const distanceReplacements = hasUserPoint ? [userLat, userLng, userLat] : [];
 
-    // Get slots for next 7 days or specific date
+    const [[fieldRow]] = await sequelize.query(
+      `
+      SELECT
+        f.field_id,
+        f.manager_id,
+        f.field_name,
+        f.location,
+        f.status,
+        f.latitude,
+        f.longitude,
+        f.phone,
+        f.open_time,
+        f.close_time,
+        f.slot_minutes,
+        f.slot_price,
+        f.avatar_image_url,
+        f.card_image_url,
+        f.sport_id,
+        f.display_rating,
+        f.featured,
+        f.availability_note,
+        f.card_type,
+        f.region,
+        f.province,
+        f.district,
+        ${distanceSql} AS distance_km,
+        st.sport_name,
+        COALESCE(f.display_rating, AVG(r.rating), 0) AS rating_value,
+        COUNT(DISTINCT r.review_id) AS review_count
+      FROM fields f
+      LEFT JOIN sport_types st ON st.sport_id = f.sport_id
+      LEFT JOIN reviews r ON r.field_id = f.field_id
+      WHERE f.field_id = ?
+      GROUP BY
+        f.field_id, f.manager_id, f.field_name, f.location, f.status, f.latitude, f.longitude,
+        f.phone, f.open_time, f.close_time, f.slot_minutes, f.slot_price, f.avatar_image_url,
+        f.card_image_url, f.sport_id, f.display_rating, f.featured, f.availability_note,
+        f.card_type, f.region, f.province, f.district, st.sport_name
+      LIMIT 1
+      `,
+      { replacements: [...distanceReplacements, id] },
+    );
+
+    if (!fieldRow) {
+      return res.status(404).json({ message: 'Field not found' });
+    }
+
+    const [images] = await sequelize.query(
+      'SELECT image_id, image_url, is_primary FROM field_images WHERE field_id = ? ORDER BY is_primary DESC, image_id ASC',
+      { replacements: [id] },
+    );
+    const [services] = await sequelize.query(
+      'SELECT id, service_name, description, is_free, price FROM field_services WHERE field_id = ? ORDER BY id ASC',
+      { replacements: [id] },
+    );
+    const [policies] = await sequelize.query(
+      'SELECT id, title, content, policy_type FROM field_policies WHERE field_id = ? ORDER BY id ASC',
+      { replacements: [id] },
+    );
+    const [tagRows] = await sequelize.query(
+      'SELECT tag_name FROM field_tags WHERE field_id = ? ORDER BY sort_order ASC, tag_name ASC',
+      { replacements: [id] },
+    );
+    const [[reviewStats]] = await sequelize.query(
+      `SELECT
+        COALESCE(AVG(rating), 0) AS avg_rating,
+        COUNT(*) AS total_reviews
+      FROM reviews
+      WHERE field_id = ?`,
+      { replacements: [id] },
+    );
+
     let allSlots = [];
     const now = new Date();
-    
+
     if (date) {
-      // Get slots for specific date
       const slots = await getAvailableSlots(id, date);
-      allSlots = slots.map(slot => ({
+      allSlots = slots.map((slot) => ({
         start_time: slot.start_time.toISOString(),
         end_time: slot.end_time.toISOString(),
         available: slot.available,
         shift_label: slot.shift_label,
-        booking_status: slot.booking_status
+        booking_status: slot.booking_status,
       }));
     } else {
-      // Get slots for next 7 days in a single batched query
       const dates = [];
       for (let d = 0; d < 7; d++) {
         const day = new Date(now);
         day.setDate(now.getDate() + d);
         dates.push(day);
       }
-      
+
       const slotsByDate = await getAvailableSlots(id, dates);
-      
-      // Flatten the grouped results
-      Object.values(slotsByDate).forEach(slots => {
-        const daySlots = slots.map(slot => ({
+      Object.values(slotsByDate).forEach((slots) => {
+        const daySlots = slots.map((slot) => ({
           start_time: slot.start_time.toISOString(),
           end_time: slot.end_time.toISOString(),
           available: slot.available,
           shift_label: slot.shift_label,
-          booking_status: slot.booking_status
+          booking_status: slot.booking_status,
         }));
         allSlots = allSlots.concat(daySlots);
       });
     }
 
+    const mapped = mapFieldRowToListPayload({
+      ...fieldRow,
+      tags_csv: tagRows.map((item) => item.tag_name).join('|||'),
+    });
+
     const data = {
-      field_id: f.field_id,
-      field_name: f.field_name,
-      location: f.location,
-      status: f.status,
-      slot_price: f.slot_price,
-      manager_id: f.manager_id,
-      image: '/images/fields/placeholder.svg',
-      price: f.slot_price || 'Liên h?',
-      facilities: ['Bãi d? xe', 'Ðèn chi?u sáng'],
-      slots: allSlots
+      ...mapped,
+      manager_id: fieldRow.manager_id,
+      phone: fieldRow.phone,
+      slot_minutes: fieldRow.slot_minutes,
+      images,
+      services,
+      policies,
+      slots: allSlots,
+      review_stats: {
+        avg_rating: Number(reviewStats?.avg_rating || mapped.rating || 0),
+        total_reviews: Number(reviewStats?.total_reviews || mapped.reviews || 0),
+      },
     };
 
     res.json(data);
@@ -132,13 +484,96 @@ export const getField = async (req, res) => {
   }
 };
 
+// GET /api/user/fields/:id/grid - Get booking grid data for a field and date
+export const getFieldGrid = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { date } = req.query;
+
+    if (!id || !date) {
+      return res.status(400).json({ message: 'Field ID and Date are required' });
+    }
+
+    const [[fieldRow]] = await sequelize.query(
+      `SELECT field_id, open_time, close_time, slot_minutes, slot_price 
+       FROM fields WHERE field_id = ? LIMIT 1`,
+      { replacements: [id] }
+    );
+
+    if (!fieldRow) {
+      return res.status(404).json({ message: 'Field not found' });
+    }
+
+    const [courts] = await sequelize.query(
+      `SELECT court_id, court_name 
+       FROM field_courts WHERE field_id = ? ORDER BY sort_order ASC`,
+      { replacements: [id] }
+    );
+
+    const formatTime = (timeStr) => timeStr ? String(timeStr).substring(0, 5) : "";
+    const openTime = formatTime(fieldRow.open_time) || "06:00";
+    const closeTime = formatTime(fieldRow.close_time) || "22:00";
+    const slotMinutes = fieldRow.slot_minutes || 60;
+    const price = Number(fieldRow.slot_price) || 0;
+
+    // Fetch booked slots for the date
+    const [bookings] = await sequelize.query(
+      `SELECT court_id, start_time, end_time 
+       FROM bookings 
+       WHERE field_id = ? AND DATE(start_time) = ? AND status IN ('pending', 'confirmed')`,
+      { replacements: [id, date] }
+    );
+
+    const bookedSlots = bookings.filter(b => b.court_id).map(b => {
+      const formatDateTimeTime = (dateObj) => {
+        const d = new Date(dateObj);
+        return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'UTC' });
+      };
+      
+      // Need local time of the server, actually time is usually stored in DB in UTC or local. 
+      // Using string slice to get HH:mm from ISO string or Date object
+      const startStr = new Date(b.start_time).toISOString().substring(11, 16);
+      const endStr = new Date(b.end_time).toISOString().substring(11, 16);
+      
+      return {
+        courtId: String(b.court_id),
+        startTime: startStr,
+        endTime: endStr
+      };
+    });
+
+    const responseData = {
+      selectedDate: date,
+      grid: {
+        openTime: openTime,
+        closeTime: closeTime,
+        gridStepMinutes: slotMinutes,
+        minBookingMinutes: slotMinutes,
+        courts: courts.map(c => ({
+          id: String(c.court_id),
+          name: c.court_name
+        })),
+        bookedSlots: bookedSlots,
+        blockedSlots: [] // Can be filled if we have schedule blocks per court
+      },
+      pricePerHour: price,
+      estimatedPrice: price > 0 ? `${price.toLocaleString('vi-VN')}Ä‘` : "LiÃªn há»‡"
+    };
+
+    res.json(responseData);
+  } catch (err) {
+    console.error('getFieldGrid error', err);
+    res.status(500).json({ message: 'Server error when fetching field grid' });
+  }
+};
+
 // POST /api/user/bookings
 export const createBooking = async (req, res) => {
   try {
     // Get customer_id from authenticated user (JWT payload has 'id' field)
     const customer_id = req.user?.id;
     const { field_id, start_time, end_time, price, note, customer_name, customer_phone } = req.body;
-    
+
     if (!customer_id) {
       return res.status(400).json({ message: 'Missing customer_id' });
     }
@@ -156,9 +591,9 @@ export const createBooking = async (req, res) => {
     // Combine customer info with note
     let finalNote = '';
     if (customer_name || customer_phone) {
-      finalNote += `Tên: ${customer_name || 'N/A'}, SÐT: ${customer_phone || 'N/A'}`;
+      finalNote += `Ten: ${customer_name || 'N/A'}, SDT: ${customer_phone || 'N/A'}`;
       if (note) {
-        finalNote += ` - Ghi chú: ${note}`;
+        finalNote += ` - Ghi chu: ${note}`;
       }
     } else {
       finalNote = note || '';
@@ -184,9 +619,9 @@ export const createBooking = async (req, res) => {
       'SELECT person_id FROM person WHERE person_id = ? LIMIT 1',
       { replacements: [customer_id] }
     );
-    
+
     if (!customerCheck || customerCheck.length === 0) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         message: 'Customer ID does not exist. Please create a user account first.',
         error: 'INVALID_CUSTOMER_ID'
       });
@@ -196,9 +631,9 @@ export const createBooking = async (req, res) => {
       'SELECT field_id FROM fields WHERE field_id = ? LIMIT 1',
       { replacements: [field_id] }
     );
-    
+
     if (!fieldCheck || fieldCheck.length === 0) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         message: 'Field ID does not exist',
         error: 'INVALID_FIELD_ID'
       });
@@ -279,7 +714,7 @@ export const createBooking = async (req, res) => {
   } catch (err) {
     if (err?.code === 'SLOT_NOT_AVAILABLE') {
       return res.status(409).json({
-        message: 'Khung gi? này không kh? d?ng',
+        message: 'Khung gio nay khong kha dung',
         error: 'SLOT_NOT_AVAILABLE'
       });
     }
@@ -293,8 +728,8 @@ export const createBooking = async (req, res) => {
     console.error('createBooking error:', err);
     console.error('Error stack:', err.stack);
     console.error('SQL Error:', err.original?.sqlMessage);
-    res.status(500).json({ 
-      message: 'Server error when creating booking', 
+    res.status(500).json({
+      message: 'Server error when creating booking',
       error: err.message,
       sqlError: err.original?.sqlMessage || err.original?.message,
       details: err.toString()
@@ -307,11 +742,11 @@ export const getFieldBookings = async (req, res) => {
   try {
     const { id } = req.params;
     const { date } = req.query;
-    
+
     if (!id) {
       return res.status(400).json({ message: 'Field ID is required' });
     }
-    
+
     if (!date) {
       return res.status(400).json({ message: 'Date is required' });
     }
@@ -320,7 +755,7 @@ export const getFieldBookings = async (req, res) => {
 
     // Query bookings for the specific field and date
     const [rows] = await sequelize.query(
-      `SELECT 
+      `SELECT
         booking_id, customer_id, field_id, start_time, end_time, status, price, note, pending_expires_at
       FROM bookings
       WHERE field_id = ?
@@ -347,13 +782,13 @@ export const getFieldBookings = async (req, res) => {
 export const getBookingHistory = async (req, res) => {
   try {
     const { customer_id } = req.query;
-    
+
     if (!customer_id) {
       return res.status(400).json({ message: 'Customer ID is required' });
     }
 
     const [rows] = await sequelize.query(
-      `SELECT 
+      `SELECT
         b.booking_id, b.customer_id, b.field_id, b.start_time, b.end_time,
         b.price, b.status, b.note,
         f.field_name, f.location
@@ -375,11 +810,11 @@ export const getBookingHistory = async (req, res) => {
 export const getBooking = async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     // Join bookings with fields table to get field info
     const [rows] = await sequelize.query(
-      `SELECT 
-        b.booking_id, b.customer_id, b.field_id, b.start_time, b.end_time, 
+      `SELECT
+        b.booking_id, b.customer_id, b.field_id, b.start_time, b.end_time,
         b.price, b.status, b.note,
         f.field_name, f.location
       FROM bookings b
@@ -415,7 +850,7 @@ export const updateBooking = async (req, res) => {
       updates.push("note = CONCAT(COALESCE(note, ''), ' | Payment: ', ?)");
       replacements.push(payment_method);
     }
-    
+
     if (status) {
       updates.push('status = ?');
       replacements.push(status);
@@ -448,7 +883,7 @@ export const updateBooking = async (req, res) => {
 export const listBookings = async (req, res) => {
   try {
     const [rows] = await sequelize.query(
-      `SELECT 
+      `SELECT
         b.booking_id, b.customer_id, b.field_id, b.start_time, b.end_time,
         b.price, b.status, b.note,
         f.field_name, f.location,
@@ -494,7 +929,7 @@ export const rejectBooking = async (req, res) => {
     const { id } = req.params;
     const { reason } = req.body;
 
-    const noteUpdate = reason ? ` | Lý do t? ch?i: ${reason}` : '';
+    const noteUpdate = reason ? ` | Ly do tu choi: ${reason}` : '';
 
     await sequelize.query(
       `UPDATE bookings SET status = 'rejected', note = CONCAT(COALESCE(note, ''), ?) WHERE booking_id = ?`,
