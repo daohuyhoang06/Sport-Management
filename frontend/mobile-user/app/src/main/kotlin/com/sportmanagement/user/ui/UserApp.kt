@@ -52,7 +52,7 @@ fun UserApp(
         showAuthScreen -> Color.Transparent
         showHomeSearchFilterScreen -> Color.Transparent
         showBookingScreen || showBookingPaymentScreen || showBookingConfirmationScreen -> Color.Transparent
-        uiState.selectedTab == UserTab.Home -> Color.Transparent
+        uiState.selectedTab == UserTab.Home || uiState.selectedTab == UserTab.Profile -> Color.Transparent
         else -> MaterialTheme.colorScheme.surface
     }
     val useDarkStatusBarIcons = !showAuthScreen &&
@@ -60,7 +60,8 @@ fun UserApp(
         !showBookingScreen &&
         !showBookingConfirmationScreen &&
         !showBookingPaymentScreen &&
-        uiState.selectedTab != UserTab.Home
+        uiState.selectedTab != UserTab.Home &&
+        uiState.selectedTab != UserTab.Profile
     val shouldShowBottomBar = !showBookingScreen &&
         !showBookingConfirmationScreen &&
         !showBookingPaymentScreen &&

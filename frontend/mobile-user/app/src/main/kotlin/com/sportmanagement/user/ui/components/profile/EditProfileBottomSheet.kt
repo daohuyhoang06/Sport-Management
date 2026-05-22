@@ -17,7 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
@@ -37,9 +37,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.SheetState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -60,7 +59,6 @@ import com.sportmanagement.user.domain.model.UserProfile
 import com.sportmanagement.user.ui.theme.AppCardCornerRadius
 import com.sportmanagement.user.ui.theme.AppCtaCornerRadius
 import com.sportmanagement.user.ui.theme.AppCtaWideHeight
-import com.sportmanagement.user.ui.theme.AppInputCornerRadius
 import com.sportmanagement.user.ui.theme.AppSheetTopCornerRadius
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -123,7 +121,7 @@ fun EditProfileBottomSheet(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 6.dp)
+                .padding(horizontal = 20.dp, vertical = 6.dp)
         ) {
             Row(
                 modifier = Modifier
@@ -360,34 +358,50 @@ private fun CustomTextField(
         fieldBackground
     }
 
-    Column(modifier = modifier.padding(bottom = 10.dp)) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(bottom = 12.dp)
+    ) {
         Text(
             text = label,
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(bottom = 4.dp)
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.SemiBold
         )
 
-        val fieldModifier = if (onClick != null) {
-            Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onClick)
+        Spacer(modifier = Modifier.height(8.dp))
+
+        val borderColor = if (isError) {
+            MaterialTheme.colorScheme.error
         } else {
-            Modifier.fillMaxWidth()
+            MaterialTheme.colorScheme.outlineVariant
         }
 
-        OutlinedTextField(
-            value = value,
-            onValueChange = onValueChange,
-            modifier = fieldModifier.height(54.dp),
-            readOnly = readOnly,
-            singleLine = true,
-            shape = RoundedCornerShape(AppInputCornerRadius),
-            textStyle = MaterialTheme.typography.bodyMedium.copy(
-                color = MaterialTheme.colorScheme.onSurface
-            ),
-            leadingIcon = {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(AppCtaWideHeight)
+                .let {
+                    if (onClick != null) {
+                        it.clickable(onClick = onClick)
+                    } else {
+                        it
+                    }
+                },
+            shape = RoundedCornerShape(AppCtaCornerRadius),
+            color = resolvedFieldBackground,
+            border = androidx.compose.foundation.BorderStroke(
+                width = 1.dp,
+                color = borderColor
+            )
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Icon(
                     imageVector = leadingIcon,
                     contentDescription = null,
@@ -398,9 +412,32 @@ private fun CustomTextField(
                     },
                     modifier = Modifier.size(18.dp)
                 )
-            },
-            trailingIcon = {
+                Spacer(modifier = Modifier.width(8.dp))
+
+                Box(modifier = Modifier.weight(1f)) {
+                    if (value.isBlank()) {
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    BasicTextField(
+                        value = value,
+                        onValueChange = onValueChange,
+                        readOnly = readOnly,
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
+                        textStyle = MaterialTheme.typography.bodyMedium.copy(
+                            color = MaterialTheme.colorScheme.onSurface
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+
                 if (trailingIcon != null) {
+                    Spacer(modifier = Modifier.width(8.dp))
                     Icon(
                         imageVector = trailingIcon,
                         contentDescription = null,
@@ -408,49 +445,15 @@ private fun CustomTextField(
                         modifier = Modifier.size(18.dp)
                     )
                 }
-            },
-            keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
-            keyboardActions = KeyboardActions.Default,
-            isError = isError,
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = resolvedFieldBackground,
-                unfocusedContainerColor = resolvedFieldBackground,
-                disabledContainerColor = resolvedFieldBackground,
-                focusedBorderColor = if (isError) {
-                    MaterialTheme.colorScheme.error
-                } else {
-                    MaterialTheme.colorScheme.primary
-                },
-                unfocusedBorderColor = if (isError) {
-                    MaterialTheme.colorScheme.error
-                } else {
-                    MaterialTheme.colorScheme.outlineVariant
-                },
-                errorBorderColor = MaterialTheme.colorScheme.error,
-                focusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                unfocusedLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                focusedLeadingIconColor = if (isError) {
-                    MaterialTheme.colorScheme.error
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                },
-                unfocusedLeadingIconColor = if (isError) {
-                    MaterialTheme.colorScheme.error
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                },
-                cursorColor = MaterialTheme.colorScheme.primary,
-                errorCursorColor = MaterialTheme.colorScheme.error
-            )
-        )
+            }
+        }
 
         if (isError && !errorText.isNullOrBlank()) {
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = errorText,
                 color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.labelSmall,
-                modifier = Modifier.padding(start = 4.dp)
+                style = MaterialTheme.typography.bodySmall
             )
         }
     }

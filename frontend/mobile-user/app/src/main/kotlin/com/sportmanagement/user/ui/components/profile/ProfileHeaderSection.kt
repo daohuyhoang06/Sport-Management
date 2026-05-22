@@ -1,10 +1,6 @@
-package com.sportmanagement.user.ui.components.profile
+﻿package com.sportmanagement.user.ui.components.profile
 
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,20 +11,17 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Phone
 import androidx.compose.material.icons.outlined.Star
+import androidx.compose.material.icons.outlined.WorkspacePremium
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -38,6 +31,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -45,10 +39,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.sportmanagement.user.R
 import com.sportmanagement.user.domain.model.UserProfile
-import com.sportmanagement.user.ui.theme.AppAccentCitrus
 import com.sportmanagement.user.ui.theme.AppCardCornerRadius
-import com.sportmanagement.user.ui.theme.AppPillCornerRadius
+import com.sportmanagement.user.ui.theme.AppCtaCornerRadius
 import com.sportmanagement.user.ui.theme.AppCtaWideHeight
+import com.sportmanagement.user.ui.theme.AppHomeVenueCornerRadius
 
 @Composable
 fun ProfileHeaderSection(
@@ -59,288 +53,41 @@ fun ProfileHeaderSection(
     onRegisterClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-
-    // =========================
-    // MAIN CONTAINER
-    // =========================
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(420.dp)
+            .height(if (isLoggedIn) 392.dp else 420.dp)
     ) {
-
-        // =========================================================
-        // BANNER IMAGE
-        // =========================================================
-        // Đây là ảnh nền phía trên cùng
-        // Chứa background runner giống design
-        // =========================================================
-        Image(
+        androidx.compose.foundation.Image(
             painter = painterResource(id = R.drawable.banner_app),
             contentDescription = null,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(210.dp),
-            contentScale = ContentScale.FillBounds
+                .height(156.dp),
+            contentScale = ContentScale.Crop
         )
 
-        // =========================================================
-        // TITLE + NOTIFICATION
-        // =========================================================
-        // Phần tiêu đề "Tài khoản"
-        // và icon chuông thông báo
-        // =========================================================
-        Row(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .statusBarsPadding()
-                .padding(horizontal = 20.dp, vertical = 18.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+                .height(156.dp)
+                .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.18f))
+        )
 
-            // =========================
-            // TITLE
-            // =========================
-            Text(
-                text = "Tài khoản",
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onPrimary
-            )
-
-            // =========================
-            // NOTIFICATION ICON
-            // =========================
-            Icon(
-                imageVector = Icons.Default.Notifications,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onPrimary,
-                modifier = Modifier.size(24.dp)
-            )
-        }
-
-        // =========================================================
-        // PROFILE CARD
-        // =========================================================
-        // Card trắng chứa:
-        // - Avatar
-        // - Tên user
-        // - Membership
-        // - Email
-        // - Phone
-        // - Button chỉnh sửa
-        // =========================================================
         Card(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
-                .offset(y = 110.dp),
-            shape = RoundedCornerShape(AppCardCornerRadius),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                .offset(y = 96.dp),
+            shape = RoundedCornerShape(AppHomeVenueCornerRadius),
+            colors = CardDefaults.cardColors(
+                containerColor = Color(0xFFF1F4FC)
+            ),
             elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
         ) {
-
-            Column(
-                modifier = Modifier.padding(16.dp)
-            ) {
+            Column(modifier = Modifier.padding(20.dp)) {
                 if (isLoggedIn) {
-
-                    // =================================================
-                    // TOP PROFILE INFO
-                    // =================================================
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.Top
-                    ) {
-
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-
-                            // =========================================
-                            // AVATAR
-                            // =========================================
-                            Box(
-                                modifier = Modifier
-                                    .size(72.dp)
-                                    .background(MaterialTheme.colorScheme.primary, CircleShape),
-                                contentAlignment = Alignment.Center
-                            ) {
-
-                                Icon(
-                                    imageVector = Icons.Outlined.Person,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onPrimary,
-                                    modifier = Modifier.size(40.dp)
-                                )
-
-                                // =====================================
-                                // CAMERA ICON
-                                // =====================================
-                                Box(
-                                    modifier = Modifier
-                                        .align(Alignment.BottomEnd)
-                                        .size(22.dp)
-                                        .background(MaterialTheme.colorScheme.surface, CircleShape)
-                                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape),
-                                    contentAlignment = Alignment.Center
-                                ) {
-
-                                    Icon(
-                                        imageVector = Icons.Outlined.CameraAlt,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.size(13.dp)
-                                    )
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.width(12.dp))
-
-                            // =========================================
-                            // USER NAME + MEMBERSHIP
-                            // =========================================
-                            Column {
-
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-
-                                    Text(
-                                        text = profile.name.ifBlank { "Nguyễn Văn An" },
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold
-                                    )
-
-                                    Spacer(modifier = Modifier.width(8.dp))
-
-                                }
-                            }
-                        }
-
-                        // =============================================
-                        // EDIT BUTTON
-                        // =============================================
-                        Surface(
-                            modifier = Modifier
-                                .wrapContentWidth()
-                                .height(AppCtaWideHeight)
-                                .clickable(onClick = onEditClick),
-                            shape = RoundedCornerShape(AppPillCornerRadius),
-                            color = MaterialTheme.colorScheme.surface,
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
-                            shadowElevation = 2.dp
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 16.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center
-                            ) {
-
-                                // Edit icon
-                                Icon(
-                                    imageVector = Icons.Filled.Edit,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(16.dp)
-                                )
-
-                                Spacer(modifier = Modifier.width(6.dp))
-
-                                // Button text
-                                Text(
-                                    text = "Chỉnh sửa",
-                                    style = MaterialTheme.typography.labelLarge,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    fontWeight = FontWeight.SemiBold,
-                                    maxLines = 1
-                                )
-                            }
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(18.dp))
-
-                    // =================================================
-                    // EMAIL
-                    // =================================================
-                    ProfileInfoRow(
-                        icon = Icons.Outlined.Email,
-                        text = profile.email.ifBlank { "user1@gmail.com" }
-                    )
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    // =================================================
-                    // PHONE
-                    // =================================================
-                    ProfileInfoRow(
-                        icon = Icons.Outlined.Phone,
-                        text = profile.phone.ifBlank { "0907890123" }
-                    )
-
-                    Spacer(modifier = Modifier.height(10.dp))
-
-                    // =================================================
-                    // MEMBERSHIP INFO
-                    // =================================================
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-
-                        Icon(
-                            imageVector = Icons.Outlined.Star,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(16.dp)
-                        )
-
-                        Spacer(modifier = Modifier.width(10.dp))
-
-                        Text(
-                            text = "Hạng thành viên: ",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-
-                        Text(
-                            text = profile.membership.ifBlank { "Vàng" },
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.primary,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(20.dp))
-
-                    // =================================================
-                    // STATS CARD SECTION
-                    // =================================================
-                    // Bao gồm:
-                    // - Lần đặt
-                    // - Điểm uy tín
-                    // =================================================
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-
-                        StatsItem(
-                            modifier = Modifier.weight(1f),
-                            value = profile.bookingCount.ifBlank { "12" },
-                            label = "Lần đặt",
-                            icon = Icons.Outlined.CalendarMonth
-                        )
-
-                        StatsItem(
-                            modifier = Modifier.weight(1f),
-                            value = profile.rating.ifBlank { "4.8" },
-                            label = "Điểm uy tín",
-                            icon = Icons.Outlined.Star
-                        )
-                    }
+                    LoggedInProfileContent(profile = profile, onEditClick = onEditClick)
                 } else {
                     ProfileGuestSection(
                         onLoginClick = onLoginClick,
@@ -352,94 +99,185 @@ fun ProfileHeaderSection(
     }
 }
 
-// =====================================================
-// PROFILE INFO ROW
-// =====================================================
-// Dùng cho:
-// - email
-// - phone
-// =====================================================
+@Composable
+private fun LoggedInProfileContent(
+    profile: UserProfile,
+    onEditClick: () -> Unit
+) {
+    Box(modifier = Modifier.fillMaxWidth()) {
+        Surface(
+            onClick = onEditClick,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .size(32.dp),
+            shape = RoundedCornerShape(8.dp),
+            color = Color.Transparent,
+            border = null
+        ) {
+            Icon(
+                painter = painterResource(id = R.drawable.icon_edit_30),
+                contentDescription = "Chỉnh sửa",
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier
+                    .size(24.dp)
+                    .padding(4.dp)
+            )
+        }
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(end = 46.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(72.dp)
+                    .background(MaterialTheme.colorScheme.primary, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Person,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column {
+                Text(
+                    text = profile.name.ifBlank { "Nguyễn Văn An" },
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                MembershipVipBadge()
+            }
+        }
+    }
+
+    Spacer(modifier = Modifier.height(18.dp))
+
+    ProfileInfoRow(
+        icon = Icons.Outlined.Email,
+        text = profile.email.ifBlank { "user1@gmail.com" }
+    )
+    Spacer(modifier = Modifier.height(10.dp))
+    ProfileInfoRow(
+        icon = Icons.Outlined.Phone,
+        text = profile.phone.ifBlank { "0907890123" }
+    )
+
+    Spacer(modifier = Modifier.height(18.dp))
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        StatCard(
+            modifier = Modifier.weight(1f),
+            icon = Icons.Outlined.CalendarMonth,
+            value = profile.bookingCount.ifBlank { "12" },
+            label = "Lần đặt"
+        )
+        StatCard(
+            modifier = Modifier.weight(1f),
+            icon = Icons.Outlined.Star,
+            value = profile.rating.ifBlank { "4.8" },
+            label = "Đánh giá"
+        )
+    }
+}
+
 @Composable
 private fun ProfileInfoRow(
     icon: ImageVector,
     text: String
 ) {
-
-    Row(
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-
+    Row(verticalAlignment = Alignment.CenterVertically) {
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(16.dp)
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(20.dp)
         )
 
         Spacer(modifier = Modifier.width(10.dp))
 
         Text(
             text = text,
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurface
         )
     }
 }
 
-// =====================================================
-// STATS ITEM
-// =====================================================
-// Card vàng cho:
-// - Lần đặt
-// - Điểm uy tín
-// =====================================================
 @Composable
-private fun StatsItem(
-    modifier: Modifier = Modifier,
+private fun StatCard(
+    modifier: Modifier,
+    icon: ImageVector,
     value: String,
-    label: String,
-    icon: ImageVector
+    label: String
 ) {
-
-    Card(
+    Surface(
         modifier = modifier,
-        shape = RoundedCornerShape(AppCardCornerRadius),
-        colors = CardDefaults.cardColors(
-            containerColor = AppAccentCitrus
-        )
+        shape = RoundedCornerShape(14.dp),
+        color = Color(0xFFF8FAFF),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFDDE3F0))
     ) {
-
-        Column(
-            modifier = Modifier.padding(14.dp)
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 11.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(18.dp)
+            )
+            Column {
                 Text(
                     text = value,
-                    style = MaterialTheme.typography.headlineSmall,
+                    style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
-
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(24.dp)
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+        }
+    }
+}
 
-            Spacer(modifier = Modifier.height(4.dp))
-
+@Composable
+private fun MembershipVipBadge() {
+    Surface(
+        shape = RoundedCornerShape(999.dp),
+        color = Color(0xFFFFF4D6),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2C66D))
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.WorkspacePremium,
+                contentDescription = null,
+                tint = Color(0xFFB88900),
+                modifier = Modifier.size(12.dp)
+            )
             Text(
-                text = label,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface
+                text = "VIP",
+                style = MaterialTheme.typography.labelSmall,
+                color = Color(0xFF9A6B00),
+                fontWeight = FontWeight.Bold
             )
         }
     }
