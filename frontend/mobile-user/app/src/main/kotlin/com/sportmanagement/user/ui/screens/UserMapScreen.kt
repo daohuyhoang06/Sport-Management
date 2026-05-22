@@ -1,4 +1,4 @@
-﻿package com.sportmanagement.user.ui.screens
+package com.sportmanagement.user.ui.screens
 
 import android.Manifest
 import android.content.Intent
@@ -36,6 +36,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -80,6 +83,7 @@ import org.maplibre.android.style.layers.Property
 import org.maplibre.android.style.layers.PropertyFactory
 import android.graphics.Color as AndroidColor
 import java.text.Normalizer
+import kotlinx.coroutines.delay
 
 private val KineticBlue = Color(0xFF1A4B8E)
 private const val MAP_STYLE = "https://tiles.openfreemap.org/styles/bright"
@@ -91,6 +95,17 @@ fun UserMapScreen(
     padding: PaddingValues,
     sportCategories: List<SportCategory>,
     nearby: List<UserField>,
+    searchResults: List<UserField> = emptyList(),
+    recentSearches: List<String> = emptyList(),
+    isSearchLoading: Boolean = false,
+    isSearchLoadingMore: Boolean = false,
+    hasMoreSearchResults: Boolean = false,
+    onSearchOpened: () -> Unit = {},
+    onSearchRequest: (String?, String?, String?) -> Unit = { _, _, _ -> },
+    onClearSearch: () -> Unit = {},
+    onLoadMoreSearchResults: () -> Unit = {},
+    onRememberSearch: (String) -> Unit = {},
+    onCurrentLocationDetected: (Double, Double) -> Unit = { _, _ -> },
     onBookFieldClick: (UserField) -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -102,14 +117,13 @@ fun UserMapScreen(
     var selectedCategoryIndex by remember { mutableIntStateOf(-1) }
     var showHighlights by rememberSaveable { mutableStateOf(false) }
     var searchQuery by rememberSaveable { mutableStateOf("") }
-    var showSuggestions by rememberSaveable { mutableStateOf(true) }
+    var showSearchPopup by rememberSaveable { mutableStateOf(false) }
     var selectedFieldName by rememberSaveable { mutableStateOf<String?>(null) }
     var isLocationPermissionGranted by remember { mutableStateOf(checkLocationPermission(context)) }
     var currentLocation by remember { mutableStateOf<LatLng?>(null) }
     var showFieldList by rememberSaveable { mutableStateOf(false) }
     var selectedFieldForDetail by remember { mutableStateOf<UserField?>(null) }
 
-    val normalizedQuery = remember(searchQuery) { normalizeForSearch(searchQuery) }
     var mapLibreMap by remember { mutableStateOf<MapLibreMap?>(null) }
     val hanoiFields = remember(nearby) {
         nearby.filter {
@@ -125,15 +139,34 @@ fun UserMapScreen(
         if (selectedSportType == null) hanoiFields
         else hanoiFields.filter { it.sportIconType == selectedSportType }
     }
-
-    val matchedField = remember(visibleFields, normalizedQuery) {
-        if (normalizedQuery.isEmpty()) null
-        else visibleFields.find { normalizeForSearch(it.name).contains(normalizedQuery) }
+    val normalizedQuery = remember(searchQuery) { normalizeForSearch(searchQuery) }
+    val localSuggestions = remember(visibleFields, normalizedQuery) {
+        if (normalizedQuery.isBlank()) {
+            emptyList()
+        } else {
+            visibleFields.filter {
+                normalizeForSearch(it.name).contains(normalizedQuery) ||
+                    normalizeForSearch(it.location).contains(normalizedQuery)
+            }.take(8)
+        }
+    }
+    val typedSuggestions = remember(searchQuery, searchResults, localSuggestions) {
+        if (searchQuery.trim().isBlank()) emptyList()
+        else if (searchResults.isNotEmpty()) searchResults.take(8)
+        else localSuggestions
     }
 
-    val suggestions = remember(visibleFields, normalizedQuery) {
-        if (normalizedQuery.isEmpty()) emptyList()
-        else visibleFields.filter { normalizeForSearch(it.name).contains(normalizedQuery) }.take(5)
+    LaunchedEffect(searchQuery) {
+        val cleaned = searchQuery.trim()
+        if (cleaned.isBlank()) {
+            onClearSearch()
+            return@LaunchedEffect
+        }
+
+        delay(300)
+        if (cleaned == searchQuery.trim()) {
+            onSearchRequest(cleaned, null, null)
+        }
     }
 
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -142,7 +175,10 @@ fun UserMapScreen(
         val granted = permissions.values.any { it }
         isLocationPermissionGranted = granted
         if (granted) {
-            requestCurrentLocationPoint(context) { point -> currentLocation = point }
+            requestCurrentLocationPoint(context) { point ->
+                currentLocation = point
+                point?.let { onCurrentLocationDetected(it.latitude, it.longitude) }
+            }
         }
     }
 
@@ -285,48 +321,171 @@ fun UserMapScreen(
                 .padding(start = 16.dp, end = 16.dp, top = topInsetPadding + 12.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shadowElevation = 6.dp,
-                shape = RoundedCornerShape(AppSearchCornerRadius),
-                color = Color.White
-            ) {
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it; showSuggestions = true },
-                    placeholder = { Text(stringResource(R.string.map_search_placeholder_fields)) },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                    trailingIcon = {
-                        if (searchQuery.isNotEmpty()) {
-                            IconButton(onClick = { searchQuery = ""; showSuggestions = false }) {
-                                Icon(Icons.Default.Close, contentDescription = null)
-                            }
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = {
+                    searchQuery = it
+                    showSearchPopup = true
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .onFocusChanged { focusState ->
+                        if (focusState.isFocused) {
+                            showSearchPopup = true
+                            onSearchOpened()
                         }
                     },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(AppSearchCornerRadius),
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                    keyboardActions = KeyboardActions(onSearch = {
-                        matchedField?.let(jumpToField)
-                        focusManager.clearFocus()
-                    })
-                )
-            }
-
-            if (showSuggestions && suggestions.isNotEmpty()) {
-                Card(shape = RoundedCornerShape(AppCardCornerRadius), modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(6.dp)) {
-                        suggestions.forEach { field ->
-                            Text(
-                                text = field.name,
-                                modifier = Modifier.fillMaxWidth().clickable {
-                                    searchQuery = field.name
-                                    showSuggestions = false
-                                    jumpToField(field)
-                                    focusManager.clearFocus()
-                                }.padding(12.dp)
+                singleLine = true,
+                placeholder = { Text(stringResource(R.string.map_search_placeholder_fields)) },
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = null
+                    )
+                },
+                trailingIcon = {
+                    if (searchQuery.isNotBlank()) {
+                        IconButton(
+                            onClick = {
+                                searchQuery = ""
+                                onClearSearch()
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = stringResource(R.string.map_clear_search_content_description)
                             )
+                        }
+                    }
+                },
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.None,
+                    keyboardType = KeyboardType.Text,
+                    imeAction = ImeAction.Search
+                ),
+                keyboardActions = KeyboardActions(
+                    onSearch = {
+                        focusManager.clearFocus()
+                    }
+                ),
+                shape = RoundedCornerShape(AppSearchCornerRadius),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = Color.White,
+                    unfocusedContainerColor = Color.White
+                )
+            )
+
+            if (showSearchPopup) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp),
+                    color = Color.White,
+                    shadowElevation = 8.dp
+                ) {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = 260.dp),
+                        contentPadding = PaddingValues(vertical = 6.dp)
+                    ) {
+                        if (searchQuery.trim().isBlank()) {
+                            items(recentSearches.take(8), key = { "recent_$it" }) { item ->
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable {
+                                            searchQuery = item
+                                            onRememberSearch(item)
+                                            showSearchPopup = true
+                                        }
+                                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.History,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(Modifier.width(10.dp))
+                                    Text(
+                                        text = item,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                }
+                            }
+                            if (recentSearches.isEmpty()) {
+                                item {
+                                    Text(
+                                        text = "Chua co lich su tim kiem",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)
+                                    )
+                                }
+                            }
+                        } else {
+                            if (isSearchLoading && typedSuggestions.isEmpty()) {
+                                item {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 14.dp, vertical = 12.dp),
+                                        horizontalArrangement = Arrangement.Center
+                                    ) {
+                                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                                    }
+                                }
+                            } else if (typedSuggestions.isEmpty()) {
+                                item {
+                                    Text(
+                                        text = stringResource(R.string.map_no_results),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)
+                                    )
+                                }
+                            } else {
+                                items(typedSuggestions, key = { it.fieldId }) { field ->
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable {
+                                                selectedFieldName = field.name
+                                                selectedFieldForDetail = field
+                                                searchQuery = field.name
+                                                showSearchPopup = false
+                                                onRememberSearch(field.name)
+                                                jumpToField(field)
+                                                focusManager.clearFocus()
+                                            }
+                                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.LocationOn,
+                                            contentDescription = null,
+                                            tint = Color(0xFF1A4B8E),
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                        Spacer(Modifier.width(10.dp))
+                                        Column {
+                                            Text(
+                                                text = field.name,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = MaterialTheme.colorScheme.onSurface,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                            Text(
+                                                text = field.location,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -410,6 +569,7 @@ fun UserMapScreen(
                 }
             )
         }
+
     }
 }
 
