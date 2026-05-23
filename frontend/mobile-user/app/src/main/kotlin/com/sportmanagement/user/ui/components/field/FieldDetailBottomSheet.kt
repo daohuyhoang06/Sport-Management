@@ -1,0 +1,911 @@
+﻿package com.sportmanagement.user.ui.components.field
+
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.widget.Toast
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Directions
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
+import androidx.compose.material.icons.filled.Launch
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.SportsSoccer
+import androidx.compose.material.icons.filled.SportsTennis
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.ScrollableTabRow
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRowDefaults
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
+import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
+import androidx.compose.ui.window.Dialog
+import com.sportmanagement.user.R
+import com.sportmanagement.user.domain.model.SportIconType
+import com.sportmanagement.user.domain.model.UserField
+import com.sportmanagement.user.ui.components.SportCircleAvatar
+import com.sportmanagement.user.ui.components.SportMarkerIcon
+import com.sportmanagement.user.ui.theme.AppCtaAmber
+import com.sportmanagement.user.ui.theme.AppBadgeCornerRadius
+import com.sportmanagement.user.ui.theme.AppCardCornerRadius
+import com.sportmanagement.user.ui.theme.AppCtaCompactHorizontalPadding
+import com.sportmanagement.user.ui.theme.AppCtaCompactVerticalPadding
+import com.sportmanagement.user.ui.theme.AppCtaCornerRadius
+import com.sportmanagement.user.ui.theme.AppInputCornerRadius
+import com.sportmanagement.user.ui.theme.AppOnCtaAmber
+import com.sportmanagement.user.ui.theme.AppPillCornerRadius
+import com.sportmanagement.user.ui.theme.AppMediaCornerRadius
+import com.sportmanagement.user.ui.theme.AppSheetTopCornerRadius
+import kotlinx.coroutines.launch
+import java.text.Normalizer
+import java.util.Locale
+
+private val sheetTabRes = listOf(
+    R.string.field_detail_tab_info,
+    R.string.field_detail_tab_services,
+    R.string.field_detail_tab_gallery,
+    R.string.field_detail_tab_policies,
+    R.string.field_detail_tab_reviews
+)
+
+private data class SampleReviewEntry(
+    val author: String,
+    val comment: String,
+    val rating: Int,
+    val imageResIds: List<Int>
+)
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun FieldDetailBottomSheet(
+    field: UserField,
+    onDismissRequest: () -> Unit,
+    onBookClick: (UserField) -> Unit
+) {
+    val context = LocalContext.current
+    val clipboard = LocalClipboardManager.current
+    val density = LocalDensity.current
+    val colors = MaterialTheme.colorScheme
+    val sheetState = rememberModalBottomSheetState()
+    val scope = rememberCoroutineScope()
+    var selectedTab by rememberSaveable(field.name) { mutableIntStateOf(0) }
+    var isFavorite by rememberSaveable(field.name) { mutableStateOf(false) }
+    var previewImage by remember { mutableStateOf<Int?>(null) }
+    var ratingBadgeHeightPx by remember { mutableIntStateOf(0) }
+    val bookingLink = remember(field.name) { bookingLinkFor(field.name) }
+    val hotline = remember(field.name) { context.getString(R.string.field_detail_default_hotline) }
+    val headerImageHeight = 232.dp
+    val infoCardOverlap = 28.dp
+    val ratingBadgeOffsetY = remember(ratingBadgeHeightPx, density) {
+        val badgeHeightDp = with(density) { ratingBadgeHeightPx.toDp() }
+        val cardTopBoundaryY = headerImageHeight - infoCardOverlap
+        cardTopBoundaryY - (badgeHeightDp / 2)
+    }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismissRequest,
+        sheetState = sheetState,
+        dragHandle = null,
+        containerColor = colors.surfaceContainerLow,
+        shape = RoundedCornerShape(topStart = AppSheetTopCornerRadius, topEnd = AppSheetTopCornerRadius)
+    ) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(),
+            contentPadding = PaddingValues(bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            item {
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(headerImageHeight)
+                                .clip(RoundedCornerShape(topStart = AppInputCornerRadius, topEnd = AppInputCornerRadius))
+                        ) {
+                            Image(
+                                painter = painterResource(id = R.drawable.field_football),
+                                contentDescription = field.name,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .background(
+                                        Brush.verticalGradient(
+                                            colors = listOf(
+                                                Color(0x66000000),
+                                                Color(0x22000000),
+                                                Color(0xAA000000)
+                                            )
+                                        )
+                                    )
+                            )
+
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                CircleActionButton(
+                                    icon = Icons.AutoMirrored.Filled.ArrowBack,
+                                    onClick = onDismissRequest
+                                )
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    CircleActionButton(
+                                        icon = Icons.Default.Directions,
+                                        onClick = { openDirections(context, field) }
+                                    )
+                                    CircleActionButton(
+                                        icon = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                                        iconTint = if (isFavorite) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
+                                        onClick = { isFavorite = !isFavorite }
+                                    )
+                                    Button(
+                                        onClick = { onBookClick(field) },
+                                        modifier = Modifier.defaultMinSize(minWidth = 64.dp, minHeight = 30.dp),
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = AppCtaAmber,
+                                            contentColor = AppOnCtaAmber
+                                        ),
+                                        shape = RoundedCornerShape(AppCtaCornerRadius),
+                                        contentPadding = PaddingValues(
+                                            horizontal = (AppCtaCompactHorizontalPadding - 3.dp),
+                                            vertical = (AppCtaCompactVerticalPadding - 1.dp)
+                                        )
+                                    ) {
+                                        Text(
+                                            text = stringResource(R.string.home_book_button),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp)
+                                .offset(y = -infoCardOverlap),
+                            shape = RoundedCornerShape(AppCardCornerRadius),
+                            colors = CardDefaults.cardColors(containerColor = colors.surfaceContainerLowest),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 10.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(start = 14.dp, end = 14.dp, bottom = 14.dp, top = 30.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Row(verticalAlignment = Alignment.Top) {
+                                    SportCircleAvatar(
+                                        iconType = field.sportIconType,
+                                        size = 52.dp,
+                                        iconSize = 26.dp
+                                    )
+                                    Spacer(Modifier.width(10.dp))
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = field.name,
+                                            style = MaterialTheme.typography.titleMedium,
+                                            color = colors.onSurface,
+                                            fontWeight = FontWeight.ExtraBold
+                                        )
+                                        Spacer(Modifier.height(6.dp))
+                                        SportTypeSelectedPill(type = field.sportIconType)
+                                    }
+                                }
+                                HorizontalDivider(
+                                    color = colors.outlineVariant.copy(alpha = 0.65f),
+                                    thickness = 1.dp
+                                )
+
+                                InfoLine(
+                                    icon = Icons.Default.LocationOn,
+                                    title = field.location,
+                                    trailingText = stringResource(R.string.field_detail_open_map),
+                                    onTrailingClick = { openDirections(context, field) }
+                                )
+                                InfoLine(
+                                    icon = Icons.Default.AccessTime,
+                                    title = field.hours
+                                )
+                                InfoLine(
+                                    icon = Icons.Default.Call,
+                                    title = stringResource(R.string.field_detail_hotline_format, hotline),
+                                    trailingText = stringResource(R.string.field_detail_call_quick),
+                                    onTrailingClick = { dialHotline(context, hotline) }
+                                )
+                            }
+                        }
+                    }
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                            .align(Alignment.TopCenter)
+                            .offset(y = ratingBadgeOffsetY)
+                            .zIndex(2f),
+                        contentAlignment = Alignment.TopCenter
+                    ) {
+                        Surface(
+                            modifier = Modifier
+                                .onSizeChanged { size -> ratingBadgeHeightPx = size.height },
+                            shape = RoundedCornerShape(AppPillCornerRadius),
+                            color = colors.primary,
+                            shadowElevation = 8.dp
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Star,
+                                    contentDescription = null,
+                                    tint = Color.White
+                                )
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    text = ratingLabel(context, field.rating),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = colors.onPrimary,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            item {
+                Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                    ScrollableTabRow(
+                        selectedTabIndex = selectedTab,
+                        edgePadding = 0.dp,
+                        containerColor = Color.Transparent,
+                        indicator = { tabPositions ->
+                            TabRowDefaults.SecondaryIndicator(
+                                modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
+                                color = colors.primary,
+                                height = 2.dp
+                            )
+                        },
+                        divider = {}
+                    ) {
+                        sheetTabRes.forEachIndexed { index, labelRes ->
+                            Tab(
+                                selected = selectedTab == index,
+                                onClick = {
+                                    selectedTab = index
+                                    scope.launch { sheetState.expand() }
+                                },
+                                text = {
+                                    Text(
+                                        text = stringResource(labelRes),
+                                        style = MaterialTheme.typography.titleSmall,
+                                        maxLines = 1
+                                    )
+                                },
+                                selectedContentColor = colors.primary,
+                                unselectedContentColor = colors.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+
+            item {
+                Box(
+                    modifier = Modifier
+                        .padding(horizontal = 16.dp)
+                        .heightIn(min = 240.dp)
+                ) {
+                    when (selectedTab) {
+                        0 -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            InfoTabContent(field)
+                            OnlineBookingLinkCard(
+                                bookingLink = bookingLink,
+                                onCopyLink = {
+                                    clipboard.setText(AnnotatedString(bookingLink))
+                                    Toast.makeText(
+                                        context,
+                                        context.getString(R.string.field_detail_link_copied),
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                },
+                                onOpenLink = { openExternalUrl(context, bookingLink) }
+                            )
+                        }
+                        1 -> ServiceTabContent()
+                        2 -> GalleryTabContent(onPreview = { previewImage = it })
+                        3 -> PolicyTabContent()
+                        else -> ReviewTabContent(fieldSportType = field.sportIconType)
+                    }
+                }
+            }
+        }
+
+        previewImage?.let { imageRes ->
+            Dialog(onDismissRequest = { previewImage = null }) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(AppCardCornerRadius))
+                        .background(Color.Black)
+                ) {
+                    Image(
+                        painter = painterResource(id = imageRes),
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxWidth(),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CircleActionButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    onClick: () -> Unit,
+    iconTint: Color = Color.Unspecified
+) {
+    val colors = MaterialTheme.colorScheme
+    Surface(
+        modifier = Modifier
+            .size(30.dp)
+            .clickable(onClick = onClick),
+        shape = CircleShape,
+        color = colors.surface.copy(alpha = 0.92f),
+        shadowElevation = 2.dp
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = if (iconTint == Color.Unspecified) colors.onSurface else iconTint,
+                modifier = Modifier.size(18.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun SportTypeSelectedPill(type: SportIconType) {
+    val accent = sportAccentColor(type)
+    Surface(
+        shape = RoundedCornerShape(AppPillCornerRadius),
+        color = accent.copy(alpha = 0.14f),
+        border = androidx.compose.foundation.BorderStroke(
+            width = 1.8.dp,
+            color = accent.copy(alpha = 0.85f)
+        )
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            SportMarkerIcon(
+                iconType = type,
+                contentDescription = null,
+                markerSize = 18.dp,
+                iconSize = 9.dp,
+                iconOffsetY = (-1).dp
+            )
+            Spacer(Modifier.width(6.dp))
+            Text(
+                text = stringResource(sportLabelRes(type)).lowercase(Locale("vi", "VN")),
+                style = MaterialTheme.typography.bodySmall,
+                color = accent,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+    }
+}
+
+@Composable
+private fun InfoLine(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    trailingText: String? = null,
+    onTrailingClick: (() -> Unit)? = null
+) {
+    val colors = MaterialTheme.colorScheme
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = colors.primary
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = title,
+            style = MaterialTheme.typography.bodyMedium,
+            color = colors.onSurfaceVariant,
+            modifier = Modifier.weight(1f)
+        )
+        if (trailingText != null && onTrailingClick != null) {
+            Text(
+                text = trailingText,
+                style = MaterialTheme.typography.labelLarge,
+                color = colors.primary,
+                modifier = Modifier.clickable(onClick = onTrailingClick)
+            )
+        }
+    }
+}
+
+@Composable
+private fun InfoTabContent(field: UserField) {
+    val colors = MaterialTheme.colorScheme
+    val infoItems = listOf(
+        stringResource(R.string.field_detail_info_sport) to stringResource(sportLabelRes(field.sportIconType)),
+        stringResource(R.string.field_detail_info_surface_type) to stringResource(R.string.field_detail_info_surface_value),
+        stringResource(R.string.field_detail_info_court_count) to stringResource(R.string.field_detail_info_court_count_value),
+        stringResource(R.string.field_detail_info_capacity) to stringResource(R.string.field_detail_info_capacity_value),
+        stringResource(R.string.field_detail_info_amenities) to stringResource(R.string.field_detail_info_amenities_value)
+    )
+    Card(
+        shape = RoundedCornerShape(AppCardCornerRadius),
+        colors = CardDefaults.cardColors(containerColor = colors.surfaceContainerLowest)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            infoItems.forEach { (label, value) ->
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = stringResource(R.string.field_detail_label_with_colon, label),
+                        modifier = Modifier.widthIn(min = 120.dp),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.onSurfaceVariant,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Text(
+                        text = value,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.onSurface
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ServiceTabContent() {
+    val colors = MaterialTheme.colorScheme
+    val services = listOf(
+        stringResource(R.string.field_detail_service_racket_rental) to Icons.Default.SportsTennis,
+        stringResource(R.string.field_detail_service_ball_shuttle_rental) to Icons.Default.SportsSoccer,
+        stringResource(R.string.field_detail_service_drinks) to Icons.Default.Star,
+        stringResource(R.string.field_detail_service_parking) to Icons.Default.Directions,
+        stringResource(R.string.field_detail_service_changing_room) to Icons.Default.Person,
+        stringResource(R.string.field_detail_service_coach) to Icons.Default.Person
+    )
+    Card(
+        shape = RoundedCornerShape(AppCardCornerRadius),
+        colors = CardDefaults.cardColors(containerColor = colors.surfaceContainerLowest)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            services.forEach { (name, icon) ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = colors.primary
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = name,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = colors.onSurface
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun GalleryTabContent(onPreview: (Int) -> Unit) {
+    val gallery = listOf(
+        R.drawable.field_football,
+        R.drawable.field_football,
+        R.drawable.field_football,
+        R.drawable.field_football
+    )
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        items(gallery) { imageRes ->
+            Image(
+                painter = painterResource(id = imageRes),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(width = 200.dp, height = 120.dp)
+                    .clip(RoundedCornerShape(AppMediaCornerRadius))
+                    .clickable { onPreview(imageRes) },
+                contentScale = ContentScale.Crop
+            )
+        }
+    }
+}
+
+@Composable
+private fun PolicyTabContent() {
+    val colors = MaterialTheme.colorScheme
+    val policies = listOf(
+        stringResource(R.string.field_detail_policy_1),
+        stringResource(R.string.field_detail_policy_2),
+        stringResource(R.string.field_detail_policy_3),
+        stringResource(R.string.field_detail_policy_4)
+    )
+    Card(
+        shape = RoundedCornerShape(AppCardCornerRadius),
+        colors = CardDefaults.cardColors(containerColor = colors.surfaceContainerLowest)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            policies.forEach { line ->
+                Text(
+                    text = stringResource(R.string.field_detail_bullet_line, line),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReviewTabContent(
+    fieldSportType: SportIconType
+) {
+    val colors = MaterialTheme.colorScheme
+    val sampleReviews = listOf(
+        SampleReviewEntry(
+            author = stringResource(R.string.field_detail_review_user_1_name),
+            comment = stringResource(R.string.field_detail_review_user_1_comment),
+            rating = 5,
+            imageResIds = listOf(R.drawable.field_football)
+        ),
+        SampleReviewEntry(
+            author = stringResource(R.string.field_detail_review_user_2_name),
+            comment = stringResource(R.string.field_detail_review_user_2_comment),
+            rating = 5,
+            imageResIds = listOf(R.drawable.field_football, R.drawable.field_football)
+        ),
+        SampleReviewEntry(
+            author = stringResource(R.string.field_detail_review_user_3_name),
+            comment = stringResource(R.string.field_detail_review_user_3_comment),
+            rating = 5,
+            imageResIds = listOf(R.drawable.field_football)
+        )
+    )
+    Card(
+        shape = RoundedCornerShape(AppCardCornerRadius),
+        colors = CardDefaults.cardColors(containerColor = colors.surfaceContainerLowest)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            HorizontalDivider(color = colors.outlineVariant.copy(alpha = 0.5f))
+            sampleReviews.forEachIndexed { index, review ->
+                ReviewItemWithDrawableImages(
+                    author = review.author,
+                    comment = review.comment,
+                    rating = review.rating,
+                    imageResIds = review.imageResIds,
+                    avatarSportType = fieldSportType
+                )
+                if (index != sampleReviews.lastIndex) {
+                    HorizontalDivider(color = colors.outlineVariant.copy(alpha = 0.45f))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun OnlineBookingLinkCard(
+    bookingLink: String,
+    onCopyLink: () -> Unit,
+    onOpenLink: () -> Unit
+) {
+    val colors = MaterialTheme.colorScheme
+    Card(
+        shape = RoundedCornerShape(AppCardCornerRadius),
+        colors = CardDefaults.cardColors(containerColor = colors.surfaceContainerLow),
+        border = androidx.compose.foundation.BorderStroke(1.dp, colors.outlineVariant)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Text(
+                text = stringResource(R.string.field_detail_booking_link_title),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = colors.onSurface
+            )
+            Text(
+                text = bookingLink,
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.primary,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                AssistChip(
+                    onClick = onCopyLink,
+                    label = { Text(stringResource(R.string.field_detail_copy_link)) },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Default.ContentCopy,
+                            contentDescription = null,
+                            modifier = Modifier.size(15.dp)
+                        )
+                    }
+                )
+                AssistChip(
+                    onClick = onOpenLink,
+                    label = { Text(stringResource(R.string.field_detail_open_link)) },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Default.Launch,
+                            contentDescription = null,
+                            modifier = Modifier.size(15.dp)
+                        )
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReviewItemWithDrawableImages(
+    author: String,
+    comment: String,
+    rating: Int,
+    imageResIds: List<Int>,
+    avatarSportType: SportIconType
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            SportCircleAvatar(
+                iconType = avatarSportType,
+                size = 36.dp,
+                iconSize = 18.dp
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = author,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                text = stringResource(R.string.field_detail_rating_value, rating),
+                style = MaterialTheme.typography.labelMedium,
+                color = Color(0xFFE59C00),
+                fontWeight = FontWeight.SemiBold
+            )
+            Spacer(Modifier.width(4.dp))
+            StarRating(rating = rating, iconSize = 13.dp)
+        }
+
+        Text(
+            text = comment,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        if (imageResIds.isNotEmpty()) {
+            Row(
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                imageResIds.forEach { imageRes ->
+                    Image(
+                        painter = painterResource(id = imageRes),
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .size(68.dp)
+                            .clip(RoundedCornerShape(AppBadgeCornerRadius))
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StarRating(rating: Int, iconSize: androidx.compose.ui.unit.Dp = 14.dp) {
+    Row(horizontalArrangement = Arrangement.spacedBy(1.dp)) {
+        repeat(5) { index ->
+            Icon(
+                imageVector = Icons.Default.Star,
+                contentDescription = null,
+                tint = if (index < rating) Color(0xFFE59C00) else Color(0xFFCFD3D8),
+                modifier = Modifier.size(iconSize)
+            )
+        }
+    }
+}
+
+private fun sportLabelRes(type: SportIconType): Int {
+    return when (type) {
+        SportIconType.FOOTBALL -> R.string.field_detail_sport_football
+        SportIconType.PICKLEBALL -> R.string.field_detail_sport_pickleball
+        SportIconType.TENNIS -> R.string.field_detail_sport_tennis
+        SportIconType.BADMINTON -> R.string.field_detail_sport_badminton
+        SportIconType.VOLLEYBALL -> R.string.field_detail_sport_volleyball
+    }
+}
+
+private fun sportAccentColor(type: SportIconType): Color {
+    return when (type) {
+        SportIconType.FOOTBALL -> Color(0xFF3B82F6)
+        SportIconType.PICKLEBALL -> Color(0xFF14B8A6)
+        SportIconType.TENNIS -> Color(0xFF0EA5E9)
+        SportIconType.BADMINTON -> Color(0xFFA855F7)
+        SportIconType.VOLLEYBALL -> Color(0xFFF59E0B)
+    }
+}
+
+private fun ratingLabel(context: Context, rating: String): String {
+    return if (rating.isBlank() || rating == "0" || rating == "0.0") {
+        context.getString(R.string.field_detail_rating_unavailable)
+    } else {
+        context.getString(R.string.field_detail_rating_good_format, rating)
+    }
+}
+
+private fun bookingLinkFor(fieldName: String): String {
+    val slug = normalizeSlug(fieldName)
+    return "https://booking.sport-management.vn/san/$slug"
+}
+
+private fun normalizeSlug(value: String): String {
+    val normalized = Normalizer.normalize(value.lowercase(), Normalizer.Form.NFD)
+    return normalized
+        .replace("đ", "d")
+        .replace("\\p{M}+".toRegex(), "")
+        .replace("[^a-z0-9]+".toRegex(), "-")
+        .trim('-')
+}
+
+private fun openDirections(context: Context, field: UserField) {
+    val uri = if (field.latitude != null && field.longitude != null) {
+        Uri.parse("google.navigation:q=${field.latitude},${field.longitude}")
+    } else {
+        Uri.parse("geo:0,0?q=${Uri.encode(field.location)}")
+    }
+    val intent = Intent(Intent.ACTION_VIEW, uri)
+    try {
+        context.startActivity(intent)
+    } catch (_: Exception) {
+        Toast.makeText(context, context.getString(R.string.field_detail_error_open_directions), Toast.LENGTH_SHORT).show()
+    }
+}
+
+private fun dialHotline(context: Context, hotline: String) {
+    val intent = Intent(Intent.ACTION_DIAL, Uri.parse("tel:${hotline.replace(" ", "")}"))
+    try {
+        context.startActivity(intent)
+    } catch (_: Exception) {
+        Toast.makeText(context, context.getString(R.string.field_detail_error_open_call), Toast.LENGTH_SHORT).show()
+    }
+}
+
+private fun openExternalUrl(context: android.content.Context, url: String) {
+    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+    try {
+        context.startActivity(intent)
+    } catch (_: Exception) {
+        Toast.makeText(context, context.getString(R.string.field_detail_error_open_link), Toast.LENGTH_SHORT).show()
+    }
+}
+

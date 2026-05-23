@@ -1,39 +1,45 @@
-﻿package com.sportmanagement.user.domain.model
+package com.sportmanagement.user.domain.model
 
 /**
- * Represents the status of a single time slot on the booking grid.
+ * Represents the visual state of a single grid cell.
  */
 enum class SlotStatus {
-    /** Available for booking */
     AVAILABLE,
-
-    /** Already booked by someone */
     BOOKED,
-
-    /** Locked / unavailable */
     LOCKED,
-
-    /** Reserved for a special event */
     EVENT,
-
-    /** Currently selected by the user */
-    SELECTED
+    SELECTED,
+    DISABLED
 }
 
 /**
- * A single cell in the booking grid: one court × one time-slot.
+ * A sub-court that can be booked independently.
  */
-data class TimeSlot(
-    val timeLabel: String,
-    val status: SlotStatus = SlotStatus.AVAILABLE
+data class BookingSubCourt(
+    val id: String,
+    val name: String
 )
 
 /**
- * One row in the grid – a court with its time-slots for the day.
+ * One booked or selected time range on a sub-court.
  */
-data class CourtRow(
-    val courtName: String,
-    val slots: List<TimeSlot>
+data class BookingTimeRange(
+    val courtId: String,
+    val startTime: String,
+    val endTime: String
+)
+
+/**
+ * Dynamic grid configuration for the booking screen.
+ */
+data class BookingTimeGridData(
+    val openTime: String = "",
+    val closeTime: String = "",
+    val gridStepMinutes: Int = 30,
+    val minBookingMinutes: Int = 60,
+    val courts: List<BookingSubCourt> = emptyList(),
+    val bookedSlots: List<BookingTimeRange> = emptyList(),
+    val blockedSlots: List<BookingTimeRange> = emptyList()
 )
 
 /**
@@ -41,12 +47,7 @@ data class CourtRow(
  */
 data class BookingScheduleData(
     val selectedDate: String,
-    val timeHeaders: List<String>,
-    val courts: List<CourtRow>,
-    val selectedCourtName: String = "",
-    val selectedStartTime: String = "",
-    val selectedEndTime: String = "",
-    val durationMinutes: Int = 0,
-    val selectedSlotCount: Int = 0,
+    val grid: BookingTimeGridData = BookingTimeGridData(),
+    val pricePerHour: Int = 0,
     val estimatedPrice: String = "0đ"
 )

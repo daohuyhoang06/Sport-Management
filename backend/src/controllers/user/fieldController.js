@@ -1,7 +1,9 @@
-﻿import Field from '../../models/Field.js';
+import Field from '../../models/Field.js';
 import { Op } from 'sequelize';
 import sequelize from '../../config/database.js';
-import { getAvailableSlots, checkSlotAvailability } from '../../services/user/scheduleService.js';
+import { getAvailableSlots, releaseExpiredPendingBookings } from '../../services/user/scheduleService.js';
+
+const PENDING_HOLD_MINUTES = 5;
 
 // GET /api/user/fields
 export const listFields = async (req, res) => {
@@ -41,16 +43,16 @@ export const listFields = async (req, res) => {
     const data = fields.map(f => ({
       field_id: f.field_id,
       field_name: f.field_name,
-      location: f.location || 'Chưa cập nhật',
+      location: f.location || 'Chua c?p nh?t',
       status: f.status,
-      rental_price: f.rental_price,
+      slot_price: f.slot_price,
       image: '/images/fields/placeholder.svg',
-      price: f.rental_price || 'Liên hệ',
-      pricePerHour: f.rental_price,
+      price: f.slot_price || 'Li�n h?',
+      pricePerHour: f.slot_price,
       rating: (Math.random() * 1.5 + 3.5).toFixed(1),
       reviews: Math.floor(Math.random() * 200 + 10),
-      type: 'Sân 7 người',
-      facilities: ['Bãi đỗ xe', 'Đèn chiếu sáng', 'Phòng thay đồ'],
+      type: 'S�n 7 ngu?i',
+      facilities: ['B�i d? xe', '��n chi?u s�ng', 'Ph�ng thay d?'],
       openTime: '5h - 23h',
       distance: '2.5km',
       isOpen: true
@@ -115,11 +117,11 @@ export const getField = async (req, res) => {
       field_name: f.field_name,
       location: f.location,
       status: f.status,
-      rental_price: f.rental_price,
+      slot_price: f.slot_price,
       manager_id: f.manager_id,
       image: '/images/fields/placeholder.svg',
-      price: f.rental_price || 'Liên hệ',
-      facilities: ['Bãi đỗ xe', 'Đèn chiếu sáng'],
+      price: f.slot_price || 'Li�n h?',
+      facilities: ['B�i d? xe', '��n chi?u s�ng'],
       slots: allSlots
     };
 
@@ -154,9 +156,9 @@ export const createBooking = async (req, res) => {
     // Combine customer info with note
     let finalNote = '';
     if (customer_name || customer_phone) {
-      finalNote += `Tên: ${customer_name || 'N/A'}, SĐT: ${customer_phone || 'N/A'}`;
+      finalNote += `T�n: ${customer_name || 'N/A'}, S�T: ${customer_phone || 'N/A'}`;
       if (note) {
-        finalNote += ` - Ghi chú: ${note}`;
+        finalNote += ` - Ghi ch�: ${note}`;
       }
     } else {
       finalNote = note || '';
@@ -202,28 +204,92 @@ export const createBooking = async (req, res) => {
       });
     }
 
-    // Check if the time slot is available
-    const slotCheck = await checkSlotAvailability(field_id, new Date(start_time), new Date(end_time));
-    
-    if (!slotCheck.available) {
-      return res.status(400).json({
-        message: slotCheck.reason || 'Khung giờ này không khả dụng',
+    let booking = null;
+
+    await sequelize.transaction(async (transaction) => {
+      await releaseExpiredPendingBookings(transaction);
+
+      const [lockedField] = await sequelize.query(
+        `SELECT field_id FROM fields WHERE field_id = ? FOR UPDATE`,
+        { replacements: [field_id], transaction }
+      );
+      if (!lockedField || lockedField.length === 0) {
+        const invalidFieldError = new Error('INVALID_FIELD_ID');
+        invalidFieldError.code = 'INVALID_FIELD_ID';
+        throw invalidFieldError;
+      }
+
+      const [conflicts] = await sequelize.query(
+        `SELECT booking_id
+         FROM bookings
+         WHERE field_id = ?
+           AND start_time < ?
+           AND end_time > ?
+           AND (
+             status = 'confirmed'
+             OR (
+               status = 'pending'
+               AND (pending_expires_at IS NULL OR pending_expires_at > NOW())
+             )
+           )
+         FOR UPDATE`,
+        {
+          replacements: [field_id, mysqlEndTime, mysqlStartTime],
+          transaction
+        }
+      );
+
+      if (conflicts && conflicts.length > 0) {
+        const conflictError = new Error('SLOT_NOT_AVAILABLE');
+        conflictError.code = 'SLOT_NOT_AVAILABLE';
+        throw conflictError;
+      }
+
+      await sequelize.query(
+        `INSERT INTO bookings (
+          customer_id, field_id, start_time, end_time, price, note, status, pending_expires_at
+        )
+         VALUES (?, ?, ?, ?, ?, ?, 'pending', DATE_ADD(NOW(), INTERVAL ? MINUTE))`,
+        {
+          replacements: [
+            customer_id,
+            field_id,
+            mysqlStartTime,
+            mysqlEndTime,
+            finalPrice,
+            finalNote,
+            PENDING_HOLD_MINUTES
+          ],
+          transaction
+        }
+      );
+
+      const [rows] = await sequelize.query(
+        `SELECT * FROM bookings WHERE booking_id = LAST_INSERT_ID()`,
+        { transaction }
+      );
+      booking = rows?.[0] || null;
+    });
+
+    res.status(201).json({
+      message: 'Booking created',
+      booking,
+      pending_hold_seconds: PENDING_HOLD_MINUTES * 60
+    });
+  } catch (err) {
+    if (err?.code === 'SLOT_NOT_AVAILABLE') {
+      return res.status(409).json({
+        message: 'Khung gi? n�y kh�ng kh? d?ng',
         error: 'SLOT_NOT_AVAILABLE'
       });
     }
+    if (err?.code === 'INVALID_FIELD_ID') {
+      return res.status(400).json({
+        message: 'Field ID does not exist',
+        error: 'INVALID_FIELD_ID'
+      });
+    }
 
-    await sequelize.query(
-      `INSERT INTO bookings (customer_id, field_id, start_time, end_time, price, note, status)
-       VALUES (?, ?, ?, ?, ?, ?, 'pending')`,
-      { replacements: [customer_id, field_id, mysqlStartTime, mysqlEndTime, finalPrice, finalNote] }
-    );
-
-    const [[booking]] = await sequelize.query(
-      `SELECT * FROM bookings WHERE booking_id = LAST_INSERT_ID()`
-    );
-
-    res.status(201).json({ message: 'Booking created', booking });
-  } catch (err) {
     console.error('createBooking error:', err);
     console.error('Error stack:', err.stack);
     console.error('SQL Error:', err.original?.sqlMessage);
@@ -250,12 +316,22 @@ export const getFieldBookings = async (req, res) => {
       return res.status(400).json({ message: 'Date is required' });
     }
 
+    await releaseExpiredPendingBookings();
+
     // Query bookings for the specific field and date
     const [rows] = await sequelize.query(
       `SELECT 
-        booking_id, customer_id, field_id, start_time, end_time, status, price, note
+        booking_id, customer_id, field_id, start_time, end_time, status, price, note, pending_expires_at
       FROM bookings
-      WHERE field_id = ? AND DATE(start_time) = ? AND status != 'cancelled'
+      WHERE field_id = ?
+        AND DATE(start_time) = ?
+        AND (
+          status = 'confirmed'
+          OR (
+            status = 'pending'
+            AND (pending_expires_at IS NULL OR pending_expires_at > NOW())
+          )
+        )
       ORDER BY start_time ASC`,
       { replacements: [id, date] }
     );
@@ -396,7 +472,7 @@ export const approveBooking = async (req, res) => {
     const { id } = req.params;
 
     await sequelize.query(
-      `UPDATE bookings SET status = 'confirmed' WHERE booking_id = ?`,
+      `UPDATE bookings SET status = 'confirmed', pending_expires_at = NULL WHERE booking_id = ?`,
       { replacements: [id] }
     );
 
@@ -418,7 +494,7 @@ export const rejectBooking = async (req, res) => {
     const { id } = req.params;
     const { reason } = req.body;
 
-    const noteUpdate = reason ? ` | Lý do từ chối: ${reason}` : '';
+    const noteUpdate = reason ? ` | L� do t? ch?i: ${reason}` : '';
 
     await sequelize.query(
       `UPDATE bookings SET status = 'rejected', note = CONCAT(COALESCE(note, ''), ?) WHERE booking_id = ?`,

@@ -1,4 +1,4 @@
-﻿package com.sportmanagement.user.ui.components.booking
+package com.sportmanagement.user.ui.components.booking
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -17,8 +18,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.WarningAmber
@@ -28,6 +29,8 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -38,14 +41,20 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.sportmanagement.user.R
+import com.sportmanagement.user.ui.theme.AppCompactCornerRadius
 import com.sportmanagement.user.ui.theme.AppCtaAmber
 import com.sportmanagement.user.ui.theme.AppCtaCornerRadius
 import com.sportmanagement.user.ui.theme.AppCtaWideHeight
-import com.sportmanagement.user.ui.theme.AppCtaWideWidthFraction
+import com.sportmanagement.user.ui.theme.AppBadgeCornerRadius
+import com.sportmanagement.user.ui.theme.AppCardCornerRadius
+import com.sportmanagement.user.ui.theme.AppFieldHorizontalPadding
+import com.sportmanagement.user.ui.theme.AppFieldVerticalPadding
 import com.sportmanagement.user.ui.theme.AppOnCtaAmber
+import com.sportmanagement.user.ui.theme.AppScreenHorizontalPadding
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -54,7 +63,7 @@ fun BookingConfirmationBottomBar(onConfirmPaymentClick: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.primary)
+            .navigationBarsPadding()
             .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
         Button(
@@ -66,12 +75,12 @@ fun BookingConfirmationBottomBar(onConfirmPaymentClick: () -> Unit) {
             ),
             modifier = Modifier
                 .align(Alignment.Center)
-                .fillMaxWidth(AppCtaWideWidthFraction)
+                .fillMaxWidth()
                 .height(AppCtaWideHeight)
         ) {
             Text(
                 text = stringResource(R.string.booking_confirm_and_pay),
-                style = MaterialTheme.typography.titleLarge,
+                style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold
             )
         }
@@ -80,28 +89,33 @@ fun BookingConfirmationBottomBar(onConfirmPaymentClick: () -> Unit) {
 
 @Composable
 fun BookingConfirmationHeader(onBackClick: () -> Unit) {
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.primary)
-            .statusBarsPadding()
-            .padding(horizontal = 16.dp, vertical = 14.dp)
     ) {
-        Box(modifier = Modifier.fillMaxWidth()) {
-            IconButton(onClick = onBackClick, modifier = Modifier.size(36.dp)) {
-                Icon(
-                    imageVector = Icons.Default.ArrowBack,
-                    contentDescription = stringResource(R.string.booking_back_content_description),
-                    tint = MaterialTheme.colorScheme.onPrimary
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .padding(horizontal = 16.dp, vertical = 6.dp)
+        ) {
+            Box(modifier = Modifier.fillMaxWidth()) {
+                IconButton(onClick = onBackClick, modifier = Modifier.size(36.dp)) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = stringResource(R.string.booking_back_content_description),
+                        tint = MaterialTheme.colorScheme.onPrimary
+                    )
+                }
+                Text(
+                    text = stringResource(R.string.booking_title),
+                    style = MaterialTheme.typography.titleLarge.copy(fontFamily = FontFamily.Default),
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.align(Alignment.Center)
                 )
             }
-            Text(
-                text = stringResource(R.string.booking_title),
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onPrimary,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.align(Alignment.Center)
-            )
         }
     }
 }
@@ -113,7 +127,7 @@ fun ConfirmationInfoCard(
     content: @Composable ColumnScope.() -> Unit
 ) {
     Surface(
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(AppCardCornerRadius),
         color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
         modifier = Modifier
             .fillMaxWidth()
@@ -152,7 +166,7 @@ fun InfoLine(label: String, value: String) {
 @Composable
 fun BookingOfferSummaryCard(totalPrice: Int) {
     Surface(
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(AppCardCornerRadius),
         color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
         modifier = Modifier
             .fillMaxWidth()
@@ -230,18 +244,19 @@ fun ConfirmFieldLabel(text: String) {
 
 @Composable
 fun ConfirmReadonlyField(value: String) {
+    val inputCardShape = RoundedCornerShape(AppCompactCornerRadius)
     Surface(
-        shape = RoundedCornerShape(10.dp),
+        shape = inputCardShape,
         color = MaterialTheme.colorScheme.surface,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(10.dp))
+            .padding(horizontal = AppScreenHorizontalPadding)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, inputCardShape)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 14.dp),
+                .padding(horizontal = AppFieldHorizontalPadding, vertical = AppFieldVerticalPadding),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
@@ -261,18 +276,19 @@ fun ConfirmReadonlyField(value: String) {
 
 @Composable
 fun ConfirmPhoneField(value: String) {
+    val inputCardShape = RoundedCornerShape(AppCompactCornerRadius)
     Surface(
-        shape = RoundedCornerShape(10.dp),
+        shape = inputCardShape,
         color = MaterialTheme.colorScheme.surface,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(10.dp))
+            .padding(horizontal = AppScreenHorizontalPadding)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, inputCardShape)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 14.dp),
+                .padding(horizontal = AppFieldHorizontalPadding, vertical = AppFieldVerticalPadding),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
@@ -317,11 +333,11 @@ fun ConfirmPhoneField(value: String) {
 @Composable
 fun BookingNoticeCard() {
     Surface(
-        shape = RoundedCornerShape(14.dp),
+        shape = RoundedCornerShape(AppCardCornerRadius),
         color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 14.dp)
+            .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Box(
@@ -334,7 +350,7 @@ fun BookingNoticeCard() {
                                 Color.Transparent
                             )
                         ),
-                        shape = RoundedCornerShape(8.dp)
+                        shape = RoundedCornerShape(AppBadgeCornerRadius)
                     )
                     .padding(horizontal = 10.dp, vertical = 8.dp)
             ) {
@@ -353,13 +369,11 @@ fun BookingNoticeCard() {
                 }
             }
             Spacer(modifier = Modifier.height(12.dp))
-            ConfirmNoticeText(stringResource(R.string.booking_confirm_notice_line_1))
-            ConfirmNoticeText(stringResource(R.string.booking_confirm_notice_line_2))
-            ConfirmNoticeText(stringResource(R.string.booking_confirm_notice_line_3))
-            Spacer(modifier = Modifier.height(10.dp))
+            ConfirmNoticeText(stringResource(R.string.booking_confirm_notice_short))
+            Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = stringResource(R.string.booking_confirm_notice_terms),
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onPrimary
             )
         }
@@ -367,10 +381,51 @@ fun BookingNoticeCard() {
 }
 
 @Composable
+fun ConfirmNoteField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String
+) {
+    val noteCorner = RoundedCornerShape(AppCompactCornerRadius)
+    Surface(
+        shape = noteCorner,
+        color = MaterialTheme.colorScheme.surface,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = AppScreenHorizontalPadding)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, noteCorner)
+    ) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(92.dp),
+            textStyle = MaterialTheme.typography.bodyMedium,
+            placeholder = {
+                Text(
+                    text = placeholder,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            },
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent,
+                focusedBorderColor = Color.Transparent,
+                unfocusedBorderColor = Color.Transparent,
+                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                unfocusedTextColor = MaterialTheme.colorScheme.onSurface
+            )
+        )
+    }
+}
+
+@Composable
 private fun ConfirmNoticeText(text: String) {
     Text(
         text = "\u2022 $text",
-        style = MaterialTheme.typography.titleMedium,
+        style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onPrimary,
         modifier = Modifier.padding(vertical = 2.dp)
     )

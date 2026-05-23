@@ -2,14 +2,18 @@ package com.sportmanagement.user.ui.screens
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -30,7 +34,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.sportmanagement.user.ui.theme.AppCardCornerRadius
+import com.sportmanagement.user.ui.theme.AppControlCornerRadius
 
 @Composable
 fun RegisterStepThreeScreen(
@@ -40,100 +47,184 @@ fun RegisterStepThreeScreen(
     onSkipClick: () -> Unit,
     onCompleteClick: () -> Unit
 ) {
-    RegisterStepScaffold(
-        currentStep = 3,
-        title = "Hoàn tất hồ sơ",
-        subtitle = "Thiết lập thêm một vài thông tin để trải nghiệm tốt hơn",
-        onBackClick = onBackClick,
-        primaryButtonText = "Hoàn tất đăng ký",
-        secondaryButtonText = "Bỏ qua",
-        onPrimaryClick = onCompleteClick,
-        onSecondaryClick = onSkipClick
+    AuthScreenScaffold(
+        title = "Đăng ký",
+        onBackClick = onBackClick
     ) {
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 20.dp, vertical = 22.dp)
         ) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                ProfileRow(
-                    icon = Icons.Outlined.LocationOn,
-                    title = "Khu vực thường chơi",
-                    subtitle = "Chúng tôi sẽ gợi ý sân gần bạn hơn"
-                )
+            RegisterStepProgressCompact(
+                currentStep = 3,
+                totalSteps = 3
+            )
 
-                LocationChips(
-                    selected = profile.region,
-                    onSelected = { onProfileChange(profile.copy(region = it)) }
-                )
+            Spacer(Modifier.height(16.dp))
 
-                ProfileToggleRow(
-                    icon = Icons.Outlined.Notifications,
-                    title = "Nhận thông báo",
-                    subtitle = "Cập nhật khuyến mãi, lịch sân và ưu đãi mới nhất",
-                    checked = profile.notifyEnabled,
-                    onCheckedChange = { onProfileChange(profile.copy(notifyEnabled = it)) }
-                )
+            Text(
+                text = "Hoàn tất hồ sơ",
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold
+            )
 
-                ProfileToggleRow(
-                    icon = Icons.Outlined.Email,
-                    title = "Nhận email ưu đãi",
-                    subtitle = "Gửi thông tin khuyến mãi và ưu đãi đặc biệt qua email",
-                    checked = profile.emailOffers,
-                    onCheckedChange = { onProfileChange(profile.copy(emailOffers = it)) }
-                )
-            }
-        }
+            Spacer(Modifier.height(4.dp))
 
-        Spacer(Modifier.height(16.dp))
+            Text(
+                text = "Thiết lập thêm một vài thông tin để trải nghiệm đặt sân tốt hơn.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
 
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(18.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
-            ),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.15f))
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            Spacer(Modifier.height(18.dp))
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(AppCardCornerRadius),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
             ) {
-                Icon(
-                    imageVector = Icons.Outlined.CardGiftcard,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier
-                        .size(40.dp)
-                        .background(
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
-                            shape = CircleShape
-                        )
-                        .padding(8.dp)
-                )
-                Column {
-                    Text(
-                        text = "Ưu đãi dành cho thành viên mới",
-                        color = MaterialTheme.colorScheme.primary,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    ProfileRow(
+                        icon = Icons.Outlined.LocationOn,
+                        title = "Khu vực thường chơi",
+                        subtitle = "Chúng tôi sẽ gợi ý sân gần bạn hơn"
                     )
-                    Text(
-                        text = buildAnnotatedString {
-                            append("Nhận ngay mã giảm ")
-                            pushStyle(SpanStyle(color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold))
-                            append("10%")
-                            pop()
-                            append(" cho đơn đặt sân đầu tiên sau khi hoàn tất đăng ký.")
-                        },
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+
+                    LocationChips(
+                        selected = profile.region,
+                        onSelected = { onProfileChange(profile.copy(region = it)) }
+                    )
+
+                    ProfileToggleRow(
+                        icon = Icons.Outlined.Notifications,
+                        title = "Nhận thông báo",
+                        subtitle = "Cập nhật khuyến mãi, lịch sân và ưu đãi mới nhất",
+                        checked = profile.notifyEnabled,
+                        onCheckedChange = { onProfileChange(profile.copy(notifyEnabled = it)) }
+                    )
+
+                    ProfileToggleRow(
+                        icon = Icons.Outlined.Email,
+                        title = "Nhận email ưu đãi",
+                        subtitle = "Gửi thông tin khuyến mãi và ưu đãi đặc biệt qua email",
+                        checked = profile.emailOffers,
+                        onCheckedChange = { onProfileChange(profile.copy(emailOffers = it)) }
                     )
                 }
             }
+
+            Spacer(Modifier.height(16.dp))
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(AppCardCornerRadius),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+                ),
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.15f))
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.CardGiftcard,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .size(40.dp)
+                            .background(
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                                shape = CircleShape
+                            )
+                            .padding(8.dp)
+                    )
+
+                    Column {
+                        Text(
+                            text = "Ưu đãi dành cho thành viên mới",
+                            color = MaterialTheme.colorScheme.primary,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = buildAnnotatedString {
+                                append("Nhận ngay mã giảm ")
+                                pushStyle(
+                                    SpanStyle(
+                                        color = MaterialTheme.colorScheme.primary,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                )
+                                append("10%")
+                                pop()
+                                append(" cho đơn đặt sân đầu tiên sau khi hoàn tất đăng ký.")
+                            },
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(20.dp))
+
+            AuthPrimaryButton(
+                text = "Hoàn tất đăng ký",
+                onClick = onCompleteClick
+            )
+
+            Spacer(Modifier.height(10.dp))
+
+            Text(
+                text = "Bỏ qua",
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onSkipClick)
+                    .padding(vertical = 6.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun RegisterStepProgressCompact(
+    currentStep: Int,
+    totalSteps: Int
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        repeat(totalSteps) { index ->
+            val color = if (index < currentStep) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.7f)
+            }
+
+            Box(
+                modifier = Modifier
+                    .width(42.dp)
+                    .height(5.dp)
+                    .background(
+                        color = color,
+                        shape = RoundedCornerShape(999.dp)
+                    )
+            )
         }
     }
 }
@@ -144,7 +235,10 @@ private fun ProfileRow(
     title: String,
     subtitle: String
 ) {
-    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
         Icon(
             imageVector = icon,
             contentDescription = null,
@@ -155,8 +249,16 @@ private fun ProfileRow(
                 .padding(8.dp)
         )
         Column {
-            Text(text = title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-            Text(text = subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
@@ -167,18 +269,25 @@ private fun LocationChips(
     onSelected: (String) -> Unit
 ) {
     val options = listOf("Quận 1", "Quận 7", "Thủ Đức")
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+    Row(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
         options.forEach { option ->
             val isSelected = selected == option
             Card(
                 modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(14.dp),
+                shape = RoundedCornerShape(AppControlCornerRadius),
                 border = BorderStroke(
                     1.dp,
                     if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant
                 ),
                 colors = CardDefaults.cardColors(
-                    containerColor = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.08f) else MaterialTheme.colorScheme.surface
+                    containerColor = if (isSelected) {
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)
+                    } else {
+                        MaterialTheme.colorScheme.surface
+                    }
                 ),
                 onClick = { onSelected(option) }
             ) {
@@ -192,12 +301,20 @@ private fun LocationChips(
                     Icon(
                         imageVector = Icons.Outlined.Place,
                         contentDescription = null,
-                        tint = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        tint = if (isSelected) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
                         modifier = Modifier.size(16.dp)
                     )
                     Text(
                         text = " $option",
-                        color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = if (isSelected) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
                         style = MaterialTheme.typography.labelLarge
                     )
                 }
@@ -234,8 +351,16 @@ private fun ProfileToggleRow(
                     .padding(8.dp)
             )
             Column {
-                Text(text = title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Text(text = subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
 

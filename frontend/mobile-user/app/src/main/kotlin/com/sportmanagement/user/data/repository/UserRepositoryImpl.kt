@@ -2,6 +2,7 @@ package com.sportmanagement.user.data.repository
 
 import com.sportmanagement.user.data.remote.api.UserApi
 import com.sportmanagement.user.domain.model.BookingScheduleData
+import com.sportmanagement.user.domain.model.HomeSearchFilterOptions
 import com.sportmanagement.user.domain.model.SportCategory
 import com.sportmanagement.user.domain.model.UserField
 import com.sportmanagement.user.domain.model.UserProfile
@@ -52,9 +53,11 @@ class UserRepositoryImpl(
 
     override fun getBookingSchedule(): BookingScheduleData {
         return BookingScheduleData(
-            selectedDate = "",
-            timeHeaders = emptyList(),
-            courts = emptyList()
+            selectedDate = ""
         )
+    }
+
+    override fun getHomeSearchFilterOptions(): HomeSearchFilterOptions {
+        return HomeSearchFilterOptions()
     }
 }

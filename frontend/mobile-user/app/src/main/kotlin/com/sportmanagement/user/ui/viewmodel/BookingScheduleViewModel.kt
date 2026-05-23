@@ -3,6 +3,8 @@ package com.sportmanagement.user.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import com.sportmanagement.user.domain.model.BookingConfirmationData
 import com.sportmanagement.user.domain.model.BookingScheduleData
+import com.sportmanagement.user.domain.model.BookingTimeGridSupport
+import com.sportmanagement.user.domain.model.BookingTimeRange
 import com.sportmanagement.user.domain.usecase.BuildBookingConfirmationDataUseCase
 import com.sportmanagement.user.domain.usecase.BuildBookingSelectionSummaryUseCase
 import com.sportmanagement.user.ui.state.BookingScheduleUiState
@@ -41,12 +43,27 @@ class BookingScheduleViewModel(
         _uiState.update { it.copy(sliderValue = value) }
     }
 
-    fun onToggleSlot(slotKey: String) {
+    fun onSlotClick(courtId: String, startTime: String, endTime: String) {
         _uiState.update { current ->
-            val updatedSlots = if (current.selectedSlots.contains(slotKey)) {
-                current.selectedSlots - slotKey
+            val clickedRange = BookingTimeRange(
+                courtId = courtId,
+                startTime = startTime,
+                endTime = endTime
+            )
+            val overlappingSelection = current.selectedSlots.firstOrNull { existing ->
+                existing.courtId == courtId &&
+                    BookingTimeGridSupport.rangeOverlaps(existing, clickedRange)
+            }
+
+            val updatedSlots = if (overlappingSelection != null) {
+                current.selectedSlots - overlappingSelection
             } else {
-                current.selectedSlots + slotKey
+                (current.selectedSlots + clickedRange).sortedWith(
+                    compareBy(
+                        { it.courtId },
+                        { BookingTimeGridSupport.parseTimeToMinutes(it.startTime) }
+                    )
+                )
             }
             val nextSummary = buildSummaryUseCase(scheduleData, updatedSlots)
             val shouldResetRangeVisibility = summarySignature(current.summary) != summarySignature(nextSummary)

@@ -11,9 +11,9 @@ function normalizeFields(rawFields = []) {
     location: item.location || "-",
     managerName: item.manager_name || "Unassigned",
     pricePerHour:
-      item.rental_price === null || item.rental_price === undefined
+      item.slot_price === null || item.slot_price === undefined
         ? null
-        : Number(item.rental_price),
+        : Number(item.slot_price),
     status: item.status || "inactive",
   }));
 }

@@ -5,13 +5,20 @@ data class UserField(
     val location: String,
     val price: String,
     val rating: String,
+    val sportIconType: SportIconType = SportIconType.FOOTBALL,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
     val distance: String = "0.8 miles away",
     val hours: String = "00:00 - 24:00",
     val imageUrl: String = "",
     val isProLeague: Boolean = false,
     val tags: List<String> = emptyList(),
     val availability: String = "",
-    val cardType: VenueCardType = VenueCardType.LARGE_IMAGE
+    val cardType: VenueCardType = VenueCardType.LARGE_IMAGE,
+    val region: String = "",
+    val province: String = "",
+    val district: String = "",
+    val distanceKm: Double? = null
 )
 
 enum class VenueCardType {

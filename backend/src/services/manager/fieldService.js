@@ -1,5 +1,20 @@
 import sequelize from "../../config/database.js";
 
+const normalizeNullableValue = (value) => {
+  if (value === undefined) return undefined;
+  if (value === null) return null;
+  if (typeof value === "string" && value.trim() === "") return null;
+  return value;
+};
+
+const getSportTypeById = async (sportId) => {
+  const [[sportType]] = await sequelize.query(
+    "SELECT sport_id FROM sport_types WHERE sport_id = ? LIMIT 1",
+    { replacements: [sportId] },
+  );
+  return sportType || null;
+};
+
 /**
  * Get all fields managed by this manager
  */
@@ -13,7 +28,15 @@ export const getManagerFieldsService = async (managerId) => {
         f.location,
         f.status,
         f.manager_id,
-        f.rental_price,
+        f.latitude,
+        f.longitude,
+        f.phone,
+        f.open_time,
+        f.close_time,
+        f.slot_minutes,
+        f.slot_price,
+        f.avatar_image_url,
+        f.card_image_url,
         f.sport_id,
         st.sport_name
       FROM fields f
@@ -36,20 +59,54 @@ export const getManagerFieldsService = async (managerId) => {
  */
 export const createFieldService = async (managerId, fieldData) => {
   try {
-    const { field_name, location, rental_price, sport_id } = fieldData;
+    const {
+      field_name,
+      location,
+      latitude,
+      longitude,
+      phone,
+      open_time,
+      close_time,
+      slot_price,
+      slot_minutes,
+      avatar_image_url,
+      card_image_url,
+      sport_id,
+      status = "active",
+    } = fieldData;
+
+    const sportType = await getSportTypeById(sport_id);
+    if (!sportType) {
+      throw new Error("Sport type not found");
+    }
+    if (status === "active" && (!slot_price || Number(slot_price) <= 0)) {
+      throw new Error("slot_price is required when field status is active");
+    }
 
     await sequelize.query(
       `
-      INSERT INTO fields (field_name, location, rental_price, status, manager_id, sport_id)
-      VALUES (?, ?, ?, 'active', ?, ?)
+      INSERT INTO fields (
+        field_name, location, latitude, longitude, phone, open_time, close_time,
+        slot_price, slot_minutes, avatar_image_url, card_image_url, status, manager_id, sport_id
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
       {
         replacements: [
           field_name,
           location,
-          rental_price || null,
+          normalizeNullableValue(latitude) ?? null,
+          normalizeNullableValue(longitude) ?? null,
+          normalizeNullableValue(phone) ?? null,
+          normalizeNullableValue(open_time) ?? null,
+          normalizeNullableValue(close_time) ?? null,
+          normalizeNullableValue(slot_price) ?? null,
+          slot_minutes || 60,
+          normalizeNullableValue(avatar_image_url) ?? null,
+          normalizeNullableValue(card_image_url) ?? null,
+          status,
           managerId,
-          sport_id || null,
+          sport_id,
         ],
       },
     );
@@ -73,7 +130,35 @@ export const updateFieldService = async (managerId, field_id, fieldData) => {
     const field = await getManagerFieldByIdService(managerId, field_id);
     if (!field) throw new Error("Field not found or unauthorized");
 
-    const { field_name, location, sport_id } = fieldData;
+    const {
+      field_name,
+      location,
+      sport_id,
+      latitude,
+      longitude,
+      phone,
+      open_time,
+      close_time,
+      slot_price,
+      slot_minutes,
+      avatar_image_url,
+      card_image_url,
+      status,
+    } = fieldData;
+
+    if (sport_id !== undefined) {
+      const sportType = await getSportTypeById(sport_id);
+      if (!sportType) {
+        throw new Error("Sport type not found");
+      }
+    }
+
+    const nextStatus = status !== undefined ? status : field.status;
+    const nextSlotPrice =
+      slot_price !== undefined ? slot_price : field.slot_price;
+    if (nextStatus === "active" && (!nextSlotPrice || Number(nextSlotPrice) <= 0)) {
+      throw new Error("slot_price is required when field status is active");
+    }
 
     const updates = [];
     const params = [];
@@ -85,23 +170,65 @@ export const updateFieldService = async (managerId, field_id, fieldData) => {
       updates.push("location = ?");
       params.push(location);
     }
+    if (latitude !== undefined) {
+      updates.push("latitude = ?");
+      params.push(normalizeNullableValue(latitude));
+    }
+    if (longitude !== undefined) {
+      updates.push("longitude = ?");
+      params.push(normalizeNullableValue(longitude));
+    }
+    if (phone !== undefined) {
+      updates.push("phone = ?");
+      params.push(normalizeNullableValue(phone));
+    }
+    if (open_time !== undefined) {
+      updates.push("open_time = ?");
+      params.push(normalizeNullableValue(open_time));
+    }
+    if (close_time !== undefined) {
+      updates.push("close_time = ?");
+      params.push(normalizeNullableValue(close_time));
+    }
     if (sport_id !== undefined) {
       updates.push("sport_id = ?");
       params.push(sport_id);
     }
-
-    if (updates.length > 0) {
-      params.push(fieldId, managerId);
-      await sequelize.query(
-        `
-        UPDATE fields SET ${updates.join(", ")}
-        WHERE field_id = ? AND manager_id = ?
-      `,
-        { replacements: params },
-      );
+    if (slot_price !== undefined) {
+      updates.push("slot_price = ?");
+      params.push(slot_price);
+    }
+    if (slot_minutes !== undefined) {
+      updates.push("slot_minutes = ?");
+      params.push(slot_minutes);
+    }
+    if (avatar_image_url !== undefined) {
+      updates.push("avatar_image_url = ?");
+      params.push(normalizeNullableValue(avatar_image_url));
+    }
+    if (card_image_url !== undefined) {
+      updates.push("card_image_url = ?");
+      params.push(normalizeNullableValue(card_image_url));
+    }
+    if (status !== undefined) {
+      updates.push("status = ?");
+      params.push(status);
     }
 
-    return { success: true };
+    if (updates.length === 0) {
+      throw new Error("No field data provided for update");
+    }
+
+    params.push(field_id, managerId);
+    await sequelize.query(
+      `
+      UPDATE fields SET ${updates.join(", ")}
+      WHERE field_id = ? AND manager_id = ?
+    `,
+      { replacements: params },
+    );
+
+    return getManagerFieldByIdService(managerId, field_id);
   } catch (error) {
     console.error("Error in updateFieldService:", error);
     throw error;
@@ -154,14 +281,24 @@ export const getManagerFieldByIdService = async (managerId, field_id) => {
         f.location,
         f.status,
         f.manager_id,
-        f.rental_price,
+        f.latitude,
+        f.longitude,
+        f.phone,
+        f.open_time,
+        f.close_time,
+        f.slot_minutes,
+        f.slot_price,
+        f.avatar_image_url,
+        f.card_image_url,
+        f.created_at,
+        f.updated_at,
         f.sport_id,
         st.sport_name
       FROM fields f
       LEFT JOIN sport_types st ON f.sport_id = st.sport_id
       WHERE f.field_id = ? AND f.manager_id = ?
     `,
-      { replacements: [fieldId, managerId] },
+      { replacements: [field_id, managerId] },
     );
 
     return fields[0] || null;
@@ -180,6 +317,9 @@ export const updateFieldStatusService = async (managerId, field_id, status) => {
     const field = await getManagerFieldByIdService(managerId, field_id);
     if (!field) {
       throw new Error("Field not found or unauthorized");
+    }
+    if (status === "active" && (!field.slot_price || Number(field.slot_price) <= 0)) {
+      throw new Error("slot_price is required when field status is active");
     }
 
     await sequelize.query(

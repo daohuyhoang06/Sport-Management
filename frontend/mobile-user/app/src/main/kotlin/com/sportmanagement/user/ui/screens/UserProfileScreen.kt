@@ -1,12 +1,15 @@
-package com.sportmanagement.user.ui.screens
+﻿package com.sportmanagement.user.ui.screens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -17,12 +20,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.dp
 import com.sportmanagement.user.domain.model.UserProfile
 import com.sportmanagement.user.ui.components.profile.EditProfileBottomSheet
 import com.sportmanagement.user.ui.components.profile.LogoutButton
 import com.sportmanagement.user.ui.components.profile.MenuCard
 import com.sportmanagement.user.ui.components.profile.ProfileHeaderSection
+
 
 // =========================
 // Main Screen
@@ -39,6 +44,7 @@ fun UserProfileScreen(
     onLogoutClick: () -> Unit,
     onProfileUpdate: (UserProfile) -> Unit = {}
 ) {
+    val layoutDirection = LocalLayoutDirection.current
 
     // State mở bottomsheet chỉnh sửa
     var showEditSheet by rememberSaveable {
@@ -52,11 +58,14 @@ fun UserProfileScreen(
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
     ) {
-
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding),
+                .padding(
+                    start = padding.calculateStartPadding(layoutDirection),
+                    end = padding.calculateEndPadding(layoutDirection),
+                    bottom = padding.calculateBottomPadding()
+                ),
             contentPadding = PaddingValues(bottom = 20.dp)
         ) {
 
@@ -76,7 +85,7 @@ fun UserProfileScreen(
                     onRegisterClick = onRegisterClick
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(4.dp))
             }
 
             // =========================
@@ -92,8 +101,10 @@ fun UserProfileScreen(
             // Logout Button
             // =========================
 
-            item {
-                LogoutButton(onLogoutClick = onLogoutClick)
+            if (isLoggedIn) {
+                item {
+                    LogoutButton(onLogoutClick = onLogoutClick)
+                }
             }
         }
 

@@ -25,7 +25,13 @@ module.exports = {
   },
 
   async down(queryInterface, Sequelize) {
-    await queryInterface.removeColumn('reviews', 'images');
-    await queryInterface.removeColumn('reviews', 'updated_at');
+    const tableInfo = await queryInterface.describeTable('reviews');
+
+    if (tableInfo.images) {
+      await queryInterface.removeColumn('reviews', 'images');
+    }
+    if (tableInfo.updated_at) {
+      await queryInterface.removeColumn('reviews', 'updated_at');
+    }
   }
 };

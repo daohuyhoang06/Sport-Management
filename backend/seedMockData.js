@@ -100,7 +100,7 @@ const ensureField = async ({
   manager_id,
   location,
   rentalPriceColumn,
-  rental_price,
+  slot_price,
 }) => {
   const existing = await getOne(
     "SELECT field_id FROM fields WHERE field_name = :field_name LIMIT 1",
@@ -112,9 +112,9 @@ const ensureField = async ({
       await sequelize.query(
         `
           INSERT INTO fields (manager_id, field_name, location, status, ${rentalPriceColumn})
-          VALUES (:manager_id, :field_name, :location, 'active', :rental_price)
+          VALUES (:manager_id, :field_name, :location, 'active', :slot_price)
         `,
-        { replacements: { field_name, manager_id, location, rental_price } },
+        { replacements: { field_name, manager_id, location, slot_price } },
       );
     } else {
       await sequelize.query(
@@ -132,7 +132,7 @@ const ensureField = async ({
         SET manager_id = :manager_id,
             location = :location,
             status = 'active',
-            ${rentalPriceColumn} = :rental_price
+            ${rentalPriceColumn} = :slot_price
         WHERE field_id = :field_id
       `,
       {
@@ -140,7 +140,7 @@ const ensureField = async ({
           field_id: existing.field_id,
           manager_id,
           location,
-          rental_price,
+          slot_price,
         },
       },
     );
@@ -410,8 +410,8 @@ const seedMockData = async () => {
     const reviewColumns = await qi.describeTable("reviews");
 
     const personNameColumn = personColumns.name ? "name" : "person_name";
-    const rentalPriceColumn = fieldColumns.rental_price
-      ? "rental_price"
+    const rentalPriceColumn = fieldColumns.slot_price
+      ? "slot_price"
       : fieldColumns.price
         ? "price"
         : null;
@@ -486,7 +486,7 @@ const seedMockData = async () => {
       manager_id: manager1.person_id,
       location: "Cau Giay, Ha Noi",
       rentalPriceColumn: safeRentalPriceColumn,
-      rental_price: 320000,
+      slot_price: 320000,
     });
 
     const field2 = await ensureField({
@@ -494,7 +494,7 @@ const seedMockData = async () => {
       manager_id: manager2.person_id,
       location: "Nam Tu Liem, Ha Noi",
       rentalPriceColumn: safeRentalPriceColumn,
-      rental_price: 380000,
+      slot_price: 380000,
     });
 
     const today = toDateOnly(new Date());
