@@ -5,12 +5,12 @@ plugins {
 
 android {
     namespace = "com.sportmanagement.user"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.sportmanagement.user"
         minSdk = 24
-        targetSdk = 34
+        targetSdk = 35
         versionCode = 1
         versionName = "1.0"
 
@@ -57,7 +57,8 @@ dependencies {
     // Maps & Location
     implementation("com.google.android.gms:play-services-maps:20.0.0")
     implementation("com.google.android.gms:play-services-location:21.3.0")
-    
+    implementation("androidx.compose.material3:material3:1.4.0")
+
     // Compose BOM (Quản lý phiên bản tập trung)
     val composeBom = platform("androidx.compose:compose-bom:2024.06.00")
     implementation(composeBom)

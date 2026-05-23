@@ -102,10 +102,6 @@ response.json
 *.orig
 
 # ========================
-<<<<<<< HEAD
-# Local database
-=======
 # Local Database folder
->>>>>>> origin/develop
 # ========================
 Database/
