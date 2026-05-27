@@ -103,8 +103,8 @@
     <string name="inbox_subtitle">Cập nhật hoạt động, tin nhắn và thông báo của bạn</string>
     <string name="inbox_mark_read">Đánh dấu đã đọc</string>
     <string name="inbox_section_priority">Ưu tiên</string>
-    <string name="inbox_section_this_week">Tuần này</string>
-    <string name="inbox_section_last_week">Tuần trước</string>
+    <string name="inbox_section_messages">Tin nhắn</string>
+    <string name="inbox_section_activity">Hoạt động</string>
 
     <string name="booking_title">Đặt lịch ngày trực quan</string>
     <string name="booking_back_content_description">Quay lại</string>

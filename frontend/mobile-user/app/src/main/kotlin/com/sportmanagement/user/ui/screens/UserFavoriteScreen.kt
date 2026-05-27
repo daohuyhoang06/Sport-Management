@@ -940,7 +940,7 @@ private fun inboxSections(): List<NotificationSectionData> {
         )
     )
 
-    val thisWeekItems = listOf(
+    val messageItems = listOf(
         NotificationItem(
             title = "Sân Mỹ Đình đã phản hồi",
             subtitle = "Sân Mỹ Đình Mini đã gửi cho bạn một tin nhắn mới.",
@@ -960,14 +960,14 @@ private fun inboxSections(): List<NotificationSectionData> {
             longDetail = "Họ muốn giao lưu vào chiều thứ 7. Bạn có thể phản hồi để chốt lịch và sân.",
             timeLabel = "2 ngày trước",
             badgeCount = 1,
-            category = InboxCategoryType.Activity,
+            category = InboxCategoryType.Message,
             icon = Icons.Outlined.Notifications,
             iconBackground = accentSecondary.copy(alpha = 0.2f),
             iconTint = MaterialTheme.colorScheme.onSecondary
         )
     )
 
-    val lastWeekItems = listOf(
+    val activityItems = listOf(
         NotificationItem(
             title = "Thông báo hệ thống",
             subtitle = "Bảo trì hệ thống vào 02:00 AM ngày 25/05/2026.",
@@ -988,14 +988,14 @@ private fun inboxSections(): List<NotificationSectionData> {
             items = priorityItems
         ),
         NotificationSectionData(
-            title = stringResource(R.string.inbox_section_this_week),
+            title = stringResource(R.string.inbox_section_messages),
             showMarkAll = false,
-            items = thisWeekItems
+            items = messageItems
         ),
         NotificationSectionData(
-            title = stringResource(R.string.inbox_section_last_week),
+            title = stringResource(R.string.inbox_section_activity),
             showMarkAll = false,
-            items = lastWeekItems
+            items = activityItems
         )
     )
 }
