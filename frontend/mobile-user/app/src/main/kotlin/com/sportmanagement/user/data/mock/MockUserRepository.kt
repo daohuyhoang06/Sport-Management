@@ -1,4 +1,4 @@
-﻿package com.sportmanagement.user.data.mock
+package com.sportmanagement.user.data.mock
 
 import com.sportmanagement.user.domain.model.BookingScheduleData
 import com.sportmanagement.user.domain.model.BookingSubCourt
@@ -16,7 +16,7 @@ import com.sportmanagement.user.domain.repository.UserRepository
 
 class   MockUserRepository : UserRepository {
 
-    override fun getSportCategories(): List<SportCategory> = listOf(
+    override suspend fun getSportCategories(): List<SportCategory> = listOf(
         SportCategory("Bóng đá", SportIconType.FOOTBALL),
         SportCategory("Bóng chuyền", SportIconType.VOLLEYBALL),
         SportCategory("Pickleball", SportIconType.PICKLEBALL),
@@ -24,8 +24,11 @@ class   MockUserRepository : UserRepository {
         SportCategory("Tennis", SportIconType.TENNIS)
     )
 
-    override fun getHomeFields(): List<UserField> =
-        getNearbyFields().mapIndexed { index, field ->
+    override suspend fun getHomeFields(
+        latitude: Double?,
+        longitude: Double?
+    ): List<UserField> =
+        getNearbyFields(null, null).mapIndexed { index, field ->
             val ratingScore = field.rating.toDoubleOrNull() ?: 0.0
             val distanceKm = homeDistanceKmByIndex(index)
             UserField(
@@ -49,10 +52,13 @@ class   MockUserRepository : UserRepository {
             )
         }
 
-    override fun getMapCategories(): List<String> =
+    override suspend fun getMapCategories(): List<String> =
         listOf("Bóng đá", "Bóng chuyền", "Pickleball", "Cầu lông", "Tennis")
 
-    override fun getNearbyFields(): List<UserField> =
+    override suspend fun getNearbyFields(
+        latitude: Double?,
+        longitude: Double?
+    ): List<UserField> =
         listOf(
             UserField(
                 name = "Sân vận động Quốc gia Mỹ Đình",
@@ -443,13 +449,13 @@ class   MockUserRepository : UserRepository {
             )
         ).map(::enrichFieldLocation)
 
-    override fun getFavoriteFields(): List<UserField> =
+    override suspend fun getFavoriteFields(): List<UserField> =
         listOf(
-            UserField("Sân Bóng Dịch Vọng", "Cầu Giấy, Hà Nội", "300.000đ/h", "5.0"),
-            UserField("Sân Bóng Duy Tân", "Cầu Giấy, Hà Nội", "400.000đ/h", "4.7")
+            UserField(name = "Sân Bóng Dịch Vọng", location = "Cầu Giấy, Hà Nội", price = "300.000đ/h", rating = "5.0"),
+            UserField(name = "Sân Bóng Duy Tân", location = "Cầu Giấy, Hà Nội", price = "400.000đ/h", rating = "4.7")
         )
 
-    override fun getProfile(): UserProfile =
+    override suspend fun getProfile(): UserProfile =
         UserProfile(
             name = "Nguyễn Văn An",
             email = "user1@gmail.com",
@@ -457,13 +463,13 @@ class   MockUserRepository : UserRepository {
             membership = "Vàng"
         )
 
-    override fun getStats(): List<UserStat> =
+    override suspend fun getStats(): List<UserStat> =
         listOf(
             UserStat("12", "Lần đặt"),
             UserStat("4.8", "Điểm uy tín")
         )
 
-    override fun getBookingSchedule(): BookingScheduleData {
+    override suspend fun getBookingSchedule(): BookingScheduleData {
         return BookingScheduleData(
             selectedDate = "25/04/2026",
             grid = BookingTimeGridData(
@@ -492,8 +498,12 @@ class   MockUserRepository : UserRepository {
         )
     }
 
-    override fun getHomeSearchFilterOptions(): HomeSearchFilterOptions {
-        val provinceOptions = getNearbyFields()
+    override suspend fun getFieldGrid(fieldId: Int, date: String): BookingScheduleData {
+        return getBookingSchedule().copy(selectedDate = date)
+    }
+
+    override suspend fun getHomeSearchFilterOptions(): HomeSearchFilterOptions {
+        val provinceOptions = getNearbyFields(null, null)
             .filter { it.province.isNotBlank() }
             .groupBy { it.province }
             .mapNotNull { (_, fields) ->
@@ -592,3 +602,4 @@ class   MockUserRepository : UserRepository {
         )
     }
 }
+

@@ -6,7 +6,7 @@ import com.sportmanagement.user.domain.repository.UserRepository
 class GetCurrentUserUseCase(
     private val repository: UserRepository
 ) {
-    operator fun invoke(): UserProfile {
+    suspend operator fun invoke(): UserProfile {
         return repository.getProfile()
     }
 }

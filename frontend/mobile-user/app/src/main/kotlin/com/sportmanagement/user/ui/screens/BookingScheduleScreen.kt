@@ -48,11 +48,12 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BookingScheduleScreen(
-    scheduleData: BookingScheduleData,
+    fieldId: Int,
+    initialDateText: String,
     onBackClick: () -> Unit,
     onNextClick: (BookingConfirmationData) -> Unit,
     modifier: Modifier = Modifier,
-    viewModel: BookingScheduleViewModel = rememberBookingScheduleViewModel(scheduleData)
+    viewModel: BookingScheduleViewModel = rememberBookingScheduleViewModel(fieldId, initialDateText)
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -73,7 +74,9 @@ fun BookingScheduleScreen(
                 showSelectedRange = uiState.showSelectedRange,
                 onToggleSelectedRange = viewModel::onToggleSelectedRangeVisibility,
                 hasSelection = uiState.summary != null,
-                onNextClick = { onNextClick(viewModel.buildConfirmationData()) },
+                onNextClick = { 
+                    viewModel.buildConfirmationData()?.let { onNextClick(it) } 
+                },
                 onRequireSelection = {
                     coroutineScope.launch {
                         snackbarHostState.showSnackbar(selectSlotError)
@@ -96,12 +99,21 @@ fun BookingScheduleScreen(
                 )
             }
             item {
-                BookingTimeGrid(
-                    gridData = scheduleData.grid,
-                    cellWidth = uiState.sliderValue.dp,
-                    selectedSlots = uiState.selectedSlots,
-                    onSlotClick = viewModel::onSlotClick
-                )
+                if (uiState.isLoading) {
+                    androidx.compose.foundation.layout.Box(
+                        modifier = Modifier.fillMaxSize().padding(32.dp),
+                        contentAlignment = androidx.compose.ui.Alignment.Center
+                    ) {
+                        androidx.compose.material3.CircularProgressIndicator()
+                    }
+                } else if (uiState.scheduleData != null) {
+                    BookingTimeGrid(
+                        gridData = uiState.scheduleData!!.grid,
+                        cellWidth = uiState.sliderValue.dp,
+                        selectedSlots = uiState.selectedSlots,
+                        onSlotClick = viewModel::onSlotClick
+                    )
+                }
             }
             item {
                 Spacer(modifier = Modifier.height(120.dp))
@@ -142,17 +154,21 @@ fun BookingScheduleScreen(
 
 @Composable
 private fun rememberBookingScheduleViewModel(
-    scheduleData: BookingScheduleData
+    fieldId: Int,
+    initialDateText: String
 ): BookingScheduleViewModel {
-    val key = remember(scheduleData) {
-        "booking_schedule_${scheduleData.selectedDate}_${scheduleData.grid.openTime}_${scheduleData.grid.closeTime}_${scheduleData.grid.courts.size}"
+    val key = remember(fieldId, initialDateText) {
+        "booking_schedule_${fieldId}_${initialDateText}"
     }
     return viewModel(
         key = key,
         factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                return BookingScheduleViewModel(scheduleData) as T
+                return BookingScheduleViewModel(
+                    fieldId = fieldId,
+                    initialDateText = initialDateText
+                ) as T
             }
         }
     )
@@ -175,32 +191,8 @@ private fun formatDateFromMillis(millis: Long): String {
 private fun BookingScheduleScreenPreview() {
     SportUserTheme {
         BookingScheduleScreen(
-            scheduleData = BookingScheduleData(
-                selectedDate = "25/04/2026",
-                grid = BookingTimeGridData(
-                    openTime = "06:00",
-                    closeTime = "22:00",
-                    gridStepMinutes = 30,
-                    minBookingMinutes = 60,
-                    courts = listOf(
-                        BookingSubCourt("court-1", "Sân 1"),
-                        BookingSubCourt("court-2", "Sân 2"),
-                        BookingSubCourt("court-3", "Sân 3")
-                    ),
-                    bookedSlots = listOf(
-                        BookingTimeRange("court-1", "17:00", "18:00"),
-                        BookingTimeRange("court-2", "17:00", "18:00"),
-                        BookingTimeRange("court-3", "18:00", "18:30")
-                    ),
-                    blockedSlots = listOf(
-                        BookingTimeRange("court-1", "19:00", "20:00"),
-                        BookingTimeRange("court-2", "11:00", "14:00"),
-                        BookingTimeRange("court-3", "06:00", "14:00")
-                    )
-                ),
-                pricePerHour = 150_000,
-                estimatedPrice = "150.000đ"
-            ),
+            fieldId = 1,
+            initialDateText = "25/04/2026",
             onBackClick = {},
             onNextClick = {}
         )

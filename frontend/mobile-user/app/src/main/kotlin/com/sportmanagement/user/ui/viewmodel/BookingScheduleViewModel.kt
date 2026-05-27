@@ -12,19 +12,46 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 
+import com.sportmanagement.user.domain.repository.UserRepository
+import com.sportmanagement.user.data.repository.UserRepositoryImpl
+import kotlinx.coroutines.launch
+import androidx.lifecycle.viewModelScope
+
 class BookingScheduleViewModel(
-    private val scheduleData: BookingScheduleData,
+    private val fieldId: Int,
+    private val initialDateText: String,
+    private val repository: UserRepository = UserRepositoryImpl(),
     private val buildSummaryUseCase: BuildBookingSelectionSummaryUseCase = BuildBookingSelectionSummaryUseCase(),
     private val buildConfirmationDataUseCase: BuildBookingConfirmationDataUseCase = BuildBookingConfirmationDataUseCase()
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(
         BookingScheduleUiState(
-            selectedDateText = scheduleData.selectedDate,
-            summary = null
+            selectedDateText = initialDateText,
+            summary = null,
+            isLoading = true
         )
     )
     val uiState: StateFlow<BookingScheduleUiState> = _uiState
+
+    init {
+        loadSchedule(initialDateText)
+    }
+
+    private fun loadSchedule(date: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
+            val schedule = repository.getFieldGrid(fieldId, date)
+            _uiState.update {
+                it.copy(
+                    scheduleData = schedule,
+                    isLoading = false,
+                    selectedSlots = emptyList(),
+                    summary = null
+                )
+            }
+        }
+    }
 
     fun onDatePickerVisibilityChange(visible: Boolean) {
         _uiState.update { it.copy(showDatePicker = visible) }
@@ -37,6 +64,7 @@ class BookingScheduleViewModel(
                 showDatePicker = false
             )
         }
+        loadSchedule(dateText)
     }
 
     fun onSliderChange(value: Float) {
@@ -65,6 +93,7 @@ class BookingScheduleViewModel(
                     )
                 )
             }
+            val scheduleData = current.scheduleData ?: return@update current
             val nextSummary = buildSummaryUseCase(scheduleData, updatedSlots)
             val shouldResetRangeVisibility = summarySignature(current.summary) != summarySignature(nextSummary)
             current.copy(
@@ -79,7 +108,8 @@ class BookingScheduleViewModel(
         _uiState.update { it.copy(showSelectedRange = !it.showSelectedRange) }
     }
 
-    fun buildConfirmationData(): BookingConfirmationData {
+    fun buildConfirmationData(): BookingConfirmationData? {
+        val scheduleData = _uiState.value.scheduleData ?: return null
         return buildConfirmationDataUseCase(scheduleData, _uiState.value.summary)
     }
 

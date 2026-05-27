@@ -15,9 +15,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
-        // Khởi tạo MapLibre tại đây để tránh lỗi MapLibreConfigurationException và SIGSEGV
-        MapLibre.getInstance(this, null, WellKnownTileServer.MapLibre)
 
         try {
             enableEdgeToEdge(
@@ -30,6 +27,11 @@ class MainActivity : ComponentActivity() {
             // Fallback: some emulators crash with Index 0 out of bounds
             enableEdgeToEdge()
         }
+
+        if (!MapLibre.hasInstance()) {
+            MapLibre.getInstance(applicationContext, null, WellKnownTileServer.MapLibre)
+        }
+
         Configuration.getInstance().userAgentValue = packageName
 
         setContent {
