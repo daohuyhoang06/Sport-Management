@@ -1,4 +1,4 @@
-package com.sportmanagement.user.ui
+﻿package com.sportmanagement.user.ui
 
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -28,6 +28,12 @@ import com.sportmanagement.user.ui.screens.BookingConfirmationScreen
 import com.sportmanagement.user.ui.screens.HomeSearchFilterScreen
 import com.sportmanagement.user.ui.screens.BookingPaymentScreen
 import com.sportmanagement.user.ui.screens.BookingScheduleScreen
+import com.sportmanagement.user.ui.screens.BookingDetailScreen
+import com.sportmanagement.user.ui.screens.ConversationScreen
+import com.sportmanagement.user.ui.screens.BookingInfo
+import com.sportmanagement.user.ui.screens.ConversationInfo
+import com.sportmanagement.user.ui.screens.NotificationDetailScreen
+import com.sportmanagement.user.ui.screens.NotificationDetailInfo
 import com.sportmanagement.user.ui.screens.LoginScreen
 import com.sportmanagement.user.ui.screens.RegisterScreen
 import com.sportmanagement.user.ui.screens.InboxScreen
@@ -59,7 +65,13 @@ fun UserApp(
     var showBookingPaymentScreen by rememberSaveable { mutableStateOf(false) }
     var showHomeSearchFilterScreen by rememberSaveable { mutableStateOf(false) }
     var showHomeSearchResultsScreen by rememberSaveable { mutableStateOf(false) }
+    var showBookingDetailScreen by rememberSaveable { mutableStateOf(false) }
+    var showConversationScreen by rememberSaveable { mutableStateOf(false) }
+    var showNotificationDetailScreen by rememberSaveable { mutableStateOf(false) }
     var bookingConfirmationData by remember { mutableStateOf<BookingConfirmationData?>(null) }
+    var bookingDetailInfo by remember { mutableStateOf<BookingInfo?>(null) }
+    var conversationInfo by remember { mutableStateOf<ConversationInfo?>(null) }
+    var notificationDetailInfo by remember { mutableStateOf<NotificationDetailInfo?>(null) }
 
     val closeHomeSearchResultsFlow = {
         showHomeSearchResultsScreen = false
@@ -71,6 +83,7 @@ fun UserApp(
         showHomeSearchFilterScreen -> Color.Transparent
         showHomeSearchResultsScreen -> Color.Transparent
         showBookingScreen || showBookingPaymentScreen || showBookingConfirmationScreen -> Color.Transparent
+        showBookingDetailScreen || showConversationScreen || showNotificationDetailScreen -> MaterialTheme.colorScheme.surface
         uiState.selectedTab == UserTab.Home || uiState.selectedTab == UserTab.Profile -> Color.Transparent
         else -> MaterialTheme.colorScheme.surface
     }
@@ -80,11 +93,17 @@ fun UserApp(
         !showBookingScreen &&
         !showBookingConfirmationScreen &&
         !showBookingPaymentScreen &&
+        !showBookingDetailScreen &&
+        !showConversationScreen &&
+        !showNotificationDetailScreen &&
         uiState.selectedTab != UserTab.Home &&
         uiState.selectedTab != UserTab.Profile
     val shouldShowBottomBar = !showBookingScreen &&
         !showBookingConfirmationScreen &&
         !showBookingPaymentScreen &&
+        !showBookingDetailScreen &&
+        !showConversationScreen &&
+        !showNotificationDetailScreen &&
         !showAuthScreen &&
         !showHomeSearchFilterScreen &&
         !showHomeSearchResultsScreen
@@ -171,6 +190,35 @@ fun UserApp(
                     onConfirmPaymentClick = {
                         showBookingConfirmationScreen = false
                         showBookingPaymentScreen = true
+                    }
+                )
+            } else if (showBookingDetailScreen && bookingDetailInfo != null) {
+                BookingDetailScreen(
+                    info = bookingDetailInfo!!,
+                    onBackClick = { showBookingDetailScreen = false },
+                    onOpenChat = { info ->
+                        conversationInfo = info
+                        showBookingDetailScreen = false
+                        showConversationScreen = true
+                    }
+                )
+            } else if (showConversationScreen && conversationInfo != null) {
+                ConversationScreen(
+                    info = conversationInfo!!,
+                    onBackClick = { showConversationScreen = false }
+                )
+            } else if (showNotificationDetailScreen && notificationDetailInfo != null) {
+                NotificationDetailScreen(
+                    info = notificationDetailInfo!!,
+                    onBackClick = { showNotificationDetailScreen = false },
+                    onOpenChat = { info ->
+                        conversationInfo = info
+                        showNotificationDetailScreen = false
+                        showConversationScreen = true
+                    },
+                    onPromotionAction = {
+                        showNotificationDetailScreen = false
+                        userViewModel.onTabSelected(UserTab.Map)
                     }
                 )
             } else if (showHomeSearchFilterScreen) {
@@ -321,7 +369,21 @@ fun UserApp(
                             showBookingScreen = true
                         }
                     )
-                    UserTab.Inbox -> InboxScreen(padding)
+                    UserTab.Inbox -> InboxScreen(
+                        padding = padding,
+                        onBookingSelected = { info ->
+                            bookingDetailInfo = info
+                            showBookingDetailScreen = true
+                        },
+                        onMessageSelected = { info ->
+                            conversationInfo = info
+                            showConversationScreen = true
+                        },
+                        onNotificationSelected = { info ->
+                            notificationDetailInfo = info
+                            showNotificationDetailScreen = true
+                        }
+                    )
                     UserTab.Profile -> UserProfileScreen(
                         padding = padding,
                         profile = uiState.profile,
