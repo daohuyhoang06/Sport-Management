@@ -113,6 +113,8 @@
     <string name="inbox_contact_owner_message">Nhắn tin</string>
     <string name="inbox_contact_owner_message_hint">Chat với chủ sân</string>
     <string name="inbox_chat_placeholder">Nhắn tin...</string>
+    <string name="inbox_notification_detail_title">Chi tiết thông báo</string>
+    <string name="inbox_promo_action">Tìm sân ngay</string>
 
     <string name="booking_title">Đặt lịch ngày trực quan</string>
     <string name="booking_back_content_description">Quay lại</string>

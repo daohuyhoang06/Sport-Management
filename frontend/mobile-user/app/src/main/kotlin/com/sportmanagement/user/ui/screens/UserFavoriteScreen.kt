@@ -43,6 +43,7 @@ import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.ChevronRight
 import androidx.compose.material.icons.outlined.EventAvailable
 import androidx.compose.material.icons.outlined.HelpOutline
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.LocalOffer
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Mic
@@ -50,6 +51,7 @@ import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Phone
 import androidx.compose.material.icons.outlined.Place
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.BottomSheetDefaults
@@ -89,20 +91,22 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sportmanagement.user.R
 import com.sportmanagement.user.ui.theme.AppCardCornerRadius
-import com.sportmanagement.user.ui.theme.AppCtaAmber
 import com.sportmanagement.user.ui.theme.AppCtaCornerRadius
 import com.sportmanagement.user.ui.theme.AppCtaWideHeight
-import com.sportmanagement.user.ui.theme.AppOnCtaAmber
 import com.sportmanagement.user.ui.theme.AppHeaderGradientEnd
 import com.sportmanagement.user.ui.theme.AppHeaderGradientStart
 import com.sportmanagement.user.ui.theme.AppPanelCornerRadius
+import com.sportmanagement.user.ui.theme.AppPillCornerRadius
+import com.sportmanagement.user.ui.theme.AppScreenHorizontalPadding
+import com.sportmanagement.user.ui.theme.AppSheetTopCornerRadius
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InboxScreen(
     padding: PaddingValues,
     onBookingSelected: (BookingInfo) -> Unit,
-    onMessageSelected: (ConversationInfo) -> Unit
+    onMessageSelected: (ConversationInfo) -> Unit,
+    onNotificationSelected: (NotificationDetailInfo) -> Unit
 ) {
     val layoutDirection = LocalLayoutDirection.current
     val sections = inboxSections()
@@ -140,7 +144,7 @@ fun InboxScreen(
                 },
                 modifier = Modifier
                     .offset(y = (-18).dp)
-                    .padding(horizontal = 16.dp)
+                    .padding(horizontal = AppScreenHorizontalPadding)
             )
             Spacer(Modifier.height(6.dp))
         }
@@ -157,10 +161,13 @@ fun InboxScreen(
                             item.category == InboxCategoryType.Message && item.conversationInfo != null -> {
                                 onMessageSelected(item.conversationInfo)
                             }
+                            item.detailInfo != null -> {
+                                onNotificationSelected(item.detailInfo)
+                            }
                             else -> selectedNotification = item
                         }
                     },
-                    modifier = Modifier.padding(horizontal = 16.dp)
+                    modifier = Modifier.padding(horizontal = AppScreenHorizontalPadding)
                 )
                 Spacer(Modifier.height(12.dp))
             }
@@ -179,7 +186,7 @@ fun InboxScreen(
                 item = selectedNotification!!,
                 modifier = Modifier
                     .heightIn(min = screenHeight * 0.62f)
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                    .padding(horizontal = AppScreenHorizontalPadding, vertical = 12.dp)
             )
         }
     }
@@ -216,7 +223,7 @@ fun InboxHeader(modifier: Modifier = Modifier) {
             modifier = Modifier
                 .fillMaxSize()
                 .statusBarsPadding()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
+                .padding(horizontal = AppScreenHorizontalPadding, vertical = 14.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
             Row(
@@ -277,7 +284,7 @@ fun InboxQuickActions(
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(AppPanelCornerRadius),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 10.dp)
     ) {
         Row(
@@ -396,7 +403,7 @@ fun NotificationCard(item: NotificationItem, onClick: () -> Unit) {
             .fillMaxWidth()
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(AppCardCornerRadius),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
     ) {
         Row(
@@ -461,7 +468,7 @@ fun NotificationCard(item: NotificationItem, onClick: () -> Unit) {
                         Box(
                             modifier = Modifier
                                 .size(8.dp)
-                                .background(Color(0xFFE53935), CircleShape)
+                                .background(MaterialTheme.colorScheme.error, CircleShape)
                         )
                     }
                 }
@@ -475,13 +482,13 @@ private fun NotificationBadge(value: String, modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .size(18.dp)
-            .background(Color(0xFFE53935), CircleShape),
+            .background(MaterialTheme.colorScheme.error, CircleShape),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = value,
             style = MaterialTheme.typography.labelSmall,
-            color = Color.White,
+            color = MaterialTheme.colorScheme.onError,
             fontSize = 10.sp
         )
     }
@@ -504,13 +511,13 @@ private fun NotificationDetailSheet(item: NotificationItem, modifier: Modifier =
                 Box(
                     modifier = Modifier
                         .size(38.dp)
-                        .background(Color(0xFFE6F5EA), CircleShape),
+                        .background(MaterialTheme.colorScheme.primaryContainer, CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.CheckCircle,
                         contentDescription = null,
-                        tint = Color(0xFF2E7D32),
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(22.dp)
                     )
                 }
@@ -534,7 +541,7 @@ private fun NotificationDetailSheet(item: NotificationItem, modifier: Modifier =
             Surface(
                 modifier = Modifier.size(32.dp),
                 shape = CircleShape,
-                color = MaterialTheme.colorScheme.surfaceContainerLow
+                color = MaterialTheme.colorScheme.surfaceContainerHigh
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
@@ -563,14 +570,14 @@ private fun NotificationDetailSheet(item: NotificationItem, modifier: Modifier =
                     .fillMaxWidth()
                     .height(AppCtaWideHeight),
                 shape = RoundedCornerShape(AppCtaCornerRadius),
-                color = AppCtaAmber
+                color = MaterialTheme.colorScheme.primary
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Text(
                         text = "LIÊN HỆ CHỦ SÂN",
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.SemiBold,
-                        color = AppOnCtaAmber
+                        color = MaterialTheme.colorScheme.onPrimary
                     )
                 }
             }
@@ -606,8 +613,8 @@ private fun NotificationDetailSheet(item: NotificationItem, modifier: Modifier =
 private fun BookingDetailCard(info: BookingInfo) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        shape = RoundedCornerShape(AppCardCornerRadius),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
@@ -679,7 +686,7 @@ private fun BookingDetailRow(label: String, value: String, highlight: Boolean = 
             text = value,
             style = if (highlight) MaterialTheme.typography.titleSmall else MaterialTheme.typography.bodySmall,
             fontWeight = if (highlight) FontWeight.SemiBold else FontWeight.Normal,
-            color = if (highlight) AppHeaderGradientStart else MaterialTheme.colorScheme.onSurface
+            color = if (highlight) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface
         )
     }
     Spacer(Modifier.height(6.dp))
@@ -688,14 +695,14 @@ private fun BookingDetailRow(label: String, value: String, highlight: Boolean = 
 @Composable
 private fun StatusBadge(label: String) {
     Surface(
-        color = Color(0xFFDFF5E6),
-        shape = RoundedCornerShape(12.dp)
+        color = MaterialTheme.colorScheme.primaryContainer,
+        shape = RoundedCornerShape(AppPillCornerRadius)
     ) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.SemiBold,
-            color = Color(0xFF2E7D32),
+            color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
         )
     }
@@ -706,7 +713,7 @@ private fun BookingHighlightCard(info: BookingInfo) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(AppCardCornerRadius),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFE7F6EC)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Row(
@@ -717,13 +724,13 @@ private fun BookingHighlightCard(info: BookingInfo) {
             Box(
                 modifier = Modifier
                     .size(28.dp)
-                    .background(Color(0xFF2E7D32), CircleShape),
+                    .background(MaterialTheme.colorScheme.primary, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Outlined.CheckCircle,
                     contentDescription = null,
-                    tint = Color.White,
+                    tint = MaterialTheme.colorScheme.onPrimary,
                     modifier = Modifier.size(18.dp)
                 )
             }
@@ -732,7 +739,7 @@ private fun BookingHighlightCard(info: BookingInfo) {
                     text = "Đơn đặt sân của bạn đã được xác nhận",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFF2E7D32)
+                    color = MaterialTheme.colorScheme.primary
                 )
                 Text(
                     text = "Sân sẽ sẵn sàng đón bạn theo lịch hẹn.",
@@ -748,8 +755,8 @@ private fun BookingHighlightCard(info: BookingInfo) {
 private fun VenueInfoCard(info: BookingInfo) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        shape = RoundedCornerShape(AppCardCornerRadius),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Row(
@@ -764,7 +771,7 @@ private fun VenueInfoCard(info: BookingInfo) {
                 contentDescription = null,
                 modifier = Modifier
                     .size(width = 92.dp, height = 68.dp)
-                    .background(Color(0xFFEAEFF7), RoundedCornerShape(14.dp)),
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(AppCardCornerRadius)),
                 contentScale = ContentScale.Crop
             )
             Column(modifier = Modifier.weight(1f)) {
@@ -776,14 +783,14 @@ private fun VenueInfoCard(info: BookingInfo) {
                 )
                 Spacer(Modifier.height(6.dp))
                 Surface(
-                    color = Color(0xFFDFF5E6),
-                    shape = RoundedCornerShape(12.dp)
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    shape = RoundedCornerShape(AppPillCornerRadius)
                 ) {
                     Text(
                         text = info.statusLabel,
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFF2E7D32),
+                        color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                     )
                 }
@@ -806,13 +813,13 @@ private fun VenueInfoCard(info: BookingInfo) {
             Surface(
                 modifier = Modifier.size(32.dp),
                 shape = CircleShape,
-                color = Color(0xFFE6F5EA)
+                color = MaterialTheme.colorScheme.primaryContainer
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
                         imageVector = Icons.Outlined.Phone,
                         contentDescription = null,
-                        tint = Color(0xFF2E7D32),
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(16.dp)
                     )
                 }
@@ -825,8 +832,8 @@ private fun VenueInfoCard(info: BookingInfo) {
 private fun BookerInfoCard(info: BookingInfo) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        shape = RoundedCornerShape(AppCardCornerRadius),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
@@ -850,7 +857,7 @@ private fun BookerInfoCard(info: BookingInfo) {
                         Icon(
                             imageVector = Icons.Outlined.Person,
                             contentDescription = null,
-                            tint = AppHeaderGradientStart,
+                            tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(18.dp)
                         )
                     }
@@ -865,13 +872,13 @@ private fun BookerInfoCard(info: BookingInfo) {
                             )
                             Spacer(Modifier.width(6.dp))
                             Surface(
-                                color = Color(0xFFE7F0FF),
-                                shape = RoundedCornerShape(10.dp)
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                shape = RoundedCornerShape(AppPillCornerRadius)
                             ) {
                                 Text(
                                     text = "Chủ sân",
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = AppHeaderGradientStart,
+                                    color = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                 )
                             }
@@ -887,7 +894,7 @@ private fun BookerInfoCard(info: BookingInfo) {
                     Icon(
                         imageVector = Icons.Outlined.Phone,
                         contentDescription = null,
-                        tint = AppHeaderGradientStart,
+                        tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(18.dp)
                     )
                 }
@@ -908,7 +915,7 @@ private fun SectionHeader(title: String, icon: androidx.compose.ui.graphics.vect
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = AppHeaderGradientStart,
+                tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(14.dp)
             )
         }
@@ -934,6 +941,7 @@ data class NotificationItem(
     val category: InboxCategoryType,
     val bookingInfo: BookingInfo? = null,
     val conversationInfo: ConversationInfo? = null,
+    val detailInfo: NotificationDetailInfo? = null,
     val icon: androidx.compose.ui.graphics.vector.ImageVector,
     val iconBackground: Color,
     val iconTint: Color
@@ -961,6 +969,42 @@ data class ConversationInfo(
     val phoneNumber: String,
     val avatarRes: Int
 )
+
+sealed class NotificationDetailInfo {
+    data class UpcomingMatch(
+        val title: String,
+        val subtitle: String,
+        val fieldName: String,
+        val address: String,
+        val timeRange: String,
+        val dateLabel: String,
+        val bookingCode: String,
+        val statusLabel: String,
+        val paymentMethod: String,
+        val totalAmount: String,
+        val reminderText: String,
+        val phoneNumber: String,
+        val avatarRes: Int
+    ) : NotificationDetailInfo()
+
+    data class Promotion(
+        val title: String,
+        val subtitle: String,
+        val promoTitle: String,
+        val promoSubtitle: String,
+        val contentText: String,
+        val periodText: String,
+        val conditions: List<String>
+    ) : NotificationDetailInfo()
+
+    data class SystemNotice(
+        val title: String,
+        val subtitle: String,
+        val contentText: String,
+        val features: List<String>,
+        val timeText: String
+    ) : NotificationDetailInfo()
+}
 
 @Immutable
 data class InboxCategory(
@@ -1065,6 +1109,21 @@ private fun inboxSections(): List<NotificationSectionData> {
             timeLabel = "15:00",
             unread = true,
             category = InboxCategoryType.Activity,
+            detailInfo = NotificationDetailInfo.UpcomingMatch(
+                title = "Sắp đến giờ thi đấu",
+                subtitle = "Bạn có lịch đặt sân lúc 17:00 hôm nay.",
+                fieldName = "Sân Hoàng Mai",
+                address = "Đường Hoàng Mai, Hoàng Mai, Hà Nội",
+                timeRange = "17:00 - 18:30",
+                dateLabel = "Hôm nay, 23/05/2026",
+                bookingCode = "#B987654",
+                statusLabel = "Đã xác nhận",
+                paymentMethod = "Tiền mặt",
+                totalAmount = "200.000 đ",
+                reminderText = "Còn 1 giờ nữa tới lịch đặt sân. Đừng quên đến trước 10 phút để có trải nghiệm tốt nhất nhé!",
+                phoneNumber = "090 789 0123",
+                avatarRes = R.drawable.field_football
+            ),
             icon = Icons.Outlined.Notifications,
             iconBackground = accentSecondary.copy(alpha = 0.2f),
             iconTint = MaterialTheme.colorScheme.onSecondary
@@ -1077,6 +1136,18 @@ private fun inboxSections(): List<NotificationSectionData> {
             timeLabel = "09:00",
             unread = true,
             category = InboxCategoryType.Activity,
+            detailInfo = NotificationDetailInfo.Promotion(
+                title = "Ưu đãi dành cho bạn",
+                subtitle = "Giảm 20% cho khung giờ sáng",
+                promoTitle = "GIẢM 20%",
+                promoSubtitle = "KHUNG GIỜ SÁNG",
+                contentText = "Giảm 20% cho tất cả các khung giờ từ 6:00 - 11:00. Áp dụng cho tất cả sân trên hệ thống.",
+                periodText = "Từ 20/05/2026 đến 30/05/2026",
+                conditions = listOf(
+                    "Áp dụng cho đặt sân qua ứng dụng",
+                    "Không áp dụng với các chương trình ưu đãi khác"
+                )
+            ),
             icon = Icons.Outlined.LocalOffer,
             iconBackground = accentTertiary.copy(alpha = 0.14f),
             iconTint = accentTertiary
@@ -1130,6 +1201,17 @@ private fun inboxSections(): List<NotificationSectionData> {
             longDetail = "Trong thời gian bảo trì, một số tính năng đặt sân có thể tạm thời gián đoạn.",
             timeLabel = "18/05/2026",
             category = InboxCategoryType.Support,
+            detailInfo = NotificationDetailInfo.SystemNotice(
+                title = "Thông báo hệ thống",
+                subtitle = "Cập nhật tính năng mới",
+                contentText = "Chúng tôi vừa cập nhật thêm tính năng mới giúp bạn dễ dàng quản lý lịch đặt sân và theo dõi trận đấu.",
+                features = listOf(
+                    "Quản lý lịch đặt sân tiện lợi hơn",
+                    "Nhắc lịch trước trận đấu",
+                    "Chat trực tiếp với chủ sân"
+                ),
+                timeText = "23/05/2026 • 09:00"
+            ),
             icon = Icons.Outlined.Notifications,
             iconBackground = infoTint.copy(alpha = 0.08f),
             iconTint = infoTint
@@ -1165,7 +1247,7 @@ fun BookingDetailScreen(
     val context = LocalContext.current
     var showContactSheet by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val screenBackground = Color(0xFFF6F8FC)
+    val screenBackground = MaterialTheme.colorScheme.background
 
     Box(
         modifier = Modifier
@@ -1182,7 +1264,7 @@ fun BookingDetailScreen(
                 modifier = Modifier
                     .weight(1f)
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                    .padding(horizontal = AppScreenHorizontalPadding, vertical = 12.dp)
             )
         }
 
@@ -1201,7 +1283,7 @@ fun BookingDetailScreen(
                 onDismissRequest = { showContactSheet = false },
                 sheetState = sheetState,
                 dragHandle = { BottomSheetDefaults.DragHandle() },
-                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+                shape = RoundedCornerShape(topStart = AppSheetTopCornerRadius, topEnd = AppSheetTopCornerRadius)
             ) {
                 ContactOwnerSheet(
                     phoneNumber = info.customerPhone,
@@ -1235,7 +1317,7 @@ private fun BookingDetailTopBar(onBackClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .statusBarsPadding()
-            .padding(horizontal = 8.dp, vertical = 8.dp),
+            .padding(horizontal = AppScreenHorizontalPadding, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         IconButton(onClick = onBackClick) {
@@ -1282,8 +1364,8 @@ private fun BookingDetailContent(info: BookingInfo, modifier: Modifier = Modifie
 private fun BookingStatusCard(info: BookingInfo) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFE7F6EC)),
+        shape = RoundedCornerShape(AppCardCornerRadius),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Row(
@@ -1294,13 +1376,13 @@ private fun BookingStatusCard(info: BookingInfo) {
             Box(
                 modifier = Modifier
                     .size(28.dp)
-                    .background(Color(0xFF2E7D32), CircleShape),
+                    .background(MaterialTheme.colorScheme.primary, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = Icons.Outlined.CheckCircle,
                     contentDescription = null,
-                    tint = Color.White,
+                    tint = MaterialTheme.colorScheme.onPrimary,
                     modifier = Modifier.size(18.dp)
                 )
             }
@@ -1309,7 +1391,7 @@ private fun BookingStatusCard(info: BookingInfo) {
                     text = "Đặt sân thành công",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = Color(0xFF2E7D32)
+                    color = MaterialTheme.colorScheme.primary
                 )
                 Text(
                     text = "Booking ${info.bookingCode} đã được xác nhận.",
@@ -1325,8 +1407,8 @@ private fun BookingStatusCard(info: BookingInfo) {
 private fun BookingOwnerNoteCard(note: String) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        shape = RoundedCornerShape(AppCardCornerRadius),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
@@ -1354,7 +1436,7 @@ private fun BookingDetailBottomActions(
         modifier = modifier
             .fillMaxWidth()
             .navigationBarsPadding()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = AppScreenHorizontalPadding, vertical = 12.dp),
         color = Color.Transparent
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -1363,7 +1445,7 @@ private fun BookingDetailBottomActions(
                 modifier = Modifier
                     .weight(1f)
                     .height(AppCtaWideHeight),
-                shape = RoundedCornerShape(14.dp),
+                shape = RoundedCornerShape(AppCtaCornerRadius),
                 border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
             ) {
                 Text(
@@ -1378,7 +1460,7 @@ private fun BookingDetailBottomActions(
                 modifier = Modifier
                     .weight(1f)
                     .height(AppCtaWideHeight),
-                shape = RoundedCornerShape(14.dp),
+                shape = RoundedCornerShape(AppCtaCornerRadius),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary
@@ -1404,7 +1486,7 @@ private fun ContactOwnerSheet(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .padding(horizontal = AppScreenHorizontalPadding, vertical = 12.dp)
     ) {
         Box(modifier = Modifier.fillMaxWidth()) {
             Text(
@@ -1438,7 +1520,7 @@ private fun ContactOwnerSheet(
             title = stringResource(R.string.inbox_contact_owner_message),
             subtitle = stringResource(R.string.inbox_contact_owner_message_hint),
             icon = Icons.Outlined.ChatBubble,
-            iconTint = Color(0xFF7E57C2),
+            iconTint = MaterialTheme.colorScheme.tertiary,
             onClick = onMessageClick
         )
         Spacer(Modifier.height(16.dp))
@@ -1457,8 +1539,8 @@ private fun ContactOwnerOption(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick),
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        shape = RoundedCornerShape(AppCardCornerRadius),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Row(
@@ -1501,6 +1583,553 @@ private fun ContactOwnerOption(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun NotificationDetailScreen(
+    info: NotificationDetailInfo,
+    onBackClick: () -> Unit,
+    onOpenChat: (ConversationInfo) -> Unit,
+    onPromotionAction: () -> Unit
+) {
+    val context = LocalContext.current
+    var showContactSheet by remember { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val screenBackground = MaterialTheme.colorScheme.background
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(screenBackground)
+    ) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            NotificationDetailTopBar(onBackClick = onBackClick)
+            NotificationDetailContent(
+                info = info,
+                modifier = Modifier
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = AppScreenHorizontalPadding, vertical = 12.dp)
+            )
+        }
+
+        when (info) {
+            is NotificationDetailInfo.UpcomingMatch -> {
+                NotificationDetailBottomAction(
+                    label = stringResource(R.string.inbox_booking_contact_owner),
+                    onClick = { showContactSheet = true },
+                    modifier = Modifier.align(Alignment.BottomCenter)
+                )
+            }
+            is NotificationDetailInfo.Promotion -> {
+                NotificationDetailBottomAction(
+                    label = stringResource(R.string.inbox_promo_action),
+                    onClick = onPromotionAction,
+                    modifier = Modifier.align(Alignment.BottomCenter)
+                )
+            }
+            is NotificationDetailInfo.SystemNotice -> Unit
+        }
+
+        if (showContactSheet && info is NotificationDetailInfo.UpcomingMatch) {
+            ModalBottomSheet(
+                onDismissRequest = { showContactSheet = false },
+                sheetState = sheetState,
+                dragHandle = { BottomSheetDefaults.DragHandle() },
+                shape = RoundedCornerShape(topStart = AppSheetTopCornerRadius, topEnd = AppSheetTopCornerRadius)
+            ) {
+                ContactOwnerSheet(
+                    phoneNumber = info.phoneNumber,
+                    onCloseClick = { showContactSheet = false },
+                    onCallClick = {
+                        val intent = Intent(Intent.ACTION_DIAL)
+                        intent.data = Uri.parse("tel:${info.phoneNumber}")
+                        context.startActivity(intent)
+                        showContactSheet = false
+                    },
+                    onMessageClick = {
+                        showContactSheet = false
+                        onOpenChat(
+                            ConversationInfo(
+                                fieldName = info.fieldName,
+                                statusLabel = "Đang hoạt động",
+                                phoneNumber = info.phoneNumber,
+                                avatarRes = info.avatarRes
+                            )
+                        )
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun NotificationDetailTopBar(onBackClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .statusBarsPadding()
+            .padding(horizontal = AppScreenHorizontalPadding, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        IconButton(onClick = onBackClick) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurface
+            )
+        }
+        Text(
+            text = stringResource(R.string.inbox_notification_detail_title),
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.weight(1f),
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        IconButton(onClick = { }) {
+            Icon(
+                imageVector = Icons.Outlined.MoreVert,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun NotificationDetailContent(
+    info: NotificationDetailInfo,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier) {
+        when (info) {
+            is NotificationDetailInfo.UpcomingMatch -> {
+                NotificationBannerCard(
+                    title = info.title,
+                    subtitle = info.subtitle,
+                    backgroundColor = MaterialTheme.colorScheme.tertiaryContainer,
+                    icon = Icons.Outlined.Notifications,
+                    iconTint = MaterialTheme.colorScheme.tertiary
+                )
+                Spacer(Modifier.height(12.dp))
+                UpcomingMatchVenueCard(info)
+                Spacer(Modifier.height(12.dp))
+                UpcomingMatchBookingCard(info)
+                Spacer(Modifier.height(12.dp))
+                ReminderCard(info.reminderText)
+                Spacer(Modifier.height(72.dp))
+            }
+            is NotificationDetailInfo.Promotion -> {
+                NotificationBannerCard(
+                    title = info.title,
+                    subtitle = info.subtitle,
+                    backgroundColor = MaterialTheme.colorScheme.secondaryContainer,
+                    icon = Icons.Outlined.LocalOffer,
+                    iconTint = MaterialTheme.colorScheme.secondary
+                )
+                Spacer(Modifier.height(12.dp))
+                PromotionHeroCard(info)
+                Spacer(Modifier.height(12.dp))
+                PromotionContentCard(info)
+                Spacer(Modifier.height(72.dp))
+            }
+            is NotificationDetailInfo.SystemNotice -> {
+                NotificationBannerCard(
+                    title = info.title,
+                    subtitle = info.subtitle,
+                    backgroundColor = MaterialTheme.colorScheme.primaryContainer,
+                    icon = Icons.Outlined.Info,
+                    iconTint = MaterialTheme.colorScheme.primary
+                )
+                Spacer(Modifier.height(12.dp))
+                SystemIllustrationCard()
+                Spacer(Modifier.height(12.dp))
+                SystemNoticeContentCard(info)
+                Spacer(Modifier.height(24.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun NotificationBannerCard(
+    title: String,
+    subtitle: String,
+    backgroundColor: Color,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    iconTint: Color
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(AppCardCornerRadius),
+        colors = CardDefaults.cardColors(containerColor = backgroundColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = iconTint,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+            Column {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun UpcomingMatchVenueCard(info: NotificationDetailInfo.UpcomingMatch) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(AppCardCornerRadius),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Image(
+                painter = painterResource(id = info.avatarRes),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(width = 90.dp, height = 64.dp)
+                    .background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(AppCardCornerRadius)),
+                contentScale = ContentScale.Crop
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = info.fieldName,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Spacer(Modifier.height(6.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        imageVector = Icons.Outlined.Place,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        text = info.address,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            Surface(
+                modifier = Modifier.size(32.dp),
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.primaryContainer
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(
+                        imageVector = Icons.Outlined.Phone,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun UpcomingMatchBookingCard(info: NotificationDetailInfo.UpcomingMatch) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(AppCardCornerRadius),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            SectionHeader(
+                title = "Thông tin lịch đặt",
+                icon = Icons.Outlined.Schedule
+            )
+            Spacer(Modifier.height(10.dp))
+            BookingDetailRow(label = "Khung giờ", value = info.timeRange)
+            BookingDetailRow(label = "Ngày đặt", value = info.dateLabel)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Mã booking",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = info.bookingCode,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Icon(
+                        imageVector = Icons.Outlined.ContentCopy,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
+            Spacer(Modifier.height(6.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Trạng thái",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                StatusBadge(label = info.statusLabel)
+            }
+            Spacer(Modifier.height(6.dp))
+            BookingDetailRow(label = "Phương thức thanh toán", value = info.paymentMethod)
+            BookingDetailRow(label = "Tổng tiền", value = info.totalAmount, highlight = true)
+        }
+    }
+}
+
+@Composable
+private fun ReminderCard(text: String) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(AppCardCornerRadius),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            SectionHeader(title = "Nhắc bạn", icon = Icons.Outlined.Notifications)
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+    }
+}
+
+@Composable
+private fun PromotionHeroCard(info: NotificationDetailInfo.Promotion) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(AppCardCornerRadius),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = info.promoTitle,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.secondary
+            )
+            Text(
+                text = info.promoSubtitle,
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+    }
+}
+
+@Composable
+private fun PromotionContentCard(info: NotificationDetailInfo.Promotion) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(AppCardCornerRadius),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            SectionHeader(title = "Nội dung ưu đãi", icon = Icons.Outlined.LocalOffer)
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = info.contentText,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(Modifier.height(12.dp))
+            SectionHeader(title = "Thời gian áp dụng", icon = Icons.Outlined.Schedule)
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = info.periodText,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(Modifier.height(12.dp))
+            SectionHeader(title = "Điều kiện áp dụng", icon = Icons.Outlined.Notifications)
+            Spacer(Modifier.height(8.dp))
+            info.conditions.forEach { item ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(6.dp)
+                            .background(MaterialTheme.colorScheme.primary, CircleShape)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = item,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+                Spacer(Modifier.height(6.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun SystemIllustrationCard() {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(AppCardCornerRadius),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(140.dp)
+                .background(
+                    Brush.horizontalGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.primaryContainer,
+                            MaterialTheme.colorScheme.secondaryContainer
+                        )
+                    ),
+                    RoundedCornerShape(AppCardCornerRadius)
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Info,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(42.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun SystemNoticeContentCard(info: NotificationDetailInfo.SystemNotice) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(AppCardCornerRadius),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            SectionHeader(title = "Nội dung", icon = Icons.Outlined.Info)
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = info.contentText,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(Modifier.height(12.dp))
+            SectionHeader(title = "Tính năng mới", icon = Icons.Outlined.Notifications)
+            Spacer(Modifier.height(8.dp))
+            info.features.forEach { item ->
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(6.dp)
+                            .background(MaterialTheme.colorScheme.primary, CircleShape)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = item,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+                Spacer(Modifier.height(6.dp))
+            }
+            Spacer(Modifier.height(12.dp))
+            SectionHeader(title = "Thời gian", icon = Icons.Outlined.Schedule)
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = info.timeText,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun NotificationDetailBottomAction(
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .navigationBarsPadding()
+            .padding(horizontal = AppScreenHorizontalPadding, vertical = 12.dp),
+        color = Color.Transparent
+    ) {
+        Button(
+            onClick = onClick,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(AppCtaWideHeight),
+            shape = RoundedCornerShape(AppCtaCornerRadius),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            )
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+    }
+}
+
 @Composable
 fun ConversationScreen(
     info: ConversationInfo,
@@ -1508,7 +2137,7 @@ fun ConversationScreen(
 ) {
     val context = LocalContext.current
     val messages = remember { conversationMessages(info) }
-    val screenBackground = Color(0xFFF6F8FC)
+    val screenBackground = MaterialTheme.colorScheme.background
 
     Column(
         modifier = Modifier
@@ -1529,7 +2158,7 @@ fun ConversationScreen(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = AppScreenHorizontalPadding),
             contentPadding = PaddingValues(bottom = 16.dp, top = 8.dp)
         ) {
             item {
@@ -1574,8 +2203,8 @@ private fun ConversationTopBar(
         modifier = Modifier
             .fillMaxWidth()
             .statusBarsPadding()
-            .background(Color.White)
-            .padding(horizontal = 8.dp, vertical = 8.dp),
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(horizontal = AppScreenHorizontalPadding, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         IconButton(onClick = onBackClick) {
@@ -1598,8 +2227,8 @@ private fun ConversationTopBar(
             Box(
                 modifier = Modifier
                     .size(10.dp)
-                    .background(Color(0xFF2ECC71), CircleShape)
-                    .border(2.dp, Color.White, CircleShape)
+                    .background(MaterialTheme.colorScheme.primary, CircleShape)
+                    .border(2.dp, MaterialTheme.colorScheme.surface, CircleShape)
                     .align(Alignment.BottomEnd)
             )
         }
@@ -1651,9 +2280,9 @@ private enum class ConversationMessageType {
 private fun ConversationMessageBubble(message: ConversationMessage) {
     val alignment = if (message.isUser) Alignment.End else Alignment.Start
     val bubbleColor = if (message.isUser) {
-        Color(0xFFE7F0FF)
+        MaterialTheme.colorScheme.primaryContainer
     } else {
-        Color(0xFFF1F2F6)
+        MaterialTheme.colorScheme.surfaceContainerHigh
     }
     val textColor = MaterialTheme.colorScheme.onSurface
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
@@ -1663,7 +2292,7 @@ private fun ConversationMessageBubble(message: ConversationMessage) {
             ConversationMessageType.Text -> {
                 Surface(
                     color = bubbleColor,
-                    shape = RoundedCornerShape(18.dp),
+                    shape = RoundedCornerShape(AppCardCornerRadius),
                     modifier = Modifier.widthIn(max = screenWidth * 0.74f)
                 ) {
                     Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
@@ -1683,8 +2312,8 @@ private fun ConversationMessageBubble(message: ConversationMessage) {
             }
             ConversationMessageType.Location -> {
                 Card(
-                    shape = RoundedCornerShape(18.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    shape = RoundedCornerShape(AppCardCornerRadius),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
                     modifier = Modifier.widthIn(max = screenWidth * 0.78f),
                     elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
                 ) {
@@ -1695,7 +2324,7 @@ private fun ConversationMessageBubble(message: ConversationMessage) {
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(120.dp)
-                                .background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(12.dp)),
+                                .background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(AppCardCornerRadius)),
                             contentScale = ContentScale.Crop
                         )
                         Spacer(Modifier.height(8.dp))
@@ -1729,13 +2358,13 @@ private fun ConversationMessageBubble(message: ConversationMessage) {
                         contentDescription = null,
                         modifier = Modifier
                             .size(110.dp)
-                            .background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(16.dp)),
+                            .background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(AppCardCornerRadius)),
                         contentScale = ContentScale.Crop
                     )
                     Box(
                         modifier = Modifier
                             .size(110.dp)
-                            .background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(16.dp)),
+                            .background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(AppCardCornerRadius)),
                         contentAlignment = Alignment.Center
                     ) {
                         Image(
@@ -1745,13 +2374,13 @@ private fun ConversationMessageBubble(message: ConversationMessage) {
                             contentScale = ContentScale.Crop
                         )
                         Surface(
-                            color = Color.Black.copy(alpha = 0.45f),
-                            shape = RoundedCornerShape(16.dp)
+                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f),
+                            shape = RoundedCornerShape(AppCardCornerRadius)
                         ) {
                             Text(
                                 text = "+2",
                                 style = MaterialTheme.typography.titleSmall,
-                                color = Color.White,
+                                color = MaterialTheme.colorScheme.onPrimary,
                                 modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
                             )
                         }
@@ -1782,8 +2411,8 @@ private fun ConversationQuickReactions() {
 @Composable
 private fun ReactionChip(emoji: String) {
     Card(
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        shape = RoundedCornerShape(AppPillCornerRadius),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
     ) {
         Text(
@@ -1802,13 +2431,13 @@ private fun ConversationInputBar(modifier: Modifier = Modifier) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 10.dp),
+                .padding(horizontal = AppScreenHorizontalPadding, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Surface(
                 shape = CircleShape,
-                color = Color.White
+                color = MaterialTheme.colorScheme.surface
             ) {
                 Box(
                     modifier = Modifier.size(34.dp),
@@ -1824,8 +2453,8 @@ private fun ConversationInputBar(modifier: Modifier = Modifier) {
             }
             Surface(
                 modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(24.dp),
-                color = Color.White
+                shape = RoundedCornerShape(AppPillCornerRadius),
+                color = MaterialTheme.colorScheme.surface
             ) {
                 Text(
                     text = stringResource(R.string.inbox_chat_placeholder),
@@ -1836,7 +2465,7 @@ private fun ConversationInputBar(modifier: Modifier = Modifier) {
             }
             Surface(
                 shape = CircleShape,
-                color = Color.White
+                color = MaterialTheme.colorScheme.surface
             ) {
                 Box(
                     modifier = Modifier.size(34.dp),
