@@ -105,6 +105,14 @@
     <string name="inbox_section_priority">Ưu tiên</string>
     <string name="inbox_section_messages">Tin nhắn</string>
     <string name="inbox_section_activity">Hoạt động</string>
+    <string name="inbox_booking_detail_title">Chi tiết đặt sân</string>
+    <string name="inbox_booking_directions">Chỉ đường</string>
+    <string name="inbox_booking_contact_owner">Liên hệ chủ sân</string>
+    <string name="inbox_contact_owner_title">Liên hệ chủ sân</string>
+    <string name="inbox_contact_owner_call">Gọi điện</string>
+    <string name="inbox_contact_owner_message">Nhắn tin</string>
+    <string name="inbox_contact_owner_message_hint">Chat với chủ sân</string>
+    <string name="inbox_chat_placeholder">Nhắn tin...</string>
 
     <string name="booking_title">Đặt lịch ngày trực quan</string>
     <string name="booking_back_content_description">Quay lại</string>

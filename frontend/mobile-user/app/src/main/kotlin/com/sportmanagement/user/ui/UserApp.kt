@@ -23,6 +23,10 @@ import com.sportmanagement.user.ui.screens.BookingConfirmationScreen
 import com.sportmanagement.user.ui.screens.HomeSearchFilterScreen
 import com.sportmanagement.user.ui.screens.BookingPaymentScreen
 import com.sportmanagement.user.ui.screens.BookingScheduleScreen
+import com.sportmanagement.user.ui.screens.BookingDetailScreen
+import com.sportmanagement.user.ui.screens.ConversationScreen
+import com.sportmanagement.user.ui.screens.BookingInfo
+import com.sportmanagement.user.ui.screens.ConversationInfo
 import com.sportmanagement.user.ui.screens.LoginScreen
 import com.sportmanagement.user.ui.screens.RegisterScreen
 import com.sportmanagement.user.ui.screens.InboxScreen
@@ -46,12 +50,17 @@ fun UserApp(
     var showBookingConfirmationScreen by rememberSaveable { mutableStateOf(false) }
     var showBookingPaymentScreen by rememberSaveable { mutableStateOf(false) }
     var showHomeSearchFilterScreen by rememberSaveable { mutableStateOf(false) }
+    var showBookingDetailScreen by rememberSaveable { mutableStateOf(false) }
+    var showConversationScreen by rememberSaveable { mutableStateOf(false) }
     var bookingConfirmationData by remember { mutableStateOf<BookingConfirmationData?>(null) }
+    var bookingDetailInfo by remember { mutableStateOf<BookingInfo?>(null) }
+    var conversationInfo by remember { mutableStateOf<ConversationInfo?>(null) }
 
     val statusBarColor = when {
         showAuthScreen -> Color.Transparent
         showHomeSearchFilterScreen -> Color.Transparent
         showBookingScreen || showBookingPaymentScreen || showBookingConfirmationScreen -> Color.Transparent
+        showBookingDetailScreen || showConversationScreen -> MaterialTheme.colorScheme.surface
         uiState.selectedTab == UserTab.Home || uiState.selectedTab == UserTab.Profile -> Color.Transparent
         else -> MaterialTheme.colorScheme.surface
     }
@@ -60,11 +69,15 @@ fun UserApp(
         !showBookingScreen &&
         !showBookingConfirmationScreen &&
         !showBookingPaymentScreen &&
+        !showBookingDetailScreen &&
+        !showConversationScreen &&
         uiState.selectedTab != UserTab.Home &&
         uiState.selectedTab != UserTab.Profile
     val shouldShowBottomBar = !showBookingScreen &&
         !showBookingConfirmationScreen &&
         !showBookingPaymentScreen &&
+        !showBookingDetailScreen &&
+        !showConversationScreen &&
         !showAuthScreen &&
         !showHomeSearchFilterScreen
 
@@ -151,6 +164,21 @@ fun UserApp(
                         showBookingPaymentScreen = true
                     }
                 )
+            } else if (showBookingDetailScreen && bookingDetailInfo != null) {
+                BookingDetailScreen(
+                    info = bookingDetailInfo!!,
+                    onBackClick = { showBookingDetailScreen = false },
+                    onOpenChat = { info ->
+                        conversationInfo = info
+                        showBookingDetailScreen = false
+                        showConversationScreen = true
+                    }
+                )
+            } else if (showConversationScreen && conversationInfo != null) {
+                ConversationScreen(
+                    info = conversationInfo!!,
+                    onBackClick = { showConversationScreen = false }
+                )
             } else if (showHomeSearchFilterScreen) {
                 HomeSearchFilterScreen(
                     filterOptions = uiState.homeSearchFilterOptions,
@@ -212,7 +240,17 @@ fun UserApp(
                             showBookingScreen = true
                         }
                     )
-                    UserTab.Inbox -> InboxScreen(padding)
+                    UserTab.Inbox -> InboxScreen(
+                        padding = padding,
+                        onBookingSelected = { info ->
+                            bookingDetailInfo = info
+                            showBookingDetailScreen = true
+                        },
+                        onMessageSelected = { info ->
+                            conversationInfo = info
+                            showConversationScreen = true
+                        }
+                    )
                     UserTab.Profile -> UserProfileScreen(
                         padding = padding,
                         profile = uiState.profile,
