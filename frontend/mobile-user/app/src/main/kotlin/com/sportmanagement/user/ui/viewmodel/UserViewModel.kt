@@ -65,11 +65,19 @@ class UserViewModel(
         _uiState.update { current ->
             current.copy(
                 activeHomeSearchCriteria = criteria,
-                homeFields = filterHomeFieldsUseCase(
-                    fields = allHomeFields,
-                    criteria = criteria,
-                    options = homeSearchFilterOptions
-                )
+                homeFields = applyHomeSearchCriteria(criteria)
+            )
+        }
+    }
+
+    fun resetHomeSearchCriteria() {
+        val defaultCriteria = HomeSearchCriteria()
+        clearFieldSearchResults()
+        _uiState.update { current ->
+            current.copy(
+                activeHomeSearchCriteria = defaultCriteria,
+                homeFields = applyHomeSearchCriteria(defaultCriteria),
+                hasMoreHomeFields = hasMorePages
             )
         }
     }
@@ -199,11 +207,7 @@ class UserViewModel(
             }
 
             hasMorePages = pageItems.size >= PAGE_SIZE
-            val updatedHome = filterHomeFieldsUseCase(
-                fields = allHomeFields,
-                criteria = _uiState.value.activeHomeSearchCriteria,
-                options = homeSearchFilterOptions
-            )
+            val updatedHome = applyHomeSearchCriteria(_uiState.value.activeHomeSearchCriteria)
 
             _uiState.update {
                 it.copy(
@@ -231,11 +235,7 @@ class UserViewModel(
                 allNearbyFields = cachedFields
                 _uiState.update { current ->
                     current.copy(
-                        homeFields = filterHomeFieldsUseCase(
-                            fields = allHomeFields,
-                            criteria = current.activeHomeSearchCriteria,
-                            options = homeSearchFilterOptions
-                        ),
+                        homeFields = applyHomeSearchCriteria(current.activeHomeSearchCriteria),
                         nearbyFields = allNearbyFields,
                         isHomeLoading = false,
                         isHomeLoadingMore = false,
@@ -292,11 +292,7 @@ class UserViewModel(
 
             _uiState.update { current ->
                 current.copy(
-                    homeFields = filterHomeFieldsUseCase(
-                        fields = allHomeFields,
-                        criteria = current.activeHomeSearchCriteria,
-                        options = homeSearchFilterOptions
-                    ),
+                    homeFields = applyHomeSearchCriteria(current.activeHomeSearchCriteria),
                     sportCategories = loadedSports,
                     mapCategories = loadedMapCategories,
                     nearbyFields = allNearbyFields,
@@ -407,6 +403,22 @@ class UserViewModel(
         val lat = field.latitude?.toString().orEmpty()
         val lng = field.longitude?.toString().orEmpty()
         return "${field.name}|${field.location}|$lat|$lng"
+    }
+
+    private fun applyHomeSearchCriteria(criteria: HomeSearchCriteria): List<UserField> {
+        return filterHomeFieldsUseCase(
+            fields = sourceFieldsForHomeCriteria(criteria),
+            criteria = criteria,
+            options = homeSearchFilterOptions
+        )
+    }
+
+    private fun sourceFieldsForHomeCriteria(criteria: HomeSearchCriteria): List<UserField> {
+        return if (criteria == HomeSearchCriteria()) {
+            allHomeFields
+        } else {
+            allNearbyFields.ifEmpty { allHomeFields }
+        }
     }
 
     companion object {

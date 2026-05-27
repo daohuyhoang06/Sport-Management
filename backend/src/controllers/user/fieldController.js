@@ -68,20 +68,39 @@ const compactSqlExpression = (expression) => (
 
 const buildTextSearchClause = (columns, value, replacements) => {
   const normalized = normalizeForSearch(value);
-  const compact = compactForSearch(value);
   if (!normalized) return null;
 
-  const parts = [];
-  columns.forEach((column) => {
-    parts.push(`LOWER(COALESCE(${column}, '')) COLLATE utf8mb4_unicode_ci LIKE ?`);
-    replacements.push(`%${normalized}%`);
-    if (compact) {
-      parts.push(`${compactSqlExpression(column)} LIKE ?`);
-      replacements.push(`%${compact}%`);
-    }
+  const tokens = normalized.split(/\s+/).filter(Boolean);
+  if (tokens.length === 0) return null;
+
+  const perTokenClauses = tokens.map((token) => {
+    const tokenCompact = compactForSearch(token);
+    const tokenParts = [];
+
+    columns.forEach((column) => {
+      tokenParts.push(`LOWER(COALESCE(${column}, '')) COLLATE utf8mb4_unicode_ci LIKE ?`);
+      replacements.push(`%${token}%`);
+      if (tokenCompact) {
+        tokenParts.push(`${compactSqlExpression(column)} LIKE ?`);
+        replacements.push(`%${tokenCompact}%`);
+      }
+    });
+
+    return `(${tokenParts.join(' OR ')})`;
   });
 
-  return `(${parts.join(' OR ')})`;
+  const fullCompact = compactForSearch(value);
+  if (fullCompact && tokens.length > 1) {
+    const compactPhraseParts = [];
+    columns.forEach((column) => {
+      compactPhraseParts.push(`${compactSqlExpression(column)} LIKE ?`);
+      replacements.push(`%${fullCompact}%`);
+    });
+
+    return `((${perTokenClauses.join(' AND ')}) OR (${compactPhraseParts.join(' OR ')}))`;
+  }
+
+  return `(${perTokenClauses.join(' AND ')})`;
 };
 
 const sportTypeAliases = (sportType) => {

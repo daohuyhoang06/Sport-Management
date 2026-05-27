@@ -77,6 +77,12 @@
     <string name="home_search_filter_picker_clear">XÓA</string>
     <string name="home_search_filter_picker_ok">OK</string>
     <string name="home_search_filter_search_button">Tìm kiếm</string>
+    <string name="home_search_results_title">Tìm kiếm</string>
+    <string name="home_search_results_count_format">%1$d sân phù hợp</string>
+    <string name="home_search_results_search_placeholder">Tìm trong kết quả đã lọc</string>
+    <string name="home_search_results_empty">Không tìm thấy sân phù hợp với bộ lọc hiện tại</string>
+    <string name="home_search_results_empty_title">Opp! Rất tiếc, không thấy sân phù hợp!</string>
+    <string name="home_search_results_empty_body">Bạn có thể thay đổi bộ lọc để có kết quả như ý nhé.</string>
 
     <string name="map_current_location_title">Vị trí hiện tại</string>
     <string name="map_current_location_snippet">Bạn đang ở đây</string>

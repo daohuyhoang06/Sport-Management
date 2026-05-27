@@ -392,6 +392,7 @@ private fun HomeSearchFilterHeader(
     Box(
         modifier = Modifier
             .fillMaxWidth()
+            .height(118.dp)
             .background(
                 brush = Brush.horizontalGradient(
                     colors = listOf(AppHeaderGradientStart, AppHeaderGradientEnd)
@@ -402,7 +403,7 @@ private fun HomeSearchFilterHeader(
             modifier = Modifier
                 .fillMaxWidth()
                 .statusBarsPadding()
-                .padding(horizontal = 16.dp, vertical = 2.dp)
+                .padding(horizontal = 16.dp, vertical = 8.dp)
         ) {
             Box(modifier = Modifier.fillMaxWidth()) {
                 IconButton(

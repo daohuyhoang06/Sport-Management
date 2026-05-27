@@ -6,13 +6,11 @@ import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,29 +19,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.SportsSoccer
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import com.sportmanagement.user.ui.components.search.FieldSearchPanel
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -56,11 +39,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.google.android.gms.location.LocationServices
@@ -74,6 +54,7 @@ import com.sportmanagement.user.ui.components.home.HomeSportCategorySection
 import com.sportmanagement.user.ui.components.home.HomeStickyHeaderSection
 import com.sportmanagement.user.ui.components.home.HomeVenueCard
 import kotlinx.coroutines.delay
+import java.text.Normalizer
 
 @Composable
 fun UserHomeScreen(
@@ -106,10 +87,10 @@ fun UserHomeScreen(
     val context = LocalContext.current
     val layoutDirection = LocalLayoutDirection.current
     var searchQuery by remember { mutableStateOf("") }
+    var lastRequestedSearchQuery by remember { mutableStateOf("") }
     var selectedCategoryIndex by remember { mutableIntStateOf(-1) }
     var selectedFieldForDetail by remember { mutableStateOf<UserField?>(null) }
     var hasRequestedHomeLocation by rememberSaveable { mutableStateOf(false) }
-    var showSearchPanel by rememberSaveable { mutableStateOf(false) }
     val listState = rememberLazyListState()
     val showStickyHeader by remember {
         derivedStateOf {
@@ -162,30 +143,72 @@ fun UserHomeScreen(
     val selectedSportType = remember(selectedCategoryIndex, sportCategories) {
         sportCategories.getOrNull(selectedCategoryIndex)?.iconType
     }
-    val normalizedQuery = remember(searchQuery) { searchQuery.trim() }
-    val filteredFields = remember(fields, selectedSportType, normalizedQuery) {
+    val normalizedQuery = remember(searchQuery) { normalizeForSearch(searchQuery) }
+    val isSearching = normalizedQuery.isNotBlank()
+    val filteredHomeFields = remember(fields, selectedSportType, normalizedQuery) {
         fields.filter { field ->
             val byCategory = selectedSportType == null || field.sportIconType == selectedSportType
             val bySearch = normalizedQuery.isBlank() ||
-                field.name.contains(normalizedQuery, ignoreCase = true) ||
-                field.location.contains(normalizedQuery, ignoreCase = true)
+                normalizeForSearch(field.name).contains(normalizedQuery) ||
+                normalizeForSearch(field.location).contains(normalizedQuery)
             byCategory && bySearch
         }
     }
+    val filteredSearchResults = remember(searchResults, selectedSportType, normalizedQuery) {
+        searchResults.filter { field ->
+            val byCategory = selectedSportType == null || field.sportIconType == selectedSportType
+            val bySearch = normalizeForSearch(field.name).contains(normalizedQuery) ||
+                normalizeForSearch(field.location).contains(normalizedQuery)
+            byCategory && bySearch
+        }
+    }
+    val visibleFields = if (isSearching) filteredSearchResults else filteredHomeFields
+
+    LaunchedEffect(searchQuery) {
+        val cleaned = searchQuery.trim()
+        if (cleaned.isBlank()) {
+            lastRequestedSearchQuery = ""
+            onClearSearch()
+            return@LaunchedEffect
+        }
+
+        onSearchOpened()
+        delay(400)
+        if (cleaned == searchQuery.trim()) {
+            lastRequestedSearchQuery = normalizeForSearch(cleaned)
+            onSearchRequest(cleaned, null, null)
+        }
+    }
+
+    val shouldShowSearchEmptyState = isSearching &&
+        normalizedQuery == lastRequestedSearchQuery &&
+        lastRequestedSearchQuery.isNotBlank() &&
+        !isSearchLoading &&
+        !isSearchLoadingMore &&
+        visibleFields.isEmpty()
 
     val shouldAutoLoadMore by remember(
         listState,
-        filteredFields,
+        visibleFields,
         isInitialLoading,
         isLoadingMore,
         hasMoreData,
+        isSearchLoading,
+        isSearchLoadingMore,
+        hasMoreSearchResults,
         normalizedQuery,
         selectedCategoryIndex
     ) {
         derivedStateOf {
-            val isDefaultFeed = normalizedQuery.isBlank() && selectedCategoryIndex == -1
-            if (!isDefaultFeed || isInitialLoading || isLoadingMore || !hasMoreData || filteredFields.isEmpty()) {
-                return@derivedStateOf false
+            if (isSearching) {
+                if (isSearchLoading || isSearchLoadingMore || !hasMoreSearchResults || visibleFields.isEmpty()) {
+                    return@derivedStateOf false
+                }
+            } else {
+                val isDefaultFeed = normalizedQuery.isBlank() && selectedCategoryIndex == -1
+                if (!isDefaultFeed || isInitialLoading || isLoadingMore || !hasMoreData || visibleFields.isEmpty()) {
+                    return@derivedStateOf false
+                }
             }
             val totalItems = listState.layoutInfo.totalItemsCount
             val lastVisibleIndex = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
@@ -195,7 +218,7 @@ fun UserHomeScreen(
 
     LaunchedEffect(shouldAutoLoadMore) {
         if (shouldAutoLoadMore) {
-            onLoadMore()
+            if (isSearching) onLoadMoreSearchResults() else onLoadMore()
         }
     }
 
@@ -237,22 +260,36 @@ fun UserHomeScreen(
                 Spacer(Modifier.height(16.dp))
             }
 
-            if (isInitialLoading && fields.isEmpty()) {
+            if ((isInitialLoading && fields.isEmpty() && !isSearching) || (isSearching && isSearchLoading && visibleFields.isEmpty())) {
                 items(5) {
                     HomeVenueSkeletonCard()
                     Spacer(Modifier.height(12.dp))
                 }
             } else {
-                items(filteredFields) { field ->
+                items(visibleFields) { field ->
                     HomeVenueCard(
                         field = field,
-                        onCardClick = { selectedFieldForDetail = field },
+                        onCardClick = {
+                            selectedFieldForDetail = field
+                            if (isSearching) onRememberSearch(field.name)
+                        },
                         onBookClick = { onBookFieldClick(field) }
                     )
                     Spacer(Modifier.height(12.dp))
                 }
 
-                if (isLoadingMore) {
+                if (shouldShowSearchEmptyState) {
+                    item {
+                        Text(
+                            text = "Khong tim thay san phu hop",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                        )
+                    }
+                }
+
+                if ((isSearching && isSearchLoadingMore) || (!isSearching && isLoadingMore)) {
                     items(2) {
                         HomeVenueSkeletonCard()
                         Spacer(Modifier.height(12.dp))
@@ -270,36 +307,6 @@ fun UserHomeScreen(
             )
         }
 
-        if (showSearchPanel) {
-            FieldSearchPanel(
-                results = searchResults,
-                recentSearches = recentSearches,
-                isLoading = isSearchLoading,
-                isLoadingMore = isSearchLoadingMore,
-                hasMoreResults = hasMoreSearchResults,
-                onSearchRequest = onSearchRequest,
-                onClearSearch = onClearSearch,
-                onLoadMore = onLoadMoreSearchResults,
-                onRememberSearch = onRememberSearch,
-                onClose = {
-                    showSearchPanel = false
-                    onClearSearch()
-                },
-                onFieldClick = { field ->
-                    onRememberSearch(field.name)
-                    selectedFieldForDetail = field
-                    showSearchPanel = false
-                    onClearSearch()
-                },
-                onBookFieldClick = { field ->
-                    onRememberSearch(field.name)
-                    showSearchPanel = false
-                    onClearSearch()
-                    onBookFieldClick(field)
-                }
-            )
-        }
-
         selectedFieldForDetail?.let { selectedField ->
             FieldDetailBottomSheet(
                 field = selectedField,
@@ -313,22 +320,11 @@ fun UserHomeScreen(
     }
 }
 
-// Extracted to com.sportmanagement.user.ui.components.search.FieldSearchPanel
+private fun normalizeForSearch(text: String): String {
+    val normalized = Normalizer.normalize(text.trim().lowercase(), Normalizer.Form.NFD)
+    return normalized.replace("đ", "d").replace("\\p{M}+".toRegex(), "")
+}
 
-private data class SearchSportFilter(
-    val label: String,
-    val apiValue: String
-)
-
-private val popularSearchKeywords = listOf("Mỹ Đình", "Pickleball", "Sân A", "Tennis")
-private val popularAreas = listOf("Cầu Giấy", "Mỹ Đình", "Nam Từ Liêm", "Hà Đông", "Tây Hồ")
-private val searchSportFilters = listOf(
-    SearchSportFilter("Bóng đá", "football"),
-    SearchSportFilter("Cầu lông", "badminton"),
-    SearchSportFilter("Tennis", "tennis"),
-    SearchSportFilter("Pickleball", "pickleball"),
-    SearchSportFilter("Bóng rổ", "basketball")
-)
 
 @Composable
 fun HomeVenueSkeletonCard() {

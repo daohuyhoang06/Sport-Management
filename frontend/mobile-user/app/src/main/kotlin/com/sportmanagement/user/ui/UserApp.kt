@@ -31,6 +31,7 @@ import com.sportmanagement.user.ui.screens.BookingScheduleScreen
 import com.sportmanagement.user.ui.screens.LoginScreen
 import com.sportmanagement.user.ui.screens.RegisterScreen
 import com.sportmanagement.user.ui.screens.InboxScreen
+import com.sportmanagement.user.ui.screens.HomeSearchResultsScreen
 import com.sportmanagement.user.ui.screens.UserHomeScreen
 import com.sportmanagement.user.ui.screens.UserMapScreen
 import com.sportmanagement.user.ui.screens.UserProfileScreen
@@ -57,17 +58,25 @@ fun UserApp(
     var showBookingConfirmationScreen by rememberSaveable { mutableStateOf(false) }
     var showBookingPaymentScreen by rememberSaveable { mutableStateOf(false) }
     var showHomeSearchFilterScreen by rememberSaveable { mutableStateOf(false) }
+    var showHomeSearchResultsScreen by rememberSaveable { mutableStateOf(false) }
     var bookingConfirmationData by remember { mutableStateOf<BookingConfirmationData?>(null) }
+
+    val closeHomeSearchResultsFlow = {
+        showHomeSearchResultsScreen = false
+        resolvedUserViewModel.resetHomeSearchCriteria()
+    }
 
     val statusBarColor = when {
         showAuthScreen -> Color.Transparent
         showHomeSearchFilterScreen -> Color.Transparent
+        showHomeSearchResultsScreen -> Color.Transparent
         showBookingScreen || showBookingPaymentScreen || showBookingConfirmationScreen -> Color.Transparent
         uiState.selectedTab == UserTab.Home || uiState.selectedTab == UserTab.Profile -> Color.Transparent
         else -> MaterialTheme.colorScheme.surface
     }
     val useDarkStatusBarIcons = !showAuthScreen &&
         !showHomeSearchFilterScreen &&
+        !showHomeSearchResultsScreen &&
         !showBookingScreen &&
         !showBookingConfirmationScreen &&
         !showBookingPaymentScreen &&
@@ -77,7 +86,8 @@ fun UserApp(
         !showBookingConfirmationScreen &&
         !showBookingPaymentScreen &&
         !showAuthScreen &&
-        !showHomeSearchFilterScreen
+        !showHomeSearchFilterScreen &&
+        !showHomeSearchResultsScreen
 
     AppStatusBarEffect(
         statusBarColor = statusBarColor,
@@ -145,6 +155,7 @@ fun UserApp(
                         showBookingConfirmationScreen = false
                         showBookingScreen = false
                         bookingConfirmationData = null
+                        closeHomeSearchResultsFlow()
                         resolvedUserViewModel.onTabSelected(UserTab.Home)
                     }
                 )
@@ -170,6 +181,7 @@ fun UserApp(
                     onApplyFilters = { criteria ->
                         resolvedUserViewModel.onApplyHomeSearchCriteria(criteria)
                         showHomeSearchFilterScreen = false
+                        showHomeSearchResultsScreen = true
                     }
                 )
             } else if (showBookingScreen && selectedFieldId != null) {
@@ -190,67 +202,86 @@ fun UserApp(
                 )
             } else {
                 when (uiState.selectedTab) {
-                    UserTab.Home -> UserHomeScreen(
-                        padding = padding,
-                        fields = uiState.homeFields,
-                        sportCategories = uiState.sportCategories,
-                        userName = uiState.profile.name,
-                        isLoggedIn = isLoggedIn,
-                        isInitialLoading = uiState.isHomeLoading,
-                        isLoadingMore = uiState.isHomeLoadingMore,
-                        hasMoreData = uiState.hasMoreHomeFields,
-                        searchResults = uiState.fieldSearchResults,
-                        recentSearches = uiState.recentFieldSearches,
-                        isSearchLoading = uiState.isFieldSearchLoading,
-                        isSearchLoadingMore = uiState.isFieldSearchLoadingMore,
-                        hasMoreSearchResults = uiState.hasMoreFieldSearchResults,
-                        onLoginClick = {
-                            showRegister = false
-                            showAuthScreen = true
-                        },
-                        onRegisterClick = {
-                            showRegister = true
-                            showAuthScreen = true
-                        },
-                        onFilterClick = {
-                            showHomeSearchFilterScreen = true
-                        },
-                        onSearchOpened = {
-                            resolvedUserViewModel.onFieldSearchOpened()
-                        },
-                        onSearchRequest = { keyword, address, sportType ->
-                            resolvedUserViewModel.searchFields(
-                                keyword = keyword,
-                                address = address,
-                                sportType = sportType
-                            )
-                        },
-                        onClearSearch = {
-                            resolvedUserViewModel.clearFieldSearchResults()
-                        },
-                        onLoadMoreSearchResults = {
-                            resolvedUserViewModel.loadMoreFieldSearchResults()
-                        },
-                        onRememberSearch = { query ->
-                            resolvedUserViewModel.rememberFieldSearch(query)
-                        },
-                        onCurrentLocationDetected = { latitude, longitude ->
-                            resolvedUserViewModel.onHomeLocationUpdated(latitude, longitude)
-                        },
-                        onLocationUnavailable = {
-                            resolvedUserViewModel.onHomeLocationUnavailable()
-                        },
-                        onLoadMore = {
-                            resolvedUserViewModel.loadMoreHomeFields()
-                        },
-                        onBookFieldClick = { field ->
-                            selectedFieldId = field.fieldId
-                            showBookingPaymentScreen = false
-                            showBookingConfirmationScreen = false
-                            bookingConfirmationData = null
-                            showBookingScreen = true
-                        }
-                    )
+                    UserTab.Home -> if (showHomeSearchResultsScreen) {
+                        HomeSearchResultsScreen(
+                            padding = padding,
+                            fields = uiState.homeFields,
+                            isLoading = uiState.isHomeLoading,
+                            onBackClick = closeHomeSearchResultsFlow,
+                            onFilterClick = {
+                                showHomeSearchFilterScreen = true
+                            },
+                            onBookFieldClick = { field ->
+                                selectedFieldId = field.fieldId
+                                showBookingPaymentScreen = false
+                                showBookingConfirmationScreen = false
+                                bookingConfirmationData = null
+                                showBookingScreen = true
+                            }
+                        )
+                    } else {
+                        UserHomeScreen(
+                            padding = padding,
+                            fields = uiState.homeFields,
+                            sportCategories = uiState.sportCategories,
+                            userName = uiState.profile.name,
+                            isLoggedIn = isLoggedIn,
+                            isInitialLoading = uiState.isHomeLoading,
+                            isLoadingMore = uiState.isHomeLoadingMore,
+                            hasMoreData = uiState.hasMoreHomeFields,
+                            searchResults = uiState.fieldSearchResults,
+                            recentSearches = uiState.recentFieldSearches,
+                            isSearchLoading = uiState.isFieldSearchLoading,
+                            isSearchLoadingMore = uiState.isFieldSearchLoadingMore,
+                            hasMoreSearchResults = uiState.hasMoreFieldSearchResults,
+                            onLoginClick = {
+                                showRegister = false
+                                showAuthScreen = true
+                            },
+                            onRegisterClick = {
+                                showRegister = true
+                                showAuthScreen = true
+                            },
+                            onFilterClick = {
+                                showHomeSearchFilterScreen = true
+                            },
+                            onSearchOpened = {
+                                resolvedUserViewModel.onFieldSearchOpened()
+                            },
+                            onSearchRequest = { keyword, address, sportType ->
+                                resolvedUserViewModel.searchFields(
+                                    keyword = keyword,
+                                    address = address,
+                                    sportType = sportType
+                                )
+                            },
+                            onClearSearch = {
+                                resolvedUserViewModel.clearFieldSearchResults()
+                            },
+                            onLoadMoreSearchResults = {
+                                resolvedUserViewModel.loadMoreFieldSearchResults()
+                            },
+                            onRememberSearch = { query ->
+                                resolvedUserViewModel.rememberFieldSearch(query)
+                            },
+                            onCurrentLocationDetected = { latitude, longitude ->
+                                resolvedUserViewModel.onHomeLocationUpdated(latitude, longitude)
+                            },
+                            onLocationUnavailable = {
+                                resolvedUserViewModel.onHomeLocationUnavailable()
+                            },
+                            onLoadMore = {
+                                resolvedUserViewModel.loadMoreHomeFields()
+                            },
+                            onBookFieldClick = { field ->
+                                selectedFieldId = field.fieldId
+                                showBookingPaymentScreen = false
+                                showBookingConfirmationScreen = false
+                                bookingConfirmationData = null
+                                showBookingScreen = true
+                            }
+                        )
+                    }
                     UserTab.Map -> UserMapScreen(
                         padding = padding,
                         sportCategories = uiState.sportCategories,
