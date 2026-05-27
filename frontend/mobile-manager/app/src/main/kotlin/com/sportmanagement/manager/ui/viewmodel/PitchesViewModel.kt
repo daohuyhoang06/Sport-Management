@@ -1,0 +1,38 @@
+package com.sportmanagement.manager.ui.viewmodel
+
+import androidx.lifecycle.ViewModel
+import com.sportmanagement.manager.domain.model.PitchStatus
+import com.sportmanagement.manager.ui.state.PitchesUiState
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
+
+class PitchesViewModel : ViewModel() {
+
+    private val _uiState = MutableStateFlow(PitchesUiState())
+    val uiState: StateFlow<PitchesUiState> = _uiState
+
+    fun onSearchQueryChanged(query: String) {
+        _uiState.update { it.copy(searchQuery = query) }
+    }
+
+    fun onToggleFilterDialog() {
+        _uiState.update { it.copy(showFilterDialog = !it.showFilterDialog) }
+    }
+
+    fun onFilterStatusChanged(status: PitchStatus?) {
+        _uiState.update { it.copy(filterStatus = status) }
+    }
+
+    fun onFilterMaxPriceChanged(price: Long?) {
+        _uiState.update { it.copy(filterMaxPrice = price) }
+    }
+
+    fun onClearFilters() {
+        _uiState.update { it.copy(filterStatus = null, filterSportType = null, filterMaxPrice = null) }
+    }
+
+    fun onApplyFilters() {
+        _uiState.update { it.copy(showFilterDialog = false) }
+    }
+}

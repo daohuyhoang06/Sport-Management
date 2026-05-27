@@ -1,4 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Sport Manager</string>
+    <string name="tab_dashboard">Dashboard</string>
+    <string name="tab_pitches">Pitches</string>
+    <string name="tab_bookings">Bookings</string>
+    <string name="tab_services">Services</string>
+    <string name="tab_messages">Messages</string>
+    <string name="greeting_morning">Chào buổi sáng</string>
+    <string name="notification">Thông báo</string>
+    <string name="revenue_today">Doanh thu hôm nay</string>
+    <string name="booking_count">Số lượt đặt</string>
+    <string name="occupancy_rate">Tỷ lệ lấp đầy</string>
+    <string name="revenue_trend">Xu hướng doanh thu</string>
+    <string name="quick_actions">Thao tác nhanh</string>
+    <string name="upcoming">Sắp diễn ra</string>
 </resources>
