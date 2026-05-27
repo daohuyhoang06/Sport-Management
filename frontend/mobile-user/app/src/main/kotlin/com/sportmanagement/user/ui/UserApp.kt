@@ -25,7 +25,7 @@ import com.sportmanagement.user.ui.screens.BookingPaymentScreen
 import com.sportmanagement.user.ui.screens.BookingScheduleScreen
 import com.sportmanagement.user.ui.screens.LoginScreen
 import com.sportmanagement.user.ui.screens.RegisterScreen
-import com.sportmanagement.user.ui.screens.UserFavoriteScreen
+import com.sportmanagement.user.ui.screens.InboxScreen
 import com.sportmanagement.user.ui.screens.UserHomeScreen
 import com.sportmanagement.user.ui.screens.UserMapScreen
 import com.sportmanagement.user.ui.screens.UserProfileScreen
@@ -212,7 +212,7 @@ fun UserApp(
                             showBookingScreen = true
                         }
                     )
-                    UserTab.Favorites -> UserFavoriteScreen(padding, uiState.favoriteFields)
+                    UserTab.Inbox -> InboxScreen(padding)
                     UserTab.Profile -> UserProfileScreen(
                         padding = padding,
                         profile = uiState.profile,

@@ -13,10 +13,9 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.ripple.LocalRippleTheme
-import androidx.compose.material.ripple.RippleAlpha
-import androidx.compose.material.ripple.RippleTheme
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalRippleConfiguration
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -50,20 +49,7 @@ import com.sportmanagement.user.ui.theme.AppNavIconGradientStart
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-private object NoRippleTheme : RippleTheme {
-    @Composable
-    override fun defaultColor(): Color = Color.Transparent
-
-    @Composable
-    override fun rippleAlpha(): RippleAlpha =
-        RippleAlpha(
-            draggedAlpha = 0f,
-            focusedAlpha = 0f,
-            hoveredAlpha = 0f,
-            pressedAlpha = 0f
-        )
-}
-
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UserBottomBar(selectedTab: UserTab, onTabSelected: (UserTab) -> Unit) {
     val accentColor = AppHeaderGradientEnd
@@ -122,7 +108,7 @@ fun UserBottomBar(selectedTab: UserTab, onTabSelected: (UserTab) -> Unit) {
                         animationSpec = tween(durationMillis = 140),
                         label = "bottom_tab_icon_scale"
                     )
-                    CompositionLocalProvider(LocalRippleTheme provides NoRippleTheme) {
+                    CompositionLocalProvider(LocalRippleConfiguration provides null) {
                         NavigationBarItem(
                             selected = isSelected,
                             onClick = {

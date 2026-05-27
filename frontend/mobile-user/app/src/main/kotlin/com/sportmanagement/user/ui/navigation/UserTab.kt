@@ -2,11 +2,11 @@
 
 import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.ChatBubble
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Map
 import androidx.compose.material.icons.rounded.Person
@@ -28,10 +28,10 @@ enum class UserTab(
         Icons.Rounded.Map,
         Icons.Outlined.Map
     ),
-    Favorites(
-        R.string.tab_favorites,
-        Icons.Rounded.Favorite,
-        Icons.Outlined.FavoriteBorder
+    Inbox(
+        R.string.tab_inbox,
+        Icons.Rounded.ChatBubble,
+        Icons.Outlined.ChatBubbleOutline
     ),
     Profile(
         R.string.tab_profile,

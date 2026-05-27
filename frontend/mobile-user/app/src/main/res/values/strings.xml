@@ -4,6 +4,7 @@
     <string name="tab_home">Trang chủ</string>
     <string name="tab_map">Bản đồ</string>
     <string name="tab_favorites">Yêu thích</string>
+    <string name="tab_inbox">Hộp thư</string>
     <string name="tab_profile">Tài khoản</string>
     <string name="auth_login_welcome">Chào mừng bạn</string>
     <string name="auth_login_subtitle">Đăng nhập để tiếp tục trải nghiệm</string>
@@ -97,6 +98,13 @@
 
     <string name="favorite_title">Sân yêu thích</string>
     <string name="favorite_price_rating">%1$s  |  %2$s/5</string>
+
+    <string name="inbox_title">Hộp thư</string>
+    <string name="inbox_subtitle">Cập nhật hoạt động, tin nhắn và thông báo của bạn</string>
+    <string name="inbox_mark_read">Đánh dấu đã đọc</string>
+    <string name="inbox_section_priority">Ưu tiên</string>
+    <string name="inbox_section_this_week">Tuần này</string>
+    <string name="inbox_section_last_week">Tuần trước</string>
 
     <string name="booking_title">Đặt lịch ngày trực quan</string>
     <string name="booking_back_content_description">Quay lại</string>
