@@ -11,6 +11,9 @@ import com.sportmanagement.user.ui.navigation.UserTab
 
 data class UserUiState(
     val selectedTab: UserTab = UserTab.Home,
+    val isAuthenticated: Boolean = false,
+    val isAuthLoading: Boolean = false,
+    val authError: String? = null,
     val homeFields: List<UserField> = emptyList(),
     val isHomeLoading: Boolean = false,
     val isHomeLoadingMore: Boolean = false,
@@ -31,7 +34,7 @@ data class UserUiState(
         name = "",
         email = "",
         phone = "",
-        membership = ""
+        membership = "Đồng"
     ),
     val stats: List<UserStat> = emptyList()
 )

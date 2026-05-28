@@ -56,7 +56,6 @@ fun UserApp(
     )
     val uiState by resolvedUserViewModel.uiState.collectAsState()
     val chatbotUiState by chatbotViewModel.uiState.collectAsState()
-    var isLoggedIn by rememberSaveable { mutableStateOf(false) }
     var showAuthScreen by rememberSaveable { mutableStateOf(false) }
     var showRegister by rememberSaveable { mutableStateOf(false) }
     var selectedFieldId by rememberSaveable { mutableStateOf<Int?>(null) }
@@ -117,6 +116,13 @@ fun UserApp(
         chatbotViewModel.setWidgetEnabled(shouldShowBottomBar)
     }
 
+    LaunchedEffect(uiState.isAuthenticated, showAuthScreen) {
+        if (uiState.isAuthenticated && showAuthScreen) {
+            showAuthScreen = false
+            showRegister = false
+        }
+    }
+
     Scaffold(
         bottomBar = {
             if (shouldShowBottomBar) {
@@ -131,25 +137,43 @@ fun UserApp(
             if (showAuthScreen) {
                 if (showRegister) {
                     RegisterScreen(
-                        onRegisterSuccess = {
-                            showRegister = false
-                            showAuthScreen = true
+                        isLoading = uiState.isAuthLoading,
+                        errorMessage = uiState.authError,
+                        onRegisterSubmit = { formState, selectedSportTypeKeys ->
+                            resolvedUserViewModel.register(
+                                fullName = formState.fullName,
+                                email = formState.email,
+                                password = formState.password,
+                                phone = formState.phone,
+                                birthday = formState.birthDate.takeIf { it.contains("/") },
+                                address = null,
+                                preferredSportTypeKeys = selectedSportTypeKeys
+                            )
                         },
                         onNavigateToLogin = {
+                            resolvedUserViewModel.clearAuthError()
                             showRegister = false
                         }
                     )
                 } else {
                     LoginScreen(
-                        onLoginSuccess = {
-                            isLoggedIn = true
-                            showAuthScreen = false
-                            showRegister = false
+                        isLoading = uiState.isAuthLoading,
+                        errorMessage = uiState.authError,
+                        onLoginSubmit = { identifier, password ->
+                            resolvedUserViewModel.login(
+                                identifier = identifier,
+                                password = password
+                            )
+                        },
+                        onGoogleLoginSubmit = { idToken ->
+                            resolvedUserViewModel.loginWithGoogle(idToken)
                         },
                         onNavigateToRegister = {
+                            resolvedUserViewModel.clearAuthError()
                             showRegister = true
                         },
                         onBackClick = {
+                            resolvedUserViewModel.clearAuthError()
                             showAuthScreen = false
                         }
                     )
@@ -218,7 +242,7 @@ fun UserApp(
                     },
                     onPromotionAction = {
                         showNotificationDetailScreen = false
-                        userViewModel.onTabSelected(UserTab.Map)
+                        resolvedUserViewModel.onTabSelected(UserTab.Map)
                     }
                 )
             } else if (showHomeSearchFilterScreen) {
@@ -273,7 +297,8 @@ fun UserApp(
                             fields = uiState.homeFields,
                             sportCategories = uiState.sportCategories,
                             userName = uiState.profile.name,
-                            isLoggedIn = isLoggedIn,
+                            userAvatarUrl = uiState.profile.avatarUrl,
+                            isLoggedIn = uiState.isAuthenticated,
                             isInitialLoading = uiState.isHomeLoading,
                             isLoadingMore = uiState.isHomeLoadingMore,
                             hasMoreData = uiState.hasMoreHomeFields,
@@ -283,10 +308,12 @@ fun UserApp(
                             isSearchLoadingMore = uiState.isFieldSearchLoadingMore,
                             hasMoreSearchResults = uiState.hasMoreFieldSearchResults,
                             onLoginClick = {
+                                resolvedUserViewModel.clearAuthError()
                                 showRegister = false
                                 showAuthScreen = true
                             },
                             onRegisterClick = {
+                                resolvedUserViewModel.clearAuthError()
                                 showRegister = true
                                 showAuthScreen = true
                             },
@@ -387,19 +414,24 @@ fun UserApp(
                     UserTab.Profile -> UserProfileScreen(
                         padding = padding,
                         profile = uiState.profile,
-                        isLoggedIn = isLoggedIn,
+                        isLoggedIn = uiState.isAuthenticated,
                         onLoginClick = {
+                            resolvedUserViewModel.clearAuthError()
                             showRegister = false
                             showAuthScreen = true
                         },
                         onRegisterClick = {
+                            resolvedUserViewModel.clearAuthError()
                             showRegister = true
                             showAuthScreen = true
                         },
                         onLogoutClick = {
-                            isLoggedIn = false
+                            resolvedUserViewModel.logout()
                             showRegister = false
                             showAuthScreen = false
+                        },
+                        onProfileUpdate = { updatedProfile ->
+                            resolvedUserViewModel.updateProfile(updatedProfile)
                         }
                     )
                 }

@@ -43,7 +43,7 @@ fun RegisterStepOneScreen(
     onNextClick: () -> Unit,
     onPickDateClick: () -> Unit
 ) {
-    val birthDateValue = if (formState.birthDate == "Ngày sinh") "" else formState.birthDate
+    val birthDateValue = formState.birthDate
 
     AuthScreenScaffold(
         title = "Đăng ký",
@@ -56,7 +56,7 @@ fun RegisterStepOneScreen(
         ) {
             RegisterStepProgressCompact(
                 currentStep = 1,
-                totalSteps = 3
+                totalSteps = 2
             )
 
             Spacer(Modifier.height(16.dp))

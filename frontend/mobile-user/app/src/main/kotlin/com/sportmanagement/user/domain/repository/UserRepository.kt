@@ -8,6 +8,10 @@ import com.sportmanagement.user.domain.model.UserProfile
 import com.sportmanagement.user.domain.model.UserStat
 
 interface UserRepository {
+    fun isLoggedIn(): Boolean = false
+
+    fun getCachedProfile(): UserProfile? = null
+
     fun getCachedHomeFields(
         latitude: Double? = null,
         longitude: Double? = null
@@ -20,6 +24,10 @@ interface UserRepository {
     fun getRecentFieldSearches(): List<String> = emptyList()
 
     fun saveRecentFieldSearch(query: String) = Unit
+
+    fun getPreferredSportTypeKeys(): Set<String> = emptySet()
+
+    fun savePreferredSportTypeKeys(sportTypeKeys: Set<String>) = Unit
 
     suspend fun getHomeFields(
         latitude: Double? = null,
@@ -62,6 +70,36 @@ interface UserRepository {
     }
 
     suspend fun getFavoriteFields(): List<UserField>
+
+    suspend fun login(
+        identifier: String,
+        password: String
+    ): UserProfile {
+        throw UnsupportedOperationException("Login not implemented")
+    }
+
+    suspend fun loginWithGoogle(idToken: String): UserProfile {
+        throw UnsupportedOperationException("Google login not implemented")
+    }
+
+    suspend fun register(
+        fullName: String,
+        email: String,
+        password: String,
+        phone: String? = null,
+        birthday: String? = null,
+        address: String? = null,
+        favoriteSportTypeKeys: Set<String> = emptySet()
+    ): UserProfile {
+        throw UnsupportedOperationException("Register not implemented")
+    }
+
+    suspend fun updateProfile(profile: UserProfile): UserProfile {
+        return profile
+    }
+
+    fun logout() = Unit
+
     suspend fun searchFieldsPage(
         keyword: String? = null,
         address: String? = null,

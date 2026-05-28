@@ -24,6 +24,7 @@ import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
@@ -31,6 +32,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -39,23 +41,32 @@ import androidx.compose.ui.unit.dp
 import com.sportmanagement.user.ui.theme.AppCardCornerRadius
 import com.sportmanagement.user.ui.theme.AppControlCornerRadius
 
+data class RegisterProfileState(
+    val region: String = "Quan 1",
+    val notifyEnabled: Boolean = true,
+    val emailOffers: Boolean = true
+)
+
 @Composable
 fun RegisterStepThreeScreen(
     profile: RegisterProfileState,
+    isLoading: Boolean,
+    errorMessage: String?,
     onProfileChange: (RegisterProfileState) -> Unit,
     onBackClick: () -> Unit,
     onSkipClick: () -> Unit,
     onCompleteClick: () -> Unit
 ) {
-    AuthScreenScaffold(
-        title = "Đăng ký",
-        onBackClick = onBackClick
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 20.dp, vertical = 22.dp)
+    Box(modifier = Modifier.fillMaxSize()) {
+        AuthScreenScaffold(
+            title = "Dang ky",
+            onBackClick = onBackClick
         ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 20.dp, vertical = 22.dp)
+            ) {
             RegisterStepProgressCompact(
                 currentStep = 3,
                 totalSteps = 3
@@ -64,7 +75,7 @@ fun RegisterStepThreeScreen(
             Spacer(Modifier.height(16.dp))
 
             Text(
-                text = "Hoàn tất hồ sơ",
+                text = "Hoan tat ho so",
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.Bold
@@ -73,7 +84,7 @@ fun RegisterStepThreeScreen(
             Spacer(Modifier.height(4.dp))
 
             Text(
-                text = "Thiết lập thêm một vài thông tin để trải nghiệm đặt sân tốt hơn.",
+                text = "Them mot vai thiet lap de toi uu trai nghiem dat san.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -92,8 +103,8 @@ fun RegisterStepThreeScreen(
                 ) {
                     ProfileRow(
                         icon = Icons.Outlined.LocationOn,
-                        title = "Khu vực thường chơi",
-                        subtitle = "Chúng tôi sẽ gợi ý sân gần bạn hơn"
+                        title = "Khu vuc thuong choi",
+                        subtitle = "He thong se uu tien goi y san gan ban hon"
                     )
 
                     LocationChips(
@@ -103,16 +114,16 @@ fun RegisterStepThreeScreen(
 
                     ProfileToggleRow(
                         icon = Icons.Outlined.Notifications,
-                        title = "Nhận thông báo",
-                        subtitle = "Cập nhật khuyến mãi, lịch sân và ưu đãi mới nhất",
+                        title = "Nhan thong bao",
+                        subtitle = "Cap nhat lich san, uu dai va thong tin moi",
                         checked = profile.notifyEnabled,
                         onCheckedChange = { onProfileChange(profile.copy(notifyEnabled = it)) }
                     )
 
                     ProfileToggleRow(
                         icon = Icons.Outlined.Email,
-                        title = "Nhận email ưu đãi",
-                        subtitle = "Gửi thông tin khuyến mãi và ưu đãi đặc biệt qua email",
+                        title = "Nhan email uu dai",
+                        subtitle = "Gui thong tin khuyen mai qua email",
                         checked = profile.emailOffers,
                         onCheckedChange = { onProfileChange(profile.copy(emailOffers = it)) }
                     )
@@ -150,14 +161,14 @@ fun RegisterStepThreeScreen(
 
                     Column {
                         Text(
-                            text = "Ưu đãi dành cho thành viên mới",
+                            text = "Uu dai cho thanh vien moi",
                             color = MaterialTheme.colorScheme.primary,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold
                         )
                         Text(
                             text = buildAnnotatedString {
-                                append("Nhận ngay mã giảm ")
+                                append("Nhan ngay ma giam ")
                                 pushStyle(
                                     SpanStyle(
                                         color = MaterialTheme.colorScheme.primary,
@@ -166,7 +177,7 @@ fun RegisterStepThreeScreen(
                                 )
                                 append("10%")
                                 pop()
-                                append(" cho đơn đặt sân đầu tiên sau khi hoàn tất đăng ký.")
+                                append(" cho lan dat san dau tien.")
                             },
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -177,24 +188,56 @@ fun RegisterStepThreeScreen(
 
             Spacer(Modifier.height(20.dp))
 
-            AuthPrimaryButton(
-                text = "Hoàn tất đăng ký",
-                onClick = onCompleteClick
-            )
+                AuthPrimaryButton(
+                    text = "Hoan tat dang ky",
+                    onClick = {
+                        if (isLoading) {
+                            return@AuthPrimaryButton
+                        }
+                        onCompleteClick()
+                    }
+                )
+
+            if (!errorMessage.isNullOrBlank()) {
+                Spacer(Modifier.height(12.dp))
+                Text(
+                    text = errorMessage,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
 
             Spacer(Modifier.height(10.dp))
 
-            Text(
-                text = "Bỏ qua",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
+                Text(
+                    text = "Bo qua",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            if (!isLoading) {
+                                onSkipClick()
+                            }
+                        }
+                        .padding(vertical = 6.dp)
+                )
+            }
+        }
+
+        if (isLoading) {
+            Box(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(onClick = onSkipClick)
-                    .padding(vertical = 6.dp)
-            )
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.3f)),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(
+                    color = Color.White
+                )
+            }
         }
     }
 }
@@ -268,7 +311,7 @@ private fun LocationChips(
     selected: String,
     onSelected: (String) -> Unit
 ) {
-    val options = listOf("Quận 1", "Quận 7", "Thủ Đức")
+    val options = listOf("Quan 1", "Quan 7", "Thu Duc")
     Row(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         modifier = Modifier.fillMaxWidth()

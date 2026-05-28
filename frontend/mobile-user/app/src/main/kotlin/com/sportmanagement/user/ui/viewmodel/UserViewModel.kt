@@ -5,6 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.sportmanagement.user.data.repository.UserRepositoryImpl
 import com.sportmanagement.user.domain.model.HomeSearchCriteria
 import com.sportmanagement.user.domain.model.HomeSearchFilterOptions
+import com.sportmanagement.user.domain.model.SportCategory
+import com.sportmanagement.user.domain.model.SportIconType
 import com.sportmanagement.user.domain.model.UserField
 import com.sportmanagement.user.domain.repository.UserRepository
 import com.sportmanagement.user.domain.usecase.FilterHomeFieldsUseCase
@@ -36,17 +38,21 @@ class UserViewModel(
     private var hasMoreSearchPages: Boolean = true
     private var isLoadingSearchPage: Boolean = false
     private var searchGeneration: Int = 0
+    private var preferredSportTypes: Set<SportIconType> = emptySet()
 
     private val _uiState = MutableStateFlow(
         UserUiState(
+            isAuthenticated = repository.isLoggedIn(),
             isHomeLoading = true,
-            recentFieldSearches = repository.getRecentFieldSearches()
+            recentFieldSearches = repository.getRecentFieldSearches(),
+            profile = repository.getCachedProfile() ?: UserUiState().profile
         )
     )
 
     val uiState: StateFlow<UserUiState> = _uiState
 
     init {
+        preferredSportTypes = decodePreferredSportTypes(repository.getPreferredSportTypeKeys())
         val savedLocation = repository.getSavedUserLocation()
         if (savedLocation != null) {
             lastHomeLatitude = savedLocation.first
@@ -59,6 +65,161 @@ class UserViewModel(
 
     fun onTabSelected(tab: UserTab) {
         _uiState.update { current -> current.copy(selectedTab = tab) }
+    }
+
+    fun clearAuthError() {
+        _uiState.update { current -> current.copy(authError = null) }
+    }
+
+    fun login(identifier: String, password: String) {
+        viewModelScope.launch {
+            _uiState.update { current ->
+                current.copy(isAuthLoading = true, authError = null)
+            }
+
+            runCatching {
+                repository.login(identifier = identifier, password = password)
+            }.onSuccess { profile ->
+                applyPreferredSports(profile.preferredSportTypeKeys)
+                _uiState.update { current ->
+                    current.copy(
+                        isAuthenticated = true,
+                        isAuthLoading = false,
+                        authError = null,
+                        profile = profile
+                    )
+                }
+            }.onFailure { error ->
+                _uiState.update { current ->
+                    current.copy(
+                        isAuthLoading = false,
+                        authError = error.message ?: "Đăng nhập không thành công. Vui lòng thử lại."
+                    )
+                }
+            }
+        }
+    }
+
+    fun loginWithGoogle(idToken: String) {
+        viewModelScope.launch {
+            _uiState.update { current ->
+                current.copy(isAuthLoading = true, authError = null)
+            }
+
+            runCatching {
+                repository.loginWithGoogle(idToken)
+            }.onSuccess { profile ->
+                applyPreferredSports(profile.preferredSportTypeKeys)
+                _uiState.update { current ->
+                    current.copy(
+                        isAuthenticated = true,
+                        isAuthLoading = false,
+                        authError = null,
+                        profile = profile
+                    )
+                }
+            }.onFailure { error ->
+                _uiState.update { current ->
+                    current.copy(
+                        isAuthLoading = false,
+                        authError = error.message ?: "Đăng nhập Google không thành công. Vui lòng thử lại."
+                    )
+                }
+            }
+        }
+    }
+
+    fun register(
+        fullName: String,
+        email: String,
+        password: String,
+        phone: String?,
+        birthday: String?,
+        address: String?,
+        preferredSportTypeKeys: Set<String> = emptySet()
+    ) {
+        viewModelScope.launch {
+            _uiState.update { current ->
+                current.copy(isAuthLoading = true, authError = null)
+            }
+
+            runCatching {
+                repository.register(
+                    fullName = fullName,
+                    email = email,
+                    password = password,
+                    phone = phone,
+                    birthday = birthday,
+                    address = address,
+                    favoriteSportTypeKeys = preferredSportTypeKeys
+                )
+            }.onSuccess { profile ->
+                applyPreferredSports(
+                    if (profile.preferredSportTypeKeys.isNotEmpty()) {
+                        profile.preferredSportTypeKeys
+                    } else {
+                        preferredSportTypeKeys
+                    }
+                )
+                _uiState.update { current ->
+                    val filteredSports = filterSportCategoriesByPreferred(current.sportCategories)
+                    current.copy(
+                        isAuthenticated = true,
+                        isAuthLoading = false,
+                        authError = null,
+                        profile = profile,
+                        homeFields = applyHomeSearchCriteria(current.activeHomeSearchCriteria),
+                        nearbyFields = filterFieldsByPreferredSports(allNearbyFields),
+                        sportCategories = filteredSports,
+                        mapCategories = filteredSports.map { it.name },
+                        homeSearchFilterOptions = filterHomeSearchFilterOptions(homeSearchFilterOptions)
+                    )
+                }
+            }.onFailure { error ->
+                _uiState.update { current ->
+                    current.copy(
+                        isAuthLoading = false,
+                        authError = error.message ?: "Đăng ký thất bại. Vui lòng thử lại."
+                    )
+                }
+            }
+        }
+    }
+
+    fun logout() {
+        repository.logout()
+        _uiState.update { current ->
+            current.copy(
+                isAuthenticated = false,
+                authError = null,
+                profile = UserUiState().profile
+            )
+        }
+    }
+
+    fun updateProfile(profile: com.sportmanagement.user.domain.model.UserProfile) {
+        viewModelScope.launch {
+            runCatching {
+                repository.updateProfile(profile)
+            }.onSuccess { updatedProfile ->
+                applyPreferredSports(updatedProfile.preferredSportTypeKeys)
+                _uiState.update { current ->
+                    val filteredSports = filterSportCategoriesByPreferred(current.sportCategories)
+                    current.copy(
+                        profile = updatedProfile,
+                        homeFields = applyHomeSearchCriteria(current.activeHomeSearchCriteria),
+                        nearbyFields = filterFieldsByPreferredSports(allNearbyFields),
+                        sportCategories = filteredSports,
+                        mapCategories = filteredSports.map { it.name },
+                        homeSearchFilterOptions = filterHomeSearchFilterOptions(homeSearchFilterOptions)
+                    )
+                }
+            }.onFailure { error ->
+                _uiState.update { current ->
+                    current.copy(authError = error.message ?: "Cập nhật thông tin thất bại. Vui lòng thử lại.")
+                }
+            }
+        }
     }
 
     fun onApplyHomeSearchCriteria(criteria: HomeSearchCriteria) {
@@ -212,7 +373,7 @@ class UserViewModel(
             _uiState.update {
                 it.copy(
                     homeFields = updatedHome,
-                    nearbyFields = allNearbyFields,
+                    nearbyFields = filterFieldsByPreferredSports(allNearbyFields),
                     isHomeLoadingMore = false,
                     hasMoreHomeFields = hasMorePages
                 )
@@ -236,7 +397,7 @@ class UserViewModel(
                 _uiState.update { current ->
                     current.copy(
                         homeFields = applyHomeSearchCriteria(current.activeHomeSearchCriteria),
-                        nearbyFields = allNearbyFields,
+                        nearbyFields = filterFieldsByPreferredSports(allNearbyFields),
                         isHomeLoading = false,
                         isHomeLoadingMore = false,
                         hasMoreHomeFields = true
@@ -284,20 +445,21 @@ class UserViewModel(
             homeSearchFilterOptions = repository.getHomeSearchFilterOptions()
 
             val loadedSports = repository.getSportCategories()
-            val loadedMapCategories = repository.getMapCategories()
+            val filteredSports = filterSportCategoriesByPreferred(loadedSports)
             val loadedFavorites = repository.getFavoriteFields()
             val loadedBookingSchedule = repository.getBookingSchedule()
             val loadedProfile = repository.getProfile()
             val loadedStats = repository.getStats()
+            applyPreferredSports(loadedProfile.preferredSportTypeKeys)
 
             _uiState.update { current ->
                 current.copy(
                     homeFields = applyHomeSearchCriteria(current.activeHomeSearchCriteria),
-                    sportCategories = loadedSports,
-                    mapCategories = loadedMapCategories,
-                    nearbyFields = allNearbyFields,
+                    sportCategories = filteredSports,
+                    mapCategories = filteredSports.map { it.name },
+                    nearbyFields = filterFieldsByPreferredSports(allNearbyFields),
                     favoriteFields = loadedFavorites,
-                    homeSearchFilterOptions = homeSearchFilterOptions,
+                    homeSearchFilterOptions = filterHomeSearchFilterOptions(homeSearchFilterOptions),
                     bookingSchedule = loadedBookingSchedule,
                     profile = loadedProfile,
                     stats = loadedStats,
@@ -313,19 +475,20 @@ class UserViewModel(
         viewModelScope.launch {
             homeSearchFilterOptions = repository.getHomeSearchFilterOptions()
             val loadedSports = repository.getSportCategories()
-            val loadedMapCategories = repository.getMapCategories()
+            val filteredSports = filterSportCategoriesByPreferred(loadedSports)
             val loadedFavorites = repository.getFavoriteFields()
             val loadedBookingSchedule = repository.getBookingSchedule()
             val loadedProfile = repository.getProfile()
             val loadedStats = repository.getStats()
+            applyPreferredSports(loadedProfile.preferredSportTypeKeys)
 
             _uiState.update { current ->
                 current.copy(
-                    sportCategories = loadedSports,
-                    mapCategories = loadedMapCategories,
-                    nearbyFields = allNearbyFields,
+                    sportCategories = filteredSports,
+                    mapCategories = filteredSports.map { it.name },
+                    nearbyFields = filterFieldsByPreferredSports(allNearbyFields),
                     favoriteFields = loadedFavorites,
-                    homeSearchFilterOptions = homeSearchFilterOptions,
+                    homeSearchFilterOptions = filterHomeSearchFilterOptions(homeSearchFilterOptions),
                     bookingSchedule = loadedBookingSchedule,
                     profile = loadedProfile,
                     stats = loadedStats
@@ -378,7 +541,7 @@ class UserViewModel(
 
             _uiState.update {
                 it.copy(
-                    fieldSearchResults = updatedResults,
+                    fieldSearchResults = filterFieldsByPreferredSports(updatedResults),
                     isFieldSearchLoading = false,
                     isFieldSearchLoadingMore = false,
                     hasMoreFieldSearchResults = hasMoreSearchPages
@@ -409,15 +572,53 @@ class UserViewModel(
         return filterHomeFieldsUseCase(
             fields = sourceFieldsForHomeCriteria(criteria),
             criteria = criteria,
-            options = homeSearchFilterOptions
+            options = filterHomeSearchFilterOptions(homeSearchFilterOptions)
         )
     }
 
     private fun sourceFieldsForHomeCriteria(criteria: HomeSearchCriteria): List<UserField> {
-        return if (criteria == HomeSearchCriteria()) {
+        val source = if (criteria == HomeSearchCriteria()) {
             allHomeFields
         } else {
             allNearbyFields.ifEmpty { allHomeFields }
+        }
+        return filterFieldsByPreferredSports(source)
+    }
+
+    private fun applyPreferredSports(preferredSportTypeKeys: Set<String>) {
+        repository.savePreferredSportTypeKeys(preferredSportTypeKeys)
+        preferredSportTypes = decodePreferredSportTypes(preferredSportTypeKeys)
+    }
+
+    private fun decodePreferredSportTypes(keys: Set<String>): Set<SportIconType> {
+        return keys.mapNotNull { key ->
+            runCatching { SportIconType.valueOf(key.trim().uppercase()) }.getOrNull()
+        }.toSet()
+    }
+
+    private fun filterFieldsByPreferredSports(fields: List<UserField>): List<UserField> {
+        if (preferredSportTypes.isEmpty()) {
+            return fields
+        }
+        return fields.filter { it.sportIconType in preferredSportTypes }
+    }
+
+    private fun filterSportCategoriesByPreferred(
+        categories: List<SportCategory>
+    ): List<SportCategory> {
+        if (preferredSportTypes.isEmpty()) {
+            return categories
+        }
+        return categories.filter { it.iconType in preferredSportTypes }
+    }
+
+    private fun filterHomeSearchFilterOptions(
+        options: HomeSearchFilterOptions
+    ): HomeSearchFilterOptions {
+        return if (preferredSportTypes.isEmpty()) {
+            options
+        } else {
+            options.copy(sports = options.sports.filter { it.iconType in preferredSportTypes })
         }
     }
 
