@@ -49,9 +49,11 @@ data class UserProfile(
     val email: String,
     val phone: String,
     val membership: String,
+    val avatarUrl: String = "",
     val birthday: String = "",
     val gender: String = "Nam",
     val location: String = "",
+    val preferredSportTypeKeys: Set<String> = emptySet(),
     val bookingCount: String = "0",
     val rating: String = "0.0"
 )

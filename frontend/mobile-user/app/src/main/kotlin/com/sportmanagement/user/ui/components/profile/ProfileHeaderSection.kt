@@ -1,6 +1,7 @@
 ﻿package com.sportmanagement.user.ui.components.profile
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,13 +16,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Phone
 import androidx.compose.material.icons.outlined.Star
-import androidx.compose.material.icons.outlined.WorkspacePremium
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -37,11 +38,9 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import com.sportmanagement.user.R
 import com.sportmanagement.user.domain.model.UserProfile
-import com.sportmanagement.user.ui.theme.AppCardCornerRadius
-import com.sportmanagement.user.ui.theme.AppCtaCornerRadius
-import com.sportmanagement.user.ui.theme.AppCtaWideHeight
 import com.sportmanagement.user.ui.theme.AppHomeVenueCornerRadius
 
 @Composable
@@ -133,27 +132,44 @@ private fun LoggedInProfileContent(
             Box(
                 modifier = Modifier
                     .size(72.dp)
-                    .background(MaterialTheme.colorScheme.primary, CircleShape),
+                    .background(MaterialTheme.colorScheme.primary, CircleShape)
+                    .border(
+                        width = 2.dp,
+                        color = MaterialTheme.colorScheme.outlineVariant,
+                        shape = CircleShape
+                    ),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = Icons.Outlined.Person,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimary,
-                    modifier = Modifier.size(32.dp)
-                )
+                if (profile.avatarUrl.isNotBlank()) {
+                    AsyncImage(
+                        model = profile.avatarUrl,
+                        contentDescription = "Ảnh đại diện",
+                        modifier = Modifier
+                            .size(72.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.surface, CircleShape),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Outlined.Person,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.width(12.dp))
 
             Column {
                 Text(
-                    text = profile.name.ifBlank { "Nguyễn Văn An" },
+                    text = profile.name,
                     style = MaterialTheme.typography.headlineSmall,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Spacer(modifier = Modifier.height(4.dp))
-                MembershipVipBadge()
+                MembershipBadge(profile.membership)
             }
         }
     }
@@ -162,12 +178,12 @@ private fun LoggedInProfileContent(
 
     ProfileInfoRow(
         icon = Icons.Outlined.Email,
-        text = profile.email.ifBlank { "user1@gmail.com" }
+        text = profile.email
     )
     Spacer(modifier = Modifier.height(10.dp))
     ProfileInfoRow(
         icon = Icons.Outlined.Phone,
-        text = profile.phone.ifBlank { "0907890123" }
+        text = profile.phone
     )
 
     Spacer(modifier = Modifier.height(18.dp))
@@ -256,11 +272,12 @@ private fun StatCard(
 }
 
 @Composable
-private fun MembershipVipBadge() {
+private fun MembershipBadge(membership: String) {
+    val membershipUi = resolveMembershipUi(membership)
     Surface(
         shape = RoundedCornerShape(999.dp),
-        color = Color(0xFFFFF4D6),
-        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2C66D))
+        color = membershipUi.chipBackground,
+        border = androidx.compose.foundation.BorderStroke(1.dp, membershipUi.chipBorder)
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
@@ -268,15 +285,15 @@ private fun MembershipVipBadge() {
             horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             Icon(
-                imageVector = Icons.Outlined.WorkspacePremium,
+                imageVector = membershipUi.icon,
                 contentDescription = null,
-                tint = Color(0xFFB88900),
+                tint = membershipUi.iconTint,
                 modifier = Modifier.size(12.dp)
             )
             Text(
-                text = "VIP",
+                text = membershipUi.label,
                 style = MaterialTheme.typography.labelSmall,
-                color = Color(0xFF9A6B00),
+                color = membershipUi.textColor,
                 fontWeight = FontWeight.Bold
             )
         }

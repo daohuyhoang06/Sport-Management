@@ -62,6 +62,7 @@ fun UserHomeScreen(
     fields: List<UserField>,
     sportCategories: List<SportCategory>,
     userName: String,
+    userAvatarUrl: String,
     isLoggedIn: Boolean,
     isInitialLoading: Boolean,
     isLoadingMore: Boolean,
@@ -242,6 +243,7 @@ fun UserHomeScreen(
                     onSearchQueryChange = { searchQuery = it },
                     onFilterClick = onFilterClick,
                     userName = userName,
+                    userAvatarUrl = userAvatarUrl,
                     isLoggedIn = isLoggedIn,
                     onLoginClick = onLoginClick,
                     onRegisterClick = onRegisterClick

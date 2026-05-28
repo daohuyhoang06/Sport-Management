@@ -11,6 +11,10 @@ const uploadDir = path.join(__dirname, '../../public/uploads/reviews');
 if (!fs.existsSync(uploadDir)) {
   fs.mkdirSync(uploadDir, { recursive: true });
 }
+const avatarUploadDir = path.join(__dirname, "../../public/uploads/avatars");
+if (!fs.existsSync(avatarUploadDir)) {
+  fs.mkdirSync(avatarUploadDir, { recursive: true });
+}
 
 // Configure storage
 const storage = multer.diskStorage({
@@ -44,6 +48,25 @@ export const uploadReviewImages = multer({
   },
   fileFilter: fileFilter
 }).array('images', 5); // Max 5 images
+
+const avatarStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, avatarUploadDir);
+  },
+  filename: function (req, file, cb) {
+    const userId = req.user?.id || "guest";
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, `avatar-${userId}-${uniqueSuffix}${path.extname(file.originalname)}`);
+  },
+});
+
+export const uploadAvatarImage = multer({
+  storage: avatarStorage,
+  limits: {
+    fileSize: 5 * 1024 * 1024,
+  },
+  fileFilter,
+}).single("avatar");
 
 // Middleware to handle multer errors
 export const handleUploadErrors = (err, req, res, next) => {

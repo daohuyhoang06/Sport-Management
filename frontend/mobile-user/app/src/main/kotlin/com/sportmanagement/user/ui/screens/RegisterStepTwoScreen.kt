@@ -16,9 +16,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.FitnessCenter
-import androidx.compose.material.icons.outlined.Pool
-import androidx.compose.material.icons.outlined.SportsBasketball
 import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -49,10 +46,7 @@ fun RegisterStepTwoScreen(
         SportOption("Cầu lông", drawableRes = R.drawable.badminton_25, iconScale = 0.95f),
         SportOption("Tennis", drawableRes = R.drawable.tennis_25, iconScale = 0.94f),
         SportOption("Pickleball", drawableRes = R.drawable.pickleball, iconScale = 0.86f),
-        SportOption("Bóng rổ", iconVector = Icons.Outlined.SportsBasketball, iconScale = 0.94f),
-        SportOption("Bơi lội", iconVector = Icons.Outlined.Pool, iconScale = 0.94f),
-        SportOption("Bóng chuyền", drawableRes = R.drawable.volleyball_25, iconScale = 0.80f),
-        SportOption("Gym", iconVector = Icons.Outlined.FitnessCenter, iconScale = 0.92f)
+        SportOption("Bóng chuyền", drawableRes = R.drawable.volleyball_25, iconScale = 0.80f)
     )
 
     AuthScreenScaffold(
@@ -66,7 +60,7 @@ fun RegisterStepTwoScreen(
         ) {
             RegisterStepProgressCompact(
                 currentStep = 2,
-                totalSteps = 3
+                totalSteps = 2
             )
 
             Spacer(Modifier.height(16.dp))
@@ -147,7 +141,7 @@ fun RegisterStepTwoScreen(
             Spacer(Modifier.height(20.dp))
 
             AuthPrimaryButton(
-                text = "Tiếp theo",
+                text = "Hoàn tất đăng ký",
                 onClick = onNextClick
             )
 

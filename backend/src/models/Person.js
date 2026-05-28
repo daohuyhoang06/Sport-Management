@@ -34,6 +34,11 @@ const Person = sequelize.define(
       allowNull: true,
       unique: true,
     },
+    firebase_uid: {
+      type: DataTypes.STRING(128),
+      allowNull: true,
+      unique: true,
+    },
     phone: {
       type: DataTypes.STRING(10),
       allowNull: true,
@@ -57,6 +62,19 @@ const Person = sequelize.define(
       allowNull: true,
       defaultValue: "active",
     },
+    membership_level: {
+      type: DataTypes.STRING(20),
+      allowNull: false,
+      defaultValue: "\u0110\u1ed3ng",
+    },
+    avatar_url: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+    },
+    favorite_sport_ids: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
   },
   {
     tableName: "person",
@@ -64,6 +82,7 @@ const Person = sequelize.define(
     indexes: [
       { unique: true, fields: ["email"] },
       { unique: true, fields: ["username"] },
+      { unique: true, fields: ["firebase_uid"] },
     ],
     hooks: {
       beforeCreate: async (person) => {
@@ -85,6 +104,12 @@ const Person = sequelize.define(
 // Instance method to compare password
 Person.prototype.comparePassword = async function (candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
+};
+
+Person.prototype.toJSON = function () {
+  const values = { ...this.get() };
+  delete values.password;
+  return values;
 };
 
 export default Person;

@@ -1,7 +1,13 @@
 ﻿package com.sportmanagement.user.ui.screens
 
 import android.app.DatePickerDialog
-import android.widget.Toast
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -10,7 +16,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -22,7 +32,7 @@ data class RegisterFormState(
     val password: String = "",
     val confirmPassword: String = "",
     val phone: String = "",
-    val birthDate: String = "Ngày sinh",
+    val birthDate: String = "",
     val passwordVisible: Boolean = false,
     val confirmPasswordVisible: Boolean = false
 )
@@ -35,15 +45,11 @@ data class RegisterFormErrors(
     val phone: String? = null
 )
 
-data class RegisterProfileState(
-    val region: String = "Quận 1",
-    val notifyEnabled: Boolean = true,
-    val emailOffers: Boolean = true
-)
-
 @Composable
 fun RegisterScreen(
-    onRegisterSuccess: () -> Unit,
+    isLoading: Boolean,
+    errorMessage: String?,
+    onRegisterSubmit: (RegisterFormState, Set<String>) -> Unit,
     onNavigateToLogin: () -> Unit
 ) {
     val context = LocalContext.current
@@ -53,7 +59,6 @@ fun RegisterScreen(
     var currentStep by rememberSaveable { androidx.compose.runtime.mutableIntStateOf(1) }
     var formState by remember { mutableStateOf(RegisterFormState()) }
     var formErrors by remember { mutableStateOf(RegisterFormErrors()) }
-    var profileState by remember { mutableStateOf(RegisterProfileState()) }
     val selectedSports = rememberSaveable(
         saver = listSaver(
             save = { it.toList() },
@@ -90,52 +95,99 @@ fun RegisterScreen(
         )
         return listOf(fullNameError, emailError, passwordError, confirmError, phoneError).all { it == null }
     }
-    when (currentStep) {
-        1 -> RegisterStepOneScreen(
-            formState = formState,
-            errors = formErrors,
-            onFormChange = { formState = it },
-            onBackClick = onNavigateToLogin,
-            onNextClick = {
-                if (validateStepOne()) currentStep = 2
-            },
-            onPickDateClick = {
-                val now = Calendar.getInstance()
-                DatePickerDialog(
-                    context,
-                    { _, year, month, dayOfMonth ->
-                        calendar.set(year, month, dayOfMonth)
-                        formState = formState.copy(birthDate = dateFormatter.format(calendar.time))
-                    },
-                    now.get(Calendar.YEAR),
-                    now.get(Calendar.MONTH),
-                    now.get(Calendar.DAY_OF_MONTH)
-                ).show()
-            }
-        )
+    Box(modifier = Modifier.fillMaxSize()) {
+        when (currentStep) {
+            1 -> RegisterStepOneScreen(
+                formState = formState,
+                errors = formErrors,
+                onFormChange = { formState = it },
+                onBackClick = onNavigateToLogin,
+                onNextClick = {
+                    if (validateStepOne()) currentStep = 2
+                },
+                onPickDateClick = {
+                    val now = Calendar.getInstance()
+                    DatePickerDialog(
+                        context,
+                        { _, year, month, dayOfMonth ->
+                            calendar.set(year, month, dayOfMonth)
+                            formState = formState.copy(birthDate = dateFormatter.format(calendar.time))
+                        },
+                        now.get(Calendar.YEAR),
+                        now.get(Calendar.MONTH),
+                        now.get(Calendar.DAY_OF_MONTH)
+                    ).show()
+                }
+            )
 
-        2 -> RegisterStepTwoScreen(
-            selectedSports = selectedSports.toSet(),
-            onToggleSport = { sport ->
-                if (selectedSports.contains(sport)) selectedSports.remove(sport) else selectedSports.add(sport)
-            },
-            onBackClick = { currentStep = 1 },
-            onSkipClick = { currentStep = 3 },
-            onNextClick = { currentStep = 3 }
-        )
+            2 -> RegisterStepTwoScreen(
+                selectedSports = selectedSports.toSet(),
+                onToggleSport = { sport ->
+                    if (selectedSports.contains(sport)) selectedSports.remove(sport) else selectedSports.add(sport)
+                },
+                onBackClick = { currentStep = 1 },
+                onSkipClick = {
+                    if (!isLoading) {
+                        onRegisterSubmit(
+                            formState,
+                            mapSelectedSportsToSportTypeKeys(selectedSports.toSet())
+                        )
+                    }
+                },
+                onNextClick = {
+                    if (!isLoading) {
+                        onRegisterSubmit(
+                            formState,
+                            mapSelectedSportsToSportTypeKeys(selectedSports.toSet())
+                        )
+                    }
+                }
+            )
+        }
 
-        else -> RegisterStepThreeScreen(
-            profile = profileState,
-            onProfileChange = { profileState = it },
-            onBackClick = { currentStep = 2 },
-            onSkipClick = {
-                Toast.makeText(context, "Đăng ký thành công", Toast.LENGTH_SHORT).show()
-                onRegisterSuccess()
-            },
-            onCompleteClick = {
-                Toast.makeText(context, "Đăng ký thành công", Toast.LENGTH_SHORT).show()
-                onRegisterSuccess()
+        if (!errorMessage.isNullOrBlank()) {
+            Text(
+                text = errorMessage,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 32.dp)
+            )
+        }
+
+        if (isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.3f)),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(
+                    color = Color.White
+                )
             }
-        )
+        }
     }
+}
+
+private fun mapSelectedSportsToSportTypeKeys(selectedSports: Set<String>): Set<String> {
+    return selectedSports.mapNotNull { label ->
+        when (normalizeText(label)) {
+            "bong da" -> "FOOTBALL"
+            "cau long" -> "BADMINTON"
+            "tennis" -> "TENNIS"
+            "pickleball" -> "PICKLEBALL"
+            "bong chuyen" -> "VOLLEYBALL"
+            else -> null
+        }
+    }.toSet()
+}
+
+private fun normalizeText(value: String): String {
+    val normalized = java.text.Normalizer.normalize(value, java.text.Normalizer.Form.NFD)
+    return normalized
+        .replace(Regex("\\p{M}+"), "")
+        .lowercase()
+        .trim()
 }

@@ -1,7 +1,13 @@
 package com.sportmanagement.user.data.repository
 
 import android.content.Context
+import android.net.Uri
+import android.webkit.MimeTypeMap
+import com.sportmanagement.user.data.remote.api.AuthApi
+import com.sportmanagement.user.data.remote.api.RegisterRequestDto
 import com.sportmanagement.user.data.remote.api.UserApi
+import com.sportmanagement.user.data.remote.api.AuthSessionDto
+import com.sportmanagement.user.data.remote.api.UpdateProfileRequestDto
 import com.sportmanagement.user.data.remote.mapper.UserMapper.toDomain
 import com.sportmanagement.user.domain.model.BookingScheduleData
 import com.sportmanagement.user.domain.model.HomeSearchFilterOptions
@@ -19,11 +25,22 @@ import org.json.JSONObject
 class UserRepositoryImpl(
     private val appContext: Context? = null,
     private val api: UserApi = UserApi(),
+    private val authApi: AuthApi = AuthApi(),
 ) : UserRepository {
 
     private val cacheByLocationKey = mutableMapOf<String, List<UserField>>()
     private val prefs by lazy { appContext?.getSharedPreferences(CACHE_PREFS, Context.MODE_PRIVATE) }
     private var diskCacheLoaded = false
+
+    override fun isLoggedIn(): Boolean {
+        val authToken = prefs?.getString(AUTH_TOKEN_KEY, null).orEmpty()
+        return authToken.isNotBlank() && getCachedProfile() != null
+    }
+
+    override fun getCachedProfile(): UserProfile? {
+        val raw = prefs?.getString(AUTH_PROFILE_KEY, null) ?: return null
+        return runCatching { JSONObject(raw).toUserProfile() }.getOrNull()
+    }
 
     override fun getCachedHomeFields(latitude: Double?, longitude: Double?): List<UserField> {
         ensureDiskCacheLoaded()
@@ -63,6 +80,26 @@ class UserRepositoryImpl(
         val arr = JSONArray()
         updated.forEach { arr.put(it) }
         prefs?.edit()?.putString(CACHE_RECENT_SEARCHES_KEY, arr.toString())?.apply()
+    }
+
+    override fun getPreferredSportTypeKeys(): Set<String> {
+        val raw = prefs?.getString(PREFERRED_SPORT_TYPES_KEY, null) ?: return emptySet()
+        return runCatching {
+            val arr = JSONArray(raw)
+            buildSet {
+                for (index in 0 until arr.length()) {
+                    val value = arr.optString(index).trim()
+                    if (value.isNotBlank()) add(value)
+                }
+            }
+        }.getOrDefault(emptySet())
+    }
+
+    override fun savePreferredSportTypeKeys(sportTypeKeys: Set<String>) {
+        val normalized = sportTypeKeys.map { it.trim() }.filter { it.isNotBlank() }.distinct()
+        val arr = JSONArray()
+        normalized.forEach { arr.put(it) }
+        prefs?.edit()?.putString(PREFERRED_SPORT_TYPES_KEY, arr.toString())?.apply()
     }
 
     override suspend fun getHomeFields(
@@ -121,6 +158,100 @@ class UserRepositoryImpl(
         return cached.sortedByDescending { it.rating.toDoubleOrNull() ?: 0.0 }.take(5)
     }
 
+    override suspend fun login(identifier: String, password: String): UserProfile {
+        val session = authApi.login(
+            identifier = identifier.trim(),
+            password = password
+        )
+        persistAuthSession(session)
+        return session.user.toUserProfile()
+    }
+
+    override suspend fun loginWithGoogle(idToken: String): UserProfile {
+        val session = authApi.loginWithGoogle(idToken.trim())
+        persistAuthSession(session)
+        return session.user.toUserProfile()
+    }
+
+    override suspend fun register(
+        fullName: String,
+        email: String,
+        password: String,
+        phone: String?,
+        birthday: String?,
+        address: String?,
+        favoriteSportTypeKeys: Set<String>
+    ): UserProfile {
+        val session = authApi.register(
+            RegisterRequestDto(
+                name = fullName.trim(),
+                email = email.trim(),
+                password = password,
+                phone = phone?.trim(),
+                birthday = birthday?.trim(),
+                address = address?.trim(),
+                favoriteSportKeys = favoriteSportTypeKeys
+            )
+        )
+        persistAuthSession(session)
+        savePreferredSportTypeKeys(favoriteSportTypeKeys)
+        return session.user.toUserProfile()
+    }
+
+    override suspend fun updateProfile(profile: UserProfile): UserProfile {
+        val authToken = getAuthToken()
+            ?: throw IllegalStateException("Phiên đăng nhập đã hết hạn")
+
+        var updatedUser = authApi.updateMe(
+            token = authToken,
+            request = UpdateProfileRequestDto(
+                name = profile.name.trim().ifBlank { null },
+                phone = profile.phone.trim().ifBlank { null },
+                birthday = profile.birthday.trim().ifBlank { null },
+                gender = profile.gender.trim().ifBlank { null },
+                address = profile.location.trim().ifBlank { null },
+                favoriteSportKeys = profile.preferredSportTypeKeys
+            )
+        )
+
+        val avatarUri = profile.avatarUrl.trim()
+        if (avatarUri.startsWith("content://")) {
+            val context = appContext
+                ?: throw IllegalStateException("Thiếu context để tải ảnh đại diện")
+            val uri = Uri.parse(avatarUri)
+            val mimeType = context.contentResolver.getType(uri) ?: "image/jpeg"
+            val extension = MimeTypeMap.getSingleton()
+                .getExtensionFromMimeType(mimeType)
+                ?.ifBlank { null }
+                ?: "jpg"
+            val fileName = "avatar.$extension"
+            val imageBytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+                ?: throw IllegalStateException("Không đọc được ảnh đại diện")
+
+            updatedUser = authApi.uploadAvatar(
+                token = authToken,
+                imageBytes = imageBytes,
+                fileName = fileName,
+                mimeType = mimeType
+            )
+        }
+
+        val updatedProfile = updatedUser.toUserProfile()
+        persistProfile(updatedProfile)
+        return updatedProfile
+    }
+
+    override fun logout() {
+        prefs?.edit()
+            ?.remove(AUTH_TOKEN_KEY)
+            ?.remove(AUTH_REFRESH_TOKEN_KEY)
+            ?.remove(AUTH_FIREBASE_TOKEN_KEY)
+            ?.remove(AUTH_FIREBASE_REFRESH_TOKEN_KEY)
+            ?.remove(AUTH_PROFILE_KEY)
+            ?.remove(PREFERRED_SPORT_TYPES_KEY)
+            ?.apply()
+    }
+
     override suspend fun searchFieldsPage(
         keyword: String?,
         address: String?,
@@ -153,12 +284,32 @@ class UserRepositoryImpl(
         }.getOrDefault(emptyList())
     }
 
-    override suspend fun getProfile(): UserProfile = UserProfile(
-        name = "",
-        email = "",
-        phone = "",
-        membership = ""
-    )
+    override suspend fun getProfile(): UserProfile {
+        val cached = getCachedProfile()
+        val authToken = getAuthToken()
+
+        if (authToken.isNullOrBlank()) {
+            return cached ?: UserProfile(
+                name = "",
+                email = "",
+                phone = "",
+                membership = "Đồng"
+            )
+        }
+
+        return runCatching {
+            val profile = authApi.getMe(authToken).toUserProfile()
+            persistProfile(profile)
+            profile
+        }.getOrElse {
+            cached ?: UserProfile(
+                name = "",
+                email = "",
+                phone = "",
+                membership = "Đồng"
+            )
+        }
+    }
 
     override suspend fun getStats(): List<UserStat> = emptyList()
 
@@ -351,6 +502,33 @@ class UserRepositoryImpl(
         private const val CACHE_LAST_LNG_KEY = "last_user_lng"
         private const val CACHE_RECENT_SEARCHES_KEY = "recent_field_searches"
         private const val MAX_RECENT_SEARCHES = 5
+        private const val AUTH_TOKEN_KEY = "auth_token"
+        private const val AUTH_REFRESH_TOKEN_KEY = "auth_refresh_token"
+        private const val AUTH_FIREBASE_TOKEN_KEY = "auth_firebase_token"
+        private const val AUTH_FIREBASE_REFRESH_TOKEN_KEY = "auth_firebase_refresh_token"
+        private const val AUTH_PROFILE_KEY = "auth_profile"
+        private const val PREFERRED_SPORT_TYPES_KEY = "preferred_sport_type_keys"
+    }
+
+    private fun persistAuthSession(session: AuthSessionDto) {
+        prefs?.edit()?.apply {
+            putString(AUTH_TOKEN_KEY, session.token)
+            putString(AUTH_REFRESH_TOKEN_KEY, session.refreshToken)
+            putString(AUTH_FIREBASE_TOKEN_KEY, session.firebaseToken)
+            putString(AUTH_FIREBASE_REFRESH_TOKEN_KEY, session.firebaseRefreshToken)
+            putString(AUTH_PROFILE_KEY, session.user.toJson().toString())
+        }?.apply()
+        savePreferredSportTypeKeys(session.user.favoriteSportKeys)
+    }
+
+    private fun getAuthToken(): String? =
+        prefs?.getString(AUTH_TOKEN_KEY, null)?.takeIf { it.isNotBlank() }
+
+    private fun persistProfile(profile: UserProfile) {
+        prefs?.edit()
+            ?.putString(AUTH_PROFILE_KEY, profile.toJson().toString())
+            ?.apply()
+        savePreferredSportTypeKeys(profile.preferredSportTypeKeys)
     }
 }
 
@@ -417,4 +595,98 @@ private fun JSONObject.toUserField(): UserField {
         district = optString("district"),
         distanceKm = if (has("distanceKm") && !isNull("distanceKm")) optDouble("distanceKm") else null
     )
+}
+
+private fun AuthSessionDto.toUserProfile(): UserProfile = user.toUserProfile()
+
+private fun com.sportmanagement.user.data.remote.api.AuthUserDto.toUserProfile(): UserProfile =
+    UserProfile(
+        id = id?.toString().orEmpty(),
+        name = name,
+        email = email,
+        phone = phone,
+        membership = normalizeMembership(membership),
+        avatarUrl = avatarUrl.orEmpty(),
+        birthday = formatBirthdayForUi(birthday),
+        gender = gender.orEmpty(),
+        location = address.orEmpty(),
+        preferredSportTypeKeys = favoriteSportKeys
+    )
+
+private fun com.sportmanagement.user.data.remote.api.AuthUserDto.toJson(): JSONObject =
+    JSONObject()
+        .put("id", id)
+        .put("name", name)
+        .put("email", email)
+        .put("phone", phone)
+        .put("role", role)
+        .put("status", status)
+        .put("birthday", birthday)
+        .put("gender", gender)
+        .put("location", address)
+        .put("membership", normalizeMembership(membership))
+        .put("avatarUrl", avatarUrl)
+        .put("favoriteSportKeys", JSONArray(favoriteSportKeys.toList()))
+
+private fun UserProfile.toJson(): JSONObject =
+    JSONObject()
+        .put("id", id)
+        .put("name", name)
+        .put("email", email)
+        .put("phone", phone)
+        .put("membership", normalizeMembership(membership))
+        .put("avatarUrl", avatarUrl)
+        .put("birthday", birthday)
+        .put("gender", gender)
+        .put("location", location)
+        .put("favoriteSportKeys", JSONArray(preferredSportTypeKeys.toList()))
+
+private fun JSONObject.toUserProfile(): UserProfile =
+    UserProfile(
+        id = optSanitizedString("id"),
+        name = optSanitizedString("name"),
+        email = optSanitizedString("email"),
+        phone = optSanitizedString("phone"),
+        membership = normalizeMembership(optSanitizedString("membership")),
+        avatarUrl = optSanitizedString("avatarUrl"),
+        birthday = optSanitizedString("birthday"),
+        gender = optSanitizedString("gender"),
+        location = optSanitizedString("location"),
+        preferredSportTypeKeys = optStringSet("favoriteSportKeys")
+    )
+
+private fun normalizeMembership(raw: String?): String {
+    val value = raw?.trim().orEmpty().lowercase()
+    return when (value) {
+        "dong", "đồng" -> "Đồng"
+        "bac", "bạc" -> "Bạc"
+        "vang", "vàng" -> "Vàng"
+        else -> "Đồng"
+    }
+}
+
+private fun formatBirthdayForUi(raw: String?): String {
+    val value = raw?.trim().orEmpty()
+    if (!Regex("^\\d{4}-\\d{2}-\\d{2}$").matches(value)) {
+        return value
+    }
+    val parts = value.split("-")
+    return "${parts[2]}/${parts[1]}/${parts[0]}"
+}
+
+private fun JSONObject.optSanitizedString(name: String): String {
+    val raw = optString(name, "")
+    return if (raw.equals("null", ignoreCase = true)) "" else raw
+}
+
+private fun JSONObject.optStringSet(name: String): Set<String> {
+    val array = optJSONArray(name) ?: return emptySet()
+    val result = linkedSetOf<String>()
+    for (index in 0 until array.length()) {
+        val value = array.optString(index).trim()
+        if (value.isNotBlank()) {
+            result.add(value)
+        }
+    }
+    return result
 }

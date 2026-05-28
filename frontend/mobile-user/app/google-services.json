@@ -1,0 +1,76 @@
+{
+  "project_info": {
+    "project_number": "511625157158",
+    "project_id": "my-firebase-application-d6163",
+    "storage_bucket": "my-firebase-application-d6163.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:511625157158:android:af4a59d23ff47f1177a4e7",
+        "android_client_info": {
+          "package_name": "com.example.myfirebaseapplication"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "511625157158-k4vrnk2qtprcc61u43n00suptj5mjmvk.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCy-_-833OtVUMwGH9Qw_gYCWJpdvGcisU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "511625157158-k4vrnk2qtprcc61u43n00suptj5mjmvk.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:511625157158:android:c797b86c5fb9d13a77a4e7",
+        "android_client_info": {
+          "package_name": "com.sportmanagement.user"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "511625157158-2dvqeik91le9mo7tl6e97c6a08ckfa88.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.sportmanagement.user",
+            "certificate_hash": "120cc0295d21622686a52b70029a65c87a9417df"
+          }
+        },
+        {
+          "client_id": "511625157158-k4vrnk2qtprcc61u43n00suptj5mjmvk.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCy-_-833OtVUMwGH9Qw_gYCWJpdvGcisU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "511625157158-k4vrnk2qtprcc61u43n00suptj5mjmvk.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -1,6 +1,9 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+    // Thêm plugin Gradle của dịch vụ Google
+    id ( "com.google.gms.google-services" )
+
 }
 
 android {
@@ -92,4 +95,6 @@ dependencies {
     androidTestImplementation("androidx.test.ext:junit:1.2.1")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+
+    implementation("com.google.android.gms:play-services-auth:21.2.0")
 }

@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Notifications
@@ -42,6 +43,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.sportmanagement.user.R
 import com.sportmanagement.user.ui.theme.AppInputCornerRadius
 import java.text.SimpleDateFormat
@@ -54,13 +56,14 @@ fun HomeHeaderSection(
     onSearchQueryChange: (String) -> Unit,
     onFilterClick: () -> Unit,
     userName: String,
+    userAvatarUrl: String,
     isLoggedIn: Boolean,
     onLoginClick: () -> Unit,
     onRegisterClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val todayLabel = remember { formatCurrentDateLabel() }
-    val displayName = userName.ifBlank { stringResource(R.string.home_user_name_fallback) }
+    val displayName = userName
 
     Box(
         modifier = modifier
@@ -93,12 +96,24 @@ fun HomeHeaderSection(
                             .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = stringResource(R.string.home_avatar_content_description),
-                            tint = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.size(24.dp)
-                        )
+                        if (userAvatarUrl.isNotBlank()) {
+                            AsyncImage(
+                                model = userAvatarUrl,
+                                contentDescription = stringResource(R.string.home_avatar_content_description),
+                                modifier = Modifier
+                                    .size(46.dp)
+                                    .clip(CircleShape)
+                                    .background(MaterialTheme.colorScheme.surface, CircleShape),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = stringResource(R.string.home_avatar_content_description),
+                                tint = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
                     }
 
                     Spacer(Modifier.width(10.dp))
