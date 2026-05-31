@@ -23,6 +23,12 @@ import {
   handleUploadErrors,
 } from "../../middleware/upload.js";
 import { requireAuth } from "../../middleware/authMiddleware.js";
+import {
+  listNotifications,
+  getNotificationDetail,
+  markNotificationRead,
+  markAllNotificationsRead,
+} from "../../controllers/user/notificationController.js";
 
 const r = Router();
 
@@ -37,7 +43,7 @@ r.get("/fields/:id/grid", getFieldGrid);
 
 r.get("/bookings/history", getBookingHistory);
 r.post("/bookings", requireAuth, createBooking);
-r.get("/bookings/:id", getBooking);
+r.get("/bookings/:id", requireAuth, getBooking);
 r.put("/bookings/:id", updateBooking);
 
 r.post(
@@ -50,5 +56,10 @@ r.post(
 r.get("/reviews", getReviews);
 r.post("/reviews", requireAuth, createReview);
 r.get("/reviews/stats/:field_id", getReviewStats);
+
+r.get("/notifications", requireAuth, listNotifications);
+r.get("/notifications/:id", requireAuth, getNotificationDetail);
+r.patch("/notifications/:id/read", requireAuth, markNotificationRead);
+r.patch("/notifications/read-all", requireAuth, markAllNotificationsRead);
 
 export default r;
