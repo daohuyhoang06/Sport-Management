@@ -29,6 +29,7 @@ import {
   markNotificationRead,
   markAllNotificationsRead,
 } from "../../controllers/user/notificationController.js";
+import { getInbox } from "../../controllers/user/inboxController.js";
 
 const r = Router();
 
@@ -61,5 +62,7 @@ r.get("/notifications", requireAuth, listNotifications);
 r.get("/notifications/:id", requireAuth, getNotificationDetail);
 r.patch("/notifications/:id/read", requireAuth, markNotificationRead);
 r.patch("/notifications/read-all", requireAuth, markAllNotificationsRead);
+
+r.get("/inbox", requireAuth, getInbox);
 
 export default r;
