@@ -199,7 +199,7 @@ Hệ thống sử dụng **PostgreSQL** với 17 bảng chính:
 - field_name
 - location
 - status (active/inactive)
-- rental_price
+- slot_price
 ```
 
 **3. field_images** - Hình ảnh sân bóng

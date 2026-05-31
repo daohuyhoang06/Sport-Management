@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -31,10 +32,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.sportmanagement.user.R
 import com.sportmanagement.user.domain.model.BookingSelectionSummary
+import com.sportmanagement.user.ui.theme.AppCardCornerRadius
 import com.sportmanagement.user.ui.theme.AppCtaAmber
 import com.sportmanagement.user.ui.theme.AppCtaCornerRadius
+import com.sportmanagement.user.ui.theme.AppPillCornerRadius
 import com.sportmanagement.user.ui.theme.AppCtaWideHeight
-import com.sportmanagement.user.ui.theme.AppCtaWideWidthFraction
 import com.sportmanagement.user.ui.theme.AppOnCtaAmber
 import java.text.NumberFormat
 import java.util.Locale
@@ -53,16 +55,17 @@ fun BookingBottomActionBar(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .padding(top = 10.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .padding(horizontal = 16.dp)
                 .padding(bottom = 10.dp),
             horizontalArrangement = Arrangement.End
         ) {
             Surface(
-                shape = RoundedCornerShape(999.dp),
+                shape = RoundedCornerShape(AppPillCornerRadius),
                 color = MaterialTheme.colorScheme.surface,
                 tonalElevation = 2.dp,
                 shadowElevation = 4.dp
@@ -85,12 +88,17 @@ fun BookingBottomActionBar(
 
         if (summary != null) {
             Surface(
-                shape = RoundedCornerShape(18.dp),
+                shape = RoundedCornerShape(
+                    topStart = AppCardCornerRadius,
+                    topEnd = AppCardCornerRadius
+                ),
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)
+                    modifier = Modifier
+                        .navigationBarsPadding()
+                        .padding(horizontal = 16.dp, vertical = 14.dp)
                 ) {
                     TextButton(
                         onClick = onToggleSelectedRange,
@@ -183,7 +191,9 @@ fun BookingBottomActionBar(
                 hasSelection = hasSelection,
                 onNextClick = onNextClick,
                 onRequireSelection = onRequireSelection,
-                modifier = Modifier.align(Alignment.CenterHorizontally)
+                modifier = Modifier
+                    .navigationBarsPadding()
+                    .padding(horizontal = 16.dp, vertical = 12.dp)
             )
         }
     }
@@ -206,12 +216,12 @@ private fun BookingNextButton(
             contentColor = AppOnCtaAmber
         ),
         modifier = modifier
-            .fillMaxWidth(AppCtaWideWidthFraction)
+            .fillMaxWidth()
             .height(AppCtaWideHeight)
     ) {
         Text(
             text = stringResource(R.string.booking_next),
-            style = MaterialTheme.typography.titleLarge,
+            style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.SemiBold
         )
     }

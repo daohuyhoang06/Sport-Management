@@ -15,8 +15,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.ReceiptLong
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -25,7 +23,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
@@ -35,8 +32,8 @@ import com.sportmanagement.user.domain.model.BookingConfirmationData
 import com.sportmanagement.user.ui.components.booking.BookingConfirmationBottomBar
 import com.sportmanagement.user.ui.components.booking.BookingConfirmationHeader
 import com.sportmanagement.user.ui.components.booking.BookingNoticeCard
-import com.sportmanagement.user.ui.components.booking.BookingOfferSummaryCard
 import com.sportmanagement.user.ui.components.booking.ConfirmFieldLabel
+import com.sportmanagement.user.ui.components.booking.ConfirmNoteField
 import com.sportmanagement.user.ui.components.booking.ConfirmPhoneField
 import com.sportmanagement.user.ui.components.booking.ConfirmReadonlyField
 import com.sportmanagement.user.ui.components.booking.ConfirmationInfoCard
@@ -59,7 +56,11 @@ fun BookingConfirmationScreen(
         modifier = modifier,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         containerColor = MaterialTheme.colorScheme.primary,
-        bottomBar = { BookingConfirmationBottomBar(onConfirmPaymentClick = onConfirmPaymentClick) }
+        bottomBar = {
+            BookingConfirmationBottomBar(
+                onConfirmPaymentClick = onConfirmPaymentClick
+            )
+        }
     ) { innerPadding ->
         LazyColumn(
             modifier = Modifier
@@ -138,46 +139,26 @@ fun BookingConfirmationScreen(
             }
 
             item {
-                BookingOfferSummaryCard(totalPrice = confirmationData.totalPrice)
-            }
-
-            item {
                 ConfirmFieldLabel(text = stringResource(R.string.booking_confirm_name_label))
                 ConfirmReadonlyField(value = userName)
             }
+            item { Spacer(modifier = Modifier.height(8.dp)) }
 
             item {
                 ConfirmFieldLabel(text = stringResource(R.string.booking_confirm_phone_label))
                 ConfirmPhoneField(value = userPhone)
             }
+            item { Spacer(modifier = Modifier.height(8.dp)) }
 
             item {
                 ConfirmFieldLabel(text = stringResource(R.string.booking_confirm_note_label))
-                OutlinedTextField(
+                ConfirmNoteField(
                     value = note,
                     onValueChange = { note = it },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                        .height(120.dp),
-                    textStyle = MaterialTheme.typography.titleMedium,
-                    placeholder = {
-                        Text(
-                            text = stringResource(R.string.booking_confirm_note_placeholder),
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    },
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedContainerColor = MaterialTheme.colorScheme.surface,
-                        unfocusedContainerColor = MaterialTheme.colorScheme.surface,
-                        focusedBorderColor = Color.Transparent,
-                        unfocusedBorderColor = Color.Transparent,
-                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
-                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface
-                    )
+                    placeholder = stringResource(R.string.booking_confirm_note_placeholder)
                 )
             }
+            item { Spacer(modifier = Modifier.height(10.dp)) }
 
             item {
                 BookingNoticeCard()

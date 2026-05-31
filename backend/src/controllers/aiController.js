@@ -92,7 +92,7 @@ export const suggestTimeSlots = async (req, res) => {
 
     // Get field data
     const [fieldResult] = await sequelize.query(
-      `SELECT fieldId, field_name, rental_price FROM fields WHERE field_id = ?`,
+      `SELECT field_id AS fieldId, field_name, slot_price FROM fields WHERE field_id = ?`,
       { replacements: [fieldId] },
     );
 
@@ -104,6 +104,7 @@ export const suggestTimeSlots = async (req, res) => {
     }
 
     const field = fieldResult[0];
+    const baseSlotPrice = Number(field.slot_price) || 0;
 
     // Get booking statistics
     const [statsResult] = await sequelize.query(
@@ -133,23 +134,23 @@ export const suggestTimeSlots = async (req, res) => {
     const priceData = [
       {
         timeSlot: "5h-9h",
-        price: Math.round(field.rental_price * 0.7),
+        price: Math.round(baseSlotPrice * 0.7),
         availability: "Còn nhiều",
       },
       {
         timeSlot: "9h-16h",
-        price: Math.round(field.rental_price * 0.8),
+        price: Math.round(baseSlotPrice * 0.8),
         availability: "Còn trống",
       },
       {
         timeSlot: "16h-18h",
-        price: Math.round(field.rental_price * 0.9),
+        price: Math.round(baseSlotPrice * 0.9),
         availability: "Khá đông",
       },
-      { timeSlot: "18h-21h", price: field.rental_price, availability: "Đông" },
+      { timeSlot: "18h-21h", price: baseSlotPrice, availability: "Đông" },
       {
         timeSlot: "21h-23h",
-        price: Math.round(field.rental_price * 0.85),
+        price: Math.round(baseSlotPrice * 0.85),
         availability: "Trung bình",
       },
     ];
@@ -228,3 +229,7 @@ export const detectFraud = async (req, res) => {
     });
   }
 };
+
+
+
+

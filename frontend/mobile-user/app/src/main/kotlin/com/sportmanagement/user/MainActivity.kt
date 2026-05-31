@@ -7,12 +7,15 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import com.sportmanagement.user.ui.UserApp
 import com.sportmanagement.user.ui.theme.SportUserTheme
+import org.maplibre.android.MapLibre
+import org.maplibre.android.WellKnownTileServer
 import org.osmdroid.config.Configuration
 
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         try {
             enableEdgeToEdge(
                 statusBarStyle = SystemBarStyle.light(
@@ -24,6 +27,11 @@ class MainActivity : ComponentActivity() {
             // Fallback: some emulators crash with Index 0 out of bounds
             enableEdgeToEdge()
         }
+
+        if (!MapLibre.hasInstance()) {
+            MapLibre.getInstance(applicationContext, null, WellKnownTileServer.MapLibre)
+        }
+
         Configuration.getInstance().userAgentValue = packageName
 
         setContent {

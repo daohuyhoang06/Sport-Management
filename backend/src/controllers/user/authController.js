@@ -1,6 +1,29 @@
-﻿import jwt from "jsonwebtoken";
+import jwt from "jsonwebtoken";
+import { randomUUID } from "crypto";
 import Person from "../../models/Person.js";
-import { Op } from "sequelize";
+import { Op, QueryTypes } from "sequelize";
+import {
+  createFirebaseUser,
+  deleteFirebaseUser,
+  FirebaseAuthServiceError,
+  isFirebaseAuthFlowEnabled,
+  signInWithFirebaseIdp,
+  signInWithFirebasePassword,
+  verifyFirebaseIdToken,
+} from "../../services/firebaseAuthService.js";
+
+const DEFAULT_MEMBERSHIP_LEVEL = "\u0110\u1ed3ng";
+const INVALID_LOGIN_MESSAGE =
+  "Th\u00f4ng tin \u0111\u0103ng nh\u1eadp kh\u00f4ng ch\u00ednh x\u00e1c.";
+const ACCOUNT_INACTIVE_MESSAGE =
+  "T\u00e0i kho\u1ea3n \u0111\u00e3 b\u1ecb kh\u00f3a ho\u1eb7c v\u00f4 hi\u1ec7u h\u00f3a.";
+const SPORT_NAME_BY_KEY = {
+  FOOTBALL: "Bóng đá",
+  VOLLEYBALL: "Bóng chuyền",
+  PICKLEBALL: "Pickleball",
+  BADMINTON: "Cầu lông",
+  TENNIS: "Tennis",
+};
 
 // Generate JWT Token
 const generateToken = (user) => {
@@ -32,50 +55,372 @@ const generateRefreshToken = (user) => {
   );
 };
 
+const mapFirebaseCreateUserErrorMessage = (error) => {
+  if (!error || !(error instanceof Error)) {
+    return "Khong the tao tai khoan Firebase";
+  }
+
+  const errorCode = error.code || "";
+
+  if (
+    errorCode === "auth/email-already-exists" ||
+    errorCode === "EMAIL_EXISTS"
+  ) {
+    return "Email da duoc su dung";
+  }
+
+  if (errorCode === "auth/invalid-password") {
+    return "Mat khau khong hop le theo yeu cau Firebase";
+  }
+
+  if (errorCode === "auth/invalid-email") {
+    return "Email khong hop le";
+  }
+
+  return "Khong the tao tai khoan Firebase";
+};
+
+const sanitizeUsernameBase = (value) =>
+  (value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "")
+    .trim();
+
+const generateUniqueUsername = async (candidateSources = []) => {
+  const fallbackBase = "user";
+  const seed =
+    candidateSources
+      .map((item) => sanitizeUsernameBase(item))
+      .find((item) => item.length >= 3) || fallbackBase;
+
+  let usernameCandidate = seed.slice(0, 24);
+  let suffix = 0;
+
+  while (true) {
+    const exists = await Person.findOne({
+      where: { username: usernameCandidate },
+    });
+
+    if (!exists) {
+      return usernameCandidate;
+    }
+
+    suffix += 1;
+    usernameCandidate = `${seed.slice(0, 20)}${suffix}`;
+  }
+};
+
+const findUserByLoginIdentifier = async (loginIdentifier) =>
+  Person.findOne({
+    where: {
+      [Op.or]: [
+        { username: loginIdentifier },
+        { email: loginIdentifier },
+        { phone: loginIdentifier },
+      ],
+    },
+  });
+
+const resolvePublicAssetUrl = (req, assetPath) => {
+  if (!assetPath) {
+    return null;
+  }
+  if (/^https?:\/\//i.test(assetPath)) {
+    return assetPath;
+  }
+  if (!req) {
+    return assetPath;
+  }
+  const normalizedPath = assetPath.startsWith("/") ? assetPath : `/${assetPath}`;
+  return `${req.protocol}://${req.get("host")}${normalizedPath}`;
+};
+
+const serializeUser = async (user, req) => {
+  const raw = user.toJSON();
+  const membership = raw.membership_level || DEFAULT_MEMBERSHIP_LEVEL;
+  const avatarUrl = resolvePublicAssetUrl(req, raw.avatar_url);
+  const favoriteSportsData = await resolveFavoriteSports(raw.favorite_sport_ids);
+  return {
+    ...raw,
+    membership,
+    avatarUrl,
+    ...favoriteSportsData,
+  };
+};
+
+const parseBirthdayInput = (value) => {
+  if (!value || typeof value !== "string") {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const slashMatch = trimmed.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (slashMatch) {
+    const [, dd, mm, yyyy] = slashMatch;
+    const iso = `${yyyy}-${mm}-${dd}`;
+    const date = new Date(iso);
+    if (!Number.isNaN(date.getTime())) {
+      return iso;
+    }
+  }
+
+  const isoMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (isoMatch) {
+    const date = new Date(trimmed);
+    if (!Number.isNaN(date.getTime())) {
+      return trimmed;
+    }
+  }
+
+  return null;
+};
+
+const parseFavoriteSportIds = (value) => {
+  if (!value) {
+    return [];
+  }
+
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => Number(item))
+      .filter((item) => Number.isInteger(item) && item > 0);
+  }
+
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) {
+        return parsed
+          .map((item) => Number(item))
+          .filter((item) => Number.isInteger(item) && item > 0);
+      }
+    } catch (_error) {
+      return [];
+    }
+  }
+
+  return [];
+};
+
+const parseFavoriteSportKeys = (value) => {
+  if (!value) {
+    return [];
+  }
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value
+    .map((item) => `${item || ""}`.trim().toUpperCase())
+    .filter((item) => item in SPORT_NAME_BY_KEY);
+};
+
+const resolveSportIdsByNames = async (sportNames = []) => {
+  if (!sportNames.length) {
+    return [];
+  }
+
+  const rows = await Person.sequelize.query(
+    `SELECT sport_id, sport_name FROM sport_types WHERE sport_name IN (:sportNames)`,
+    {
+      replacements: { sportNames },
+      type: QueryTypes.SELECT,
+    },
+  );
+
+  return rows
+    .map((row) => Number(row.sport_id))
+    .filter((item) => Number.isInteger(item) && item > 0);
+};
+
+const resolveValidSportIds = async ({ favoriteSportIds, favoriteSportKeys }) => {
+  const idsFromPayload = parseFavoriteSportIds(favoriteSportIds);
+  const keysFromPayload = parseFavoriteSportKeys(favoriteSportKeys);
+
+  const idsFromKeys = await resolveSportIdsByNames(
+    keysFromPayload.map((key) => SPORT_NAME_BY_KEY[key]).filter(Boolean),
+  );
+
+  const merged = [...new Set([...idsFromPayload, ...idsFromKeys])];
+  if (!merged.length) {
+    return [];
+  }
+
+  const validRows = await Person.sequelize.query(
+    `SELECT sport_id FROM sport_types WHERE sport_id IN (:sportIds)`,
+    {
+      replacements: { sportIds: merged },
+      type: QueryTypes.SELECT,
+    },
+  );
+
+  return validRows
+    .map((row) => Number(row.sport_id))
+    .filter((item) => Number.isInteger(item) && item > 0);
+};
+
+const resolveFavoriteSports = async (favoriteSportIds = []) => {
+  const ids = [...new Set(parseFavoriteSportIds(favoriteSportIds))];
+  if (!ids.length) {
+    return {
+      favoriteSportIds: [],
+      favoriteSportKeys: [],
+      favoriteSports: [],
+    };
+  }
+
+  const rows = await Person.sequelize.query(
+    `SELECT sport_id, sport_name FROM sport_types WHERE sport_id IN (:sportIds) ORDER BY sport_id ASC`,
+    {
+      replacements: { sportIds: ids },
+      type: QueryTypes.SELECT,
+    },
+  );
+
+  const favoriteSports = rows.map((row) => {
+    const sportId = Number(row.sport_id);
+    const sportName = `${row.sport_name || ""}`;
+    const sportKey =
+      Object.entries(SPORT_NAME_BY_KEY).find(([, name]) => name === sportName)?.[0] ||
+      null;
+    return {
+      sportId,
+      sportName,
+      sportKey,
+    };
+  });
+
+  return {
+    favoriteSportIds: favoriteSports.map((item) => item.sportId),
+    favoriteSportKeys: favoriteSports.map((item) => item.sportKey).filter(Boolean),
+    favoriteSports,
+  };
+};
+
+const buildLoginResponse = async (
+  user,
+  req,
+  {
+    firebaseToken = null,
+    firebaseRefreshToken = null,
+  } = {},
+) => ({
+  success: true,
+  message: "\u0110\u0103ng nh\u1eadp th\u00e0nh c\u00f4ng",
+  data: {
+    user: await serializeUser(user, req),
+    token: generateToken(user),
+    refreshToken: generateRefreshToken(user),
+    firebaseToken,
+    firebaseRefreshToken,
+  },
+});
+
+const ensureActiveUser = (user, res) => {
+  if (!user) {
+    res.status(401).json({
+      success: false,
+      message: INVALID_LOGIN_MESSAGE,
+    });
+    return false;
+  }
+
+  if (user.status !== "active") {
+    res.status(403).json({
+      success: false,
+      message: ACCOUNT_INACTIVE_MESSAGE,
+    });
+    return false;
+  }
+
+  return true;
+};
+
+const createRandomPassword = () => `${randomUUID()}Aa1!`;
+
+const syncFirebaseUidIfNeeded = async (user, firebaseUid) => {
+  if (!firebaseUid || user.firebase_uid === firebaseUid) {
+    return user;
+  }
+
+  user.firebase_uid = firebaseUid;
+  await user.save();
+  return user;
+};
+
+const resolveSocialProviderId = (provider) => {
+  if (provider === "google" || provider === "google.com") {
+    return "google.com";
+  }
+
+  if (provider === "facebook" || provider === "facebook.com") {
+    return "facebook.com";
+  }
+
+  return null;
+};
+
+const findOrCreateSocialUser = async ({
+  firebaseUid,
+  email,
+  name,
+}) => {
+  const normalizedEmail = email?.trim().toLowerCase() || null;
+
+  let user = await Person.findOne({
+    where: {
+      [Op.or]: [
+        firebaseUid ? { firebase_uid: firebaseUid } : null,
+        normalizedEmail ? { email: normalizedEmail } : null,
+      ].filter(Boolean),
+    },
+  });
+
+  if (user) {
+    if (firebaseUid && user.firebase_uid !== firebaseUid) {
+      user.firebase_uid = firebaseUid;
+      await user.save();
+    }
+    return user;
+  }
+
+  const username = await generateUniqueUsername([
+    normalizedEmail?.split("@")?.[0],
+    name,
+    firebaseUid,
+  ]);
+
+  user = await Person.create({
+    name: name || username,
+    email: normalizedEmail,
+    phone: null,
+    username,
+    password: createRandomPassword(),
+    birthday: null,
+    sex: null,
+    address: null,
+    firebase_uid: firebaseUid,
+    membership_level: DEFAULT_MEMBERSHIP_LEVEL,
+    role: "user",
+    status: "active",
+  });
+
+  return user;
+};
+
 // @desc    Register new user
 // @route   POST /api/auth/register
 // @access  Public
 export const register = async (req, res) => {
+  let createdFirebaseUid = null;
+
   try {
-    const { name, email, phone, username, password, birthday, sex, address } =
-      req.body;
-
-    // Validation
-    if (!name || !username || !password) {
-      return res.status(400).json({
-        success: false,
-        message:
-          "Vui lòng điền đầy đủ thông tin bắt buộc (tên, username, mật khẩu)",
-      });
-    }
-
-    // Check if user already exists
-    const existingUser = await Person.findOne({
-      where: {
-        [Person.sequelize.Sequelize.Op.or]: [
-          { username },
-          email ? { email } : null,
-        ].filter(Boolean),
-      },
-    });
-
-    if (existingUser) {
-      if (existingUser.username === username) {
-        return res.status(400).json({
-          success: false,
-          message: "Username đã tồn tại",
-        });
-      }
-      if (existingUser.email === email) {
-        return res.status(400).json({
-          success: false,
-          message: "Email đã được sử dụng",
-        });
-      }
-    }
-
-    // Create user
-    const user = await Person.create({
+    const {
       name,
       email,
       phone,
@@ -84,6 +429,107 @@ export const register = async (req, res) => {
       birthday,
       sex,
       address,
+      favoriteSportIds,
+      favoriteSportKeys,
+    } =
+      req.body;
+    const firebaseAuthEnabled = isFirebaseAuthFlowEnabled();
+    const normalizedEmail = email?.trim().toLowerCase() || null;
+    const normalizedPhone = phone?.trim() || null;
+    const normalizedBirthday = parseBirthdayInput(birthday);
+    const resolvedUsername =
+      username?.trim() ||
+      (await generateUniqueUsername([
+        normalizedEmail?.split("@")?.[0],
+        name,
+        normalizedPhone,
+      ]));
+
+    // Validation
+    if (!name || !password) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "Vui l\u00f2ng \u0111i\u1ec1n \u0111\u1ea7y \u0111\u1ee7 th\u00f4ng tin b\u1eaft bu\u1ed9c (t\u00ean, m\u1eadt kh\u1ea9u)",
+      });
+    }
+
+    if (birthday && !normalizedBirthday) {
+      return res.status(400).json({
+        success: false,
+        message: "Ng\u00e0y sinh kh\u00f4ng h\u1ee3p l\u1ec7.",
+      });
+    }
+
+    if (firebaseAuthEnabled && !normalizedEmail) {
+      return res.status(400).json({
+        success: false,
+        message:
+          "C\u1ea7n email \u0111\u1ec3 \u0111\u0103ng k\u00fd v\u1edbi Firebase Authentication",
+      });
+    }
+
+    const resolvedFavoriteSportIds = await resolveValidSportIds({
+      favoriteSportIds,
+      favoriteSportKeys,
+    });
+
+    // Check if user already exists
+    const existingUser = await Person.findOne({
+      where: {
+        [Person.sequelize.Sequelize.Op.or]: [
+          { username: resolvedUsername },
+          normalizedEmail ? { email: normalizedEmail } : null,
+        ].filter(Boolean),
+      },
+    });
+
+    if (existingUser) {
+      if (existingUser.username === resolvedUsername) {
+        return res.status(400).json({
+          success: false,
+          message: "Username da ton tai",
+        });
+      }
+      if (existingUser.email === normalizedEmail) {
+        return res.status(400).json({
+          success: false,
+          message: "Email da duoc su dung",
+        });
+      }
+    }
+
+    if (firebaseAuthEnabled) {
+      try {
+        const firebaseUser = await createFirebaseUser({
+          email: normalizedEmail,
+          password,
+          displayName: name,
+        });
+        createdFirebaseUid = firebaseUser.uid;
+      } catch (error) {
+        return res.status(400).json({
+          success: false,
+          message: mapFirebaseCreateUserErrorMessage(error),
+        });
+      }
+    }
+
+    // Create user
+    const user = await Person.create({
+      name,
+      email: normalizedEmail,
+      phone: normalizedPhone,
+      username: resolvedUsername,
+      password,
+      birthday: normalizedBirthday,
+      sex,
+      address,
+      firebase_uid: createdFirebaseUid,
+      favorite_sport_ids: resolvedFavoriteSportIds.length
+        ? JSON.stringify(resolvedFavoriteSportIds)
+        : null,
+      membership_level: DEFAULT_MEMBERSHIP_LEVEL,
       role: "user",
       status: "active",
     });
@@ -94,15 +540,25 @@ export const register = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: "Đăng ký thành công",
+      message: "\u0110\u0103ng k\u00fd th\u00e0nh c\u00f4ng",
       data: {
-        user: user.toJSON(),
+        user: await serializeUser(user, req),
         token,
         refreshToken,
+        firebaseToken: null,
+        firebaseRefreshToken: null,
       },
     });
   } catch (error) {
     console.error("Register error:", error);
+
+    if (createdFirebaseUid) {
+      try {
+        await deleteFirebaseUser(createdFirebaseUid);
+      } catch (rollbackError) {
+        console.error("Firebase rollback error:", rollbackError);
+      }
+    }
 
     // Handle Sequelize validation errors
     if (error.name === "SequelizeValidationError") {
@@ -115,7 +571,7 @@ export const register = async (req, res) => {
 
     res.status(500).json({
       success: false,
-      message: "Lỗi server khi đăng ký",
+      message: "Loi server khi dang ky",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
@@ -126,67 +582,143 @@ export const register = async (req, res) => {
 // @access  Public
 export const login = async (req, res) => {
   try {
-    const { username, email, identifier, password } = req.body;
-    const loginIdentifier = (identifier || username || email || "").trim();
+    const { username, email, phone, identifier, password } = req.body;
+    const loginIdentifier = (identifier || username || email || phone || "").trim();
+    const firebaseAuthEnabled = isFirebaseAuthFlowEnabled();
 
-    // Validation
     if (!loginIdentifier || !password) {
       return res.status(400).json({
         success: false,
-        message: "Vui lòng nhập username/email và mật khẩu",
+        message:
+          "Vui l\u00f2ng nh\u1eadp email/s\u1ed1 \u0111i\u1ec7n tho\u1ea1i v\u00e0 m\u1eadt kh\u1ea9u.",
       });
     }
 
-    // Find user by username or email
-    const user = await Person.findOne({
-      where: {
-        [Op.or]: [{ username: loginIdentifier }, { email: loginIdentifier }],
-      },
-    });
-
-    if (!user) {
-      return res.status(401).json({
-        success: false,
-        message: "Thông tin đăng nhập không chính xác",
-      });
+    const user = await findUserByLoginIdentifier(loginIdentifier);
+    if (!ensureActiveUser(user, res)) {
+      return;
     }
 
-    // Check if user is active
-    if (user.status !== "active") {
-      return res.status(403).json({
-        success: false,
-        message: "Tài khoản đã bị khóa hoặc vô hiệu hóa",
-      });
-    }
-
-    // Check password
     const isPasswordValid = await user.comparePassword(password);
-
     if (!isPasswordValid) {
       return res.status(401).json({
         success: false,
-        message: "Thông tin đăng nhập không chính xác",
+        message: INVALID_LOGIN_MESSAGE,
       });
     }
 
-    // Generate tokens
-    const token = generateToken(user);
-    const refreshToken = generateRefreshToken(user);
+    if (user.phone === loginIdentifier && !user.email) {
+      return res.status(200).json(await buildLoginResponse(user, req));
+    }
 
-    res.status(200).json({
-      success: true,
-      message: "Đăng nhập thành công",
-      data: {
-        user: user.toJSON(),
-        token,
-        refreshToken,
-      },
-    });
+    let hydratedUser = user;
+    let firebaseIdToken = null;
+    let firebaseRefreshToken = null;
+
+    if (firebaseAuthEnabled && user.email) {
+      try {
+        const firebaseSignIn = await signInWithFirebasePassword({
+          email: user.email,
+          password,
+        });
+
+        firebaseIdToken = firebaseSignIn.idToken || null;
+        firebaseRefreshToken = firebaseSignIn.refreshToken || null;
+
+        if (firebaseIdToken) {
+          const decodedFirebaseToken = await verifyFirebaseIdToken(firebaseIdToken);
+          if (decodedFirebaseToken.uid) {
+            hydratedUser = await syncFirebaseUidIfNeeded(hydratedUser, decodedFirebaseToken.uid);
+          }
+        }
+      } catch (error) {
+        if (error instanceof FirebaseAuthServiceError) {
+          // Keep local login working even when Firebase credential state is out of sync.
+          console.warn("Firebase password sign-in skipped:", {
+            personId: user.person_id,
+            code: error.code,
+          });
+        } else {
+          throw error;
+        }
+      }
+    }
+
+    res.status(200).json(
+      await buildLoginResponse(hydratedUser, req, {
+        firebaseToken: firebaseIdToken,
+        firebaseRefreshToken,
+      }),
+    );
   } catch (error) {
     console.error("Login error:", error);
     res.status(500).json({
       success: false,
-      message: "Lỗi server khi đăng nhập",
+      message:
+        "\u0110\u0103ng nh\u1eadp kh\u00f4ng th\u00e0nh c\u00f4ng. Vui l\u00f2ng th\u1eed l\u1ea1i.",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+};
+
+// @desc    Login/Register user with Google/Facebook via Firebase
+// @route   POST /api/auth/social-login
+// @access  Public
+export const socialLogin = async (req, res) => {
+  try {
+    const { provider, idToken, accessToken } = req.body;
+    const providerId = resolveSocialProviderId(provider);
+
+    if (!providerId) {
+      return res.status(400).json({
+        success: false,
+        message: "Phương thức đăng nhập không được hỗ trợ.",
+      });
+    }
+
+    const socialPayload = await signInWithFirebaseIdp({
+      providerId,
+      idToken,
+      accessToken,
+    });
+
+    const firebaseToken = socialPayload.idToken || null;
+    const firebaseRefreshToken = socialPayload.refreshToken || null;
+    const decodedFirebaseToken = firebaseToken
+      ? await verifyFirebaseIdToken(firebaseToken)
+      : null;
+
+    const user = await findOrCreateSocialUser({
+      firebaseUid: decodedFirebaseToken?.uid || socialPayload.localId || null,
+      email: socialPayload.email || decodedFirebaseToken?.email || null,
+      name:
+        socialPayload.displayName ||
+        decodedFirebaseToken?.name ||
+        socialPayload.rawUserInfo?.name ||
+        null,
+    });
+
+    if (!ensureActiveUser(user, res)) {
+      return;
+    }
+
+    res.status(200).json(await buildLoginResponse(user, req, {
+      firebaseToken,
+      firebaseRefreshToken,
+    }));
+  } catch (error) {
+    console.error("Social login error:", error);
+
+    if (error instanceof FirebaseAuthServiceError) {
+      return res.status(error.status || 500).json({
+        success: false,
+        message: error.message,
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: "Đăng nhập Google không thành công. Vui lòng thử lại.",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
@@ -202,19 +734,184 @@ export const getMe = async (req, res) => {
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: "Không tìm thấy người dùng",
+        message: "Khong tim thay nguoi dung",
       });
     }
 
     res.status(200).json({
       success: true,
-      data: user.toJSON(),
+      data: await serializeUser(user, req),
     });
   } catch (error) {
     console.error("Get me error:", error);
     res.status(500).json({
       success: false,
-      message: "Lỗi server",
+      message: "Loi server",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+};
+
+// @desc    Get available sport types
+// @route   GET /api/auth/sport-types
+// @access  Private
+export const getSportTypes = async (_req, res) => {
+  try {
+    const sportTypes = await Person.sequelize.query(
+      "SELECT sport_id AS sportId, sport_name AS sportName FROM sport_types ORDER BY sport_id ASC",
+      { type: QueryTypes.SELECT },
+    );
+
+    const mappedSportTypes = sportTypes.map((item) => {
+      const sportKey =
+        Object.entries(SPORT_NAME_BY_KEY).find(([, name]) => name === item.sportName)?.[0] ||
+        null;
+      return {
+        ...item,
+        sportKey,
+      };
+    });
+
+    return res.status(200).json({
+      success: true,
+      data: mappedSportTypes,
+    });
+  } catch (error) {
+    console.error("Get sport types error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Loi server khi lay danh sach mon the thao",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+};
+
+// @desc    Update current logged in user profile
+// @route   PUT /api/auth/me
+// @access  Private
+export const updateMe = async (req, res) => {
+  try {
+    const user = await Person.findByPk(req.user.id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "Khong tim thay nguoi dung",
+      });
+    }
+
+    const {
+      name,
+      phone,
+      birthday,
+      sex,
+      address,
+      favoriteSportIds,
+      favoriteSportKeys,
+    } = req.body || {};
+
+    if (typeof name === "string") {
+      const trimmedName = name.trim();
+      if (!trimmedName) {
+        return res.status(400).json({
+          success: false,
+          message: "Ten khong duoc de trong",
+        });
+      }
+      user.name = trimmedName;
+    }
+
+    if (typeof phone === "string") {
+      const normalizedPhone = phone.trim();
+      if (normalizedPhone && !/^\d{9,15}$/.test(normalizedPhone)) {
+        return res.status(400).json({
+          success: false,
+          message: "So dien thoai khong hop le",
+        });
+      }
+      user.phone = normalizedPhone || null;
+    }
+
+    if (birthday !== undefined) {
+      const normalizedBirthday = parseBirthdayInput(birthday);
+      if (birthday && !normalizedBirthday) {
+        return res.status(400).json({
+          success: false,
+          message: "Ngay sinh khong hop le",
+        });
+      }
+      user.birthday = normalizedBirthday;
+    }
+
+    if (typeof sex === "string") {
+      const normalizedSex = sex.trim();
+      user.sex = normalizedSex || null;
+    }
+
+    if (typeof address === "string") {
+      const normalizedAddress = address.trim();
+      user.address = normalizedAddress || null;
+    }
+
+    if (favoriteSportIds !== undefined || favoriteSportKeys !== undefined) {
+      const resolvedFavoriteSportIds = await resolveValidSportIds({
+        favoriteSportIds,
+        favoriteSportKeys,
+      });
+      user.favorite_sport_ids = resolvedFavoriteSportIds.length
+        ? JSON.stringify(resolvedFavoriteSportIds)
+        : null;
+    }
+
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Cap nhat thong tin ca nhan thanh cong",
+      data: await serializeUser(user, req),
+    });
+  } catch (error) {
+    console.error("Update me error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Loi server khi cap nhat thong tin ca nhan",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+};
+
+// @desc    Update current user's avatar
+// @route   POST /api/auth/me/avatar
+// @access  Private
+export const updateMyAvatar = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: "Vui long tai len mot anh dai dien",
+      });
+    }
+
+    const user = await Person.findByPk(req.user.id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "Khong tim thay nguoi dung",
+      });
+    }
+
+    user.avatar_url = `/uploads/avatars/${req.file.filename}`;
+    await user.save();
+
+    return res.status(200).json({
+      success: true,
+      message: "Cap nhat anh dai dien thanh cong",
+      data: await serializeUser(user, req),
+    });
+  } catch (error) {
+    console.error("Update avatar error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Loi server khi cap nhat anh dai dien",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
@@ -230,7 +927,7 @@ export const refreshToken = async (req, res) => {
     if (!refreshToken) {
       return res.status(400).json({
         success: false,
-        message: "Vui lòng cung cấp refresh token",
+        message: "Vui long cung cap refresh token",
       });
     }
 
@@ -264,7 +961,7 @@ export const refreshToken = async (req, res) => {
     console.error("Refresh token error:", error);
     res.status(401).json({
       success: false,
-      message: "Refresh token không hợp lệ hoặc đã hết hạn",
+      message: "Refresh token khong hop le hoac da het han",
     });
   }
 };
@@ -280,13 +977,13 @@ export const logout = async (req, res) => {
 
     res.status(200).json({
       success: true,
-      message: "Đăng xuất thành công",
+      message: "Dang xuat thanh cong",
     });
   } catch (error) {
     console.error("Logout error:", error);
     res.status(500).json({
       success: false,
-      message: "Lỗi server khi đăng xuất",
+      message: "Loi server khi dang xuat",
     });
   }
 };

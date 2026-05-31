@@ -5,7 +5,7 @@ plugins {
 
 android {
     namespace = "com.sportmanagement.manager"
-    compileSdk = 34
+    compileSdk = 35
 
     defaultConfig {
         applicationId = "com.sportmanagement.manager"

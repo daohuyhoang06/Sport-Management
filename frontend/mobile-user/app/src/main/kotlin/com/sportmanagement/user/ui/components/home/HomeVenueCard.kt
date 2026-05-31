@@ -2,6 +2,7 @@
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,12 +21,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.SportsTennis
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -38,43 +39,53 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.sportmanagement.user.R
+import com.sportmanagement.user.domain.model.SportIconType
 import com.sportmanagement.user.domain.model.UserField
 import com.sportmanagement.user.domain.model.VenueCardType
+import com.sportmanagement.user.ui.components.SportCircleAvatar
+import com.sportmanagement.user.ui.components.sportFieldDrawableRes
+import com.sportmanagement.user.R
+import com.sportmanagement.user.ui.theme.AppBadgeCornerRadius
+import com.sportmanagement.user.ui.theme.AppCardCornerRadius
+import com.sportmanagement.user.ui.theme.AppHomeVenueCornerRadius
+import com.sportmanagement.user.ui.theme.AppMediaCornerRadius
 
 @Composable
 fun HomeVenueCard(
     field: UserField,
+    onCardClick: () -> Unit,
     onBookClick: () -> Unit
 ) {
     when (field.cardType) {
-        VenueCardType.LARGE_IMAGE -> LargeVenueCard(field, onBookClick)
-        VenueCardType.SMALL_HORIZONTAL -> SmallHorizontalCard(field, onBookClick)
-        VenueCardType.SMALL_HORIZONTAL_NO_IMAGE -> SmallNoImageCard(field, onBookClick)
+        VenueCardType.LARGE_IMAGE -> LargeVenueCard(field, onCardClick, onBookClick)
+        VenueCardType.SMALL_HORIZONTAL -> SmallHorizontalCard(field, onCardClick, onBookClick)
+        VenueCardType.SMALL_HORIZONTAL_NO_IMAGE -> SmallNoImageCard(field, onCardClick, onBookClick)
     }
 }
 
 @Composable
 private fun LargeVenueCard(
     field: UserField,
+    onCardClick: () -> Unit,
     onBookClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(16.dp),
+            .padding(horizontal = 16.dp)
+            .clickable(onClick = onCardClick),
+        shape = RoundedCornerShape(AppHomeVenueCornerRadius),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
     ) {
         Column {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .aspectRatio(16f / 9f)
+                    .aspectRatio(16f / 7.4f)
             ) {
                 Image(
-                    painter = painterResource(id = R.drawable.field_default),
+                    painter = painterResource(id = sportFieldDrawableRes(field.sportIconType)),
                     contentDescription = field.name,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop
@@ -84,7 +95,7 @@ private fun LargeVenueCard(
                     Box(
                         modifier = Modifier
                             .padding(12.dp)
-                            .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(6.dp))
+                            .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(AppBadgeCornerRadius))
                             .padding(horizontal = 8.dp, vertical = 4.dp)
                     ) {
                         Text(
@@ -100,7 +111,7 @@ private fun LargeVenueCard(
                     Row(
                         modifier = Modifier
                             .padding(start = 120.dp, top = 12.dp)
-                            .background(MaterialTheme.colorScheme.tertiaryContainer, RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.tertiaryContainer, RoundedCornerShape(AppCardCornerRadius))
                             .padding(horizontal = 8.dp, vertical = 2.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -130,44 +141,50 @@ private fun LargeVenueCard(
                 }
             }
 
-            Row(
+            Surface(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+                    .fillMaxWidth(),
+                color = Color.White,
+                shadowElevation = 0.dp,
+                tonalElevation = 0.dp,
+                shape = RoundedCornerShape(AppHomeVenueCornerRadius)
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        field.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Spacer(Modifier.height(2.dp))
-                    Text(
-                        stringResource(R.string.home_location_distance_format, field.location, field.distance),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Spacer(Modifier.height(2.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            Icons.Default.AccessTime,
-                            contentDescription = null,
-                            modifier = Modifier.size(14.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(Modifier.width(4.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 12.dp, vertical = 14.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    SportCircleAvatar(iconType = field.sportIconType)
+                    Spacer(Modifier.width(10.dp))
+
+                    Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = field.hours,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            field.name,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.ExtraBold
                         )
+                        Spacer(Modifier.height(2.dp))
+                        HomeDistanceLocationText(field = field)
+                        Spacer(Modifier.height(2.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                Icons.Default.AccessTime,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                text = field.hours,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
+                    HomeBookButton(onClick = onBookClick)
                 }
-                HomeBookButton(onClick = onBookClick)
             }
         }
     }
@@ -176,13 +193,15 @@ private fun LargeVenueCard(
 @Composable
 private fun SmallHorizontalCard(
     field: UserField,
+    onCardClick: () -> Unit,
     onBookClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(16.dp),
+            .padding(horizontal = 16.dp)
+            .clickable(onClick = onCardClick),
+        shape = RoundedCornerShape(AppHomeVenueCornerRadius),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
@@ -193,28 +212,31 @@ private fun SmallHorizontalCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Image(
-                painter = painterResource(id = R.drawable.field_default),
+                painter = painterResource(id = sportFieldDrawableRes(field.sportIconType)),
                 contentDescription = field.name,
                 modifier = Modifier
                     .size(90.dp)
-                    .clip(RoundedCornerShape(12.dp)),
+                    .clip(RoundedCornerShape(AppMediaCornerRadius)),
                 contentScale = ContentScale.Crop
             )
 
             Spacer(Modifier.width(12.dp))
 
+            SportCircleAvatar(
+                iconType = field.sportIconType,
+                size = 48.dp,
+                iconSize = 24.dp
+            )
+            Spacer(Modifier.width(10.dp))
+
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     field.name,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.ExtraBold
                 )
                 Spacer(Modifier.height(2.dp))
-                Text(
-                    field.distance,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                HomeDistanceLocationText(field = field)
                 if (field.availability.isNotEmpty()) {
                     Text(
                         field.availability,
@@ -237,8 +259,8 @@ private fun SmallHorizontalCard(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    HomeSmallCircleIcon(Icons.Default.FavoriteBorder, size = 28)
-                    HomeSmallCircleIcon(Icons.Default.Share, size = 28)
+                    HomeSmallCircleIcon(Icons.Default.FavoriteBorder)
+                    HomeSmallCircleIcon(Icons.Default.Share)
                 }
                 HomeBookButton(onClick = onBookClick)
             }
@@ -249,13 +271,15 @@ private fun SmallHorizontalCard(
 @Composable
 private fun SmallNoImageCard(
     field: UserField,
+    onCardClick: () -> Unit,
     onBookClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(16.dp),
+            .padding(horizontal = 16.dp)
+            .clickable(onClick = onCardClick),
+        shape = RoundedCornerShape(AppHomeVenueCornerRadius),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
@@ -265,35 +289,18 @@ private fun SmallNoImageCard(
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                modifier = Modifier
-                    .size(56.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.secondaryContainer),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    Icons.Default.SportsTennis,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                    modifier = Modifier.size(28.dp)
-                )
-            }
+            SportCircleAvatar(iconType = field.sportIconType, size = 60.dp, iconSize = 30.dp)
 
             Spacer(Modifier.width(12.dp))
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     field.name,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.Bold
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.ExtraBold
                 )
                 Spacer(Modifier.height(2.dp))
-                Text(
-                    stringResource(R.string.home_distance_bullet_format, field.distance),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                HomeDistanceLocationText(field = field)
                 if (field.availability.isNotEmpty()) {
                     Text(
                         field.availability,
@@ -313,5 +320,30 @@ private fun SmallNoImageCard(
 
             HomeBookButton(onClick = onBookClick)
         }
+    }
+}
+
+@Composable
+private fun HomeDistanceLocationText(field: UserField) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        if (field.distance.isNotBlank()) {
+            Text(
+                text = "(${field.distance}) ",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color(0xFFD62828),
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1
+            )
+        }
+        Text(
+            text = field.location,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }

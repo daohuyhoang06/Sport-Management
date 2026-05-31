@@ -11,7 +11,7 @@ class BuildBookingConfirmationDataUseCase {
         scheduleData: BookingScheduleData,
         summary: BookingSelectionSummary?
     ): BookingConfirmationData {
-        val summaryRanges = summary?.selectedRanges?.map { range ->
+        val ranges = summary?.selectedRanges?.map { range ->
             BookingConfirmationRange(
                 courtName = range.courtName,
                 startTimeLabel = range.startTimeLabel,
@@ -19,23 +19,8 @@ class BuildBookingConfirmationDataUseCase {
                 price = range.totalPrice
             )
         }.orEmpty()
-
-        val fallbackRange = if (summaryRanges.isEmpty() && scheduleData.selectedCourtName.isNotBlank()) {
-            listOf(
-                BookingConfirmationRange(
-                    courtName = scheduleData.selectedCourtName,
-                    startTimeLabel = scheduleData.selectedStartTime,
-                    endTimeLabel = scheduleData.selectedEndTime,
-                    price = extractDigits(scheduleData.estimatedPrice) ?: 0
-                )
-            )
-        } else {
-            emptyList()
-        }
-
-        val ranges = if (summaryRanges.isNotEmpty()) summaryRanges else fallbackRange
-        val totalPrice = summary?.totalPrice ?: extractDigits(scheduleData.estimatedPrice) ?: 0
-        val totalMinutes = summary?.totalMinutes ?: scheduleData.durationMinutes
+        val totalPrice = summary?.totalPrice ?: 0
+        val totalMinutes = summary?.totalMinutes ?: 0
 
         return BookingConfirmationData(
             selectedDate = scheduleData.selectedDate,
@@ -43,11 +28,5 @@ class BuildBookingConfirmationDataUseCase {
             totalMinutes = totalMinutes,
             totalPrice = totalPrice
         )
-    }
-
-    private fun extractDigits(value: String): Int? {
-        val digits = value.filter { it.isDigit() }
-        if (digits.isEmpty()) return null
-        return digits.toIntOrNull()
     }
 }

@@ -2,12 +2,15 @@ import { Router } from "express";
 import { ping } from "../../controllers/user/userController.js";
 import {
   listFields,
+  listNearbyFields,
+  searchFields,
   getField,
   createBooking,
   getBooking,
   updateBooking,
   getBookingHistory,
   getFieldBookings,
+  getFieldGrid,
 } from "../../controllers/user/fieldController.js";
 import {
   getReviews,
@@ -26,8 +29,11 @@ const r = Router();
 r.get("/ping", ping);
 
 r.get("/fields", listFields);
+r.get("/fields/nearby", listNearbyFields);
+r.get("/fields/search", searchFields);
 r.get("/fields/:id", getField);
 r.get("/fields/:id/bookings", getFieldBookings);
+r.get("/fields/:id/grid", getFieldGrid);
 
 r.get("/bookings/history", getBookingHistory);
 r.post("/bookings", requireAuth, createBooking);

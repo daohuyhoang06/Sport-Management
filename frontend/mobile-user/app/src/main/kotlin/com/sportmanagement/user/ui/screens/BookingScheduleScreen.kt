@@ -10,6 +10,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -31,12 +32,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sportmanagement.user.R
 import com.sportmanagement.user.domain.model.BookingConfirmationData
 import com.sportmanagement.user.domain.model.BookingScheduleData
-import com.sportmanagement.user.domain.model.CourtRow
-import com.sportmanagement.user.domain.model.SlotStatus
-import com.sportmanagement.user.domain.model.TimeSlot
+import com.sportmanagement.user.domain.model.BookingSubCourt
+import com.sportmanagement.user.domain.model.BookingTimeGridData
+import com.sportmanagement.user.domain.model.BookingTimeRange
 import com.sportmanagement.user.ui.components.booking.BookingBottomActionBar
-import com.sportmanagement.user.ui.components.booking.BookingGridSection
 import com.sportmanagement.user.ui.components.booking.BookingHeaderSection
+import com.sportmanagement.user.ui.components.booking.BookingTimeGrid
 import com.sportmanagement.user.ui.theme.SportUserTheme
 import com.sportmanagement.user.ui.viewmodel.BookingScheduleViewModel
 import kotlinx.coroutines.launch
@@ -47,21 +48,23 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BookingScheduleScreen(
-    scheduleData: BookingScheduleData,
+    fieldId: Int,
+    initialDateText: String,
     onBackClick: () -> Unit,
     onNextClick: (BookingConfirmationData) -> Unit,
     modifier: Modifier = Modifier,
-    viewModel: BookingScheduleViewModel = rememberBookingScheduleViewModel(scheduleData)
+    viewModel: BookingScheduleViewModel = rememberBookingScheduleViewModel(fieldId, initialDateText)
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val coroutineScope = rememberCoroutineScope()
     val selectSlotError = stringResource(R.string.booking_select_slot_error)
+    val lowerBackgroundColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.36f)
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        containerColor = androidx.compose.material3.MaterialTheme.colorScheme.background,
+        containerColor = lowerBackgroundColor,
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         bottomBar = {
             BookingBottomActionBar(
@@ -71,7 +74,9 @@ fun BookingScheduleScreen(
                 showSelectedRange = uiState.showSelectedRange,
                 onToggleSelectedRange = viewModel::onToggleSelectedRangeVisibility,
                 hasSelection = uiState.summary != null,
-                onNextClick = { onNextClick(viewModel.buildConfirmationData()) },
+                onNextClick = { 
+                    viewModel.buildConfirmationData()?.let { onNextClick(it) } 
+                },
                 onRequireSelection = {
                     coroutineScope.launch {
                         snackbarHostState.showSnackbar(selectSlotError)
@@ -94,12 +99,21 @@ fun BookingScheduleScreen(
                 )
             }
             item {
-                BookingGridSection(
-                    scheduleData = scheduleData,
-                    cellWidthValue = uiState.sliderValue,
-                    selectedSlots = uiState.selectedSlots,
-                    onSlotToggle = viewModel::onToggleSlot
-                )
+                if (uiState.isLoading) {
+                    androidx.compose.foundation.layout.Box(
+                        modifier = Modifier.fillMaxSize().padding(32.dp),
+                        contentAlignment = androidx.compose.ui.Alignment.Center
+                    ) {
+                        androidx.compose.material3.CircularProgressIndicator()
+                    }
+                } else if (uiState.scheduleData != null) {
+                    BookingTimeGrid(
+                        gridData = uiState.scheduleData!!.grid,
+                        cellWidth = uiState.sliderValue.dp,
+                        selectedSlots = uiState.selectedSlots,
+                        onSlotClick = viewModel::onSlotClick
+                    )
+                }
             }
             item {
                 Spacer(modifier = Modifier.height(120.dp))
@@ -120,7 +134,9 @@ fun BookingScheduleScreen(
                             viewModel.onDatePicked(formatDateFromMillis(millis))
                         } ?: viewModel.onDatePickerVisibilityChange(false)
                     }
-                ) { Text(stringResource(R.string.booking_confirm)) }
+                ) {
+                    Text(stringResource(R.string.booking_confirm))
+                }
             },
             dismissButton = {
                 TextButton(onClick = { viewModel.onDatePickerVisibilityChange(false) }) {
@@ -138,17 +154,21 @@ fun BookingScheduleScreen(
 
 @Composable
 private fun rememberBookingScheduleViewModel(
-    scheduleData: BookingScheduleData
+    fieldId: Int,
+    initialDateText: String
 ): BookingScheduleViewModel {
-    val key = remember(scheduleData) {
-        "booking_schedule_${scheduleData.selectedDate}_${scheduleData.timeHeaders.size}_${scheduleData.courts.size}"
+    val key = remember(fieldId, initialDateText) {
+        "booking_schedule_${fieldId}_${initialDateText}"
     }
     return viewModel(
         key = key,
         factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                return BookingScheduleViewModel(scheduleData) as T
+                return BookingScheduleViewModel(
+                    fieldId = fieldId,
+                    initialDateText = initialDateText
+                ) as T
             }
         }
     )
@@ -169,59 +189,10 @@ private fun formatDateFromMillis(millis: Long): String {
 @Preview(showBackground = true, widthDp = 390, heightDp = 844)
 @Composable
 private fun BookingScheduleScreenPreview() {
-    val previewHeaders = (0..48).map { index ->
-        val hour = index / 2
-        val minute = if (index % 2 == 0) "00" else "30"
-        "$hour:$minute"
-    }
-
     SportUserTheme {
         BookingScheduleScreen(
-            scheduleData = BookingScheduleData(
-                selectedDate = "25/04/2026",
-                timeHeaders = previewHeaders,
-                courts = listOf(
-                    CourtRow(
-                        courtName = "Sân 1",
-                        slots = previewHeaders.mapIndexed { index, label ->
-                            val status = when (index) {
-                                in 34..37 -> SlotStatus.BOOKED
-                                in 38..41 -> SlotStatus.LOCKED
-                                else -> SlotStatus.AVAILABLE
-                            }
-                            TimeSlot(label, status)
-                        }
-                    ),
-                    CourtRow(
-                        courtName = "Sân 2",
-                        slots = previewHeaders.mapIndexed { index, label ->
-                            val status = when (index) {
-                                in 34..35 -> SlotStatus.BOOKED
-                                in 10..15 -> SlotStatus.LOCKED
-                                else -> SlotStatus.AVAILABLE
-                            }
-                            TimeSlot(label, status)
-                        }
-                    ),
-                    CourtRow(
-                        courtName = "Sân 3",
-                        slots = previewHeaders.mapIndexed { index, label ->
-                            val status = when (index) {
-                                36 -> SlotStatus.BOOKED
-                                in 0..15 -> SlotStatus.LOCKED
-                                else -> SlotStatus.AVAILABLE
-                            }
-                            TimeSlot(label, status)
-                        }
-                    )
-                ),
-                selectedCourtName = "Sân 1",
-                selectedStartTime = "15:30",
-                selectedEndTime = "18:30",
-                durationMinutes = 180,
-                selectedSlotCount = 3,
-                estimatedPrice = "450.000đ"
-            ),
+            fieldId = 1,
+            initialDateText = "25/04/2026",
             onBackClick = {},
             onNextClick = {}
         )

@@ -7,6 +7,7 @@ import path from "path";
 import swaggerUi from "swagger-ui-express";
 import { fileURLToPath } from "url";
 import swaggerSpec from "./config/swagger.js";
+import { releaseExpiredPendingBookings } from "./services/user/scheduleService.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -16,6 +17,8 @@ import userRoutes from "./routes/user/userRoutes.js";
 import authRoutes from "./routes/user/authRoutes.js";
 import chatRoutes from "./routes/chatRoutes.js";
 import aiRoutes from "./routes/aiRoutes.js";
+import paymentRoutes from "./routes/paymentRoutes.js";
+import { searchFields } from "./controllers/user/fieldController.js";
 
 const app = express();
 app.use(cors());
@@ -33,8 +36,10 @@ app.use("/api/manager", managerRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
+app.get("/api/fields/search", searchFields);
 app.use("/api/chat", chatRoutes);
 app.use("/api/ai", aiRoutes);
+app.use("/api/payments", paymentRoutes);
 
 app.get("/", (_, res) =>
   res.json({
@@ -78,5 +83,14 @@ app.get("/api/health", async (req, res) => {
     });
   }
 });
+
+// Auto-release expired pending bookings every 30 seconds.
+setInterval(async () => {
+  try {
+    await releaseExpiredPendingBookings();
+  } catch (error) {
+    console.error("releaseExpiredPendingBookings interval error:", error.message);
+  }
+}, 30 * 1000);
 
 export default app;

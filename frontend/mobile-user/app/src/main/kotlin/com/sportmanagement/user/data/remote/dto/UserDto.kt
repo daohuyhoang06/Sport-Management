@@ -6,17 +6,25 @@ package com.sportmanagement.user.data.remote.dto
  */
 
 data class UserFieldDto(
+    val fieldId: Int? = null,
     val name: String,
     val location: String,
     val price: String,
     val rating: String,
+    val sportIconType: String? = null,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val distanceKm: Double? = null,
     val distance: String? = null,
     val hours: String? = null,
     val imageUrl: String? = null,
     val isProLeague: Boolean? = null,
     val tags: List<String>? = null,
     val availability: String? = null,
-    val cardType: String? = null
+    val cardType: String? = null,
+    val region: String? = null,
+    val province: String? = null,
+    val district: String? = null
 )
 
 data class SportCategoryDto(

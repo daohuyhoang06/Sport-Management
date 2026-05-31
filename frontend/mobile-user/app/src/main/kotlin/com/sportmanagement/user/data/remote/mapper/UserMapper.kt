@@ -17,17 +17,25 @@ import com.sportmanagement.user.domain.model.VenueCardType
 object UserMapper {
 
     fun UserFieldDto.toDomain(): UserField = UserField(
+        fieldId = fieldId ?: 0,
         name = name,
         location = location,
         price = price,
         rating = rating,
-        distance = distance ?: "0.8 miles away",
+        sportIconType = sportIconType?.toSportIconType() ?: SportIconType.FOOTBALL,
+        latitude = latitude,
+        longitude = longitude,
+        distanceKm = distanceKm,
+        distance = distance ?: "",
         hours = hours ?: "00:00 - 24:00",
         imageUrl = imageUrl ?: "",
         isProLeague = isProLeague ?: false,
         tags = tags ?: emptyList(),
         availability = availability ?: "",
-        cardType = cardType?.toVenueCardType() ?: VenueCardType.LARGE_IMAGE
+        cardType = cardType?.toVenueCardType() ?: VenueCardType.LARGE_IMAGE,
+        region = region ?: "",
+        province = province ?: "",
+        district = district ?: ""
     )
 
     fun SportCategoryDto.toDomain(): SportCategory = SportCategory(

@@ -21,14 +21,16 @@ internal fun BookingSlotCell(
     status: SlotStatus,
     modifier: Modifier = Modifier,
     iconSize: Dp = 20.dp,
-    borderColor: Color = MaterialTheme.colorScheme.outlineVariant
+    borderColor: Color = MaterialTheme.colorScheme.outlineVariant,
+    showSelectionIcon: Boolean = status == SlotStatus.SELECTED
 ) {
     val background = when (status) {
-        SlotStatus.AVAILABLE -> MaterialTheme.colorScheme.surface
-        SlotStatus.BOOKED -> MaterialTheme.colorScheme.error
-        SlotStatus.LOCKED -> MaterialTheme.colorScheme.outline
-        SlotStatus.EVENT -> MaterialTheme.colorScheme.outline
+        SlotStatus.AVAILABLE -> Color.White
+        SlotStatus.BOOKED -> Color(0xFF6B7280)
+        SlotStatus.LOCKED -> Color(0xFFEF4444)
+        SlotStatus.EVENT -> MaterialTheme.colorScheme.outlineVariant
         SlotStatus.SELECTED -> MaterialTheme.colorScheme.primaryContainer
+        SlotStatus.DISABLED -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
     }
 
     Box(
@@ -37,7 +39,7 @@ internal fun BookingSlotCell(
             .border(1.dp, borderColor),
         contentAlignment = Alignment.Center
     ) {
-        if (status == SlotStatus.SELECTED) {
+        if (status == SlotStatus.SELECTED && showSelectionIcon) {
             Icon(
                 imageVector = Icons.Default.CheckCircle,
                 contentDescription = null,

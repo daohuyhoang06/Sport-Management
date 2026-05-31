@@ -1,17 +1,25 @@
 package com.sportmanagement.user.domain.model
 
 data class UserField(
+    val fieldId: Int = 0,
     val name: String,
     val location: String,
     val price: String,
     val rating: String,
-    val distance: String = "0.8 miles away",
+    val sportIconType: SportIconType = SportIconType.FOOTBALL,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val distance: String = "",
     val hours: String = "00:00 - 24:00",
     val imageUrl: String = "",
     val isProLeague: Boolean = false,
     val tags: List<String> = emptyList(),
     val availability: String = "",
-    val cardType: VenueCardType = VenueCardType.LARGE_IMAGE
+    val cardType: VenueCardType = VenueCardType.LARGE_IMAGE,
+    val region: String = "",
+    val province: String = "",
+    val district: String = "",
+    val distanceKm: Double? = null
 )
 
 enum class VenueCardType {
@@ -36,10 +44,18 @@ data class UserBooking(
 )
 
 data class UserProfile(
+    val id: String = "",
     val name: String,
     val email: String,
     val phone: String,
-    val membership: String
+    val membership: String,
+    val avatarUrl: String = "",
+    val birthday: String = "",
+    val gender: String = "Nam",
+    val location: String = "",
+    val preferredSportTypeKeys: Set<String> = emptySet(),
+    val bookingCount: String = "0",
+    val rating: String = "0.0"
 )
 
 data class UserStat(

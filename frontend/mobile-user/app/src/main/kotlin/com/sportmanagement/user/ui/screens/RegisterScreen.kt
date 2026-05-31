@@ -1,208 +1,193 @@
-package com.sportmanagement.user.ui.screens
+﻿package com.sportmanagement.user.ui.screens
 
 import android.app.DatePickerDialog
-import android.widget.Toast
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material.icons.outlined.CheckCircleOutline
-import androidx.compose.material.icons.outlined.Lock
-import androidx.compose.material.icons.outlined.Person
-import androidx.compose.material.icons.outlined.Phone
-import androidx.compose.material3.Checkbox
-import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Locale
 
+data class RegisterFormState(
+    val fullName: String = "",
+    val email: String = "",
+    val password: String = "",
+    val confirmPassword: String = "",
+    val phone: String = "",
+    val birthDate: String = "",
+    val passwordVisible: Boolean = false,
+    val confirmPasswordVisible: Boolean = false
+)
+
+data class RegisterFormErrors(
+    val fullName: String? = null,
+    val email: String? = null,
+    val password: String? = null,
+    val confirmPassword: String? = null,
+    val phone: String? = null
+)
+
 @Composable
 fun RegisterScreen(
-    onRegisterSuccess: () -> Unit,
-    onNavigateToLogin: () -> Unit,
-    modifier: Modifier = Modifier
+    isLoading: Boolean,
+    errorMessage: String?,
+    onRegisterSubmit: (RegisterFormState, Set<String>) -> Unit,
+    onNavigateToLogin: () -> Unit
 ) {
     val context = LocalContext.current
-    var fullName by rememberSaveable { mutableStateOf("") }
-    var phone by rememberSaveable { mutableStateOf("") }
-    var password by rememberSaveable { mutableStateOf("") }
-    var confirmPassword by rememberSaveable { mutableStateOf("") }
-    var passwordVisible by rememberSaveable { mutableStateOf(false) }
-    var confirmPasswordVisible by rememberSaveable { mutableStateOf(false) }
-    var selectedDate by rememberSaveable { mutableStateOf("Ngày sinh") }
-    var isAccepted by rememberSaveable { mutableStateOf(false) }
     val dateFormatter = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()) }
+    val calendar = remember { Calendar.getInstance() }
 
-    AuthScreenScaffold(
-        title = "Tạo tài khoản",
-        subtitle = "Tham gia và khám phá những sân bóng tuyệt vời",
-        heroTitle = "Đăng ký",
-        modifier = modifier
-    ) {
-        AuthTextField(
-            value = fullName,
-            onValueChange = { fullName = it },
-            label = "Họ và tên",
-            leadingIcon = Icons.Outlined.Person
+    var currentStep by rememberSaveable { androidx.compose.runtime.mutableIntStateOf(1) }
+    var formState by remember { mutableStateOf(RegisterFormState()) }
+    var formErrors by remember { mutableStateOf(RegisterFormErrors()) }
+    val selectedSports = rememberSaveable(
+        saver = listSaver(
+            save = { it.toList() },
+            restore = { mutableStateListOf<String>().apply { addAll(it) } }
         )
+    ) { mutableStateListOf<String>() }
 
-        Spacer(Modifier.height(12.dp))
+    fun validateStepOne(): Boolean {
+        val fullNameError = if (formState.fullName.isBlank()) "Vui lòng nhập họ tên" else null
+        val emailError = when {
+            formState.email.isBlank() -> "Vui lòng nhập email"
+            !android.util.Patterns.EMAIL_ADDRESS.matcher(formState.email).matches() -> "Email không hợp lệ"
+            else -> null
+        }
+        val passwordError = when {
+            formState.password.length < 6 -> "Mật khẩu tối thiểu 6 ký tự"
+            else -> null
+        }
+        val confirmError = when {
+            formState.confirmPassword != formState.password -> "Mật khẩu xác nhận chưa khớp"
+            else -> null
+        }
+        val phoneError = when {
+            formState.phone.length < 9 -> "Số điện thoại không hợp lệ"
+            else -> null
+        }
 
-        AuthTextField(
-            value = phone,
-            onValueChange = { phone = it },
-            label = "Số điện thoại",
-            leadingIcon = Icons.Outlined.Phone,
-            keyboardType = androidx.compose.ui.text.input.KeyboardType.Phone
+        formErrors = RegisterFormErrors(
+            fullName = fullNameError,
+            email = emailError,
+            password = passwordError,
+            confirmPassword = confirmError,
+            phone = phoneError
         )
-
-        Spacer(Modifier.height(12.dp))
-
-        AuthTextField(
-            value = password,
-            onValueChange = { password = it },
-            label = "Mật khẩu",
-            leadingIcon = Icons.Outlined.Lock,
-            isPassword = true,
-            passwordVisible = passwordVisible,
-            onTogglePasswordVisible = { passwordVisible = !passwordVisible }
-        )
-
-        Spacer(Modifier.height(12.dp))
-
-        AuthTextField(
-            value = confirmPassword,
-            onValueChange = { confirmPassword = it },
-            label = "Nhập lại mật khẩu",
-            leadingIcon = Icons.Outlined.CheckCircleOutline,
-            isPassword = true,
-            passwordVisible = confirmPasswordVisible,
-            onTogglePasswordVisible = { confirmPasswordVisible = !confirmPasswordVisible }
-        )
-
-        Spacer(Modifier.height(12.dp))
-
-        AuthDateField(
-            value = selectedDate,
-            onValueChange = { selectedDate = it },
-            dateFormatter = dateFormatter
-        )
-
-        Spacer(Modifier.height(8.dp))
-
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(top = 2.dp)
-        ) {
-            Checkbox(
-                checked = isAccepted,
-                onCheckedChange = { isAccepted = it },
-                colors = CheckboxDefaults.colors(
-                    checkedColor = SportPrimary,
-                    uncheckedColor = SportPrimary,
-                    checkmarkColor = androidx.compose.ui.graphics.Color.White
-                )
+        return listOf(fullNameError, emailError, passwordError, confirmError, phoneError).all { it == null }
+    }
+    Box(modifier = Modifier.fillMaxSize()) {
+        when (currentStep) {
+            1 -> RegisterStepOneScreen(
+                formState = formState,
+                errors = formErrors,
+                onFormChange = { formState = it },
+                onBackClick = onNavigateToLogin,
+                onNextClick = {
+                    if (validateStepOne()) currentStep = 2
+                },
+                onPickDateClick = {
+                    val now = Calendar.getInstance()
+                    DatePickerDialog(
+                        context,
+                        { _, year, month, dayOfMonth ->
+                            calendar.set(year, month, dayOfMonth)
+                            formState = formState.copy(birthDate = dateFormatter.format(calendar.time))
+                        },
+                        now.get(Calendar.YEAR),
+                        now.get(Calendar.MONTH),
+                        now.get(Calendar.DAY_OF_MONTH)
+                    ).show()
+                }
             )
-            Spacer(Modifier.width(4.dp))
-            Text(
-                text = "Tôi đồng ý với điều khoản sử dụng",
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                fontWeight = FontWeight.Medium
+
+            2 -> RegisterStepTwoScreen(
+                selectedSports = selectedSports.toSet(),
+                onToggleSport = { sport ->
+                    if (selectedSports.contains(sport)) selectedSports.remove(sport) else selectedSports.add(sport)
+                },
+                onBackClick = { currentStep = 1 },
+                onSkipClick = {
+                    if (!isLoading) {
+                        onRegisterSubmit(
+                            formState,
+                            mapSelectedSportsToSportTypeKeys(selectedSports.toSet())
+                        )
+                    }
+                },
+                onNextClick = {
+                    if (!isLoading) {
+                        onRegisterSubmit(
+                            formState,
+                            mapSelectedSportsToSportTypeKeys(selectedSports.toSet())
+                        )
+                    }
+                }
             )
         }
 
-        Spacer(Modifier.height(10.dp))
-
-        AuthPrimaryButton(text = "Đăng ký", onClick = {
-            Toast.makeText(context, "Đăng ký thành công", Toast.LENGTH_SHORT).show()
-            onRegisterSuccess()
-        })
-
-        AuthDivider()
-
-        SocialAuthButton(
-            text = "Đăng ký với Google",
-            accentText = "G",
-            accentColor = Color(0xFFDB4437)
-        )
-
-        Spacer(Modifier.height(10.dp))
-
-        SocialAuthButton(
-            text = "Đăng ký với Facebook",
-            accentText = "f",
-            accentColor = Color(0xFF1877F2)
-        )
-
-        Spacer(Modifier.height(18.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
+        if (!errorMessage.isNullOrBlank()) {
             Text(
-                text = "Đã có tài khoản? ",
-                color = Color(0xFF6B7280)
+                text = errorMessage,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 32.dp)
             )
-            Text(
-                text = "Đăng nhập ngay",
-                color = SportPrimary,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.clickable { onNavigateToLogin() }
-            )
+        }
+
+        if (isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.3f)),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(
+                    color = Color.White
+                )
+            }
         }
     }
 }
 
-@Composable
-private fun AuthDateField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    dateFormatter: SimpleDateFormat
-) {
-    val context = LocalContext.current
-    val calendar = remember { Calendar.getInstance() }
-
-    AuthTextField(
-        value = value,
-        onValueChange = onValueChange,
-        label = "Ngày sinh",
-        leadingIcon = Icons.Outlined.CalendarMonth,
-        readOnly = true,
-        onClick = {
-            val now = Calendar.getInstance()
-            DatePickerDialog(
-                context,
-                { _, year, month, dayOfMonth ->
-                    calendar.set(year, month, dayOfMonth)
-                    onValueChange(dateFormatter.format(calendar.time))
-                },
-                now.get(Calendar.YEAR),
-                now.get(Calendar.MONTH),
-                now.get(Calendar.DAY_OF_MONTH)
-            ).show()
+private fun mapSelectedSportsToSportTypeKeys(selectedSports: Set<String>): Set<String> {
+    return selectedSports.mapNotNull { label ->
+        when (normalizeText(label)) {
+            "bong da" -> "FOOTBALL"
+            "cau long" -> "BADMINTON"
+            "tennis" -> "TENNIS"
+            "pickleball" -> "PICKLEBALL"
+            "bong chuyen" -> "VOLLEYBALL"
+            else -> null
         }
-    )
+    }.toSet()
+}
+
+private fun normalizeText(value: String): String {
+    val normalized = java.text.Normalizer.normalize(value, java.text.Normalizer.Form.NFD)
+    return normalized
+        .replace(Regex("\\p{M}+"), "")
+        .lowercase()
+        .trim()
 }

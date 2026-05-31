@@ -4,8 +4,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -26,25 +27,27 @@ import com.sportmanagement.user.ui.theme.AppCtaAmber
 import com.sportmanagement.user.ui.theme.AppCtaCompactHorizontalPadding
 import com.sportmanagement.user.ui.theme.AppCtaCompactVerticalPadding
 import com.sportmanagement.user.ui.theme.AppCtaCornerRadius
+import com.sportmanagement.user.ui.theme.AppMediaCornerRadius
 import com.sportmanagement.user.ui.theme.AppOnCtaAmber
 
 @Composable
 internal fun HomeBookButton(onClick: () -> Unit) {
     Button(
         onClick = onClick,
+        modifier = Modifier.defaultMinSize(minWidth = 64.dp, minHeight = 30.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = AppCtaAmber,
             contentColor = AppOnCtaAmber
         ),
         shape = RoundedCornerShape(AppCtaCornerRadius),
         contentPadding = PaddingValues(
-            horizontal = AppCtaCompactHorizontalPadding,
-            vertical = AppCtaCompactVerticalPadding
+            horizontal = (AppCtaCompactHorizontalPadding - 3.dp),
+            vertical = (AppCtaCompactVerticalPadding - 1.dp)
         )
     ) {
         Text(
             text = stringResource(R.string.home_book_button),
-            style = MaterialTheme.typography.labelLarge,
+            style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.SemiBold
         )
     }
@@ -54,7 +57,7 @@ internal fun HomeBookButton(onClick: () -> Unit) {
 internal fun HomeTagChip(text: String) {
     Box(
         modifier = Modifier
-            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp))
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(AppMediaCornerRadius))
             .padding(horizontal = 10.dp, vertical = 4.dp)
     ) {
         Text(
@@ -67,7 +70,7 @@ internal fun HomeTagChip(text: String) {
 }
 
 @Composable
-internal fun HomeSmallCircleIcon(icon: ImageVector, size: Int = 32) {
+internal fun HomeSmallCircleIcon(icon: ImageVector, size: Int = 30) {
     Box(
         modifier = Modifier
             .size(size.dp)
@@ -77,7 +80,7 @@ internal fun HomeSmallCircleIcon(icon: ImageVector, size: Int = 32) {
         Icon(
             icon,
             contentDescription = null,
-            modifier = Modifier.size((size * 0.55f).dp),
+            modifier = Modifier.size((size * 0.5f).dp),
             tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
