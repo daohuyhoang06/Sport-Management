@@ -19,6 +19,11 @@ import {
   uploadImages,
 } from "../../controllers/user/reviewController.js";
 import {
+  addFavoriteField,
+  listFavoriteFields,
+  removeFavoriteField,
+} from "../../controllers/user/favoriteController.js";
+import {
   uploadReviewImages,
   handleUploadErrors,
 } from "../../middleware/upload.js";
@@ -34,6 +39,10 @@ r.get("/fields/search", searchFields);
 r.get("/fields/:id", getField);
 r.get("/fields/:id/bookings", getFieldBookings);
 r.get("/fields/:id/grid", getFieldGrid);
+
+r.get("/favorites", requireAuth, listFavoriteFields);
+r.post("/favorites/:fieldId", requireAuth, addFavoriteField);
+r.delete("/favorites/:fieldId", requireAuth, removeFavoriteField);
 
 r.get("/bookings/history", getBookingHistory);
 r.post("/bookings", requireAuth, createBooking);

@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -79,24 +78,25 @@ fun UserBottomBar(selectedTab: UserTab, onTabSelected: (UserTab) -> Unit) {
         shape = containerShape,
         color = containerColor,
         border = BorderStroke(1.dp, outlineColor),
-        shadowElevation = 10.dp,
+        shadowElevation = 8.dp,
         tonalElevation = 0.dp
     ) {
         Column(
             modifier = Modifier
                 .navigationBarsPadding()
-                .offset(y = (-4).dp)
-                .padding(top = 2.dp)
+                .padding(top = 1.dp)
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(4.dp)
+                    .height(2.dp)
                     .background(glowBrush)
             )
 
             NavigationBar(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(62.dp),
                 containerColor = Color.Transparent,
                 tonalElevation = 0.dp
             ) {
@@ -104,7 +104,7 @@ fun UserBottomBar(selectedTab: UserTab, onTabSelected: (UserTab) -> Unit) {
                     val isSelected = selectedTab == tab
                     val tabTitle = stringResource(tab.titleRes)
                     val iconScale by animateFloatAsState(
-                        targetValue = if (animatingTab == tab) 1.2f else 1f,
+                        targetValue = if (animatingTab == tab) 1.12f else 1f,
                         animationSpec = tween(durationMillis = 140),
                         label = "bottom_tab_icon_scale"
                     )
@@ -122,7 +122,7 @@ fun UserBottomBar(selectedTab: UserTab, onTabSelected: (UserTab) -> Unit) {
                             icon = {
                                 Box(
                                     modifier = Modifier
-                                        .size(30.dp)
+                                        .size(24.dp)
                                         .graphicsLayer {
                                             scaleX = iconScale
                                             scaleY = iconScale
@@ -134,7 +134,7 @@ fun UserBottomBar(selectedTab: UserTab, onTabSelected: (UserTab) -> Unit) {
                                         contentDescription = tabTitle,
                                         tint = if (isSelected) Color.White else inactiveColor,
                                         modifier = Modifier
-                                            .size(27.dp)
+                                            .size(21.dp)
                                             .then(
                                                 if (isSelected) {
                                                     Modifier

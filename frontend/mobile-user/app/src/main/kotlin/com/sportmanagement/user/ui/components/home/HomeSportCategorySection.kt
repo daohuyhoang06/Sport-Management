@@ -81,7 +81,7 @@ private fun SportCategoryItem(
     ) {
         Surface(
             modifier = Modifier
-                .size(48.dp)
+                .size(54.dp)
                 .graphicsLayer {
                     scaleX = chipScale
                     scaleY = chipScale
@@ -114,7 +114,7 @@ private fun SportCategoryItem(
         Spacer(Modifier.height(6.dp))
         Text(
             category.name,
-            style = MaterialTheme.typography.labelSmall,
+            style = MaterialTheme.typography.labelMedium,
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
             color = textColor
         )

@@ -57,10 +57,17 @@ import java.text.Normalizer
 fun HomeSearchResultsScreen(
     padding: PaddingValues,
     fields: List<UserField>,
+    favoriteFields: List<UserField>,
     isLoading: Boolean,
+    title: String,
+    emptyTitle: String,
+    emptyBody: String,
     onBackClick: () -> Unit,
     onFilterClick: () -> Unit,
-    onBookFieldClick: (UserField) -> Unit
+    onBookFieldClick: (UserField) -> Unit,
+    onFavoriteFieldClick: (UserField, Boolean) -> Unit,
+    onShareFieldClick: (UserField) -> Unit,
+    showFilterButton: Boolean = true
 ) {
     BackHandler(onBack = onBackClick)
 
@@ -68,6 +75,7 @@ fun HomeSearchResultsScreen(
     val contentTopPadding = 158.dp
     var searchQuery by rememberSaveable { mutableStateOf("") }
     var selectedFieldForDetail by remember { mutableStateOf<UserField?>(null) }
+    val favoriteFieldIds = remember(favoriteFields) { favoriteFields.map { it.fieldId }.toSet() }
     val normalizedQuery = remember(searchQuery) { normalizeResultsSearch(searchQuery) }
     val visibleFields = remember(fields, normalizedQuery) {
         if (normalizedQuery.isBlank()) {
@@ -103,7 +111,10 @@ fun HomeSearchResultsScreen(
                     .padding(top = contentTopPadding, bottom = 20.dp),
                 contentAlignment = Alignment.Center
             ) {
-                SearchResultsEmptyState()
+                SearchResultsEmptyState(
+                    title = emptyTitle,
+                    body = emptyBody
+                )
             }
         } else {
             LazyColumn(
@@ -113,8 +124,13 @@ fun HomeSearchResultsScreen(
                 items(visibleFields) { field ->
                     HomeVenueCard(
                         field = field,
+                        isFavorite = field.fieldId in favoriteFieldIds,
                         onCardClick = { selectedFieldForDetail = field },
-                        onBookClick = { onBookFieldClick(field) }
+                        onBookClick = { onBookFieldClick(field) },
+                        onFavoriteClick = {
+                            onFavoriteFieldClick(field, field.fieldId !in favoriteFieldIds)
+                        },
+                        onShareClick = { onShareFieldClick(field) }
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                 }
@@ -164,7 +180,7 @@ fun HomeSearchResultsScreen(
                         )
                     }
                     Text(
-                        text = stringResource(R.string.home_search_results_title),
+                        text = title,
                         style = MaterialTheme.typography.titleLarge,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -173,16 +189,24 @@ fun HomeSearchResultsScreen(
                         fontWeight = FontWeight.SemiBold,
                         textAlign = TextAlign.Center
                     )
-                    IconButton(
-                        onClick = onFilterClick,
-                        modifier = Modifier
-                            .size(36.dp)
-                            .align(Alignment.CenterEnd)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Tune,
-                            contentDescription = stringResource(R.string.home_filter_content_description),
-                            tint = MaterialTheme.colorScheme.onPrimary
+                    if (showFilterButton) {
+                        IconButton(
+                            onClick = onFilterClick,
+                            modifier = Modifier
+                                .size(36.dp)
+                                .align(Alignment.CenterEnd)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Tune,
+                                contentDescription = stringResource(R.string.home_filter_content_description),
+                                tint = MaterialTheme.colorScheme.onPrimary
+                            )
+                        }
+                    } else {
+                        Spacer(
+                            modifier = Modifier
+                                .size(36.dp)
+                                .align(Alignment.CenterEnd)
                         )
                     }
                 }
@@ -240,7 +264,12 @@ fun HomeSearchResultsScreen(
         selectedFieldForDetail?.let { selectedField ->
             FieldDetailBottomSheet(
                 field = selectedField,
+                isFavorite = selectedField.fieldId in favoriteFieldIds,
                 onDismissRequest = { selectedFieldForDetail = null },
+                onFavoriteClick = {
+                    onFavoriteFieldClick(selectedField, selectedField.fieldId !in favoriteFieldIds)
+                },
+                onShareClick = { onShareFieldClick(selectedField) },
                 onBookClick = { field ->
                     selectedFieldForDetail = null
                     onBookFieldClick(field)
@@ -251,7 +280,10 @@ fun HomeSearchResultsScreen(
 }
 
 @Composable
-private fun SearchResultsEmptyState() {
+private fun SearchResultsEmptyState(
+    title: String,
+    body: String
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -265,7 +297,7 @@ private fun SearchResultsEmptyState() {
             contentScale = ContentScale.Fit
         )
         Text(
-            text = stringResource(R.string.home_search_results_empty_title),
+            text = title,
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.primary,
             fontWeight = FontWeight.SemiBold,
@@ -273,7 +305,7 @@ private fun SearchResultsEmptyState() {
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = stringResource(R.string.home_search_results_empty_body),
+            text = body,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.primary.copy(alpha = 0.82f),
             textAlign = TextAlign.Center

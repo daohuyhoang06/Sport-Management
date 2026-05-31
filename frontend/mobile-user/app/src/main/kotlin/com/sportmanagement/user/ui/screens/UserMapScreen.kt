@@ -95,6 +95,7 @@ fun UserMapScreen(
     padding: PaddingValues,
     sportCategories: List<SportCategory>,
     nearby: List<UserField>,
+    favoriteFields: List<UserField> = emptyList(),
     searchResults: List<UserField> = emptyList(),
     recentSearches: List<String> = emptyList(),
     isSearchLoading: Boolean = false,
@@ -106,7 +107,9 @@ fun UserMapScreen(
     onLoadMoreSearchResults: () -> Unit = {},
     onRememberSearch: (String) -> Unit = {},
     onCurrentLocationDetected: (Double, Double) -> Unit = { _, _ -> },
-    onBookFieldClick: (UserField) -> Unit = {}
+    onBookFieldClick: (UserField) -> Unit = {},
+    onFavoriteFieldClick: (UserField, Boolean) -> Unit = { _, _ -> },
+    onShareFieldClick: (UserField) -> Unit = {}
 ) {
     val context = LocalContext.current
     val focusManager = LocalFocusManager.current
@@ -123,6 +126,7 @@ fun UserMapScreen(
     var currentLocation by remember { mutableStateOf<LatLng?>(null) }
     var showFieldList by rememberSaveable { mutableStateOf(false) }
     var selectedFieldForDetail by remember { mutableStateOf<UserField?>(null) }
+    val favoriteFieldIds = remember(favoriteFields) { favoriteFields.map { it.fieldId }.toSet() }
 
     var mapLibreMap by remember { mutableStateOf<MapLibreMap?>(null) }
     val hanoiFields = remember(nearby) {
@@ -329,6 +333,7 @@ fun UserMapScreen(
                 },
                 modifier = Modifier
                     .fillMaxWidth()
+                    .height(48.dp)
                     .onFocusChanged { focusState ->
                         if (focusState.isFocused) {
                             showSearchPopup = true
@@ -336,11 +341,18 @@ fun UserMapScreen(
                         }
                     },
                 singleLine = true,
-                placeholder = { Text(stringResource(R.string.map_search_placeholder_fields)) },
+                textStyle = MaterialTheme.typography.bodyMedium,
+                placeholder = {
+                    Text(
+                        text = stringResource(R.string.map_search_placeholder_fields),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                },
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.Search,
-                        contentDescription = null
+                        contentDescription = null,
+                        modifier = Modifier.size(22.dp)
                     )
                 },
                 trailingIcon = {
@@ -353,7 +365,8 @@ fun UserMapScreen(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Close,
-                                contentDescription = stringResource(R.string.map_clear_search_content_description)
+                                contentDescription = stringResource(R.string.map_clear_search_content_description),
+                                modifier = Modifier.size(22.dp)
                             )
                         }
                     }
@@ -562,7 +575,12 @@ fun UserMapScreen(
         selectedFieldForDetail?.let { field ->
             FieldDetailBottomSheet(
                 field = field,
+                isFavorite = field.fieldId in favoriteFieldIds,
                 onDismissRequest = { selectedFieldForDetail = null },
+                onFavoriteClick = {
+                    onFavoriteFieldClick(field, field.fieldId !in favoriteFieldIds)
+                },
+                onShareClick = { onShareFieldClick(field) },
                 onBookClick = {
                     selectedFieldForDetail = null
                     onBookFieldClick(it)
@@ -620,7 +638,7 @@ private fun MapSportCategoryItem(category: SportCategory, isSelected: Boolean, o
 
     Surface(
         modifier = Modifier
-            .height(52.dp)
+            .height(48.dp)
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(AppPillCornerRadius),
         shadowElevation = shadow,
@@ -632,22 +650,21 @@ private fun MapSportCategoryItem(category: SportCategory, isSelected: Boolean, o
     ) {
         Row(
             modifier = Modifier
-                .padding(horizontal = 12.dp, vertical = 7.dp),
+                .padding(horizontal = 11.dp, vertical = 5.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             SportMarkerIcon(
                 iconType = category.iconType,
                 contentDescription = stringResource(R.string.map_category_field_format, category.name),
-                markerSize = 34.dp,
-                iconSize = 16.dp
+                markerSize = 32.dp,
+                iconSize = 15.dp
             )
             Spacer(Modifier.width(8.dp))
             Text(
-                text = stringResource(
-                    R.string.map_category_field_format,
-                    category.name.lowercase()
-                ),
-                style = MaterialTheme.typography.bodyMedium,
+                text = category.name.replaceFirstChar { ch ->
+                    if (ch.isLowerCase()) ch.titlecase() else ch.toString()
+                },
+                style = MaterialTheme.typography.labelLarge,
                 fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
                 color = textColor
             )

@@ -11,7 +11,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 object ChatbotApi {
-    private const val BASE_URL = "http://10.0.2.2:5000"
+    private const val BASE_URL = "http://127.0.0.1:5000"
 
     suspend fun sendMessage(
         message: String,

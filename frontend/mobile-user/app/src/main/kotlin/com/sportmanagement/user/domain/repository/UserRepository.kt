@@ -71,6 +71,13 @@ interface UserRepository {
 
     suspend fun getFavoriteFields(): List<UserField>
 
+    suspend fun setFavoriteField(
+        fieldId: Int,
+        isFavorite: Boolean
+    ): List<UserField> {
+        return getFavoriteFields()
+    }
+
     suspend fun login(
         identifier: String,
         password: String

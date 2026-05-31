@@ -66,7 +66,17 @@ class UserApi(
         readFieldArray(endpoint)
     }
 
-    suspend fun getFavoriteFields(): List<UserFieldDto> = getFields()
+    suspend fun getFavoriteFields(token: String): List<UserFieldDto> = withContext(Dispatchers.IO) {
+        readFieldArray("$baseUrl/api/user/favorites", token)
+    }
+
+    suspend fun addFavoriteField(token: String, fieldId: Int) = withContext(Dispatchers.IO) {
+        writeFavorite("$baseUrl/api/user/favorites/$fieldId", "POST", token)
+    }
+
+    suspend fun removeFavoriteField(token: String, fieldId: Int) = withContext(Dispatchers.IO) {
+        writeFavorite("$baseUrl/api/user/favorites/$fieldId", "DELETE", token)
+    }
 
     suspend fun getSportCategories(): List<SportCategoryDto> = emptyList()
 
@@ -158,12 +168,18 @@ class UserApi(
         readFieldArray(endpoint)
     }
 
-    private fun readFieldArray(endpoint: String): List<UserFieldDto> {
+    private fun readFieldArray(
+        endpoint: String,
+        token: String? = null
+    ): List<UserFieldDto> {
         val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
             requestMethod = "GET"
             connectTimeout = 30_000
             readTimeout = 30_000
             setRequestProperty("Accept", "application/json")
+            token?.takeIf { it.isNotBlank() }?.let {
+                setRequestProperty("Authorization", "Bearer $it")
+            }
         }
 
         return try {
@@ -180,6 +196,31 @@ class UserApi(
 
             val array = JSONArray(responseText)
             List(array.length()) { idx -> array.getJSONObject(idx).toFieldDto() }
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+    private fun writeFavorite(
+        endpoint: String,
+        method: String,
+        token: String
+    ) {
+        val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
+            requestMethod = method
+            connectTimeout = 30_000
+            readTimeout = 30_000
+            doOutput = false
+            setRequestProperty("Accept", "application/json")
+            setRequestProperty("Authorization", "Bearer $token")
+        }
+
+        try {
+            val responseCode = connection.responseCode
+            if (responseCode !in 200..299) {
+                val responseText = connection.errorStream?.bufferedReader()?.use { it.readText() }.orEmpty()
+                throw IOException("HTTP $responseCode: $responseText")
+            }
         } finally {
             connection.disconnect()
         }
@@ -214,7 +255,7 @@ class UserApi(
     }
 
     companion object {
-        private const val BASE_URL = "http://10.0.2.2:5000"
+        private const val BASE_URL = "http://127.0.0.1:5000"
     }
 }
 

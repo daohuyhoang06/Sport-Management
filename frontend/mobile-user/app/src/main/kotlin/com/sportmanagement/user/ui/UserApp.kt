@@ -1,12 +1,15 @@
-﻿package com.sportmanagement.user.ui
+package com.sportmanagement.user.ui
+
+import android.content.Intent
+import android.widget.Toast
 
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
@@ -20,7 +23,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.sportmanagement.user.R
 import com.sportmanagement.user.domain.model.BookingConfirmationData
+import com.sportmanagement.user.domain.model.UserField
 import com.sportmanagement.user.ui.components.UserBottomBar
 import com.sportmanagement.user.ui.components.chatbot.ChatbotOverlay
 import com.sportmanagement.user.ui.navigation.UserTab
@@ -50,7 +55,8 @@ fun UserApp(
     userViewModel: UserViewModel? = null,
     chatbotViewModel: ChatbotViewModel = viewModel()
 ) {
-    val appContext = LocalContext.current.applicationContext
+    val context = LocalContext.current
+    val appContext = context.applicationContext
     val resolvedUserViewModel = userViewModel ?: viewModel(
         factory = remember(appContext) { UserViewModelFactory(appContext) }
     )
@@ -64,6 +70,7 @@ fun UserApp(
     var showBookingPaymentScreen by rememberSaveable { mutableStateOf(false) }
     var showHomeSearchFilterScreen by rememberSaveable { mutableStateOf(false) }
     var showHomeSearchResultsScreen by rememberSaveable { mutableStateOf(false) }
+    var showFavoriteFieldsScreen by rememberSaveable { mutableStateOf(false) }
     var showBookingDetailScreen by rememberSaveable { mutableStateOf(false) }
     var showConversationScreen by rememberSaveable { mutableStateOf(false) }
     var showNotificationDetailScreen by rememberSaveable { mutableStateOf(false) }
@@ -76,11 +83,67 @@ fun UserApp(
         showHomeSearchResultsScreen = false
         resolvedUserViewModel.resetHomeSearchCriteria()
     }
+    val closeFavoriteFieldsFlow = {
+        showFavoriteFieldsScreen = false
+    }
+    val closeHomeOverlayFlows = {
+        closeHomeSearchResultsFlow()
+        closeFavoriteFieldsFlow()
+    }
+    val openAuthFlow = {
+        resolvedUserViewModel.clearAuthError()
+        showRegister = false
+        showAuthScreen = true
+    }
+    val startBookingFlow: (UserField) -> Unit = { field ->
+        selectedFieldId = field.fieldId
+        showBookingPaymentScreen = false
+        showBookingConfirmationScreen = false
+        bookingConfirmationData = null
+        showBookingScreen = true
+    }
+    val toggleFavoriteField: (UserField, Boolean) -> Unit = { field, isFavorite ->
+        if (!uiState.isAuthenticated) {
+            openAuthFlow()
+        } else {
+            resolvedUserViewModel.setFieldFavorite(field, isFavorite)
+        }
+    }
+    val shareField: (UserField) -> Unit = { field ->
+        val shareText = buildString {
+            append(field.name)
+            append('\n')
+            append(field.location)
+            if (field.hours.isNotBlank()) {
+                append('\n')
+                append(field.hours)
+            }
+            if (field.price.isNotBlank()) {
+                append('\n')
+                append(field.price)
+            }
+        }
+        try {
+            context.startActivity(
+                Intent.createChooser(
+                    Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_SUBJECT, field.name)
+                        putExtra(Intent.EXTRA_TEXT, shareText)
+                    },
+                    null
+                )
+            )
+        } catch (_: Exception) {
+            Toast.makeText(context, "Khong mo duoc chia se", Toast.LENGTH_SHORT).show()
+        }
+    }
 
     val statusBarColor = when {
         showAuthScreen -> Color.Transparent
         showHomeSearchFilterScreen -> Color.Transparent
         showHomeSearchResultsScreen -> Color.Transparent
+        showFavoriteFieldsScreen -> Color.Transparent
         showBookingScreen || showBookingPaymentScreen || showBookingConfirmationScreen -> Color.Transparent
         showBookingDetailScreen || showConversationScreen || showNotificationDetailScreen -> MaterialTheme.colorScheme.surface
         uiState.selectedTab == UserTab.Home || uiState.selectedTab == UserTab.Profile -> Color.Transparent
@@ -89,6 +152,7 @@ fun UserApp(
     val useDarkStatusBarIcons = !showAuthScreen &&
         !showHomeSearchFilterScreen &&
         !showHomeSearchResultsScreen &&
+        !showFavoriteFieldsScreen &&
         !showBookingScreen &&
         !showBookingConfirmationScreen &&
         !showBookingPaymentScreen &&
@@ -105,7 +169,8 @@ fun UserApp(
         !showNotificationDetailScreen &&
         !showAuthScreen &&
         !showHomeSearchFilterScreen &&
-        !showHomeSearchResultsScreen
+        !showHomeSearchResultsScreen &&
+        !showFavoriteFieldsScreen
 
     AppStatusBarEffect(
         statusBarColor = statusBarColor,
@@ -198,7 +263,7 @@ fun UserApp(
                         showBookingConfirmationScreen = false
                         showBookingScreen = false
                         bookingConfirmationData = null
-                        closeHomeSearchResultsFlow()
+                        closeHomeOverlayFlows()
                         resolvedUserViewModel.onTabSelected(UserTab.Home)
                     }
                 )
@@ -278,23 +343,40 @@ fun UserApp(
                         HomeSearchResultsScreen(
                             padding = padding,
                             fields = uiState.homeFields,
+                            favoriteFields = uiState.favoriteFields,
                             isLoading = uiState.isHomeLoading,
+                            title = appContext.getString(R.string.home_search_results_title),
+                            emptyTitle = appContext.getString(R.string.home_search_results_empty_title),
+                            emptyBody = appContext.getString(R.string.home_search_results_empty_body),
                             onBackClick = closeHomeSearchResultsFlow,
                             onFilterClick = {
                                 showHomeSearchFilterScreen = true
                             },
-                            onBookFieldClick = { field ->
-                                selectedFieldId = field.fieldId
-                                showBookingPaymentScreen = false
-                                showBookingConfirmationScreen = false
-                                bookingConfirmationData = null
-                                showBookingScreen = true
-                            }
+                            onBookFieldClick = startBookingFlow,
+                            onFavoriteFieldClick = toggleFavoriteField,
+                            onShareFieldClick = shareField
+                        )
+                    } else if (showFavoriteFieldsScreen) {
+                        HomeSearchResultsScreen(
+                            padding = padding,
+                            fields = uiState.favoriteFields,
+                            favoriteFields = uiState.favoriteFields,
+                            isLoading = false,
+                            title = appContext.getString(R.string.favorite_title),
+                            emptyTitle = "Chua co san yeu thich",
+                            emptyBody = "Nhan tim o the san de luu san vao danh sach nay.",
+                            onBackClick = closeFavoriteFieldsFlow,
+                            onFilterClick = {},
+                            onBookFieldClick = startBookingFlow,
+                            onFavoriteFieldClick = toggleFavoriteField,
+                            onShareFieldClick = shareField,
+                            showFilterButton = false
                         )
                     } else {
                         UserHomeScreen(
                             padding = padding,
                             fields = uiState.homeFields,
+                            favoriteFields = uiState.favoriteFields,
                             sportCategories = uiState.sportCategories,
                             userName = uiState.profile.name,
                             userAvatarUrl = uiState.profile.avatarUrl,
@@ -307,15 +389,18 @@ fun UserApp(
                             isSearchLoading = uiState.isFieldSearchLoading,
                             isSearchLoadingMore = uiState.isFieldSearchLoadingMore,
                             hasMoreSearchResults = uiState.hasMoreFieldSearchResults,
-                            onLoginClick = {
-                                resolvedUserViewModel.clearAuthError()
-                                showRegister = false
-                                showAuthScreen = true
-                            },
+                            onLoginClick = openAuthFlow,
                             onRegisterClick = {
                                 resolvedUserViewModel.clearAuthError()
                                 showRegister = true
                                 showAuthScreen = true
+                            },
+                            onFavoriteHeaderClick = {
+                                if (uiState.isAuthenticated) {
+                                    showFavoriteFieldsScreen = true
+                                } else {
+                                    openAuthFlow()
+                                }
                             },
                             onFilterClick = {
                                 showHomeSearchFilterScreen = true
@@ -348,19 +433,16 @@ fun UserApp(
                             onLoadMore = {
                                 resolvedUserViewModel.loadMoreHomeFields()
                             },
-                            onBookFieldClick = { field ->
-                                selectedFieldId = field.fieldId
-                                showBookingPaymentScreen = false
-                                showBookingConfirmationScreen = false
-                                bookingConfirmationData = null
-                                showBookingScreen = true
-                            }
+                            onBookFieldClick = startBookingFlow,
+                            onFavoriteFieldClick = toggleFavoriteField,
+                            onShareFieldClick = shareField
                         )
                     }
                     UserTab.Map -> UserMapScreen(
                         padding = padding,
                         sportCategories = uiState.sportCategories,
                         nearby = uiState.nearbyFields,
+                        favoriteFields = uiState.favoriteFields,
                         searchResults = uiState.fieldSearchResults,
                         recentSearches = uiState.recentFieldSearches,
                         isSearchLoading = uiState.isFieldSearchLoading,
@@ -388,13 +470,9 @@ fun UserApp(
                         onCurrentLocationDetected = { latitude, longitude ->
                             resolvedUserViewModel.onHomeLocationUpdated(latitude, longitude)
                         },
-                        onBookFieldClick = { field ->
-                            selectedFieldId = field.fieldId
-                            showBookingPaymentScreen = false
-                            showBookingConfirmationScreen = false
-                            bookingConfirmationData = null
-                            showBookingScreen = true
-                        }
+                        onBookFieldClick = startBookingFlow,
+                        onFavoriteFieldClick = toggleFavoriteField,
+                        onShareFieldClick = shareField
                     )
                     UserTab.Inbox -> InboxScreen(
                         padding = padding,
@@ -451,3 +529,5 @@ fun UserApp(
         }
     }
 }
+
+

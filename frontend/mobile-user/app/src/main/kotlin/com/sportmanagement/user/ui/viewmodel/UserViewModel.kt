@@ -89,6 +89,7 @@ class UserViewModel(
                         profile = profile
                     )
                 }
+                refreshFavoriteFields()
             }.onFailure { error ->
                 _uiState.update { current ->
                     current.copy(
@@ -118,6 +119,7 @@ class UserViewModel(
                         profile = profile
                     )
                 }
+                refreshFavoriteFields()
             }.onFailure { error ->
                 _uiState.update { current ->
                     current.copy(
@@ -175,6 +177,7 @@ class UserViewModel(
                         homeSearchFilterOptions = filterHomeSearchFilterOptions(homeSearchFilterOptions)
                     )
                 }
+                refreshFavoriteFields()
             }.onFailure { error ->
                 _uiState.update { current ->
                     current.copy(
@@ -192,8 +195,37 @@ class UserViewModel(
             current.copy(
                 isAuthenticated = false,
                 authError = null,
-                profile = UserUiState().profile
+                profile = UserUiState().profile,
+                favoriteFields = emptyList()
             )
+        }
+    }
+
+    fun setFieldFavorite(field: UserField, isFavorite: Boolean) {
+        val fieldId = field.fieldId
+        if (fieldId <= 0) return
+
+        viewModelScope.launch {
+            runCatching {
+                repository.setFavoriteField(fieldId = fieldId, isFavorite = isFavorite)
+            }.onSuccess { favorites ->
+                _uiState.update { current ->
+                    current.copy(favoriteFields = favorites)
+                }
+            }.onFailure { error ->
+                _uiState.update { current ->
+                    current.copy(authError = error.message ?: "Không thể cập nhật sân yêu thích")
+                }
+            }
+        }
+    }
+
+    fun refreshFavoriteFields() {
+        viewModelScope.launch {
+            val favorites = repository.getFavoriteFields()
+            _uiState.update { current ->
+                current.copy(favoriteFields = favorites)
+            }
         }
     }
 

@@ -60,6 +60,7 @@ import java.text.Normalizer
 fun UserHomeScreen(
     padding: PaddingValues,
     fields: List<UserField>,
+    favoriteFields: List<UserField>,
     sportCategories: List<SportCategory>,
     userName: String,
     userAvatarUrl: String,
@@ -75,6 +76,7 @@ fun UserHomeScreen(
     onLoginClick: () -> Unit,
     onRegisterClick: () -> Unit,
     onFilterClick: () -> Unit,
+    onFavoriteHeaderClick: () -> Unit,
     onSearchOpened: () -> Unit,
     onSearchRequest: (String?, String?, String?) -> Unit,
     onClearSearch: () -> Unit,
@@ -83,7 +85,9 @@ fun UserHomeScreen(
     onCurrentLocationDetected: (Double, Double) -> Unit,
     onLocationUnavailable: () -> Unit,
     onLoadMore: () -> Unit,
-    onBookFieldClick: (UserField) -> Unit
+    onBookFieldClick: (UserField) -> Unit,
+    onFavoriteFieldClick: (UserField, Boolean) -> Unit,
+    onShareFieldClick: (UserField) -> Unit
 ) {
     val context = LocalContext.current
     val layoutDirection = LocalLayoutDirection.current
@@ -164,6 +168,7 @@ fun UserHomeScreen(
         }
     }
     val visibleFields = if (isSearching) filteredSearchResults else filteredHomeFields
+    val favoriteFieldIds = remember(favoriteFields) { favoriteFields.map { it.fieldId }.toSet() }
 
     LaunchedEffect(searchQuery) {
         val cleaned = searchQuery.trim()
@@ -242,6 +247,7 @@ fun UserHomeScreen(
                     searchQuery = searchQuery,
                     onSearchQueryChange = { searchQuery = it },
                     onFilterClick = onFilterClick,
+                    onFavoriteClick = onFavoriteHeaderClick,
                     userName = userName,
                     userAvatarUrl = userAvatarUrl,
                     isLoggedIn = isLoggedIn,
@@ -271,11 +277,16 @@ fun UserHomeScreen(
                 items(visibleFields) { field ->
                     HomeVenueCard(
                         field = field,
+                        isFavorite = field.fieldId in favoriteFieldIds,
                         onCardClick = {
                             selectedFieldForDetail = field
                             if (isSearching) onRememberSearch(field.name)
                         },
-                        onBookClick = { onBookFieldClick(field) }
+                        onBookClick = { onBookFieldClick(field) },
+                        onFavoriteClick = {
+                            onFavoriteFieldClick(field, field.fieldId !in favoriteFieldIds)
+                        },
+                        onShareClick = { onShareFieldClick(field) }
                     )
                     Spacer(Modifier.height(12.dp))
                 }
@@ -305,6 +316,7 @@ fun UserHomeScreen(
                 searchQuery = searchQuery,
                 onSearchQueryChange = { searchQuery = it },
                 onFilterClick = onFilterClick,
+                onFavoriteClick = onFavoriteHeaderClick,
                 modifier = Modifier.align(androidx.compose.ui.Alignment.TopCenter)
             )
         }
@@ -312,7 +324,12 @@ fun UserHomeScreen(
         selectedFieldForDetail?.let { selectedField ->
             FieldDetailBottomSheet(
                 field = selectedField,
+                isFavorite = selectedField.fieldId in favoriteFieldIds,
                 onDismissRequest = { selectedFieldForDetail = null },
+                onFavoriteClick = {
+                    onFavoriteFieldClick(selectedField, selectedField.fieldId !in favoriteFieldIds)
+                },
+                onShareClick = { onShareFieldClick(selectedField) },
                 onBookClick = { field ->
                     selectedFieldForDetail = null
                     onBookFieldClick(field)

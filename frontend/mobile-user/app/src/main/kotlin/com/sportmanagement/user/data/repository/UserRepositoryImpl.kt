@@ -152,10 +152,25 @@ class UserRepositoryImpl(
     ): List<UserField> = fetchFieldsPage(page, limit, latitude, longitude)
 
     override suspend fun getFavoriteFields(): List<UserField> {
-        ensureDiskCacheLoaded()
-        val cached = cacheByLocationKey.values.firstOrNull().orEmpty()
-        if (cached.isEmpty()) return emptyList()
-        return cached.sortedByDescending { it.rating.toDoubleOrNull() ?: 0.0 }.take(5)
+        val authToken = getAuthToken() ?: return emptyList()
+        val savedLocation = getSavedUserLocation()
+        return runCatching {
+            api.getFavoriteFields(authToken).map {
+                mapDtoToField(it, savedLocation?.first, savedLocation?.second)
+            }
+        }.getOrDefault(emptyList())
+    }
+
+    override suspend fun setFavoriteField(fieldId: Int, isFavorite: Boolean): List<UserField> {
+        val authToken = getAuthToken()
+            ?: throw IllegalStateException("Phiên đăng nhập đã hết hạn")
+
+        if (isFavorite) {
+            api.addFavoriteField(authToken, fieldId)
+        } else {
+            api.removeFavoriteField(authToken, fieldId)
+        }
+        return getFavoriteFields()
     }
 
     override suspend fun login(identifier: String, password: String): UserProfile {
@@ -536,6 +551,7 @@ private fun List<UserField>.toJsonArray(): JSONArray {
     val arr = JSONArray()
     forEach { field ->
         val item = JSONObject()
+            .put("fieldId", field.fieldId)
             .put("name", field.name)
             .put("location", field.location)
             .put("price", field.price)
@@ -576,6 +592,7 @@ private fun JSONObject.toUserField(): UserField {
     }
 
     return UserField(
+        fieldId = optInt("fieldId", 0),
         name = optString("name"),
         location = optString("location"),
         price = optString("price"),
