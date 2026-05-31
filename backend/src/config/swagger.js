@@ -582,6 +582,15 @@ const swaggerSpec = {
         responses: { 200: okResponse },
       },
     },
+    "/api/user/conversations": {
+      post: {
+        tags: ["User"],
+        summary: "Create or get conversation",
+        security: authSecurity,
+        requestBody: jsonRequest,
+        responses: { 200: okResponse, 400: errorResponse, 401: errorResponse },
+      },
+    },
 
     "/api/users/ping": {
       get: {
