@@ -12,10 +12,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sportmanagement.user.domain.model.BookingConfirmationData
+import com.sportmanagement.user.domain.model.FieldDetail
+import com.sportmanagement.user.domain.model.mockFieldDetail
 import com.sportmanagement.user.ui.components.UserBottomBar
 import com.sportmanagement.user.ui.navigation.UserTab
 import com.sportmanagement.user.ui.screens.BookingConfirmationScreen
 import com.sportmanagement.user.ui.screens.BookingScheduleScreen
+import com.sportmanagement.user.ui.screens.FieldDetailScreen
 import com.sportmanagement.user.ui.screens.LoginScreen
 import com.sportmanagement.user.ui.screens.RegisterScreen
 import com.sportmanagement.user.ui.screens.UserFavoriteScreen
@@ -33,6 +36,7 @@ fun UserApp(userViewModel: UserViewModel = viewModel()) {
     var showBookingConfirmationScreen by rememberSaveable { mutableStateOf(false) }
     var selectedCourtName by rememberSaveable { mutableStateOf("") }
     var bookingConfirmationData by remember { mutableStateOf<BookingConfirmationData?>(null) }
+    var selectedFieldDetail by remember { mutableStateOf<FieldDetail?>(null) }
 
     if (!isAuthenticated) {
         AppStatusBarEffect(
@@ -59,6 +63,22 @@ fun UserApp(userViewModel: UserViewModel = viewModel()) {
                 }
             )
         }
+        return
+    }
+
+    if (selectedFieldDetail != null) {
+        AppStatusBarEffect(statusBarColor = Color.Transparent, useDarkIcons = false)
+        FieldDetailScreen(
+            fieldDetail = selectedFieldDetail!!,
+            onBackClick = { selectedFieldDetail = null },
+            onBookNowClick = { detail ->
+                selectedCourtName = detail.name
+                selectedFieldDetail = null
+                showBookingConfirmationScreen = false
+                bookingConfirmationData = null
+                showBookingScreen = true
+            }
+        )
         return
     }
 
@@ -125,10 +145,8 @@ fun UserApp(userViewModel: UserViewModel = viewModel()) {
                     sportCategories = uiState.sportCategories,
                     userName = uiState.profile.name,
                     onBookFieldClick = { field ->
-                        selectedCourtName = field.name
-                        showBookingConfirmationScreen = false
-                        bookingConfirmationData = null
-                        showBookingScreen = true
+                        // Mở FieldDetailScreen trước, user sẽ bấm "Đặt sân ngay" từ đó
+                        selectedFieldDetail = mockFieldDetail().copy(name = field.name)
                     }
                 )
                 UserTab.Map -> UserMapScreen(padding, uiState.sportCategories, uiState.nearbyFields)
