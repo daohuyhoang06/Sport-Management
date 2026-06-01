@@ -1,4 +1,4 @@
-﻿import sequelize from "../../config/database.js";
+import sequelize from "../../config/database.js";
 
 /**
  * Get all bookings with filters and pagination
@@ -51,7 +51,7 @@ export const getAllBookingsService = async (filters = {}, pagination = {}) => {
     `SELECT 
       b.booking_id, b.customer_id, b.field_id, b.start_time, b.end_time,
       b.status, b.price, b.note,
-      p.full_name as customer_name, p.email as customer_email, p.phone as customer_phone,
+      p.person_name as customer_name, p.email as customer_email, p.phone as customer_phone,
       f.field_name, f.location
      FROM bookings b
      LEFT JOIN person p ON b.customer_id = p.person_id
@@ -78,7 +78,7 @@ export const getBookingByIdService = async (id) => {
     `SELECT 
       b.booking_id, b.customer_id, b.field_id, b.start_time, b.end_time,
       b.status, b.price, b.note,
-      p.full_name as customer_name, p.email as customer_email, p.phone as customer_phone, p.address as customer_address,
+      p.person_name as customer_name, p.email as customer_email, p.phone as customer_phone, p.address as customer_address,
       f.field_name, f.location
      FROM bookings b
      LEFT JOIN person p ON b.customer_id = p.person_id
@@ -208,7 +208,7 @@ export const getBookingsByDateRangeService = async (startDate, endDate) => {
     `SELECT 
       b.booking_id, b.customer_id, b.field_id, b.start_time, b.end_time,
       b.status, b.price, b.note,
-      p.full_name as customer_name, p.phone as customer_phone,
+      p.person_name as customer_name, p.phone as customer_phone,
       f.field_name
      FROM bookings b
      LEFT JOIN person p ON b.customer_id = p.person_id
@@ -220,3 +220,4 @@ export const getBookingsByDateRangeService = async (startDate, endDate) => {
 
   return bookings;
 };
+

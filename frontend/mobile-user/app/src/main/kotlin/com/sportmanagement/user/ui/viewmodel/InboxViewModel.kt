@@ -25,7 +25,10 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.time.LocalDateTime
 import java.time.OffsetDateTime
+import java.time.ZoneId
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 
 class InboxViewModel(
@@ -71,8 +74,32 @@ class InboxViewModel(
 
     fun markAllRead() {
         val token = token() ?: return
+
+        val unreadConversationIds = _uiState.value.sections
+            .flatMap { it.items }
+            .filter { it.category == InboxCategoryType.Message && it.unread }
+            .mapNotNull { it.conversationId }
+            .distinct()
+
+        // Optimistically clear unread badges in UI first.
+        val clearedSections = _uiState.value.sections.map { section ->
+            section.copy(
+                items = section.items.map { item ->
+                    item.copy(unread = false, badgeCount = 0)
+                }
+            )
+        }
+        _uiState.value = _uiState.value.copy(sections = clearedSections)
+
         viewModelScope.launch {
             runCatching { api.markAllNotificationsRead(token) }
+            unreadConversationIds.forEach { conversationId ->
+                runCatching { api.markConversationRead(token, conversationId) }
+                    .recoverCatching {
+                        // Fallback: opening thread API also marks incoming messages as read on backend.
+                        api.getConversationMessages(token, conversationId)
+                    }
+            }
             refreshInbox()
         }
     }
@@ -114,7 +141,8 @@ class InboxViewModel(
                             paymentMethod = booking.paymentMethod,
                             totalAmount = booking.totalPrice,
                             customerName = booking.userName,
-                            customerPhone = booking.ownerPhone.ifBlank { booking.userPhone },
+                            customerPhone = booking.userPhone,
+                            ownerPhone = booking.ownerPhone,
                             ownerNote = booking.ownerNote,
                             fieldId = booking.fieldId,
                             bookingId = booking.bookingId,
@@ -432,6 +460,7 @@ class InboxViewModel(
                 totalAmount = "",
                 customerName = "",
                 customerPhone = "",
+                ownerPhone = "",
                 ownerNote = subtitle,
                 fieldId = fieldId,
                 bookingId = effectiveBookingId,
@@ -510,9 +539,18 @@ class InboxViewModel(
     private fun token(): String? = prefs.getString("auth_token", null)?.takeIf { it.isNotBlank() }
 
     private fun formatTime(raw: String): String {
+        val zone = ZoneId.of("Asia/Ho_Chi_Minh")
+        val timePattern = DateTimeFormatter.ofPattern("HH:mm")
+
         return runCatching {
             val odt = OffsetDateTime.parse(raw)
-            odt.format(DateTimeFormatter.ofPattern("HH:mm"))
+            odt.atZoneSameInstant(zone).format(timePattern)
+        }.recoverCatching {
+            val ldt = LocalDateTime.parse(raw)
+            ldt.atZone(zone).format(timePattern)
+        }.recoverCatching {
+            val ldt = LocalDateTime.parse(raw, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+            ldt.atZone(ZoneOffset.UTC).withZoneSameInstant(zone).format(timePattern)
         }.getOrDefault(raw)
     }
 }

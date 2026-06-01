@@ -47,6 +47,7 @@ const formatDistanceLabel = (distanceKm) => {
   return `${numeric.toFixed(1)} km`;
 };
 
+
 const parseTags = (tagsCsv) => {
   if (!tagsCsv) return [];
   return String(tagsCsv)
@@ -785,6 +786,31 @@ export const createBooking = async (req, res) => {
       booking = rows?.[0] || null;
     });
 
+    const [[fieldInfo]] = await sequelize.query(
+      "SELECT field_name FROM fields WHERE field_id = ? LIMIT 1",
+      { replacements: [field_id] },
+    );
+
+    if (booking?.booking_id) {
+      await sequelize.query(
+        `INSERT INTO notifications
+          (user_id, type, section, title, subtitle, content, target_type, target_id, booking_id, field_id, is_read, metadata, created_at, updated_at)
+         VALUES (?, 'booking_success', 'priority', ?, ?, ?, 'booking', ?, ?, ?, 0, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+        {
+          replacements: [
+            customer_id,
+            `Dat san thanh cong - ${fieldInfo?.field_name || "San the thao"}`,
+            `Ma dat san #B${booking.booking_id}`,
+            `Ban vua tao yeu cau dat san tu ${mysqlStartTime} den ${mysqlEndTime}`,
+            booking.booking_id,
+            booking.booking_id,
+            field_id,
+            JSON.stringify({ icon: "booking_success" }),
+          ],
+        },
+      );
+    }
+
     res.status(201).json({
       message: "Booking created",
       booking,
@@ -917,6 +943,9 @@ export const getBooking = async (req, res) => {
         b.court_id,
         b.start_time,
         b.end_time,
+        DATE_FORMAT(b.start_time, '%Y-%m-%d') AS booking_date,
+        DATE_FORMAT(b.start_time, '%H:%i') AS booking_start_time,
+        DATE_FORMAT(b.end_time, '%H:%i') AS booking_end_time,
         b.price,
         b.status,
         b.note,
@@ -936,7 +965,13 @@ export const getBooking = async (req, res) => {
       LEFT JOIN fields f ON b.field_id = f.field_id
       LEFT JOIN person m ON f.manager_id = m.person_id
       LEFT JOIN field_courts fc ON b.court_id = fc.court_id
-      LEFT JOIN payments pay ON pay.booking_id = b.booking_id
+      LEFT JOIN payments pay ON pay.payment_id = (
+        SELECT p2.payment_id
+        FROM payments p2
+        WHERE p2.booking_id = b.booking_id
+        ORDER BY p2.payment_date DESC, p2.payment_id DESC
+        LIMIT 1
+      )
       WHERE b.booking_id = ? AND b.customer_id = ?
       LIMIT 1`,
       { replacements: [id, userId] },
@@ -950,13 +985,15 @@ export const getBooking = async (req, res) => {
       });
     }
 
-    const start = booking.start_time ? new Date(booking.start_time) : null;
-    const end = booking.end_time ? new Date(booking.end_time) : null;
-    const dateLabel = start ? start.toISOString().slice(0, 10) : null;
-    const startTime = start ? start.toISOString().slice(11, 16) : null;
-    const endTime = end ? end.toISOString().slice(11, 16) : null;
+      const dateLabel = booking.booking_date || null;
+      const startTime = booking.booking_start_time || null;
+      const endTime = booking.booking_end_time || null;
     const fieldImage =
       booking.card_image_url || booking.avatar_image_url || null;
+    const totalPrice = Number(booking.price || 0);
+    const totalPriceLabel = `${totalPrice.toLocaleString("vi-VN")} VND`;
+    const paymentMethod =
+      booking.payment_method || (booking.status === "paid" ? "momo" : "");
 
     res.json({
       success: true,
@@ -967,21 +1004,21 @@ export const getBooking = async (req, res) => {
         date: dateLabel,
         startTime,
         endTime,
-        totalPrice: booking.price,
-        paymentMethod: booking.payment_method || null,
+        totalPrice: totalPriceLabel,
+        paymentMethod,
         note: booking.note || null,
         ownerNote: booking.note || null,
         user: {
-          name: booking.customer_name || null,
-          phone: booking.customer_phone || null,
+          name: booking.customer_name || "",
+          phone: booking.customer_phone || "",
         },
         field: {
           fieldId: booking.field_id,
-          fieldName: booking.field_name || null,
-          address: booking.location || null,
+          fieldName: booking.field_name || "",
+          address: booking.location || "",
           avatar: fieldImage,
-          ownerName: booking.owner_name || null,
-          ownerPhone: booking.owner_phone || booking.field_phone || null,
+          ownerName: booking.owner_name || "",
+          ownerPhone: booking.field_phone || booking.owner_phone || "",
         },
         court: booking.court_id
           ? {

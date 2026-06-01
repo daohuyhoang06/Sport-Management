@@ -12,7 +12,7 @@ export const getDashboardStatsService = async () => {
         SUM(CASE WHEN role = 'user' THEN 1 ELSE 0 END) as regularUsers,
         SUM(CASE WHEN role = 'manager' THEN 1 ELSE 0 END) as totalManagers,
         SUM(CASE WHEN role = 'admin' THEN 1 ELSE 0 END) as totalAdmins,
-        SUM(CASE WHEN role = 'user' THEN 1 ELSE 0 END) as activeUsers
+        SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as activeUsers
       FROM person
       WHERE role IN ('user', 'manager', 'admin')`,
     );
@@ -54,25 +54,49 @@ export const getDashboardStatsService = async () => {
       FROM bookings`,
     );
 
+    const users = userStats[0] || {};
+    const fields = fieldStats[0] || {};
+    const bookings = bookingStats[0] || {};
+    const today = todayStats[0] || {};
+    const revenue = revenueStats[0] || {};
+
     return {
-      totalUsers: parseInt(userStats[0]?.totalusers || 0),
-      regularUsers: parseInt(userStats[0]?.regularusers || 0),
-      totalManagers: parseInt(userStats[0]?.totalmanagers || 0),
-      totalAdmins: parseInt(userStats[0]?.totaladmins || 0),
-      activeUsers: parseInt(userStats[0]?.activeusers || 0),
-      totalFields: parseInt(fieldStats[0]?.totalfields || 0),
-      activeFields: parseInt(fieldStats[0]?.activefields || 0),
-      maintenanceFields: parseInt(fieldStats[0]?.maintenancefields || 0),
-      inactiveFields: parseInt(fieldStats[0]?.inactivefields || 0),
-      totalBookings: parseInt(bookingStats[0]?.totalbookings || 0),
-      pendingBookings: parseInt(bookingStats[0]?.pendingbookings || 0),
-      confirmedBookings: parseInt(bookingStats[0]?.confirmedbookings || 0),
-      completedBookings: parseInt(bookingStats[0]?.completedbookings || 0),
-      cancelledBookings: parseInt(bookingStats[0]?.cancelledbookings || 0),
-      rejectedBookings: parseInt(bookingStats[0]?.rejectedbookings || 0),
-      todayBookings: parseInt(todayStats[0]?.todaybookings || 0),
-      totalRevenue: parseFloat(revenueStats[0]?.totalrevenue || 0),
-      monthlyRevenue: parseFloat(revenueStats[0]?.monthlyrevenue || 0),
+      totalUsers: parseInt(users.totalUsers ?? users.totalusers ?? 0),
+      regularUsers: parseInt(users.regularUsers ?? users.regularusers ?? 0),
+      totalManagers: parseInt(users.totalManagers ?? users.totalmanagers ?? 0),
+      totalAdmins: parseInt(users.totalAdmins ?? users.totaladmins ?? 0),
+      activeUsers: parseInt(users.activeUsers ?? users.activeusers ?? 0),
+      totalFields: parseInt(fields.totalFields ?? fields.totalfields ?? 0),
+      activeFields: parseInt(fields.activeFields ?? fields.activefields ?? 0),
+      maintenanceFields: parseInt(
+        fields.maintenanceFields ?? fields.maintenancefields ?? 0,
+      ),
+      inactiveFields: parseInt(
+        fields.inactiveFields ?? fields.inactivefields ?? 0,
+      ),
+      totalBookings: parseInt(
+        bookings.totalBookings ?? bookings.totalbookings ?? 0,
+      ),
+      pendingBookings: parseInt(
+        bookings.pendingBookings ?? bookings.pendingbookings ?? 0,
+      ),
+      confirmedBookings: parseInt(
+        bookings.confirmedBookings ?? bookings.confirmedbookings ?? 0,
+      ),
+      completedBookings: parseInt(
+        bookings.completedBookings ?? bookings.completedbookings ?? 0,
+      ),
+      cancelledBookings: parseInt(
+        bookings.cancelledBookings ?? bookings.cancelledbookings ?? 0,
+      ),
+      rejectedBookings: parseInt(
+        bookings.rejectedBookings ?? bookings.rejectedbookings ?? 0,
+      ),
+      todayBookings: parseInt(today.todayBookings ?? today.todaybookings ?? 0),
+      totalRevenue: parseFloat(revenue.totalRevenue ?? revenue.totalrevenue ?? 0),
+      monthlyRevenue: parseFloat(
+        revenue.monthlyRevenue ?? revenue.monthlyrevenue ?? 0,
+      ),
     };
   } catch (error) {
     console.error("Error in getDashboardStatsService:", error);
@@ -93,7 +117,7 @@ export const getRevenuByDateRangeService = async (startDate, endDate) => {
         b.price,
         b.status,
         f.field_name,
-        p.full_name as customer_name
+        p.person_name as customer_name
       FROM bookings b
       LEFT JOIN fields f ON b.field_id = f.field_id
       LEFT JOIN person p ON b.customer_id = p.person_id
@@ -135,7 +159,7 @@ export const getRevenueByFieldService = async (
         b.end_time,
         b.price,
         b.status,
-        p.full_name as customer_name
+        p.person_name as customer_name
       FROM bookings b
       LEFT JOIN person p ON b.customer_id = p.person_id
       WHERE b.field_id = ?

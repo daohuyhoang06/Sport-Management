@@ -1,5 +1,5 @@
-﻿import { User, Field } from "../../models/index.js";
-import { Op } from "sequelize";
+import Person from "../../models/Person.js";
+import { Field } from "../../models/index.js";
 
 /**
  * Get all employees (users with role = 'manager')
@@ -14,7 +14,7 @@ export const getAllEmployeesService = async (filters = {}, pagination = {}) => {
   const parsedLimit = parseInt(limit);
   const parsedPage = parseInt(page);
   const offset = (parsedPage - 1) * parsedLimit;
-  const dialect = User.sequelize.getDialect();
+  const dialect = Person.sequelize.getDialect();
   const fieldNamesAgg =
     dialect === "postgres"
       ? "STRING_AGG(f.field_name, ', ')"
@@ -25,7 +25,7 @@ export const getAllEmployeesService = async (filters = {}, pagination = {}) => {
   const replacements = {};
   if (search) {
     searchCondition =
-      "AND (p.full_name LIKE :search OR p.email LIKE :search OR p.phone LIKE :search)";
+      "AND (p.person_name LIKE :search OR p.email LIKE :search OR p.phone LIKE :search)";
     replacements.search = `%${search}%`;
   }
 
@@ -36,7 +36,7 @@ export const getAllEmployeesService = async (filters = {}, pagination = {}) => {
   }
 
   // Get total count
-  const [countResult] = await User.sequelize.query(
+  const [countResult] = await Person.sequelize.query(
     `
     SELECT COUNT(*) as count 
     FROM person p 
@@ -47,25 +47,25 @@ export const getAllEmployeesService = async (filters = {}, pagination = {}) => {
   const count = parseInt(countResult[0].count);
 
   // Get employees with count of their managed fields
-  const [employees] = await User.sequelize.query(
+  const [employees] = await Person.sequelize.query(
     `
     SELECT 
       p.person_id,
-      p.full_name as name,
+      p.person_name as name,
       p.email,
       p.phone,
       p.username,
       p.role,
       p.status,
       p.birthday,
-      p.gender as sex,
+      p.sex,
       p.address,
       COUNT(f.field_id) as field_count,
       ${fieldNamesAgg} as field_names
     FROM person p
     LEFT JOIN fields f ON f.manager_id = p.person_id
     WHERE p.role = 'manager' ${searchCondition} ${statusCondition}
-    GROUP BY p.person_id, p.full_name, p.email, p.phone, p.username, p.role, p.status, p.birthday, p.gender, p.address
+    GROUP BY p.person_id, p.person_name, p.email, p.phone, p.username, p.role, p.status, p.birthday, p.sex, p.address
     ORDER BY p.person_id ASC
     LIMIT :limit OFFSET :offset
   `,
@@ -106,17 +106,17 @@ export const getAllEmployeesService = async (filters = {}, pagination = {}) => {
  * Get employee by ID
  */
 export const getEmployeeByIdService = async (id) => {
-  const [employees] = await User.sequelize.query(`
+  const [employees] = await Person.sequelize.query(`
     SELECT 
       p.person_id,
-      p.full_name as name,
+      p.person_name as name,
       p.email,
       p.phone,
       p.username,
       p.role,
       p.status,
       p.birthday,
-      p.gender as sex,
+      p.sex,
       p.address,
       f.field_id as managed_field_id,
       f.field_name,
@@ -124,9 +124,11 @@ export const getEmployeeByIdService = async (id) => {
       f.status as field_status
     FROM person p
     LEFT JOIN fields f ON f.manager_id = p.person_id
-    WHERE p.person_id = ${parseInt(id)} AND p.role = 'manager'
+    WHERE p.person_id = :employeeId AND p.role = 'manager'
     LIMIT 1
-  `);
+  `, {
+    replacements: { employeeId: parseInt(id, 10) },
+  });
 
   if (!employees || employees.length === 0) return null;
 
@@ -160,7 +162,7 @@ export const getEmployeeByIdService = async (id) => {
  */
 export const createEmployeeService = async (employeeData) => {
   // Force role to manager
-  const employee = await User.create({
+  const employee = await Person.create({
     ...employeeData,
     role: "manager",
   });
@@ -174,7 +176,7 @@ export const createEmployeeService = async (employeeData) => {
  * Update employee
  */
 export const updateEmployeeService = async (id, employeeData) => {
-  const employee = await User.findOne({
+  const employee = await Person.findOne({
     where: {
       person_id: id,
       role: "manager",
@@ -211,7 +213,7 @@ export const updateEmployeeService = async (id, employeeData) => {
  * Delete employee
  */
 export const deleteEmployeeService = async (id) => {
-  const employee = await User.findOne({
+  const employee = await Person.findOne({
     where: {
       person_id: id,
       role: "manager",
@@ -231,12 +233,12 @@ export const deleteEmployeeService = async (id) => {
   );
 
   // Clear manager reference from bookings only if schema has manager_id
-  const bookingColumns = await User.sequelize
+  const bookingColumns = await Person.sequelize
     .getQueryInterface()
     .describeTable("bookings");
 
   if (bookingColumns.manager_id) {
-    await User.sequelize.query(
+    await Person.sequelize.query(
       `UPDATE bookings SET manager_id = NULL WHERE manager_id = :employeeId`,
       {
         replacements: { employeeId: id },
@@ -253,7 +255,7 @@ export const deleteEmployeeService = async (id) => {
  * Assign field to employee
  */
 export const assignFieldToEmployeeService = async (employeeId, field_id) => {
-  const employee = await User.findOne({
+  const employee = await Person.findOne({
     where: {
       person_id: employeeId,
       role: "manager",
@@ -264,7 +266,7 @@ export const assignFieldToEmployeeService = async (employeeId, field_id) => {
     throw new Error("Employee not found");
   }
 
-  const [fields] = await User.sequelize.query(
+  const [fields] = await Person.sequelize.query(
     `
     SELECT field_id, field_name, location, status, manager_id
     FROM fields
@@ -280,7 +282,7 @@ export const assignFieldToEmployeeService = async (employeeId, field_id) => {
     throw new Error("Field not found");
   }
 
-  await User.sequelize.query(
+  await Person.sequelize.query(
     `
     UPDATE fields
     SET manager_id = :employeeId
@@ -294,7 +296,7 @@ export const assignFieldToEmployeeService = async (employeeId, field_id) => {
     },
   );
 
-  const [updatedFields] = await User.sequelize.query(
+  const [updatedFields] = await Person.sequelize.query(
     `
     SELECT field_id, field_name, location, status, manager_id
     FROM fields
@@ -316,11 +318,11 @@ export const assignFieldToEmployeeService = async (employeeId, field_id) => {
  * Get employee statistics
  */
 export const getEmployeeStatsService = async () => {
-  const totalEmployees = await User.count({ where: { role: "manager" } });
-  const activeEmployees = await User.count({
+  const totalEmployees = await Person.count({ where: { role: "manager" } });
+  const activeEmployees = await Person.count({
     where: { role: "manager", status: "active" },
   });
-  const inactiveEmployees = await User.count({
+  const inactiveEmployees = await Person.count({
     where: { role: "manager", status: "inactive" },
   });
 
@@ -330,3 +332,6 @@ export const getEmployeeStatsService = async () => {
     inactive: inactiveEmployees,
   };
 };
+
+
+

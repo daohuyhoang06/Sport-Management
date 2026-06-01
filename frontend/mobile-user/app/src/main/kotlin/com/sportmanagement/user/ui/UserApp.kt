@@ -141,6 +141,12 @@ fun UserApp(
         }
     }
 
+    LaunchedEffect(uiState.isAuthenticated, uiState.selectedTab) {
+        if (uiState.isAuthenticated && uiState.selectedTab == UserTab.Inbox) {
+            inboxViewModel.refreshInbox()
+        }
+    }
+
     Scaffold(
         bottomBar = {
             if (shouldShowBottomBar) {

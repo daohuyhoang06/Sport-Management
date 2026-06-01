@@ -910,7 +910,7 @@ private fun BookerInfoCard(info: BookingInfo) {
                                 shape = RoundedCornerShape(AppPillCornerRadius)
                             ) {
                                 Text(
-                                    text = "Chủ sân",
+                                    text = "Người đặt",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
@@ -998,6 +998,7 @@ data class BookingInfo(
     val totalAmount: String,
     val customerName: String,
     val customerPhone: String,
+    val ownerPhone: String = "",
     val ownerNote: String,
     val fieldId: Int? = null,
     val bookingId: Int? = null,
@@ -1145,6 +1146,7 @@ private fun inboxSections(): List<NotificationSectionData> {
                 totalAmount = "150.000 đ",
                 customerName = "Nguyễn Văn An",
                 customerPhone = "090 789 0123",
+                ownerPhone = "090 123 4567",
                 ownerNote = "Bạn vui lòng đến trước 10 phút để check sân nhé!"
             ),
             icon = Icons.Outlined.EventAvailable,
@@ -1329,6 +1331,7 @@ fun BookingDetailScreen(
         )
 
         if (showContactSheet) {
+            val ownerPhone = info.ownerPhone.ifBlank { info.customerPhone }.ifBlank { "1900 636 818" }
             ModalBottomSheet(
                 onDismissRequest = { showContactSheet = false },
                 sheetState = sheetState,
@@ -1336,11 +1339,11 @@ fun BookingDetailScreen(
                 shape = RoundedCornerShape(topStart = AppSheetTopCornerRadius, topEnd = AppSheetTopCornerRadius)
             ) {
                 ContactOwnerSheet(
-                    phoneNumber = info.customerPhone,
+                    phoneNumber = ownerPhone,
                     onCloseClick = { showContactSheet = false },
                     onCallClick = {
                         val intent = Intent(Intent.ACTION_DIAL)
-                        intent.data = Uri.parse("tel:${info.customerPhone}")
+                        intent.data = Uri.parse("tel:${ownerPhone}")
                         context.startActivity(intent)
                         showContactSheet = false
                     },
@@ -1350,7 +1353,7 @@ fun BookingDetailScreen(
                             ConversationInfo(
                                 fieldName = info.fieldName,
                                 statusLabel = "Đang hoạt động",
-                                phoneNumber = info.customerPhone,
+                                phoneNumber = ownerPhone,
                                 avatarRes = R.drawable.field_football,
                                 fieldId = info.fieldId,
                                 bookingId = info.bookingId
