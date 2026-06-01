@@ -131,3 +131,84 @@ export const createConversation = async (req, res) => {
     });
   }
 };
+
+// GET /api/user/conversations
+export const listConversations = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    const [rows] = await sequelize.query(
+      `SELECT
+        c.chat_id,
+        c.field_id,
+        c.booking_id,
+        c.last_message,
+        c.last_message_at,
+        c.updated_at,
+        f.field_name,
+        f.avatar_image_url,
+        f.card_image_url,
+        m.person_name AS owner_name,
+        (
+          SELECT message_text
+          FROM messages
+          WHERE chat_id = c.chat_id
+          ORDER BY created_at DESC
+          LIMIT 1
+        ) AS last_message_text,
+        (
+          SELECT created_at
+          FROM messages
+          WHERE chat_id = c.chat_id
+          ORDER BY created_at DESC
+          LIMIT 1
+        ) AS last_message_time,
+        (
+          SELECT COUNT(*)
+          FROM messages
+          WHERE chat_id = c.chat_id
+            AND sender_id != ?
+            AND is_read = 0
+        ) AS unread_count
+      FROM chats c
+      LEFT JOIN fields f ON c.field_id = f.field_id
+      LEFT JOIN person m ON c.manager_id = m.person_id
+      WHERE c.user_id = ?
+      ORDER BY COALESCE(c.last_message_at, c.updated_at) DESC`,
+      { replacements: [userId, userId] },
+    );
+
+    const items = rows.map((row) => ({
+      conversationId: row.chat_id,
+      fieldId: row.field_id,
+      fieldName: row.field_name || null,
+      fieldAvatar: row.card_image_url || row.avatar_image_url || null,
+      ownerName: row.owner_name || null,
+      isOnline: false,
+      lastMessage: row.last_message || row.last_message_text || null,
+      lastMessageTime:
+        row.last_message_at || row.last_message_time || row.updated_at,
+      unreadCount: Number(row.unread_count || 0),
+      updatedAt: row.updated_at,
+    }));
+
+    return res.json({
+      success: true,
+      data: items,
+    });
+  } catch (error) {
+    console.error("listConversations error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Loi server khi lay danh sach cuoc tro chuyen",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+};

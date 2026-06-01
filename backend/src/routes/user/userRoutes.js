@@ -30,7 +30,10 @@ import {
   markAllNotificationsRead,
 } from "../../controllers/user/notificationController.js";
 import { getInbox } from "../../controllers/user/inboxController.js";
-import { createConversation } from "../../controllers/user/conversationController.js";
+import {
+  createConversation,
+  listConversations,
+} from "../../controllers/user/conversationController.js";
 
 const r = Router();
 
@@ -67,5 +70,6 @@ r.patch("/notifications/read-all", requireAuth, markAllNotificationsRead);
 r.get("/inbox", requireAuth, getInbox);
 
 r.post("/conversations", requireAuth, createConversation);
+r.get("/conversations", requireAuth, listConversations);
 
 export default r;
