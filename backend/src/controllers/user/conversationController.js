@@ -212,3 +212,113 @@ export const listConversations = async (req, res) => {
     });
   }
 };
+
+// GET /api/user/conversations/:conversationId/messages
+export const getConversationMessages = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    const { conversationId } = req.params;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    if (!conversationId) {
+      return res.status(400).json({
+        success: false,
+        message: "Conversation ID is required",
+      });
+    }
+
+    const [conversations] = await sequelize.query(
+      `SELECT
+        c.chat_id,
+        c.field_id,
+        c.booking_id,
+        f.field_name,
+        f.avatar_image_url,
+        f.card_image_url,
+        f.phone AS field_phone,
+        m.person_name AS owner_name,
+        m.phone AS owner_phone
+      FROM chats c
+      LEFT JOIN fields f ON c.field_id = f.field_id
+      LEFT JOIN person m ON c.manager_id = m.person_id
+      WHERE c.chat_id = ? AND c.user_id = ?
+      LIMIT 1`,
+      { replacements: [conversationId, userId] },
+    );
+
+    const conversation = conversations?.[0];
+    if (!conversation) {
+      return res.status(404).json({
+        success: false,
+        message: "Conversation not found",
+      });
+    }
+
+    const [messages] = await sequelize.query(
+      `SELECT
+        m.message_id,
+        m.sender_id,
+        m.sender_type,
+        m.message_type,
+        m.message_text,
+        m.content,
+        m.image_url,
+        m.metadata,
+        m.created_at
+      FROM messages m
+      WHERE m.chat_id = ?
+      ORDER BY m.created_at ASC`,
+      { replacements: [conversationId] },
+    );
+
+    await sequelize.query(
+      `UPDATE messages
+       SET is_read = 1, updated_at = CURRENT_TIMESTAMP
+       WHERE chat_id = ? AND sender_id != ? AND is_read = 0`,
+      { replacements: [conversationId, userId] },
+    );
+
+    const fieldAvatar =
+      conversation.card_image_url || conversation.avatar_image_url || null;
+    const ownerPhone =
+      conversation.owner_phone || conversation.field_phone || null;
+
+    res.json({
+      success: true,
+      data: {
+        conversation: {
+          conversationId: conversation.chat_id,
+          fieldName: conversation.field_name || null,
+          fieldAvatar,
+          ownerName: conversation.owner_name || null,
+          ownerPhone,
+          isOnline: false,
+        },
+        messages: messages.map((row) => ({
+          messageId: row.message_id,
+          senderId: row.sender_id,
+          senderType: row.sender_type || "user",
+          messageType: row.message_type || "text",
+          content: row.content || row.message_text || "",
+          imageUrl: row.image_url || null,
+          metadata: row.metadata || null,
+          createdAt: row.created_at,
+          isMine: row.sender_id === userId,
+        })),
+      },
+    });
+  } catch (error) {
+    console.error("getConversationMessages error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Loi server khi lay tin nhan",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+};

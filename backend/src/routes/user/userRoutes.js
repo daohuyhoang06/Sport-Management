@@ -33,6 +33,7 @@ import { getInbox } from "../../controllers/user/inboxController.js";
 import {
   createConversation,
   listConversations,
+  getConversationMessages,
 } from "../../controllers/user/conversationController.js";
 
 const r = Router();
@@ -71,5 +72,10 @@ r.get("/inbox", requireAuth, getInbox);
 
 r.post("/conversations", requireAuth, createConversation);
 r.get("/conversations", requireAuth, listConversations);
+r.get(
+  "/conversations/:conversationId/messages",
+  requireAuth,
+  getConversationMessages,
+);
 
 export default r;
