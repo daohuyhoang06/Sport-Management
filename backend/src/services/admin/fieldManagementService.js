@@ -53,7 +53,7 @@ export const getAllFieldsService = async (filters = {}, pagination = {}) => {
   const [rows] = await sequelize.query(
     `SELECT f.field_id, f.manager_id, f.field_name, f.location, f.status, ${priceSelect},
             f.sport_id, st.sport_name,
-                  p.full_name as manager_name, p.email as manager_email
+                  p.person_name as manager_name, p.email as manager_email
      FROM fields f
 
      LEFT JOIN person p ON f.manager_id = p.person_id
@@ -84,7 +84,7 @@ export const getFieldByIdService = async (id) => {
   const [[field]] = await sequelize.query(
     `SELECT f.field_id, f.manager_id, f.field_name, f.location, f.status, ${priceSelect},
             f.sport_id, st.sport_name,
-            p.full_name as manager_name, p.email as manager_email, p.phone as manager_phone
+            p.person_name as manager_name, p.email as manager_email, p.phone as manager_phone
      FROM fields f
      LEFT JOIN person p ON f.manager_id = p.person_id
      LEFT JOIN sport_types st ON f.sport_id = st.sport_id
@@ -97,7 +97,7 @@ export const getFieldByIdService = async (id) => {
   // Get recent bookings
   const [bookings] = await sequelize.query(
     `SELECT b.booking_id, b.start_time, b.end_time, b.status, b.price,
-            p.full_name as customer_name, p.phone as customer_phone
+            p.person_name as customer_name, p.phone as customer_phone
      FROM bookings b
      LEFT JOIN person p ON b.customer_id = p.person_id
      WHERE b.field_id = ?
@@ -366,3 +366,4 @@ export const deleteFieldImageService = async (imageId) => {
   await image.destroy();
   return { message: "Image deleted successfully" };
 };
+

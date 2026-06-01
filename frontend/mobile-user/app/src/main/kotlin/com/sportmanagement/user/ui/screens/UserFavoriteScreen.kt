@@ -30,6 +30,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -53,6 +54,7 @@ import androidx.compose.material.icons.outlined.Phone
 import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material.icons.outlined.Send
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -67,6 +69,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
@@ -75,6 +78,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -104,15 +108,18 @@ import com.sportmanagement.user.ui.theme.AppSheetTopCornerRadius
 @Composable
 fun InboxScreen(
     padding: PaddingValues,
+    sections: List<NotificationSectionData>,
+    isLoading: Boolean = false,
+    errorMessage: String? = null,
+    onRefresh: () -> Unit = {},
+    onMarkAllRead: () -> Unit = {},
+    onNotificationOpened: (Int?) -> Unit = {},
     onBookingSelected: (BookingInfo) -> Unit,
     onMessageSelected: (ConversationInfo) -> Unit,
-    onNotificationSelected: (NotificationDetailInfo) -> Unit
+    onNotificationSelected: (NotificationItem) -> Unit
 ) {
     val layoutDirection = LocalLayoutDirection.current
-    val sections = inboxSections()
     var selectedCategory by rememberSaveable { mutableStateOf<InboxCategoryType?>(null) }
-    var selectedNotification by remember { mutableStateOf<NotificationItem?>(null) }
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val filteredSections = sections.mapNotNull { section ->
         val filteredItems = section.items.filter { item ->
             selectedCategory == null || item.category == selectedCategory
@@ -135,6 +142,34 @@ fun InboxScreen(
             InboxHeader()
         }
 
+        if (isLoading) {
+            item {
+                Text(
+                    text = "Đang tải hộp thư...",
+                    modifier = Modifier.padding(horizontal = AppScreenHorizontalPadding),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        errorMessage?.takeIf { it.isNotBlank() }?.let { message ->
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = AppScreenHorizontalPadding),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(text = message, color = MaterialTheme.colorScheme.error)
+                    Text(
+                        text = "Thử lại",
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.clickable(onClick = onRefresh)
+                    )
+                }
+            }
+        }
+
         item {
             InboxQuickActions(
                 categories = inboxQuickActions(),
@@ -153,18 +188,21 @@ fun InboxScreen(
             item {
                 NotificationSection(
                     section = section,
+                    onMarkAllClick = onMarkAllRead,
                     onItemClick = { item ->
                         when {
                             item.category == InboxCategoryType.Booking && item.bookingInfo != null -> {
+                                onNotificationOpened(item.id)
                                 onBookingSelected(item.bookingInfo)
                             }
                             item.category == InboxCategoryType.Message && item.conversationInfo != null -> {
                                 onMessageSelected(item.conversationInfo)
                             }
                             item.detailInfo != null -> {
-                                onNotificationSelected(item.detailInfo)
+                                onNotificationOpened(item.id)
+                                onNotificationSelected(item)
                             }
-                            else -> selectedNotification = item
+                            else -> Unit
                         }
                     },
                     modifier = Modifier.padding(horizontal = AppScreenHorizontalPadding)
@@ -172,24 +210,18 @@ fun InboxScreen(
                 Spacer(Modifier.height(12.dp))
             }
         }
-    }
 
-    if (selectedNotification != null) {
-        val screenHeight = LocalConfiguration.current.screenHeightDp.dp
-        ModalBottomSheet(
-            onDismissRequest = { selectedNotification = null },
-            sheetState = sheetState,
-            containerColor = MaterialTheme.colorScheme.surface,
-            dragHandle = { BottomSheetDefaults.DragHandle() }
-        ) {
-            NotificationDetailSheet(
-                item = selectedNotification!!,
-                modifier = Modifier
-                    .heightIn(min = screenHeight * 0.62f)
-                    .padding(horizontal = AppScreenHorizontalPadding, vertical = 12.dp)
-            )
+        if (!isLoading && errorMessage.isNullOrBlank() && filteredSections.all { it.items.isEmpty() }) {
+            item {
+                Text(
+                    text = "Hộp thư chưa có dữ liệu.",
+                    modifier = Modifier.padding(horizontal = AppScreenHorizontalPadding),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
+
 }
 
 @Composable
@@ -363,6 +395,7 @@ fun QuickActionItem(
 @Composable
 fun NotificationSection(
     section: NotificationSectionData,
+    onMarkAllClick: () -> Unit = {},
     onItemClick: (NotificationItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -382,7 +415,8 @@ fun NotificationSection(
                 Text(
                     text = stringResource(R.string.inbox_mark_read),
                     style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.primary
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.clickable(onClick = onMarkAllClick)
                 )
             }
         }
@@ -876,7 +910,7 @@ private fun BookerInfoCard(info: BookingInfo) {
                                 shape = RoundedCornerShape(AppPillCornerRadius)
                             ) {
                                 Text(
-                                    text = "Chủ sân",
+                                    text = "Người đặt",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
@@ -931,6 +965,8 @@ private fun SectionHeader(title: String, icon: androidx.compose.ui.graphics.vect
 
 @Immutable
 data class NotificationItem(
+    val id: Int? = null,
+    val type: String? = null,
     val title: String,
     val subtitle: String,
     val detail: String,
@@ -938,6 +974,9 @@ data class NotificationItem(
     val timeLabel: String,
     val unread: Boolean = false,
     val badgeCount: Int = 0,
+    val bookingId: Int? = null,
+    val fieldId: Int? = null,
+    val conversationId: Int? = null,
     val category: InboxCategoryType,
     val bookingInfo: BookingInfo? = null,
     val conversationInfo: ConversationInfo? = null,
@@ -959,7 +998,11 @@ data class BookingInfo(
     val totalAmount: String,
     val customerName: String,
     val customerPhone: String,
-    val ownerNote: String
+    val ownerPhone: String = "",
+    val ownerNote: String,
+    val fieldId: Int? = null,
+    val bookingId: Int? = null,
+    val notificationId: Int? = null
 )
 
 @Immutable
@@ -967,13 +1010,19 @@ data class ConversationInfo(
     val fieldName: String,
     val statusLabel: String,
     val phoneNumber: String,
-    val avatarRes: Int
+    val avatarRes: Int,
+    val conversationId: Int? = null,
+    val fieldId: Int? = null,
+    val bookingId: Int? = null
 )
 
 sealed class NotificationDetailInfo {
     data class UpcomingMatch(
         val title: String,
         val subtitle: String,
+        val notificationId: Int? = null,
+        val fieldId: Int? = null,
+        val bookingId: Int? = null,
         val fieldName: String,
         val address: String,
         val timeRange: String,
@@ -990,6 +1039,7 @@ sealed class NotificationDetailInfo {
     data class Promotion(
         val title: String,
         val subtitle: String,
+        val notificationId: Int? = null,
         val promoTitle: String,
         val promoSubtitle: String,
         val contentText: String,
@@ -1000,6 +1050,7 @@ sealed class NotificationDetailInfo {
     data class SystemNotice(
         val title: String,
         val subtitle: String,
+        val notificationId: Int? = null,
         val contentText: String,
         val features: List<String>,
         val timeText: String
@@ -1095,6 +1146,7 @@ private fun inboxSections(): List<NotificationSectionData> {
                 totalAmount = "150.000 đ",
                 customerName = "Nguyễn Văn An",
                 customerPhone = "090 789 0123",
+                ownerPhone = "090 123 4567",
                 ownerNote = "Bạn vui lòng đến trước 10 phút để check sân nhé!"
             ),
             icon = Icons.Outlined.EventAvailable,
@@ -1279,6 +1331,7 @@ fun BookingDetailScreen(
         )
 
         if (showContactSheet) {
+            val ownerPhone = info.ownerPhone.ifBlank { info.customerPhone }.ifBlank { "1900 636 818" }
             ModalBottomSheet(
                 onDismissRequest = { showContactSheet = false },
                 sheetState = sheetState,
@@ -1286,11 +1339,11 @@ fun BookingDetailScreen(
                 shape = RoundedCornerShape(topStart = AppSheetTopCornerRadius, topEnd = AppSheetTopCornerRadius)
             ) {
                 ContactOwnerSheet(
-                    phoneNumber = info.customerPhone,
+                    phoneNumber = ownerPhone,
                     onCloseClick = { showContactSheet = false },
                     onCallClick = {
                         val intent = Intent(Intent.ACTION_DIAL)
-                        intent.data = Uri.parse("tel:${info.customerPhone}")
+                        intent.data = Uri.parse("tel:${ownerPhone}")
                         context.startActivity(intent)
                         showContactSheet = false
                     },
@@ -1300,8 +1353,10 @@ fun BookingDetailScreen(
                             ConversationInfo(
                                 fieldName = info.fieldName,
                                 statusLabel = "Đang hoạt động",
-                                phoneNumber = info.customerPhone,
-                                avatarRes = R.drawable.field_football
+                                phoneNumber = ownerPhone,
+                                avatarRes = R.drawable.field_football,
+                                fieldId = info.fieldId,
+                                bookingId = info.bookingId
                             )
                         )
                     }
@@ -1653,7 +1708,9 @@ fun NotificationDetailScreen(
                                 fieldName = info.fieldName,
                                 statusLabel = "Đang hoạt động",
                                 phoneNumber = info.phoneNumber,
-                                avatarRes = info.avatarRes
+                                avatarRes = info.avatarRes,
+                                fieldId = info.fieldId,
+                                bookingId = info.bookingId
                             )
                         )
                     }
@@ -2133,11 +2190,26 @@ private fun NotificationDetailBottomAction(
 @Composable
 fun ConversationScreen(
     info: ConversationInfo,
+    messages: List<ConversationMessageUi>,
+    draft: String,
+    isSending: Boolean,
+    isLoading: Boolean,
+    errorMessage: String?,
+    onDraftChange: (String) -> Unit,
+    onSend: () -> Unit,
+    onRetry: () -> Unit,
     onBackClick: () -> Unit
 ) {
     val context = LocalContext.current
-    val messages = remember { conversationMessages(info) }
     val screenBackground = MaterialTheme.colorScheme.background
+    val listState = rememberLazyListState()
+    val sortedMessages = remember(messages) { messages.sortedBy { it.id } }
+
+    LaunchedEffect(sortedMessages.size) {
+        if (sortedMessages.isNotEmpty()) {
+            listState.animateScrollToItem(sortedMessages.size)
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -2155,6 +2227,7 @@ fun ConversationScreen(
         )
 
         LazyColumn(
+            state = listState,
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth()
@@ -2173,18 +2246,37 @@ fun ConversationScreen(
                 )
             }
 
-            items(messages.size) { index ->
-                ConversationMessageBubble(messages[index])
-                Spacer(Modifier.height(10.dp))
+            if (isLoading) {
+                item {
+                    Text(
+                        text = "Đang tải tin nhắn...",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(10.dp))
+                }
             }
 
-            item {
-                ConversationQuickReactions()
+            errorMessage?.takeIf { it.isNotBlank() }?.let { message ->
+                item {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(text = message, color = MaterialTheme.colorScheme.error)
+                        Text(text = "Thử lại", color = MaterialTheme.colorScheme.primary, modifier = Modifier.clickable(onClick = onRetry))
+                    }
+                    Spacer(Modifier.height(10.dp))
+                }
+            }
+
+            items(sortedMessages.size, key = { index -> sortedMessages[index].id }) { index ->
+                ConversationMessageBubble(sortedMessages[index])
                 Spacer(Modifier.height(10.dp))
             }
         }
 
         ConversationInputBar(
+            draft = draft,
+            isSending = isSending,
+            onDraftChange = onDraftChange,
+            onSend = onSend,
             modifier = Modifier
                 .fillMaxWidth()
                 .navigationBarsPadding()
@@ -2263,21 +2355,15 @@ private fun ConversationTopBar(
     }
 }
 
-private data class ConversationMessage(
+data class ConversationMessageUi(
+    val id: Int,
     val text: String,
     val time: String,
-    val isUser: Boolean,
-    val type: ConversationMessageType = ConversationMessageType.Text
+    val isUser: Boolean
 )
 
-private enum class ConversationMessageType {
-    Text,
-    Location,
-    Photos
-}
-
 @Composable
-private fun ConversationMessageBubble(message: ConversationMessage) {
+private fun ConversationMessageBubble(message: ConversationMessageUi) {
     val alignment = if (message.isUser) Alignment.End else Alignment.Start
     val bubbleColor = if (message.isUser) {
         MaterialTheme.colorScheme.primaryContainer
@@ -2288,142 +2374,36 @@ private fun ConversationMessageBubble(message: ConversationMessage) {
     val screenWidth = LocalConfiguration.current.screenWidthDp.dp
 
     Column(horizontalAlignment = alignment, modifier = Modifier.fillMaxWidth()) {
-        when (message.type) {
-            ConversationMessageType.Text -> {
-                Surface(
-                    color = bubbleColor,
-                    shape = RoundedCornerShape(AppCardCornerRadius),
-                    modifier = Modifier.widthIn(max = screenWidth * 0.74f)
-                ) {
-                    Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
-                        Text(
-                            text = message.text,
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = textColor
-                        )
-                    }
-                }
-                Spacer(Modifier.height(4.dp))
+        Surface(
+            color = bubbleColor,
+            shape = RoundedCornerShape(AppCardCornerRadius),
+            modifier = Modifier.widthIn(max = screenWidth * 0.76f)
+        ) {
+            Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
                 Text(
-                    text = message.time,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            ConversationMessageType.Location -> {
-                Card(
-                    shape = RoundedCornerShape(AppCardCornerRadius),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-                    modifier = Modifier.widthIn(max = screenWidth * 0.78f),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
-                ) {
-                    Column(modifier = Modifier.padding(10.dp)) {
-                        Image(
-                            painter = painterResource(id = R.drawable.banner_app),
-                            contentDescription = null,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(120.dp)
-                                .background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(AppCardCornerRadius)),
-                            contentScale = ContentScale.Crop
-                        )
-                        Spacer(Modifier.height(8.dp))
-                        Text(
-                            text = "Vị trí sân",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        Text(
-                            text = "Sân Mỹ Đình Mini",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = message.time,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            ConversationMessageType.Photos -> {
-                Row(
-                    modifier = Modifier.widthIn(max = screenWidth * 0.78f),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.field_football),
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(110.dp)
-                            .background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(AppCardCornerRadius)),
-                        contentScale = ContentScale.Crop
-                    )
-                    Box(
-                        modifier = Modifier
-                            .size(110.dp)
-                            .background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(AppCardCornerRadius)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Image(
-                            painter = painterResource(id = R.drawable.field_tennis),
-                            contentDescription = null,
-                            modifier = Modifier.matchParentSize(),
-                            contentScale = ContentScale.Crop
-                        )
-                        Surface(
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f),
-                            shape = RoundedCornerShape(AppCardCornerRadius)
-                        ) {
-                            Text(
-                                text = "+2",
-                                style = MaterialTheme.typography.titleSmall,
-                                color = MaterialTheme.colorScheme.onPrimary,
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                            )
-                        }
-                    }
-                }
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = message.time,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.align(Alignment.End)
+                    text = message.text,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = textColor
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun ConversationQuickReactions() {
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        ReactionChip("❤️")
-        ReactionChip("👍")
-        ReactionChip("😂")
-        ReactionChip("🎉")
-    }
-}
-
-@Composable
-private fun ReactionChip(emoji: String) {
-    Card(
-        shape = RoundedCornerShape(AppPillCornerRadius),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
-    ) {
+        Spacer(Modifier.height(4.dp))
         Text(
-            text = emoji,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+            text = message.time,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
 
 @Composable
-private fun ConversationInputBar(modifier: Modifier = Modifier) {
+private fun ConversationInputBar(
+    draft: String,
+    isSending: Boolean,
+    onDraftChange: (String) -> Unit,
+    onSend: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     Surface(
         modifier = modifier,
         color = Color.Transparent
@@ -2451,44 +2431,26 @@ private fun ConversationInputBar(modifier: Modifier = Modifier) {
                     )
                 }
             }
-            Surface(
+            TextField(
+                value = draft,
+                onValueChange = onDraftChange,
                 modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(AppPillCornerRadius),
-                color = MaterialTheme.colorScheme.surface
-            ) {
-                Text(
-                    text = stringResource(R.string.inbox_chat_placeholder),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)
-                )
-            }
-            Surface(
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.surface
-            ) {
-                Box(
-                    modifier = Modifier.size(34.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.CameraAlt,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-            }
+                placeholder = { Text(stringResource(R.string.inbox_chat_placeholder)) },
+                singleLine = true,
+                shape = RoundedCornerShape(AppPillCornerRadius)
+            )
             Surface(
                 shape = CircleShape,
                 color = MaterialTheme.colorScheme.primary
             ) {
                 Box(
-                    modifier = Modifier.size(34.dp),
+                    modifier = Modifier
+                        .size(34.dp)
+                        .clickable(enabled = !isSending, onClick = onSend),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Outlined.Mic,
+                        imageVector = Icons.Outlined.Send,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.size(18.dp)
@@ -2497,56 +2459,4 @@ private fun ConversationInputBar(modifier: Modifier = Modifier) {
             }
         }
     }
-}
-
-private fun conversationMessages(info: ConversationInfo): List<ConversationMessage> {
-    return listOf(
-        ConversationMessage(
-            text = "Chào bạn, cảm ơn bạn đã đặt sân ${info.fieldName} nhé!",
-            time = "10:20",
-            isUser = false
-        ),
-        ConversationMessage(
-            text = "Dạ vâng ạ, mình confirm lịch 18:00 hôm nay đúng không ạ?",
-            time = "10:21",
-            isUser = true
-        ),
-        ConversationMessage(
-            text = "Đúng rồi bạn nhé 👍",
-            time = "10:22",
-            isUser = false
-        ),
-        ConversationMessage(
-            text = "Bạn đến trước 10 phút giúp mình để check sân nhé.",
-            time = "10:22",
-            isUser = false
-        ),
-        ConversationMessage(
-            text = "Ok bạn, mình sẽ đến sớm ạ",
-            time = "10:23",
-            isUser = true
-        ),
-        ConversationMessage(
-            text = "",
-            time = "10:24",
-            isUser = false,
-            type = ConversationMessageType.Location
-        ),
-        ConversationMessage(
-            text = "",
-            time = "10:24",
-            isUser = false,
-            type = ConversationMessageType.Photos
-        ),
-        ConversationMessage(
-            text = "Sân đẹp quá bạn ơi 😍",
-            time = "10:25",
-            isUser = true
-        ),
-        ConversationMessage(
-            text = "Cảm ơn bạn nhé! Hẹn gặp bạn lúc 18h 👋",
-            time = "10:26",
-            isUser = false
-        )
-    )
 }

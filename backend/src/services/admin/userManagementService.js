@@ -1,5 +1,4 @@
-﻿import { User, Field, Booking } from "../../models/index.js";
-import { Op } from "sequelize";
+import Person from "../../models/Person.js";
 import sequelize from "../../config/database.js";
 
 /**
@@ -20,7 +19,7 @@ export const getAllUsersService = async (filters = {}, pagination = {}) => {
 
   if (search) {
     whereConditions.push(
-      "(LOWER(full_name) LIKE LOWER(?) OR LOWER(email) LIKE LOWER(?) OR LOWER(username) LIKE LOWER(?))",
+      "(LOWER(person_name) LIKE LOWER(?) OR LOWER(email) LIKE LOWER(?) OR LOWER(username) LIKE LOWER(?))",
     );
     queryParams.push(`%${search}%`, `%${search}%`, `%${search}%`);
   }
@@ -46,7 +45,7 @@ export const getAllUsersService = async (filters = {}, pagination = {}) => {
 
   // Get users
   const [rows] = await sequelize.query(
-    `SELECT person_id, full_name as name, birthday, gender as sex, address, email, phone, username, role, status
+    `SELECT person_id, person_name as name, birthday, sex, address, email, phone, username, role, status
      FROM person 
      ${whereClause}
      ORDER BY person_id ASC
@@ -67,7 +66,7 @@ export const getAllUsersService = async (filters = {}, pagination = {}) => {
  */
 export const getUserByIdService = async (id) => {
   const [[user]] = await sequelize.query(
-    `SELECT person_id, full_name as name, birthday, gender as sex, address, email, phone, username, role, status
+    `SELECT person_id, person_name as name, birthday, sex, address, email, phone, username, role, status
      FROM person 
      WHERE person_id = ?`,
     { replacements: [id] },
@@ -119,7 +118,7 @@ export const createUserService = async (userData) => {
     sex,
   } = userData;
 
-  const createdUser = await User.create({
+  const createdUser = await Person.create({
     name,
     email,
     username,
@@ -152,7 +151,7 @@ export const updateUserService = async (id, userData) => {
   const params = [];
 
   if (userData.name) {
-    updates.push("full_name = ?");
+    updates.push("person_name = ?");
     params.push(userData.name);
   }
   if (userData.email) {
@@ -180,7 +179,7 @@ export const updateUserService = async (id, userData) => {
     params.push(userData.birthday);
   }
   if (userData.sex) {
-    updates.push("gender = ?");
+    updates.push("sex = ?");
     params.push(userData.sex);
   }
 
@@ -193,7 +192,7 @@ export const updateUserService = async (id, userData) => {
   }
 
   const [[updatedUser]] = await sequelize.query(
-    `SELECT person_id, full_name as name, birthday, gender as sex, address, email, phone, username, role, status
+    `SELECT person_id, person_name as name, birthday, sex, address, email, phone, username, role, status
      FROM person WHERE person_id = ?`,
     { replacements: [id] },
   );
@@ -274,3 +273,4 @@ export const getUserStatsService = async () => {
     byRole: usersByRole,
   };
 };
+

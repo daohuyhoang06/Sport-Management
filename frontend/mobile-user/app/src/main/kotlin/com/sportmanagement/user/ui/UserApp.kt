@@ -42,6 +42,8 @@ import com.sportmanagement.user.ui.screens.UserHomeScreen
 import com.sportmanagement.user.ui.screens.UserMapScreen
 import com.sportmanagement.user.ui.screens.UserProfileScreen
 import com.sportmanagement.user.ui.viewmodel.ChatbotViewModel
+import com.sportmanagement.user.ui.viewmodel.InboxViewModel
+import com.sportmanagement.user.ui.viewmodel.InboxViewModelFactory
 import com.sportmanagement.user.ui.viewmodel.UserViewModel
 import com.sportmanagement.user.ui.viewmodel.UserViewModelFactory
 
@@ -54,7 +56,11 @@ fun UserApp(
     val resolvedUserViewModel = userViewModel ?: viewModel(
         factory = remember(appContext) { UserViewModelFactory(appContext) }
     )
+    val inboxViewModel: InboxViewModel = viewModel(
+        factory = remember(appContext) { InboxViewModelFactory(appContext) }
+    )
     val uiState by resolvedUserViewModel.uiState.collectAsState()
+    val inboxUiState by inboxViewModel.uiState.collectAsState()
     val chatbotUiState by chatbotViewModel.uiState.collectAsState()
     var showAuthScreen by rememberSaveable { mutableStateOf(false) }
     var showRegister by rememberSaveable { mutableStateOf(false) }
@@ -120,6 +126,24 @@ fun UserApp(
         if (uiState.isAuthenticated && showAuthScreen) {
             showAuthScreen = false
             showRegister = false
+        }
+    }
+
+    LaunchedEffect(inboxUiState.activeBookingDetail) {
+        inboxUiState.activeBookingDetail?.let { detail ->
+            bookingDetailInfo = detail
+        }
+    }
+
+    LaunchedEffect(inboxUiState.activeNotificationDetail) {
+        inboxUiState.activeNotificationDetail?.let { detail ->
+            notificationDetailInfo = detail
+        }
+    }
+
+    LaunchedEffect(uiState.isAuthenticated, uiState.selectedTab) {
+        if (uiState.isAuthenticated && uiState.selectedTab == UserTab.Inbox) {
+            inboxViewModel.refreshInbox()
         }
     }
 
@@ -219,7 +243,10 @@ fun UserApp(
             } else if (showBookingDetailScreen && bookingDetailInfo != null) {
                 BookingDetailScreen(
                     info = bookingDetailInfo!!,
-                    onBackClick = { showBookingDetailScreen = false },
+                    onBackClick = {
+                        showBookingDetailScreen = false
+                        inboxViewModel.clearActiveBookingDetail()
+                    },
                     onOpenChat = { info ->
                         conversationInfo = info
                         showBookingDetailScreen = false
@@ -227,14 +254,31 @@ fun UserApp(
                     }
                 )
             } else if (showConversationScreen && conversationInfo != null) {
+                LaunchedEffect(conversationInfo?.conversationId) {
+                    conversationInfo?.let { inboxViewModel.loadConversation(it) }
+                }
                 ConversationScreen(
                     info = conversationInfo!!,
-                    onBackClick = { showConversationScreen = false }
+                    messages = inboxUiState.conversationMessages,
+                    draft = inboxUiState.draftMessage,
+                    isSending = inboxUiState.isSendingMessage,
+                    isLoading = inboxUiState.isLoadingConversation,
+                    errorMessage = inboxUiState.conversationError,
+                    onDraftChange = inboxViewModel::onDraftChanged,
+                    onSend = inboxViewModel::sendMessage,
+                    onRetry = { conversationInfo?.let { inboxViewModel.loadConversation(it) } },
+                    onBackClick = {
+                        showConversationScreen = false
+                        inboxViewModel.clearConversationState()
+                    }
                 )
             } else if (showNotificationDetailScreen && notificationDetailInfo != null) {
                 NotificationDetailScreen(
                     info = notificationDetailInfo!!,
-                    onBackClick = { showNotificationDetailScreen = false },
+                    onBackClick = {
+                        showNotificationDetailScreen = false
+                        inboxViewModel.clearActiveNotificationDetail()
+                    },
                     onOpenChat = { info ->
                         conversationInfo = info
                         showNotificationDetailScreen = false
@@ -398,16 +442,28 @@ fun UserApp(
                     )
                     UserTab.Inbox -> InboxScreen(
                         padding = padding,
+                        sections = inboxUiState.sections,
+                        isLoading = inboxUiState.isLoadingInbox,
+                        errorMessage = inboxUiState.inboxError,
+                        onRefresh = inboxViewModel::refreshInbox,
+                        onMarkAllRead = inboxViewModel::markAllRead,
+                        onNotificationOpened = inboxViewModel::markNotificationRead,
                         onBookingSelected = { info ->
+                            inboxViewModel.loadBookingDetail(
+                                bookingId = info.bookingId,
+                                notificationId = info.notificationId
+                            )
                             bookingDetailInfo = info
                             showBookingDetailScreen = true
                         },
                         onMessageSelected = { info ->
+                            inboxViewModel.loadConversation(info)
                             conversationInfo = info
                             showConversationScreen = true
                         },
-                        onNotificationSelected = { info ->
-                            notificationDetailInfo = info
+                        onNotificationSelected = { item ->
+                            inboxViewModel.loadNotificationDetail(item.id, item.detailInfo)
+                            notificationDetailInfo = item.detailInfo
                             showNotificationDetailScreen = true
                         }
                     )
