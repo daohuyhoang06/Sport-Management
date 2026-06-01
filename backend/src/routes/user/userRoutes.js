@@ -35,6 +35,7 @@ import {
   listConversations,
   getConversationMessages,
   sendConversationMessage,
+  markConversationRead,
 } from "../../controllers/user/conversationController.js";
 
 const r = Router();
@@ -82,6 +83,11 @@ r.post(
   "/conversations/:conversationId/messages",
   requireAuth,
   sendConversationMessage,
+);
+r.patch(
+  "/conversations/:conversationId/read",
+  requireAuth,
+  markConversationRead,
 );
 
 export default r;

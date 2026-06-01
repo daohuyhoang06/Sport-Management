@@ -614,6 +614,15 @@ const swaggerSpec = {
         responses: { 200: okResponse, 400: errorResponse, 401: errorResponse },
       },
     },
+    "/api/user/conversations/{conversationId}/read": {
+      patch: {
+        tags: ["User"],
+        summary: "Mark conversation as read",
+        security: authSecurity,
+        parameters: [idParam("conversationId", "Conversation ID")],
+        responses: { 200: okResponse, 401: errorResponse, 404: errorResponse },
+      },
+    },
 
     "/api/users/ping": {
       get: {

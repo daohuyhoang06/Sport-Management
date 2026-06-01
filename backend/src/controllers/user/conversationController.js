@@ -418,3 +418,66 @@ export const sendConversationMessage = async (req, res) => {
     });
   }
 };
+
+// PATCH /api/user/conversations/:conversationId/read
+export const markConversationRead = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    const { conversationId } = req.params;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    if (!conversationId) {
+      return res.status(400).json({
+        success: false,
+        message: "Conversation ID is required",
+      });
+    }
+
+    const [conversations] = await sequelize.query(
+      "SELECT chat_id FROM chats WHERE chat_id = ? AND user_id = ? LIMIT 1",
+      { replacements: [conversationId, userId] },
+    );
+
+    if (!conversations?.[0]) {
+      return res.status(404).json({
+        success: false,
+        message: "Conversation not found",
+      });
+    }
+
+    await sequelize.query(
+      `UPDATE messages
+       SET is_read = 1, updated_at = CURRENT_TIMESTAMP
+       WHERE chat_id = ? AND sender_id != ? AND is_read = 0`,
+      { replacements: [conversationId, userId] },
+    );
+
+    await sequelize.query(
+      `UPDATE chats
+       SET user_unread_count = 0, updated_at = CURRENT_TIMESTAMP
+       WHERE chat_id = ?`,
+      { replacements: [conversationId] },
+    );
+
+    return res.json({
+      success: true,
+      data: {
+        conversationId: Number(conversationId),
+        unreadCount: 0,
+      },
+    });
+  } catch (error) {
+    console.error("markConversationRead error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Loi server khi cap nhat trang thai doc",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+};
