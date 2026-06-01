@@ -322,3 +322,99 @@ export const getConversationMessages = async (req, res) => {
     });
   }
 };
+
+// POST /api/user/conversations/:conversationId/messages
+export const sendConversationMessage = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    const { conversationId } = req.params;
+    const { messageType, content, imageUrl, metadata } = req.body || {};
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    if (!conversationId) {
+      return res.status(400).json({
+        success: false,
+        message: "Conversation ID is required",
+      });
+    }
+
+    const trimmedContent = typeof content === "string" ? content.trim() : "";
+    const resolvedType = (messageType || "text").toLowerCase();
+
+    if (!trimmedContent && !imageUrl) {
+      return res.status(400).json({
+        success: false,
+        message: "Message content is required",
+      });
+    }
+
+    const [conversations] = await sequelize.query(
+      "SELECT chat_id FROM chats WHERE chat_id = ? AND user_id = ? LIMIT 1",
+      { replacements: [conversationId, userId] },
+    );
+
+    const conversation = conversations?.[0];
+    if (!conversation) {
+      return res.status(404).json({
+        success: false,
+        message: "Conversation not found",
+      });
+    }
+
+    const [insertResult] = await sequelize.query(
+      `INSERT INTO messages
+        (chat_id, sender_id, sender_type, message_type, message_text, content, image_url, metadata, is_read, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+      {
+        replacements: [
+          conversationId,
+          userId,
+          "user",
+          resolvedType,
+          trimmedContent || null,
+          trimmedContent || null,
+          imageUrl || null,
+          metadata ? JSON.stringify(metadata) : null,
+        ],
+      },
+    );
+
+    await sequelize.query(
+      `UPDATE chats
+       SET last_message = ?, last_message_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP,
+           owner_unread_count = owner_unread_count + 1
+       WHERE chat_id = ?`,
+      { replacements: [trimmedContent || "", conversationId] },
+    );
+
+    const messageId = insertResult?.insertId || insertResult;
+
+    return res.json({
+      success: true,
+      data: {
+        messageId,
+        senderId: userId,
+        senderType: "user",
+        messageType: resolvedType,
+        content: trimmedContent,
+        imageUrl: imageUrl || null,
+        metadata: metadata || null,
+        createdAt: new Date().toISOString(),
+        isMine: true,
+      },
+    });
+  } catch (error) {
+    console.error("sendConversationMessage error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Loi server khi gui tin nhan",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+};

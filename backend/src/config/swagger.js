@@ -605,6 +605,14 @@ const swaggerSpec = {
         parameters: [idParam("conversationId", "Conversation ID")],
         responses: { 200: okResponse, 401: errorResponse, 404: errorResponse },
       },
+      post: {
+        tags: ["User"],
+        summary: "Send conversation message",
+        security: authSecurity,
+        parameters: [idParam("conversationId", "Conversation ID")],
+        requestBody: jsonRequest,
+        responses: { 200: okResponse, 400: errorResponse, 401: errorResponse },
+      },
     },
 
     "/api/users/ping": {
