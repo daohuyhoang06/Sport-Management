@@ -1,6 +1,4 @@
 package com.sportmanagement.user.data.remote.api
-
-import com.sportmanagement.user.BuildConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -54,7 +52,7 @@ data class UpdateProfileRequestDto(
 )
 
 class AuthApi(
-    private val baseUrl: String = BASE_URL
+    private val baseUrl: String = ApiConfig.BASE_URL
 ) {
     suspend fun login(identifier: String, password: String): AuthSessionDto =
         withContext(Dispatchers.IO) {

@@ -63,6 +63,10 @@ const Payment = sequelize.define('Payment', {
     type: DataTypes.STRING(200),
     allowNull: true
   },
+  booking_ids_json: {
+    type: DataTypes.TEXT,
+    allowNull: true
+  },
   pay_url: {
     type: DataTypes.TEXT,
     allowNull: true

@@ -4,7 +4,7 @@ import {
   releaseExpiredPendingBookings,
 } from "../../services/user/scheduleService.js";
 
-const PENDING_HOLD_MINUTES = 5;
+const PENDING_HOLD_MINUTES = 6;
 const SPORT_NAME_TO_ICON = {
   "Bóng đá": "FOOTBALL",
   "Bóng chuyền": "VOLLEYBALL",
@@ -567,6 +567,8 @@ export const getFieldGrid = async (req, res) => {
       return res.status(404).json({ message: "Field not found" });
     }
 
+    await releaseExpiredPendingBookings();
+
     const [courts] = await sequelize.query(
       `SELECT court_id, court_name 
        FROM field_courts WHERE field_id = ? ORDER BY sort_order ASC`,
@@ -582,15 +584,24 @@ export const getFieldGrid = async (req, res) => {
 
     // Fetch booked slots for the date
     const [bookings] = await sequelize.query(
-      `SELECT court_id, start_time, end_time 
+      `SELECT court_id, start_time, end_time, status, pending_expires_at
        FROM bookings 
-       WHERE field_id = ? AND DATE(start_time) = ? AND status IN ('pending', 'confirmed')`,
+       WHERE field_id = ? AND DATE(start_time) = ?
+         AND (
+           status = 'confirmed'
+           OR (
+             status = 'pending'
+             AND (pending_expires_at IS NULL OR pending_expires_at > NOW())
+           )
+         )`,
       { replacements: [id, date] },
     );
 
-    const bookedSlots = bookings
-      .filter((b) => b.court_id)
-      .map((b) => {
+    const bookedSlots = bookings.flatMap((b) => {
+        const targetCourts = b.court_id
+          ? [String(b.court_id)]
+          : courts.map((court) => String(court.court_id));
+
         const formatDateTimeTime = (dateObj) => {
           const d = new Date(dateObj);
           return d.toLocaleTimeString("en-GB", {
@@ -605,11 +616,11 @@ export const getFieldGrid = async (req, res) => {
         const startStr = new Date(b.start_time).toISOString().substring(11, 16);
         const endStr = new Date(b.end_time).toISOString().substring(11, 16);
 
-        return {
-          courtId: String(b.court_id),
+        return targetCourts.map((courtId) => ({
+          courtId,
           startTime: startStr,
           endTime: endStr,
-        };
+        }));
       });
 
     const responseData = {
@@ -645,6 +656,7 @@ export const createBooking = async (req, res) => {
     const customer_id = req.user?.id;
     const {
       field_id,
+      court_id,
       start_time,
       end_time,
       price,
@@ -707,8 +719,10 @@ export const createBooking = async (req, res) => {
       });
     }
 
+    const normalizedCourtId = Number.parseInt(court_id, 10);
+
     const [fieldCheck] = await sequelize.query(
-      "SELECT field_id FROM fields WHERE field_id = ? LIMIT 1",
+      "SELECT field_id, manager_id FROM fields WHERE field_id = ? LIMIT 1",
       { replacements: [field_id] },
     );
 
@@ -717,6 +731,32 @@ export const createBooking = async (req, res) => {
         message: "Field ID does not exist",
         error: "INVALID_FIELD_ID",
       });
+    }
+
+    if (court_id !== undefined && court_id !== null && !Number.isInteger(normalizedCourtId)) {
+      return res.status(400).json({
+        message: "Invalid court_id",
+        error: "INVALID_COURT_ID",
+      });
+    }
+
+    let resolvedCourtId = null;
+    if (Number.isInteger(normalizedCourtId)) {
+      const [courtCheck] = await sequelize.query(
+        `SELECT court_id
+         FROM field_courts
+         WHERE court_id = ? AND field_id = ?
+         LIMIT 1`,
+        { replacements: [normalizedCourtId, field_id] },
+      );
+
+      if (!courtCheck || courtCheck.length === 0) {
+        return res.status(400).json({
+          message: "Court ID does not exist for this field",
+          error: "INVALID_COURT_ID",
+        });
+      }
+      resolvedCourtId = normalizedCourtId;
     }
 
     let booking = null;
@@ -738,6 +778,7 @@ export const createBooking = async (req, res) => {
         `SELECT booking_id
          FROM bookings
          WHERE field_id = ?
+           AND (? IS NULL OR court_id = ? OR court_id IS NULL)
            AND start_time < ?
            AND end_time > ?
            AND (
@@ -749,7 +790,13 @@ export const createBooking = async (req, res) => {
            )
          FOR UPDATE`,
         {
-          replacements: [field_id, mysqlEndTime, mysqlStartTime],
+          replacements: [
+            field_id,
+            resolvedCourtId,
+            resolvedCourtId,
+            mysqlEndTime,
+            mysqlStartTime,
+          ],
           transaction,
         },
       );
@@ -762,13 +809,15 @@ export const createBooking = async (req, res) => {
 
       await sequelize.query(
         `INSERT INTO bookings (
-          customer_id, field_id, start_time, end_time, price, note, status, pending_expires_at
+          customer_id, field_id, court_id, manager_id, start_time, end_time, price, note, status, pending_expires_at
         )
-         VALUES (?, ?, ?, ?, ?, ?, 'pending', DATE_ADD(NOW(), INTERVAL ? MINUTE))`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', DATE_ADD(NOW(), INTERVAL ? MINUTE))`,
         {
           replacements: [
             customer_id,
             field_id,
+            resolvedCourtId,
+            fieldCheck[0].manager_id || null,
             mysqlStartTime,
             mysqlEndTime,
             finalPrice,
@@ -835,6 +884,251 @@ export const createBooking = async (req, res) => {
     console.error("SQL Error:", err.original?.sqlMessage);
     res.status(500).json({
       message: "Server error when creating booking",
+      error: err.message,
+      sqlError: err.original?.sqlMessage || err.original?.message,
+      details: err.toString(),
+    });
+  }
+};
+
+// POST /api/user/bookings/batch
+export const createBatchBookings = async (req, res) => {
+  try {
+    const customer_id = req.user?.id;
+    const {
+      field_id,
+      bookings,
+      note,
+      customer_name,
+      customer_phone,
+    } = req.body || {};
+
+    if (!customer_id) {
+      return res.status(400).json({ message: "Missing customer_id" });
+    }
+    if (!field_id) {
+      return res.status(400).json({ message: "Missing field_id" });
+    }
+    if (!Array.isArray(bookings) || bookings.length === 0) {
+      return res.status(400).json({ message: "bookings must be a non-empty array" });
+    }
+
+    const [customerCheck] = await sequelize.query(
+      "SELECT person_id FROM person WHERE person_id = ? LIMIT 1",
+      { replacements: [customer_id] },
+    );
+    if (!customerCheck || customerCheck.length === 0) {
+      return res.status(400).json({
+        message:
+          "Customer ID does not exist. Please create a user account first.",
+        error: "INVALID_CUSTOMER_ID",
+      });
+    }
+
+    const [fieldCheck] = await sequelize.query(
+      "SELECT field_id, manager_id FROM fields WHERE field_id = ? LIMIT 1",
+      { replacements: [field_id] },
+    );
+    if (!fieldCheck || fieldCheck.length === 0) {
+      return res.status(400).json({
+        message: "Field ID does not exist",
+        error: "INVALID_FIELD_ID",
+      });
+    }
+
+    let finalNote = "";
+    if (customer_name || customer_phone) {
+      finalNote += `Ten: ${customer_name || "N/A"}, SDT: ${customer_phone || "N/A"}`;
+      if (note) {
+        finalNote += ` - Ghi chu: ${note}`;
+      }
+    } else {
+      finalNote = note || "";
+    }
+
+    const formatDatetime = (isoString) => {
+      const date = new Date(isoString);
+      const vnTime = new Date(date.getTime() + 7 * 60 * 60 * 1000);
+      const year = vnTime.getUTCFullYear();
+      const month = String(vnTime.getUTCMonth() + 1).padStart(2, "0");
+      const day = String(vnTime.getUTCDate()).padStart(2, "0");
+      const hours = String(vnTime.getUTCHours()).padStart(2, "0");
+      const minutes = String(vnTime.getUTCMinutes()).padStart(2, "0");
+      const seconds = String(vnTime.getUTCSeconds()).padStart(2, "0");
+      return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+    };
+
+    const normalizedBookings = [];
+    for (const item of bookings) {
+      const normalizedCourtId = Number.parseInt(item?.court_id, 10);
+      if (item?.court_id !== undefined && item?.court_id !== null && !Number.isInteger(normalizedCourtId)) {
+        return res.status(400).json({
+          message: "Invalid court_id",
+          error: "INVALID_COURT_ID",
+        });
+      }
+      if (!item?.start_time || !item?.end_time) {
+        return res.status(400).json({
+          message: "Each booking must include start_time and end_time",
+        });
+      }
+      const priceValue = Number(item?.price || 0);
+      normalizedBookings.push({
+        court_id: Number.isInteger(normalizedCourtId) ? normalizedCourtId : null,
+        start_time: formatDatetime(item.start_time),
+        end_time: formatDatetime(item.end_time),
+        price: Number.isFinite(priceValue) ? priceValue : 0,
+      });
+    }
+
+    const distinctCourtIds = [...new Set(
+      normalizedBookings.map((item) => item.court_id).filter((item) => Number.isInteger(item)),
+    )];
+    if (distinctCourtIds.length > 0) {
+      const [courtRows] = await sequelize.query(
+        `SELECT court_id
+         FROM field_courts
+         WHERE field_id = ? AND court_id IN (${distinctCourtIds.map(() => "?").join(", ")})`,
+        { replacements: [field_id, ...distinctCourtIds] },
+      );
+      const validCourtIds = new Set(courtRows.map((item) => Number.parseInt(item.court_id, 10)));
+      const invalidCourtId = distinctCourtIds.find((item) => !validCourtIds.has(item));
+      if (invalidCourtId) {
+        return res.status(400).json({
+          message: "Court ID does not exist for this field",
+          error: "INVALID_COURT_ID",
+        });
+      }
+    }
+
+    let createdBookings = [];
+
+    await sequelize.transaction(async (transaction) => {
+      await releaseExpiredPendingBookings(transaction);
+
+      const [lockedField] = await sequelize.query(
+        `SELECT field_id FROM fields WHERE field_id = ? FOR UPDATE`,
+        { replacements: [field_id], transaction },
+      );
+      if (!lockedField || lockedField.length === 0) {
+        const invalidFieldError = new Error("INVALID_FIELD_ID");
+        invalidFieldError.code = "INVALID_FIELD_ID";
+        throw invalidFieldError;
+      }
+
+      createdBookings = [];
+      for (const item of normalizedBookings) {
+        const [conflicts] = await sequelize.query(
+          `SELECT booking_id
+           FROM bookings
+           WHERE field_id = ?
+             AND (? IS NULL OR court_id = ? OR court_id IS NULL)
+             AND start_time < ?
+             AND end_time > ?
+             AND (
+               status = 'confirmed'
+               OR (
+                 status = 'pending'
+                 AND (pending_expires_at IS NULL OR pending_expires_at > NOW())
+               )
+             )
+           FOR UPDATE`,
+          {
+            replacements: [
+              field_id,
+              item.court_id,
+              item.court_id,
+              item.end_time,
+              item.start_time,
+            ],
+            transaction,
+          },
+        );
+
+        if (conflicts && conflicts.length > 0) {
+          const conflictError = new Error("SLOT_NOT_AVAILABLE");
+          conflictError.code = "SLOT_NOT_AVAILABLE";
+          throw conflictError;
+        }
+
+        await sequelize.query(
+          `INSERT INTO bookings (
+            customer_id, field_id, court_id, manager_id, start_time, end_time, price, note, status, pending_expires_at
+          )
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', DATE_ADD(NOW(), INTERVAL ? MINUTE))`,
+          {
+            replacements: [
+              customer_id,
+              field_id,
+              item.court_id,
+              fieldCheck[0].manager_id || null,
+              item.start_time,
+              item.end_time,
+              item.price,
+              finalNote,
+              PENDING_HOLD_MINUTES,
+            ],
+            transaction,
+          },
+        );
+
+        const [rows] = await sequelize.query(
+          `SELECT * FROM bookings WHERE booking_id = LAST_INSERT_ID()`,
+          { transaction },
+        );
+        if (rows?.[0]) {
+          createdBookings.push(rows[0]);
+        }
+      }
+    });
+
+    const [[fieldInfo]] = await sequelize.query(
+      "SELECT field_name FROM fields WHERE field_id = ? LIMIT 1",
+      { replacements: [field_id] },
+    );
+
+    for (const booking of createdBookings) {
+      await sequelize.query(
+        `INSERT INTO notifications
+          (user_id, type, section, title, subtitle, content, target_type, target_id, booking_id, field_id, is_read, metadata, created_at, updated_at)
+         VALUES (?, 'booking_success', 'priority', ?, ?, ?, 'booking', ?, ?, ?, 0, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+        {
+          replacements: [
+            customer_id,
+            `Dat san thanh cong - ${fieldInfo?.field_name || "San the thao"}`,
+            `Ma dat san #B${booking.booking_id}`,
+            `Ban vua tao yeu cau dat san tu ${booking.start_time} den ${booking.end_time}`,
+            booking.booking_id,
+            booking.booking_id,
+            field_id,
+            JSON.stringify({ icon: "booking_success" }),
+          ],
+        },
+      );
+    }
+
+    res.status(201).json({
+      message: "Bookings created",
+      bookings: createdBookings,
+      pending_hold_seconds: PENDING_HOLD_MINUTES * 60,
+    });
+  } catch (err) {
+    if (err?.code === "SLOT_NOT_AVAILABLE") {
+      return res.status(409).json({
+        message: "Khung gio nay khong kha dung",
+        error: "SLOT_NOT_AVAILABLE",
+      });
+    }
+    if (err?.code === "INVALID_FIELD_ID") {
+      return res.status(400).json({
+        message: "Field ID does not exist",
+        error: "INVALID_FIELD_ID",
+      });
+    }
+
+    console.error("createBatchBookings error:", err);
+    res.status(500).json({
+      message: "Server error when creating bookings",
       error: err.message,
       sqlError: err.original?.sqlMessage || err.original?.message,
       details: err.toString(),

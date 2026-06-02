@@ -50,7 +50,7 @@ fun BookingConfirmationScreen(
     userPhone: String,
     isLoggedIn: Boolean,
     onBackClick: () -> Unit,
-    onConfirmPaymentClick: (name: String, phone: String) -> Unit,
+    onConfirmPaymentClick: (name: String, phone: String, note: String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -72,7 +72,11 @@ fun BookingConfirmationScreen(
                                 Toast.LENGTH_SHORT
                             ).show()
                         } else {
-                            onConfirmPaymentClick(editableUserName.trim(), editableUserPhone.trim())
+                            onConfirmPaymentClick(
+                                editableUserName.trim(),
+                                editableUserPhone.trim(),
+                                note.trim()
+                            )
                         }
                     }
                 )

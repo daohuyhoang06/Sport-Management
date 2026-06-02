@@ -1,5 +1,6 @@
 import { Router } from "express";
 import {
+  confirmMomoClientResult,
   createMomoPayment,
   getPaymentById,
   getPaymentByOrderId,
@@ -7,10 +8,12 @@ import {
   momoIpn,
   momoReturn,
 } from "../controllers/manager/paymentController.js";
+import { requireAuth } from "../middleware/authMiddleware.js";
 
 const router = Router();
 
-router.post("/momo/create", createMomoPayment);
+router.post("/momo/create", requireAuth, createMomoPayment);
+router.post("/momo/client-confirm", requireAuth, confirmMomoClientResult);
 router.post("/momo/ipn", momoIpn);
 router.get("/momo/return", momoReturn);
 router.post("/momo/return", momoReturn);

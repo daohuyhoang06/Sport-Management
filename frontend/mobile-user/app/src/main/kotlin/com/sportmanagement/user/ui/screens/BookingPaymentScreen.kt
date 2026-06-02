@@ -83,8 +83,10 @@ import coil.compose.AsyncImage
 import coil.decode.SvgDecoder
 import coil.request.ImageRequest
 import com.sportmanagement.user.R
+import com.sportmanagement.user.data.remote.api.CreateBookingRequest
 import com.sportmanagement.user.data.remote.api.MomoPaymentApi
 import com.sportmanagement.user.data.remote.api.MomoPaymentResponse
+import com.sportmanagement.user.data.remote.api.UserApi
 import com.sportmanagement.user.domain.model.BookingConfirmationData
 import com.sportmanagement.user.ui.components.booking.formatConfirmationCurrencyVnd
 import com.sportmanagement.user.ui.share.FieldShareLink
@@ -98,6 +100,9 @@ import com.sportmanagement.user.ui.theme.AppHeaderGradientEnd
 import com.sportmanagement.user.ui.theme.AppHeaderGradientStart
 import com.sportmanagement.user.ui.theme.AppOnCtaAmber
 import kotlinx.coroutines.delay
+import java.text.SimpleDateFormat
+import java.util.Locale
+import java.util.TimeZone
 
 private sealed interface PaymentCreateUiState {
     data object Idle : PaymentCreateUiState
@@ -118,6 +123,7 @@ fun BookingPaymentScreen(
     confirmationData: BookingConfirmationData,
     userName: String,
     userPhone: String,
+    bookingNote: String,
     incomingMomoPaymentReturn: MomoPaymentReturn?,
     onMomoPaymentReturnConsumed: () -> Unit,
     onBackClick: () -> Unit,
@@ -127,6 +133,7 @@ fun BookingPaymentScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val userApi = remember { UserApi() }
     var bookingInfoExpanded by rememberSaveable { mutableStateOf(true) }
     var createPaymentNonce by rememberSaveable { mutableIntStateOf(0) }
     var createState by remember { mutableStateOf<PaymentCreateUiState>(PaymentCreateUiState.Idle) }
@@ -134,6 +141,7 @@ fun BookingPaymentScreen(
     var paymentMessage by rememberSaveable { mutableStateOf<String?>(null) }
     var reopenedPayUrl by rememberSaveable { mutableStateOf<String?>(null) }
     var currentOrderId by rememberSaveable { mutableStateOf<String?>(null) }
+    var pendingBookingIds by rememberSaveable { mutableStateOf(emptyList<Int>()) }
     var remainingHoldSeconds by rememberSaveable { mutableIntStateOf(6 * 60) }
     var isHoldExpired by rememberSaveable { mutableStateOf(false) }
 
@@ -150,8 +158,54 @@ fun BookingPaymentScreen(
         createState = PaymentCreateUiState.Loading
         val orderInfo = context.getString(R.string.payment_order_info_format, confirmationData.selectedDate)
         runCatching {
-            MomoPaymentApi.createDemoPayment(
-                amount = totalAmount,
+            val authToken = loadAuthToken(context)
+                ?: error(context.getString(R.string.payment_auth_required_error))
+
+            val bookingIds = if (pendingBookingIds.isNotEmpty()) {
+                pendingBookingIds
+            } else {
+                val fieldId = confirmationData.fieldId
+                    ?: error(context.getString(R.string.payment_booking_missing_field_error))
+                val createRequests = confirmationData.ranges.map { range ->
+                    CreateBookingRequest(
+                        fieldId = fieldId,
+                        courtId = range.courtId.toIntOrNull(),
+                        startTime = buildBookingDateTimeIsoUtc(
+                            dateText = confirmationData.selectedDate,
+                            timeText = range.startTimeLabel
+                        ),
+                        endTime = buildBookingDateTimeIsoUtc(
+                            dateText = confirmationData.selectedDate,
+                            timeText = range.endTimeLabel
+                        ),
+                        price = range.price,
+                        note = null,
+                        customerName = null,
+                        customerPhone = null
+                    )
+                }
+                val batchResult = userApi.createBookings(
+                    token = authToken,
+                    fieldId = fieldId,
+                    requests = createRequests,
+                    note = bookingNote,
+                    customerName = userName,
+                    customerPhone = userPhone
+                )
+                val createdIds = batchResult.bookings.map { it.bookingId }.filter { it > 0 }
+                if (createdIds.isEmpty() || createdIds.size != createRequests.size) {
+                    error(context.getString(R.string.payment_booking_create_error))
+                }
+                pendingBookingIds = createdIds
+                if (batchResult.pendingHoldSeconds > 0) {
+                    remainingHoldSeconds = batchResult.pendingHoldSeconds
+                }
+                createdIds
+            }
+
+            MomoPaymentApi.createPayment(
+                token = authToken,
+                bookingIds = bookingIds,
                 orderInfo = orderInfo,
                 redirectUrl = FieldShareLink.momoReturnLink()
             )
@@ -196,6 +250,26 @@ fun BookingPaymentScreen(
                 else -> PaymentReturnStatus.Failed
             }
             paymentMessage = callback.message
+        }
+
+        val authToken = loadAuthToken(context)
+        val orderId = callback.orderId
+        val requestId = callback.requestId
+        val resultCode = callback.resultCode
+        if (
+            authToken != null &&
+            !orderId.isNullOrBlank() &&
+            resultCode != null
+        ) {
+            runCatching {
+                MomoPaymentApi.confirmClientPaymentResult(
+                    token = authToken,
+                    orderId = orderId,
+                    requestId = requestId,
+                    resultCode = resultCode,
+                    message = callback.message
+                )
+            }
         }
         onMomoPaymentReturnConsumed()
     }
@@ -1059,6 +1133,37 @@ private fun PaymentStatusSection(
             }
         }
     }
+}
+
+private fun loadAuthToken(context: android.content.Context): String? {
+    return context
+        .applicationContext
+        .getSharedPreferences("user_repository_cache", android.content.Context.MODE_PRIVATE)
+        .getString("auth_token", null)
+        ?.takeIf { it.isNotBlank() }
+}
+
+private fun buildBookingDateTimeIsoUtc(
+    dateText: String,
+    timeText: String
+): String {
+    val patterns = listOf("yyyy-MM-dd HH:mm", "dd/MM/yyyy HH:mm")
+    val sourceTimeZone = TimeZone.getTimeZone("Asia/Ho_Chi_Minh")
+
+    for (pattern in patterns) {
+        val parser = SimpleDateFormat(pattern, Locale.getDefault()).apply {
+            isLenient = false
+            timeZone = sourceTimeZone
+        }
+        val parsed = runCatching { parser.parse("$dateText $timeText") }.getOrNull()
+        if (parsed != null) {
+            return SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
+                timeZone = TimeZone.getTimeZone("UTC")
+            }.format(parsed)
+        }
+    }
+
+    error("Invalid booking datetime: $dateText $timeText")
 }
 
 private fun openPaymentUrl(

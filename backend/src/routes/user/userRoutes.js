@@ -6,6 +6,7 @@ import {
   searchFields,
   getField,
   createBooking,
+  createBatchBookings,
   getBooking,
   updateBooking,
   getBookingHistory,
@@ -59,6 +60,7 @@ r.post("/favorites/:fieldId", requireAuth, addFavoriteField);
 r.delete("/favorites/:fieldId", requireAuth, removeFavoriteField);
 
 r.get("/bookings/history", getBookingHistory);
+r.post("/bookings/batch", requireAuth, createBatchBookings);
 r.post("/bookings", requireAuth, createBooking);
 r.get("/bookings/:id", requireAuth, getBooking);
 r.put("/bookings/:id", updateBooking);

@@ -1,6 +1,7 @@
 package com.sportmanagement.user.domain.model
 
 data class BookingConfirmationRange(
+    val courtId: String,
     val courtName: String,
     val startTimeLabel: String,
     val endTimeLabel: String,

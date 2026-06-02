@@ -193,6 +193,9 @@
     <string name="payment_qr_content_description">Mã QR MoMo sandbox</string>
     <string name="payment_sandbox_creating">Đang tạo giao dịch MoMo sandbox...</string>
     <string name="payment_sandbox_create_error">Không tạo được giao dịch MoMo sandbox</string>
+    <string name="payment_auth_required_error">Vui lòng đăng nhập lại để tiếp tục thanh toán.</string>
+    <string name="payment_booking_missing_field_error">Thiếu thông tin sân để tạo lịch đặt.</string>
+    <string name="payment_booking_create_error">Không tạo được lịch đặt sân tạm thời.</string>
     <string name="payment_sandbox_notice">Đây là môi trường sandbox: giao dịch test không trừ tiền thật.</string>
     <string name="payment_open_momo_button">Mở MoMo Sandbox</string>
     <string name="payment_open_link_error">MoMo chưa trả về link thanh toán</string>

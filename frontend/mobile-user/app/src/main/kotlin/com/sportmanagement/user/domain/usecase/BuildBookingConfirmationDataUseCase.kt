@@ -13,6 +13,7 @@ class BuildBookingConfirmationDataUseCase {
     ): BookingConfirmationData {
         val ranges = summary?.selectedRanges?.map { range ->
             BookingConfirmationRange(
+                courtId = range.courtId,
                 courtName = range.courtName,
                 startTimeLabel = range.startTimeLabel,
                 endTimeLabel = range.endTimeLabel,

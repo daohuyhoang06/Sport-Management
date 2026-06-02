@@ -26,6 +26,7 @@ class BuildBookingSelectionSummaryUseCase {
             .map { range ->
                 val totalMinutes = BookingTimeGridSupport.rangeDurationMinutes(range)
                 BookingSelectedRangeSummary(
+                    courtId = range.courtId,
                     courtName = courtNamesById[range.courtId] ?: range.courtId,
                     startTimeLabel = range.startTime,
                     endTimeLabel = range.endTime,

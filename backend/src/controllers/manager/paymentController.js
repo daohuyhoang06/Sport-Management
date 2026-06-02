@@ -17,6 +17,26 @@ const normalizeAmount = (amount) => {
   return Math.round(value);
 };
 
+const parseBookingIds = (bookingIds, bookingId) => {
+  const normalized = [];
+  const source = Array.isArray(bookingIds) ? bookingIds : [];
+  source.forEach((value) => {
+    const parsed = Number.parseInt(value, 10);
+    if (Number.isInteger(parsed) && parsed > 0 && !normalized.includes(parsed)) {
+      normalized.push(parsed);
+    }
+  });
+
+  const singleId = Number.parseInt(bookingId, 10);
+  if (Number.isInteger(singleId) && singleId > 0 && !normalized.includes(singleId)) {
+    normalized.unshift(singleId);
+  }
+
+  return normalized;
+};
+
+const buildInClause = (items) => items.map(() => "?").join(", ");
+
 const getBookingPaymentContext = async (bookingId) => {
   const [rows] = await sequelize.query(
     `
@@ -40,10 +60,40 @@ const getBookingPaymentContext = async (bookingId) => {
   return rows[0] || null;
 };
 
+const getBookingPaymentContexts = async (bookingIds) => {
+  if (!Array.isArray(bookingIds) || bookingIds.length == 0) {
+    return [];
+  }
+
+  const [rows] = await sequelize.query(
+    `
+      SELECT
+        b.booking_id,
+        b.customer_id,
+        b.field_id,
+        b.court_id,
+        b.manager_id as booking_manager_id,
+        b.price,
+        b.status,
+        b.pending_expires_at,
+        f.manager_id as field_manager_id,
+        f.field_name
+      FROM bookings b
+      LEFT JOIN fields f ON b.field_id = f.field_id
+      WHERE b.booking_id IN (${buildInClause(bookingIds)})
+      ORDER BY b.booking_id ASC
+    `,
+    { replacements: bookingIds },
+  );
+
+  return rows;
+};
+
 export const createMomoPayment = async (req, res) => {
   try {
     const {
       booking_id,
+      booking_ids,
       amount,
       orderInfo,
       extraData = "",
@@ -53,22 +103,57 @@ export const createMomoPayment = async (req, res) => {
     } = req.body || {};
 
     let paymentContext = null;
+    let paymentContexts = [];
     let finalAmount = normalizeAmount(amount);
     let finalOrderInfo = orderInfo || "Thanh toan dat san Sport Management";
+    const normalizedBookingIds = parseBookingIds(booking_ids, booking_id);
+    const currentUserId = Number.parseInt(req.user?.id, 10);
 
-    if (booking_id) {
-      paymentContext = await getBookingPaymentContext(booking_id);
-      if (!paymentContext) {
-        return res.status(404).json({ message: "Booking not found" });
+    if (normalizedBookingIds.length > 0) {
+      paymentContexts = await getBookingPaymentContexts(normalizedBookingIds);
+      if (paymentContexts.length !== normalizedBookingIds.length) {
+        return res.status(404).json({ message: "One or more bookings were not found" });
       }
 
-      finalAmount = normalizeAmount(paymentContext.price);
+      const bookingIdsSet = new Set(paymentContexts.map((item) => item.booking_id));
+      const missingIds = normalizedBookingIds.filter((item) => !bookingIdsSet.has(item));
+      if (missingIds.length > 0) {
+        return res.status(404).json({ message: "One or more bookings were not found" });
+      }
+
+      if (Number.isInteger(currentUserId)) {
+        const foreignBooking = paymentContexts.find(
+          (item) => Number.parseInt(item.customer_id, 10) !== currentUserId,
+        );
+        if (foreignBooking) {
+          return res.status(403).json({ message: "Booking does not belong to current user" });
+        }
+      }
+
+      const inactiveBooking = paymentContexts.find((item) => {
+        const status = String(item.status || "").toLowerCase();
+        if (status === "confirmed") return false;
+        if (status !== "pending") return true;
+        if (!item.pending_expires_at) return false;
+        return new Date(item.pending_expires_at).getTime() <= Date.now();
+      });
+      if (inactiveBooking) {
+        return res.status(409).json({
+          message: "One or more bookings are no longer pending for payment",
+        });
+      }
+
+      const firstContext = paymentContexts[0];
+      paymentContext = firstContext;
+      finalAmount = normalizeAmount(
+        paymentContexts.reduce((sum, item) => sum + Number(item.price || 0), 0),
+      );
       finalOrderInfo =
         orderInfo ||
-        `Thanh toan dat san #${paymentContext.booking_id} - ${paymentContext.field_name || "Sport Management"}`;
+        `Thanh toan dat san ${paymentContexts.length} khung gio - ${firstContext.field_name || "Sport Management"}`;
     } else if (!demo) {
       return res.status(400).json({
-        message: "booking_id is required unless demo=true is provided",
+        message: "booking_id or booking_ids is required unless demo=true is provided",
       });
     }
 
@@ -94,6 +179,11 @@ export const createMomoPayment = async (req, res) => {
           order_id: orderId,
           request_id: requestId,
           provider: "momo",
+          booking_ids_json: JSON.stringify(
+            paymentContexts.length > 0
+              ? paymentContexts.map((item) => item.booking_id)
+              : [paymentContext.booking_id],
+          ),
         })
       : null;
 
@@ -122,6 +212,7 @@ export const createMomoPayment = async (req, res) => {
 
     res.status(201).json({
       payment_id: payment?.payment_id || null,
+      booking_ids: paymentContexts.map((item) => item.booking_id),
       order_id: orderId,
       request_id: requestId,
       amount: finalAmount,
@@ -149,7 +240,9 @@ export const createMomoPayment = async (req, res) => {
 
 const updatePaymentFromMomoResult = async (payload) => {
   const payment = await Payment.findOne({
-    where: { order_id: payload.orderId, request_id: payload.requestId },
+    where: payload.requestId
+      ? { order_id: payload.orderId, request_id: payload.requestId }
+      : { order_id: payload.orderId },
   });
 
   if (!payment) {
@@ -166,11 +259,31 @@ const updatePaymentFromMomoResult = async (payload) => {
     failure_reason: completed ? null : payload.message || "MoMo payment failed",
   });
 
-  if (completed && payment.booking_id) {
+  const bookingIds = (() => {
+    const raw = payment.booking_ids_json;
+    const parsed = (() => {
+      if (!raw) return [];
+      try {
+        return JSON.parse(raw);
+      } catch (_error) {
+        return [];
+      }
+    })();
+    const normalized = Array.isArray(parsed)
+      ? parsed.map((item) => Number.parseInt(item, 10)).filter((item) => Number.isInteger(item) && item > 0)
+      : [];
+    if (normalized.length > 0) {
+      return [...new Set(normalized)];
+    }
+    const fallback = Number.parseInt(payment.booking_id, 10);
+    return Number.isInteger(fallback) && fallback > 0 ? [fallback] : [];
+  })();
+
+  if (completed && bookingIds.length > 0) {
     await sequelize.query(
       `UPDATE bookings
        SET status = 'confirmed', pending_expires_at = NULL
-       WHERE booking_id = ?
+       WHERE booking_id IN (${buildInClause(bookingIds)})
          AND (
            status = 'confirmed'
            OR (
@@ -178,7 +291,7 @@ const updatePaymentFromMomoResult = async (payload) => {
              AND (pending_expires_at IS NULL OR pending_expires_at > NOW())
            )
          )`,
-      { replacements: [payment.booking_id] },
+      { replacements: bookingIds },
     );
   }
 
@@ -224,6 +337,58 @@ export const momoReturn = async (req, res) => {
     });
   } catch (error) {
     console.error("momoReturn error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+export const confirmMomoClientResult = async (req, res) => {
+  try {
+    const payload = req.body || {};
+    const orderId = payload.orderId || payload.order_id;
+    const requestId = payload.requestId || payload.request_id;
+    const resultCode =
+      payload.resultCode !== undefined ? payload.resultCode : payload.result_code;
+
+    if (!orderId || resultCode === undefined || resultCode === null) {
+      return res.status(400).json({
+        message: "orderId and resultCode are required",
+      });
+    }
+
+    const payment = await Payment.findOne({
+      where: requestId
+        ? { order_id: orderId, request_id: requestId }
+        : { order_id: orderId },
+    });
+
+    if (!payment) {
+      return res.status(404).json({ message: "Payment not found" });
+    }
+
+    const currentUserId = Number.parseInt(req.user?.id, 10);
+    if (
+      Number.isInteger(currentUserId) &&
+      Number.parseInt(payment.customer_id, 10) !== currentUserId
+    ) {
+      return res.status(403).json({ message: "Payment does not belong to current user" });
+    }
+
+    const updatedPayment = await updatePaymentFromMomoResult({
+      orderId,
+      requestId,
+      resultCode,
+      message: payload.message || payload.momoMessage || null,
+      transId: payload.transId || payload.transactionId || null,
+    });
+
+    res.json({
+      message: "Client payment result confirmed",
+      payment_status: updatedPayment?.payment_status || payment.payment_status,
+      order_id: orderId,
+      request_id: requestId,
+    });
+  } catch (error) {
+    console.error("confirmMomoClientResult error:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };

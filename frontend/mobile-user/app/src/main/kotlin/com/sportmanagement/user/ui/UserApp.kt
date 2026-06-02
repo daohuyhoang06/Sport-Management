@@ -10,6 +10,7 @@ import java.util.Locale
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.background
 import androidx.compose.ui.Modifier
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -95,6 +96,7 @@ fun UserApp(
     var showNotificationDetailScreen by rememberSaveable { mutableStateOf(false) }
     var bookingContactName by rememberSaveable { mutableStateOf("") }
     var bookingContactPhone by rememberSaveable { mutableStateOf("") }
+    var bookingNote by rememberSaveable { mutableStateOf("") }
     var bookingConfirmationData by remember { mutableStateOf<BookingConfirmationData?>(null) }
     var selectedBookingField by remember { mutableStateOf<UserField?>(null) }
     var bookingDetailInfo by remember { mutableStateOf<BookingInfo?>(null) }
@@ -125,6 +127,7 @@ fun UserApp(
         bookingSessionKey += 1
         bookingContactName = uiState.profile.name
         bookingContactPhone = uiState.profile.phone
+        bookingNote = ""
         showBookingPaymentScreen = false
         showBookingConfirmationScreen = false
         bookingConfirmationData = null
@@ -284,7 +287,11 @@ fun UserApp(
             }
         }
     ) { padding ->
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+        ) {
             if (showAuthScreen) {
                 if (showRegister) {
                     RegisterScreen(
@@ -334,6 +341,7 @@ fun UserApp(
                     confirmationData = bookingConfirmationData!!,
                     userName = bookingContactName,
                     userPhone = bookingContactPhone,
+                    bookingNote = bookingNote,
                     incomingMomoPaymentReturn = incomingMomoPaymentReturn,
                     onMomoPaymentReturnConsumed = onMomoPaymentReturnConsumed,
                     onBackClick = {
@@ -376,9 +384,10 @@ fun UserApp(
                         showBookingConfirmationScreen = false
                         showBookingScreen = true
                     },
-                    onConfirmPaymentClick = { name, phone ->
+                    onConfirmPaymentClick = { name, phone, note ->
                         bookingContactName = name
                         bookingContactPhone = phone
+                        bookingNote = note
                         showBookingConfirmationScreen = false
                         showBookingPaymentScreen = true
                     }

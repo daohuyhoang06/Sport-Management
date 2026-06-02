@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -239,7 +238,11 @@ fun UserHomeScreen(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
         LazyColumn(
             state = listState,
             modifier = Modifier
@@ -248,9 +251,7 @@ fun UserHomeScreen(
                     start = padding.calculateStartPadding(layoutDirection),
                     end = padding.calculateEndPadding(layoutDirection),
                     bottom = padding.calculateBottomPadding()
-                )
-                .imePadding()
-                .background(MaterialTheme.colorScheme.background),
+                ),
             contentPadding = PaddingValues(bottom = 16.dp)
         ) {
             item {

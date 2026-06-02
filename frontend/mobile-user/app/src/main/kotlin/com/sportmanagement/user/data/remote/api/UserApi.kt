@@ -1,6 +1,4 @@
 package com.sportmanagement.user.data.remote.api
-
-import com.sportmanagement.user.BuildConfig
 import com.sportmanagement.user.data.remote.dto.SportCategoryDto
 import com.sportmanagement.user.data.remote.dto.UserFieldDto
 import com.sportmanagement.user.data.remote.dto.UserProfileDto
@@ -18,12 +16,31 @@ import java.net.HttpURLConnection
 import java.net.URLEncoder
 import java.net.URL
 
+data class CreateBookingRequest(
+    val fieldId: Int,
+    val courtId: Int?,
+    val startTime: String,
+    val endTime: String,
+    val price: Int,
+    val note: String?,
+    val customerName: String?,
+    val customerPhone: String?
+)
+
+data class CreateBookingResponse(
+    val bookingId: Int,
+    val courtId: Int?,
+    val status: String?,
+    val pendingHoldSeconds: Int
+)
+
+data class CreateBatchBookingResponse(
+    val bookings: List<CreateBookingResponse>,
+    val pendingHoldSeconds: Int
+)
+
 class UserApi(
-<<<<<<< HEAD
     private val baseUrl: String = ApiConfig.BASE_URL
-=======
-    private val baseUrl: String = BuildConfig.API_BASE_URL
->>>>>>> 6088875ec7dff49891c9bdae9a5714e738038d0d
 ) {
 
     suspend fun getHomeFields(
@@ -157,6 +174,136 @@ class UserApi(
         }
     }
 
+    suspend fun createBooking(
+        token: String,
+        request: CreateBookingRequest
+    ): CreateBookingResponse = withContext(Dispatchers.IO) {
+        val endpoint = "$baseUrl/api/user/bookings"
+        val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
+            requestMethod = "POST"
+            connectTimeout = 30_000
+            readTimeout = 30_000
+            doOutput = true
+            setRequestProperty("Accept", "application/json")
+            setRequestProperty("Content-Type", "application/json")
+            setRequestProperty("Authorization", "Bearer $token")
+        }
+
+        try {
+            val body = JSONObject().apply {
+                put("field_id", request.fieldId)
+                request.courtId?.let { put("court_id", it) }
+                put("start_time", request.startTime)
+                put("end_time", request.endTime)
+                put("price", request.price)
+                request.note?.takeIf { it.isNotBlank() }?.let { put("note", it) }
+                request.customerName?.takeIf { it.isNotBlank() }?.let { put("customer_name", it) }
+                request.customerPhone?.takeIf { it.isNotBlank() }?.let { put("customer_phone", it) }
+            }.toString()
+
+            connection.outputStream.use { stream ->
+                stream.write(body.toByteArray(Charsets.UTF_8))
+            }
+
+            val responseCode = connection.responseCode
+            val responseText = if (responseCode in 200..299) {
+                connection.inputStream.bufferedReader().use { it.readText() }
+            } else {
+                connection.errorStream?.bufferedReader()?.use { it.readText() }.orEmpty()
+            }
+
+            if (responseCode !in 200..299) {
+                throw IOException(parseApiError(responseText) ?: "HTTP $responseCode")
+            }
+
+            val root = JSONObject(responseText)
+            val booking = root.optJSONObject("booking") ?: JSONObject()
+            CreateBookingResponse(
+                bookingId = booking.optInt("booking_id"),
+                courtId = booking.optIntOrNull("court_id"),
+                status = booking.optStringOrNull("status"),
+                pendingHoldSeconds = root.optInt("pending_hold_seconds", 0)
+            )
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+    suspend fun createBookings(
+        token: String,
+        fieldId: Int,
+        requests: List<CreateBookingRequest>,
+        note: String?,
+        customerName: String?,
+        customerPhone: String?
+    ): CreateBatchBookingResponse = withContext(Dispatchers.IO) {
+        val endpoint = "$baseUrl/api/user/bookings/batch"
+        val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
+            requestMethod = "POST"
+            connectTimeout = 30_000
+            readTimeout = 30_000
+            doOutput = true
+            setRequestProperty("Accept", "application/json")
+            setRequestProperty("Content-Type", "application/json")
+            setRequestProperty("Authorization", "Bearer $token")
+        }
+
+        try {
+            val bookingsArray = JSONArray()
+            requests.forEach { request ->
+                bookingsArray.put(
+                    JSONObject().apply {
+                        request.courtId?.let { put("court_id", it) }
+                        put("start_time", request.startTime)
+                        put("end_time", request.endTime)
+                        put("price", request.price)
+                    }
+                )
+            }
+
+            val body = JSONObject().apply {
+                put("field_id", fieldId)
+                put("bookings", bookingsArray)
+                note?.takeIf { it.isNotBlank() }?.let { put("note", it) }
+                customerName?.takeIf { it.isNotBlank() }?.let { put("customer_name", it) }
+                customerPhone?.takeIf { it.isNotBlank() }?.let { put("customer_phone", it) }
+            }.toString()
+
+            connection.outputStream.use { stream ->
+                stream.write(body.toByteArray(Charsets.UTF_8))
+            }
+
+            val responseCode = connection.responseCode
+            val responseText = if (responseCode in 200..299) {
+                connection.inputStream.bufferedReader().use { it.readText() }
+            } else {
+                connection.errorStream?.bufferedReader()?.use { it.readText() }.orEmpty()
+            }
+
+            if (responseCode !in 200..299) {
+                throw IOException(parseApiError(responseText) ?: "HTTP $responseCode")
+            }
+
+            val root = JSONObject(responseText)
+            val bookingsArrayResponse = root.optJSONArray("bookings") ?: JSONArray()
+            val bookings = List(bookingsArrayResponse.length()) { index ->
+                val booking = bookingsArrayResponse.getJSONObject(index)
+                CreateBookingResponse(
+                    bookingId = booking.optInt("booking_id"),
+                    courtId = booking.optIntOrNull("court_id"),
+                    status = booking.optStringOrNull("status"),
+                    pendingHoldSeconds = root.optInt("pending_hold_seconds", 0)
+                )
+            }
+            CreateBatchBookingResponse(
+                bookings = bookings,
+                pendingHoldSeconds = root.optInt("pending_hold_seconds", 0)
+            )
+        } finally {
+            connection.disconnect()
+        }
+    }
+
     private suspend fun getFields(
         latitude: Double? = null,
         longitude: Double? = null,
@@ -281,4 +428,7 @@ private fun JSONObject.optDoubleOrNull(name: String): Double? =
 
 private fun JSONObject.optBooleanOrNull(name: String): Boolean? =
     if (has(name) && !isNull(name)) optBoolean(name) else null
+
+private fun parseApiError(responseText: String): String? =
+    runCatching { JSONObject(responseText).optString("message").takeIf { it.isNotBlank() } }.getOrNull()
 
