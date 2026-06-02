@@ -9,6 +9,7 @@ import FieldSchedule from './FieldSchedule.js';
 import Booking from './Booking.js';
 import Payment from './Payment.js';
 import Review from './Review.js';
+import FavoriteField from './FavoriteField.js';
 
 // Define associations
 User.hasMany(Field, { foreignKey: 'manager_id', as: 'managedFields' });
@@ -59,6 +60,12 @@ Review.belongsTo(Field, { foreignKey: 'field_id', as: 'field' });
 Booking.hasMany(Review, { foreignKey: 'booking_id', as: 'reviews' });
 Review.belongsTo(Booking, { foreignKey: 'booking_id', as: 'booking' });
 
+User.hasMany(FavoriteField, { foreignKey: 'user_id', as: 'favoriteFields' });
+FavoriteField.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+
+Field.hasMany(FavoriteField, { foreignKey: 'field_id', as: 'favoriteEntries' });
+FavoriteField.belongsTo(Field, { foreignKey: 'field_id', as: 'field' });
+
 export {
   User,
   Field,
@@ -69,5 +76,6 @@ export {
   FieldSchedule,
   Booking,
   Payment,
-  Review
+  Review,
+  FavoriteField
 };

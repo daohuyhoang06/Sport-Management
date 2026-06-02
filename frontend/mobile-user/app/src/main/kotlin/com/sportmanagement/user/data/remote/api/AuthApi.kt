@@ -1,5 +1,6 @@
 package com.sportmanagement.user.data.remote.api
 
+import com.sportmanagement.user.BuildConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -53,7 +54,7 @@ data class UpdateProfileRequestDto(
 )
 
 class AuthApi(
-    private val baseUrl: String = ApiConfig.BASE_URL
+    private val baseUrl: String = BASE_URL
 ) {
     suspend fun login(identifier: String, password: String): AuthSessionDto =
         withContext(Dispatchers.IO) {
@@ -300,6 +301,9 @@ class AuthApi(
         return message.ifBlank { "HTTP $responseCode: auth request failed" }
     }
 
+    companion object {
+        private const val BASE_URL = "http://10.0.2.2:5000"
+    }
 }
 
 private fun JSONObject.optSanitizedString(name: String): String {
@@ -335,3 +339,4 @@ private fun JSONObject.optStringSet(name: String): Set<String> {
     }
     return result
 }
+

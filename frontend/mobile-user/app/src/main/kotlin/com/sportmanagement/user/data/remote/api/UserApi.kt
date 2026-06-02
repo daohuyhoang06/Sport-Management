@@ -1,5 +1,6 @@
 package com.sportmanagement.user.data.remote.api
 
+import com.sportmanagement.user.BuildConfig
 import com.sportmanagement.user.data.remote.dto.SportCategoryDto
 import com.sportmanagement.user.data.remote.dto.UserFieldDto
 import com.sportmanagement.user.data.remote.dto.UserProfileDto
@@ -18,7 +19,11 @@ import java.net.URLEncoder
 import java.net.URL
 
 class UserApi(
+<<<<<<< HEAD
     private val baseUrl: String = ApiConfig.BASE_URL
+=======
+    private val baseUrl: String = BuildConfig.API_BASE_URL
+>>>>>>> 6088875ec7dff49891c9bdae9a5714e738038d0d
 ) {
 
     suspend fun getHomeFields(
@@ -66,7 +71,17 @@ class UserApi(
         readFieldArray(endpoint)
     }
 
-    suspend fun getFavoriteFields(): List<UserFieldDto> = getFields()
+    suspend fun getFavoriteFields(token: String): List<UserFieldDto> = withContext(Dispatchers.IO) {
+        readFieldArray("$baseUrl/api/user/favorites", token)
+    }
+
+    suspend fun addFavoriteField(token: String, fieldId: Int) = withContext(Dispatchers.IO) {
+        writeFavorite("$baseUrl/api/user/favorites/$fieldId", "POST", token)
+    }
+
+    suspend fun removeFavoriteField(token: String, fieldId: Int) = withContext(Dispatchers.IO) {
+        writeFavorite("$baseUrl/api/user/favorites/$fieldId", "DELETE", token)
+    }
 
     suspend fun getSportCategories(): List<SportCategoryDto> = emptyList()
 
@@ -158,12 +173,18 @@ class UserApi(
         readFieldArray(endpoint)
     }
 
-    private fun readFieldArray(endpoint: String): List<UserFieldDto> {
+    private fun readFieldArray(
+        endpoint: String,
+        token: String? = null
+    ): List<UserFieldDto> {
         val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
             requestMethod = "GET"
             connectTimeout = 30_000
             readTimeout = 30_000
             setRequestProperty("Accept", "application/json")
+            token?.takeIf { it.isNotBlank() }?.let {
+                setRequestProperty("Authorization", "Bearer $it")
+            }
         }
 
         return try {
@@ -185,13 +206,40 @@ class UserApi(
         }
     }
 
+    private fun writeFavorite(
+        endpoint: String,
+        method: String,
+        token: String
+    ) {
+        val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
+            requestMethod = method
+            connectTimeout = 30_000
+            readTimeout = 30_000
+            doOutput = false
+            setRequestProperty("Accept", "application/json")
+            setRequestProperty("Authorization", "Bearer $token")
+        }
+
+        try {
+            val responseCode = connection.responseCode
+            if (responseCode !in 200..299) {
+                val responseText = connection.errorStream?.bufferedReader()?.use { it.readText() }.orEmpty()
+                throw IOException("HTTP $responseCode: $responseText")
+            }
+        } finally {
+            connection.disconnect()
+        }
+    }
+
     private fun JSONObject.toFieldDto(): UserFieldDto {
         val tagsArray = optJSONArray("tags") ?: JSONArray()
         val tags = List(tagsArray.length()) { idx -> tagsArray.optString(idx) }
             .filter { it.isNotBlank() }
 
         return UserFieldDto(
-            fieldId = optIntOrNull("field_id"),
+            fieldId = optIntOrNull("field_id")
+                ?: optIntOrNull("fieldId")
+                ?: optIntOrNull("id"),
             name = optString("name").ifBlank { optString("field_name") },
             location = optString("location"),
             price = optString("price"),
@@ -233,3 +281,4 @@ private fun JSONObject.optDoubleOrNull(name: String): Double? =
 
 private fun JSONObject.optBooleanOrNull(name: String): Boolean? =
     if (has(name) && !isNull(name)) optBoolean(name) else null
+

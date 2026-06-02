@@ -11,6 +11,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -23,7 +24,8 @@ fun SportMarkerIcon(
     contentDescription: String?,
     markerSize: Dp = 38.dp,
     iconSize: Dp = 18.dp,
-    iconOffsetY: Dp = (-3).dp
+    iconOffsetY: Dp = (-3).dp,
+    iconTint: Color = Color.Unspecified
 ) {
     Box(
         modifier = Modifier.size(markerSize),
@@ -39,7 +41,8 @@ fun SportMarkerIcon(
             contentDescription = null,
             modifier = Modifier
                 .size(iconSize)
-                .offset(y = iconOffsetY)
+                .offset(y = iconOffsetY),
+            colorFilter = if (iconTint == Color.Unspecified) null else ColorFilter.tint(iconTint)
         )
     }
 }

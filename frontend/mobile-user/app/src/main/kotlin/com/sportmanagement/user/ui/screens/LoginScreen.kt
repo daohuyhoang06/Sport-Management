@@ -8,7 +8,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -61,6 +63,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -828,36 +831,46 @@ fun SocialAuthButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    OutlinedButton(
-        onClick = onClick,
-        modifier = modifier
-            .fillMaxWidth()
-            .height(AppCtaWideHeight),
-        shape = RoundedCornerShape(10.dp),
-        border = androidx.compose.foundation.BorderStroke(
-            1.dp,
-            MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
-        ),
-        colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White),
-        contentPadding = ButtonDefaults.ContentPadding
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically
+    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
+        val compact = maxWidth < 170.dp
+        val iconSize = if (compact) 20.dp else 24.dp
+        val spacing = if (compact) 7.dp else 10.dp
+        val horizontalPadding = if (compact) 10.dp else 16.dp
+        val textSize = if (compact) 13.sp else 14.sp
+
+        OutlinedButton(
+            onClick = onClick,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(AppCtaWideHeight),
+            shape = RoundedCornerShape(10.dp),
+            border = androidx.compose.foundation.BorderStroke(
+                1.dp,
+                MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+            ),
+            colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White),
+            contentPadding = PaddingValues(horizontal = horizontalPadding, vertical = 0.dp)
         ) {
-            Image(
-                painter = painterResource(id = iconRes),
-                contentDescription = null,
-                modifier = Modifier.size(24.dp)
-            )
-            Spacer(Modifier.width(10.dp))
-            Text(
-                text = text,
-                color = MaterialTheme.colorScheme.primary,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Image(
+                    painter = painterResource(id = iconRes),
+                    contentDescription = null,
+                    modifier = Modifier.size(iconSize)
+                )
+                Spacer(Modifier.width(spacing))
+                Text(
+                    text = text,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontSize = textSize,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    softWrap = false
+                )
+            }
         }
     }
 }

@@ -328,7 +328,10 @@ const swaggerSpec = {
         required: ["title", "content", "policy_type"],
         properties: {
           title: { type: "string", example: "Khong hut thuoc" },
-          content: { type: "string", example: "Khong hut thuoc trong khuon vien san" },
+          content: {
+            type: "string",
+            example: "Khong hut thuoc trong khuon vien san",
+          },
           policy_type: { type: "string", example: "general" },
         },
       },
@@ -540,6 +543,14 @@ const swaggerSpec = {
         responses: { 200: okResponse, 400: errorResponse },
       },
     },
+    "/api/user/inbox": {
+      get: {
+        tags: ["User"],
+        summary: "Get inbox sections",
+        security: authSecurity,
+        responses: { 200: okResponse, 401: errorResponse },
+      },
+    },
     "/api/user/reviews/upload": {
       post: {
         tags: ["User"],
@@ -569,6 +580,47 @@ const swaggerSpec = {
         summary: "Get review stats by field",
         parameters: [idParam("fieldId", "Field ID")],
         responses: { 200: okResponse },
+      },
+    },
+    "/api/user/conversations": {
+      get: {
+        tags: ["User"],
+        summary: "Get conversations",
+        security: authSecurity,
+        responses: { 200: okResponse, 401: errorResponse },
+      },
+      post: {
+        tags: ["User"],
+        summary: "Create or get conversation",
+        security: authSecurity,
+        requestBody: jsonRequest,
+        responses: { 200: okResponse, 400: errorResponse, 401: errorResponse },
+      },
+    },
+    "/api/user/conversations/{conversationId}/messages": {
+      get: {
+        tags: ["User"],
+        summary: "Get conversation messages",
+        security: authSecurity,
+        parameters: [idParam("conversationId", "Conversation ID")],
+        responses: { 200: okResponse, 401: errorResponse, 404: errorResponse },
+      },
+      post: {
+        tags: ["User"],
+        summary: "Send conversation message",
+        security: authSecurity,
+        parameters: [idParam("conversationId", "Conversation ID")],
+        requestBody: jsonRequest,
+        responses: { 200: okResponse, 400: errorResponse, 401: errorResponse },
+      },
+    },
+    "/api/user/conversations/{conversationId}/read": {
+      patch: {
+        tags: ["User"],
+        summary: "Mark conversation as read",
+        security: authSecurity,
+        parameters: [idParam("conversationId", "Conversation ID")],
+        responses: { 200: okResponse, 401: errorResponse, 404: errorResponse },
       },
     },
 
@@ -1267,7 +1319,12 @@ const swaggerSpec = {
         summary: "Get full field configuration",
         security: authSecurity,
         parameters: [idParam("id", "Field ID")],
-        responses: { 200: okResponse, 404: errorResponse, 401: errorResponse, 403: errorResponse },
+        responses: {
+          200: okResponse,
+          404: errorResponse,
+          401: errorResponse,
+          403: errorResponse,
+        },
       },
     },
     "/api/manager/fields/{id}/status": {
@@ -1308,7 +1365,12 @@ const swaggerSpec = {
         security: authSecurity,
         parameters: [idParam("id", "Field ID")],
         requestBody: schemaRequest("ManagerFieldCourtRequest"),
-        responses: { 201: okResponse, 400: errorResponse, 401: errorResponse, 403: errorResponse },
+        responses: {
+          201: okResponse,
+          400: errorResponse,
+          401: errorResponse,
+          403: errorResponse,
+        },
       },
     },
     "/api/manager/fields/{id}/courts/reorder": {
@@ -1318,7 +1380,12 @@ const swaggerSpec = {
         security: authSecurity,
         parameters: [idParam("id", "Field ID")],
         requestBody: schemaRequest("ManagerFieldCourtReorderRequest"),
-        responses: { 200: okResponse, 400: errorResponse, 401: errorResponse, 403: errorResponse },
+        responses: {
+          200: okResponse,
+          400: errorResponse,
+          401: errorResponse,
+          403: errorResponse,
+        },
       },
     },
     "/api/manager/fields/{id}/courts/{courtId}": {
@@ -1328,14 +1395,24 @@ const swaggerSpec = {
         security: authSecurity,
         parameters: [idParam("id", "Field ID"), idParam("courtId", "Court ID")],
         requestBody: schemaRequest("ManagerFieldCourtRequest"),
-        responses: { 200: okResponse, 400: errorResponse, 401: errorResponse, 403: errorResponse },
+        responses: {
+          200: okResponse,
+          400: errorResponse,
+          401: errorResponse,
+          403: errorResponse,
+        },
       },
       delete: {
         tags: ["Manager"],
         summary: "Delete field court",
         security: authSecurity,
         parameters: [idParam("id", "Field ID"), idParam("courtId", "Court ID")],
-        responses: { 200: okResponse, 404: errorResponse, 401: errorResponse, 403: errorResponse },
+        responses: {
+          200: okResponse,
+          404: errorResponse,
+          401: errorResponse,
+          403: errorResponse,
+        },
       },
     },
     "/api/manager/fields/{id}/services": {
@@ -1352,7 +1429,12 @@ const swaggerSpec = {
         security: authSecurity,
         parameters: [idParam("id", "Field ID")],
         requestBody: schemaRequest("ManagerFieldServiceRequest"),
-        responses: { 201: okResponse, 400: errorResponse, 401: errorResponse, 403: errorResponse },
+        responses: {
+          201: okResponse,
+          400: errorResponse,
+          401: errorResponse,
+          403: errorResponse,
+        },
       },
     },
     "/api/manager/fields/{id}/services/{serviceId}": {
@@ -1360,16 +1442,32 @@ const swaggerSpec = {
         tags: ["Manager"],
         summary: "Update field service",
         security: authSecurity,
-        parameters: [idParam("id", "Field ID"), idParam("serviceId", "Service ID")],
+        parameters: [
+          idParam("id", "Field ID"),
+          idParam("serviceId", "Service ID"),
+        ],
         requestBody: schemaRequest("ManagerFieldServiceRequest"),
-        responses: { 200: okResponse, 400: errorResponse, 401: errorResponse, 403: errorResponse },
+        responses: {
+          200: okResponse,
+          400: errorResponse,
+          401: errorResponse,
+          403: errorResponse,
+        },
       },
       delete: {
         tags: ["Manager"],
         summary: "Delete field service",
         security: authSecurity,
-        parameters: [idParam("id", "Field ID"), idParam("serviceId", "Service ID")],
-        responses: { 200: okResponse, 404: errorResponse, 401: errorResponse, 403: errorResponse },
+        parameters: [
+          idParam("id", "Field ID"),
+          idParam("serviceId", "Service ID"),
+        ],
+        responses: {
+          200: okResponse,
+          404: errorResponse,
+          401: errorResponse,
+          403: errorResponse,
+        },
       },
     },
     "/api/manager/fields/{id}/policies": {
@@ -1386,7 +1484,12 @@ const swaggerSpec = {
         security: authSecurity,
         parameters: [idParam("id", "Field ID")],
         requestBody: schemaRequest("ManagerFieldPolicyRequest"),
-        responses: { 201: okResponse, 400: errorResponse, 401: errorResponse, 403: errorResponse },
+        responses: {
+          201: okResponse,
+          400: errorResponse,
+          401: errorResponse,
+          403: errorResponse,
+        },
       },
     },
     "/api/manager/fields/{id}/policies/{policyId}": {
@@ -1394,16 +1497,32 @@ const swaggerSpec = {
         tags: ["Manager"],
         summary: "Update field policy",
         security: authSecurity,
-        parameters: [idParam("id", "Field ID"), idParam("policyId", "Policy ID")],
+        parameters: [
+          idParam("id", "Field ID"),
+          idParam("policyId", "Policy ID"),
+        ],
         requestBody: schemaRequest("ManagerFieldPolicyRequest"),
-        responses: { 200: okResponse, 400: errorResponse, 401: errorResponse, 403: errorResponse },
+        responses: {
+          200: okResponse,
+          400: errorResponse,
+          401: errorResponse,
+          403: errorResponse,
+        },
       },
       delete: {
         tags: ["Manager"],
         summary: "Delete field policy",
         security: authSecurity,
-        parameters: [idParam("id", "Field ID"), idParam("policyId", "Policy ID")],
-        responses: { 200: okResponse, 404: errorResponse, 401: errorResponse, 403: errorResponse },
+        parameters: [
+          idParam("id", "Field ID"),
+          idParam("policyId", "Policy ID"),
+        ],
+        responses: {
+          200: okResponse,
+          404: errorResponse,
+          401: errorResponse,
+          403: errorResponse,
+        },
       },
     },
 
