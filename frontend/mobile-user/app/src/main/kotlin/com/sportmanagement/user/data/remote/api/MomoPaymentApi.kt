@@ -20,13 +20,11 @@ data class MomoPaymentResponse(
 )
 
 object MomoPaymentApi {
-    private const val BASE_URL = "http://10.0.2.2:5000"
-
     suspend fun createDemoPayment(
         amount: Int,
         orderInfo: String
     ): MomoPaymentResponse = withContext(Dispatchers.IO) {
-        val url = URL("$BASE_URL/api/payments/momo/create")
+        val url = URL("${ApiConfig.BASE_URL}/api/payments/momo/create")
         val connection = (url.openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"
             connectTimeout = 30_000

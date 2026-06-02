@@ -18,7 +18,7 @@ import java.net.URLEncoder
 import java.net.URL
 
 class UserApi(
-    private val baseUrl: String = BASE_URL
+    private val baseUrl: String = ApiConfig.BASE_URL
 ) {
 
     suspend fun getHomeFields(
@@ -213,9 +213,6 @@ class UserApi(
         )
     }
 
-    companion object {
-        private const val BASE_URL = "http://10.0.2.2:5000"
-    }
 }
 
 private fun List<Pair<String, String>>.toQueryString(): String =

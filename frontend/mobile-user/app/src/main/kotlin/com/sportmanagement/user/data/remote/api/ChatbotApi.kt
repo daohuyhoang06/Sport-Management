@@ -11,13 +11,11 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 object ChatbotApi {
-    private const val BASE_URL = "http://10.0.2.2:5000"
-
     suspend fun sendMessage(
         message: String,
         conversationHistory: List<ChatbotMessage>
     ): String = withContext(Dispatchers.IO) {
-        val connection = (URL("$BASE_URL/api/ai/chat").openConnection() as HttpURLConnection).apply {
+        val connection = (URL("${ApiConfig.BASE_URL}/api/ai/chat").openConnection() as HttpURLConnection).apply {
             requestMethod = "POST"
             connectTimeout = 30_000
             readTimeout = 30_000
