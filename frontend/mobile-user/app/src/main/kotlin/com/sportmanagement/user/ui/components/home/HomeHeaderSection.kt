@@ -55,6 +55,7 @@ fun HomeHeaderSection(
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
     onFilterClick: () -> Unit,
+    onFavoriteClick: () -> Unit,
     userName: String,
     userAvatarUrl: String,
     isLoggedIn: Boolean,
@@ -143,7 +144,7 @@ fun HomeHeaderSection(
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(
-                        modifier = Modifier.size(32.dp),
+                        modifier = Modifier.size(40.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -161,6 +162,7 @@ fun HomeHeaderSection(
             searchQuery = searchQuery,
             onSearchQueryChange = onSearchQueryChange,
             onFilterClick = onFilterClick,
+            onFavoriteClick = onFavoriteClick,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .offset(y = 24.dp)
@@ -175,6 +177,7 @@ fun HomeStickyHeaderSection(
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
     onFilterClick: () -> Unit,
+    onFavoriteClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val todayLabel = remember { formatCurrentDateLabel() }
@@ -218,14 +221,14 @@ fun HomeStickyHeaderSection(
                 )
 
                 Box(
-                    modifier = Modifier.size(32.dp),
+                    modifier = Modifier.size(38.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Default.Notifications,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.size(22.dp)
+                        modifier = Modifier.size(24.dp)
                     )
                 }
             }
@@ -236,6 +239,7 @@ fun HomeStickyHeaderSection(
             searchQuery = searchQuery,
             onSearchQueryChange = onSearchQueryChange,
             onFilterClick = onFilterClick,
+            onFavoriteClick = onFavoriteClick,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .offset(y = 24.dp)
@@ -250,6 +254,7 @@ private fun HomeSearchActionRow(
     searchQuery: String,
     onSearchQueryChange: (String) -> Unit,
     onFilterClick: () -> Unit,
+    onFavoriteClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Row(
@@ -260,7 +265,7 @@ private fun HomeSearchActionRow(
         Surface(
             modifier = Modifier
                 .weight(1f)
-                .height(44.dp),
+                .height(48.dp),
             shadowElevation = 6.dp,
             shape = RoundedCornerShape(AppInputCornerRadius),
             color = MaterialTheme.colorScheme.surface
@@ -269,9 +274,9 @@ private fun HomeSearchActionRow(
                 value = searchQuery,
                 onValueChange = onSearchQueryChange,
                 enabled = true,
-                textStyle = MaterialTheme.typography.bodySmall.copy(
+                textStyle = MaterialTheme.typography.bodyMedium.copy(
                     color = MaterialTheme.colorScheme.onSurface,
-                    lineHeight = 18.sp
+                    lineHeight = 20.sp
                 ),
                 singleLine = true,
                 cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
@@ -287,7 +292,7 @@ private fun HomeSearchActionRow(
                             if (searchQuery.isBlank()) {
                                 Text(
                                     text = stringResource(R.string.home_search_placeholder),
-                                    style = MaterialTheme.typography.bodySmall.copy(lineHeight = 18.sp),
+                                    style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 20.sp),
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
@@ -299,7 +304,7 @@ private fun HomeSearchActionRow(
                             contentDescription = stringResource(R.string.home_filter_content_description),
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier
-                                .size(18.dp)
+                                .size(20.dp)
                                 .clickable(onClick = onFilterClick)
                         )
                         Spacer(Modifier.width(6.dp))
@@ -307,7 +312,7 @@ private fun HomeSearchActionRow(
                             Icons.Default.Search,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(22.dp)
                         )
                     }
                 }
@@ -315,7 +320,9 @@ private fun HomeSearchActionRow(
         }
 
         Surface(
-            modifier = Modifier.size(44.dp),
+            modifier = Modifier
+                .size(48.dp)
+                .clickable(onClick = onFavoriteClick),
             shadowElevation = 6.dp,
             shape = RoundedCornerShape(AppInputCornerRadius),
             color = MaterialTheme.colorScheme.surface
@@ -325,7 +332,7 @@ private fun HomeSearchActionRow(
                     Icons.Default.FavoriteBorder,
                     contentDescription = stringResource(R.string.home_favorite_content_description),
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size(24.dp)
                 )
             }
         }

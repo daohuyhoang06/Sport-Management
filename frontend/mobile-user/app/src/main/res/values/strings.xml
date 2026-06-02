@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Sport User</string>
     <string name="tab_home">Trang chủ</string>
@@ -165,8 +165,10 @@
     <string name="booking_confirm_amount_due">Số tiền cần thanh toán</string>
     <string name="booking_confirm_name_label">TÊN CỦA BẠN</string>
     <string name="booking_confirm_phone_label">SỐ ĐIỆN THOẠI</string>
+    <string name="booking_confirm_clear_input">Xóa nội dung</string>
     <string name="booking_confirm_note_label">GHI CHÚ CHO CHỦ SÂN</string>
     <string name="booking_confirm_note_placeholder">Nhập ghi chú</string>
+    <string name="booking_confirm_login_required">Vui lòng đăng nhập để tiếp tục thanh toán.</string>
     <string name="booking_confirm_notice_title">Lưu ý:</string>
     <string name="booking_confirm_notice_line_1">Việc thanh toán được thực hiện trực tiếp giữa bạn và chủ sân.</string>
     <string name="booking_confirm_notice_line_2">Hệ thống đóng vai trò kết nối, hỗ trợ bạn tìm và đặt sân dễ dàng hơn.</string>
@@ -199,14 +201,41 @@
     <string name="payment_confirm_booking">XÁC NHẬN ĐẶT</string>
     <string name="payment_transfer_notice_prefix">Vui lòng chuyển khoản </string>
     <string name="payment_transfer_notice_suffix"> và gửi ảnh vào ô bên dưới để hoàn tất đặt lịch!</string>
-    <string name="payment_pending_instruction_line_1">Sau khi gửi ảnh, vui lòng kiểm tra trạng thái lịch đặt tại tab \"Tài khoản\" tới khi chủ sân xác nhận đơn.</string>
+    <string name="payment_pending_instruction_line_1">Sau khi gửi ảnh, vui lòng kiểm tra trạng thái lịch đặt tại tab "Tài khoản" tới khi chủ sân xác nhận đơn.</string>
     <string name="payment_pending_instruction_line_2">Đơn của bạn còn được giữ chỗ trong</string>
     <string name="payment_pending_time_format">%1$02d:%2$02d</string>
     <string name="payment_upload_proof_placeholder">Nhấn vào để tải hình thanh toán (*)</string>
     <string name="payment_upload_proof_content_description">Ảnh minh chứng thanh toán</string>
-    <string name="payment_pending_expired_message">Đơn đã quá giờ thanh toán. Vui lòng tạo đơn mới</string>
+    <string name="payment_pending_expired_message">Đơn đã quá giờ thanh toán.</string>
     <string name="payment_view_cancelled_booking">XEM LỊCH ĐÃ HỦY</string>
     <string name="payment_back_home">QUAY VỀ</string>
+    <string name="payment_pay_only">THANH TOÁN</string>
+    <string name="payment_return_home">Về trang chủ</string>
+    <string name="payment_message_waiting_for_momo">Đang chờ bạn hoàn tất giao dịch trên ứng dụng MoMo.</string>
+    <string name="payment_message_momo_confirmed">Giao dịch MoMo đã được xác nhận.</string>
+    <string name="payment_message_momo_failed">Thanh toán MoMo thất bại.</string>
+    <string name="payment_field_label">Sân</string>
+    <string name="payment_field_address_label">Địa chỉ sân</string>
+    <string name="payment_field_unknown">-</string>
+    <string name="payment_customer_name_placeholder">Chưa có tên</string>
+    <string name="payment_customer_phone_placeholder">Chưa có số điện thoại</string>
+    <string name="payment_method_title">Phương thức thanh toán</string>
+    <string name="payment_method_momo_title">Ví MoMo</string>
+    <string name="payment_method_momo_desc">Thanh toán qua ứng dụng MoMo</string>
+    <string name="payment_method_zalopay_title">ZaloPay</string>
+    <string name="payment_method_zalopay_desc">Thanh toán qua ứng dụng ZaloPay</string>
+    <string name="payment_method_bank_title">Chuyển khoản ngân hàng</string>
+    <string name="payment_method_bank_desc">Thanh toán qua tài khoản ngân hàng</string>
+    <string name="payment_summary_title">Thông tin thanh toán</string>
+    <string name="payment_total_price_label">Tổng tiền</string>
+    <string name="payment_paid_amount_label">Đã thanh toán</string>
+    <string name="payment_due_amount_plain_label">Cần thanh toán</string>
+    <string name="payment_status_creating_transaction">Đang khởi tạo giao dịch MoMo</string>
+    <string name="payment_status_waiting">Đang chờ thanh toán</string>
+    <string name="payment_status_success">Thanh toán thành công</string>
+    <string name="payment_status_failed">Thanh toán thất bại</string>
+
+    <string name="payment_order_info_format">Thanh toán lịch đặt sân %1$s</string>
 
     <string name="profile_title">Tài khoản</string>
     <string name="profile_name">Tên: %1$s</string>
@@ -227,9 +256,34 @@
     <string name="field_detail_call_quick">Gọi nhanh</string>
 
     <string name="field_detail_booking_link_title">Link đặt sân online</string>
-    <string name="field_detail_link_copied">Đã sao chép link</string>
-    <string name="field_detail_copy_link">Copy link</string>
+    <string name="field_detail_link_copied">Đã sao chép liên kết</string>
+    <string name="field_detail_copy_link">Sao chép liên kết</string>
     <string name="field_detail_open_link">Mở liên kết</string>
+    <string name="share_sheet_title">Chia sẻ sân</string>
+    <string name="share_sheet_copy_link">Sao chép</string>
+    <string name="share_sheet_share_now">Chia sẻ ngay</string>
+    <string name="share_sheet_share_via">Chia sẻ qua</string>
+    <string name="share_sheet_link_label">Liên kết</string>
+    <string name="share_sheet_field_label">Sân</string>
+    <string name="share_sheet_location_label">Địa chỉ</string>
+    <string name="share_sheet_hours_label">Giờ mở cửa</string>
+    <string name="share_sheet_price_label">Giá sân</string>
+    <string name="share_sheet_brand_name">Sport Management</string>
+    <string name="share_sheet_zalo">Zalo</string>
+    <string name="share_sheet_messenger">Messenger</string>
+    <string name="share_sheet_facebook">Facebook</string>
+    <string name="share_sheet_gmail">Gmail</string>
+    <string name="share_sheet_more">More</string>
+    <string name="share_text_prefix">Chia sẻ từ %1$s</string>
+    <string name="share_text_field_label">Sân: %1$s</string>
+    <string name="share_text_location_label">Địa chỉ: %1$s</string>
+    <string name="share_text_hours_label">Giờ mở cửa: %1$s</string>
+    <string name="share_text_price_label">Giá sân: %1$s</string>
+    <string name="share_link_invalid">Liên kết chia sẻ không hợp lệ</string>
+    <string name="share_link_copied">Đã sao chép liên kết</string>
+    <string name="share_link_open_fail">Không mở được liên kết</string>
+    <string name="share_fail">Không chia sẻ được</string>
+    <string name="share_app_not_installed">Ứng dụng chưa được cài đặt, mở chia sẻ chung.</string>
 
     <string name="field_detail_info_sport">Môn thể thao</string>
     <string name="field_detail_info_surface_type">Loại mặt sân</string>
@@ -293,3 +347,7 @@
     <string name="chatbot_failed_state">Chưa gửi được</string>
     <string name="chatbot_retry">Thử lại</string>
 </resources>
+
+
+
+

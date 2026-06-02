@@ -19,9 +19,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -37,7 +37,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.sportmanagement.user.domain.model.SportIconType
 import com.sportmanagement.user.domain.model.UserField
@@ -45,29 +44,33 @@ import com.sportmanagement.user.domain.model.VenueCardType
 import com.sportmanagement.user.ui.components.SportCircleAvatar
 import com.sportmanagement.user.ui.components.sportFieldDrawableRes
 import com.sportmanagement.user.R
-import com.sportmanagement.user.ui.theme.AppBadgeCornerRadius
-import com.sportmanagement.user.ui.theme.AppCardCornerRadius
 import com.sportmanagement.user.ui.theme.AppHomeVenueCornerRadius
 import com.sportmanagement.user.ui.theme.AppMediaCornerRadius
 
 @Composable
 fun HomeVenueCard(
     field: UserField,
+    isFavorite: Boolean,
     onCardClick: () -> Unit,
-    onBookClick: () -> Unit
+    onBookClick: () -> Unit,
+    onFavoriteClick: () -> Unit,
+    onShareClick: () -> Unit
 ) {
     when (field.cardType) {
-        VenueCardType.LARGE_IMAGE -> LargeVenueCard(field, onCardClick, onBookClick)
-        VenueCardType.SMALL_HORIZONTAL -> SmallHorizontalCard(field, onCardClick, onBookClick)
-        VenueCardType.SMALL_HORIZONTAL_NO_IMAGE -> SmallNoImageCard(field, onCardClick, onBookClick)
+        VenueCardType.LARGE_IMAGE -> LargeVenueCard(field, isFavorite, onCardClick, onBookClick, onFavoriteClick, onShareClick)
+        VenueCardType.SMALL_HORIZONTAL -> SmallHorizontalCard(field, isFavorite, onCardClick, onBookClick, onFavoriteClick, onShareClick)
+        VenueCardType.SMALL_HORIZONTAL_NO_IMAGE -> SmallNoImageCard(field, isFavorite, onCardClick, onBookClick, onFavoriteClick, onShareClick)
     }
 }
 
 @Composable
 private fun LargeVenueCard(
     field: UserField,
+    isFavorite: Boolean,
     onCardClick: () -> Unit,
-    onBookClick: () -> Unit
+    onBookClick: () -> Unit,
+    onFavoriteClick: () -> Unit,
+    onShareClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
@@ -91,43 +94,14 @@ private fun LargeVenueCard(
                     contentScale = ContentScale.Crop
                 )
 
-                if (field.isProLeague) {
-                    Box(
-                        modifier = Modifier
-                            .padding(12.dp)
-                            .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(AppBadgeCornerRadius))
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                    ) {
-                        Text(
-                            stringResource(R.string.home_pro_league),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-
-                if (field.isProLeague) {
-                    Row(
-                        modifier = Modifier
-                            .padding(start = 120.dp, top = 12.dp)
-                            .background(MaterialTheme.colorScheme.tertiaryContainer, RoundedCornerShape(AppCardCornerRadius))
-                            .padding(horizontal = 8.dp, vertical = 2.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            Icons.Default.Star,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.secondary,
-                            modifier = Modifier.size(14.dp)
-                        )
-                        Spacer(Modifier.width(2.dp))
-                        Text(
-                            text = field.rating,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onTertiaryContainer
-                        )
-                    }
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    HomeSportNameChip(sportIconType = field.sportIconType)
+                    HomeRatingChip(rating = field.rating)
                 }
 
                 Row(
@@ -136,8 +110,15 @@ private fun LargeVenueCard(
                         .padding(12.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    HomeSmallCircleIcon(Icons.Default.FavoriteBorder)
-                    HomeSmallCircleIcon(Icons.Default.Share)
+                    HomeSmallCircleIcon(
+                        icon = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                        onClick = onFavoriteClick,
+                        tint = if (isFavorite) Color(0xFFDC2626) else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    HomeSmallCircleIcon(
+                        icon = Icons.Default.Share,
+                        onClick = onShareClick
+                    )
                 }
             }
 
@@ -153,37 +134,25 @@ private fun LargeVenueCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 12.dp, vertical = 14.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.Top
                 ) {
                     SportCircleAvatar(iconType = field.sportIconType)
-                    Spacer(Modifier.width(10.dp))
 
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            field.name,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.ExtraBold
+                        HomeVenueTitleText(text = field.name)
+                        Spacer(Modifier.height(2.dp))
+                        HomeVenueDistanceLocationText(
+                            distance = field.distance,
+                            location = field.location
                         )
                         Spacer(Modifier.height(2.dp))
-                        HomeDistanceLocationText(field = field)
-                        Spacer(Modifier.height(2.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                Icons.Default.AccessTime,
-                                contentDescription = null,
-                                modifier = Modifier.size(14.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Spacer(Modifier.width(4.dp))
-                            Text(
-                                text = field.hours,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                        HomeVenueHoursText(hours = field.hours)
                     }
-                    HomeBookButton(onClick = onBookClick)
+                    HomeBookButton(
+                        sportIconType = field.sportIconType,
+                        onClick = onBookClick
+                    )
                 }
             }
         }
@@ -193,8 +162,11 @@ private fun LargeVenueCard(
 @Composable
 private fun SmallHorizontalCard(
     field: UserField,
+    isFavorite: Boolean,
     onCardClick: () -> Unit,
-    onBookClick: () -> Unit
+    onBookClick: () -> Unit,
+    onFavoriteClick: () -> Unit,
+    onShareClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
@@ -205,64 +177,77 @@ private fun SmallHorizontalCard(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Image(
-                painter = painterResource(id = sportFieldDrawableRes(field.sportIconType)),
-                contentDescription = field.name,
+        Box(modifier = Modifier.fillMaxWidth()) {
+            Row(
                 modifier = Modifier
-                    .size(90.dp)
-                    .clip(RoundedCornerShape(AppMediaCornerRadius)),
-                contentScale = ContentScale.Crop
-            )
-
-            Spacer(Modifier.width(12.dp))
-
-            SportCircleAvatar(
-                iconType = field.sportIconType,
-                size = 48.dp,
-                iconSize = 24.dp
-            )
-            Spacer(Modifier.width(10.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    field.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.ExtraBold
-                )
-                Spacer(Modifier.height(2.dp))
-                HomeDistanceLocationText(field = field)
-                if (field.availability.isNotEmpty()) {
-                    Text(
-                        field.availability,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                if (field.tags.isNotEmpty()) {
-                    Spacer(Modifier.height(6.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        field.tags.forEach { tag ->
-                            HomeTagChip(tag)
-                        }
-                    }
-                }
+                    .align(Alignment.TopStart)
+                    .padding(start = 12.dp, top = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                HomeSportNameChip(sportIconType = field.sportIconType)
+                HomeRatingChip(rating = field.rating)
             }
 
-            Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 12.dp, end = 12.dp, top = 42.dp, bottom = 12.dp),
+                verticalAlignment = Alignment.Top
             ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    HomeSmallCircleIcon(Icons.Default.FavoriteBorder)
-                    HomeSmallCircleIcon(Icons.Default.Share)
+                Image(
+                    painter = painterResource(id = sportFieldDrawableRes(field.sportIconType)),
+                    contentDescription = field.name,
+                    modifier = Modifier
+                        .size(90.dp)
+                        .clip(RoundedCornerShape(AppMediaCornerRadius)),
+                    contentScale = ContentScale.Crop
+                )
+
+                Spacer(Modifier.width(12.dp))
+
+                SportCircleAvatar(
+                    iconType = field.sportIconType,
+                    size = 48.dp,
+                    iconSize = 24.dp
+                )
+                Spacer(Modifier.width(10.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    HomeVenueTitleText(text = field.name)
+                    Spacer(Modifier.height(2.dp))
+                    HomeVenueDistanceLocationText(
+                        distance = field.distance,
+                        location = field.location
+                    )
+                    if (field.availability.isNotEmpty()) {
+                        Text(
+                            field.availability,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
-                HomeBookButton(onClick = onBookClick)
+
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        HomeSmallCircleIcon(
+                            icon = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                            onClick = onFavoriteClick,
+                            tint = if (isFavorite) Color(0xFFDC2626) else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        HomeSmallCircleIcon(
+                            icon = Icons.Default.Share,
+                            onClick = onShareClick
+                        )
+                    }
+                    HomeBookButton(
+                        sportIconType = field.sportIconType,
+                        onClick = onBookClick
+                    )
+                }
             }
         }
     }
@@ -271,8 +256,11 @@ private fun SmallHorizontalCard(
 @Composable
 private fun SmallNoImageCard(
     field: UserField,
+    isFavorite: Boolean,
     onCardClick: () -> Unit,
-    onBookClick: () -> Unit
+    onBookClick: () -> Unit,
+    onFavoriteClick: () -> Unit,
+    onShareClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
@@ -283,67 +271,65 @@ private fun SmallNoImageCard(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            SportCircleAvatar(iconType = field.sportIconType, size = 60.dp, iconSize = 30.dp)
-
-            Spacer(Modifier.width(12.dp))
-
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    field.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.ExtraBold
-                )
-                Spacer(Modifier.height(2.dp))
-                HomeDistanceLocationText(field = field)
-                if (field.availability.isNotEmpty()) {
-                    Text(
-                        field.availability,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.secondary
-                    )
-                }
-                if (field.tags.isNotEmpty()) {
-                    Spacer(Modifier.height(6.dp))
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        field.tags.forEach { tag ->
-                            HomeTagChip(tag)
-                        }
-                    }
-                }
+        Box(modifier = Modifier.fillMaxWidth()) {
+            Row(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(start = 12.dp, top = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                HomeSportNameChip(sportIconType = field.sportIconType)
+                HomeRatingChip(rating = field.rating)
             }
 
-            HomeBookButton(onClick = onBookClick)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 12.dp, end = 12.dp, top = 42.dp, bottom = 12.dp),
+                verticalAlignment = Alignment.Top
+            ) {
+                SportCircleAvatar(iconType = field.sportIconType, size = 60.dp, iconSize = 30.dp)
+
+                Spacer(Modifier.width(12.dp))
+
+                Column(modifier = Modifier.weight(1f)) {
+                    HomeVenueTitleText(text = field.name)
+                    Spacer(Modifier.height(2.dp))
+                    HomeVenueDistanceLocationText(
+                        distance = field.distance,
+                        location = field.location
+                    )
+                    if (field.availability.isNotEmpty()) {
+                        Text(
+                            field.availability,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.secondary
+                        )
+                    }
+                }
+
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        HomeSmallCircleIcon(
+                            icon = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                            onClick = onFavoriteClick,
+                            tint = if (isFavorite) Color(0xFFDC2626) else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        HomeSmallCircleIcon(
+                            icon = Icons.Default.Share,
+                            onClick = onShareClick
+                        )
+                    }
+                    HomeBookButton(
+                        sportIconType = field.sportIconType,
+                        onClick = onBookClick
+                    )
+                }
+            }
         }
     }
 }
 
-@Composable
-private fun HomeDistanceLocationText(field: UserField) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        if (field.distance.isNotBlank()) {
-            Text(
-                text = "(${field.distance}) ",
-                style = MaterialTheme.typography.bodySmall,
-                color = Color(0xFFD62828),
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1
-            )
-        }
-        Text(
-            text = field.location,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-    }
-}

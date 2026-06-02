@@ -95,6 +95,7 @@ fun UserMapScreen(
     padding: PaddingValues,
     sportCategories: List<SportCategory>,
     nearby: List<UserField>,
+    favoriteFields: List<UserField> = emptyList(),
     searchResults: List<UserField> = emptyList(),
     recentSearches: List<String> = emptyList(),
     isSearchLoading: Boolean = false,
@@ -106,9 +107,12 @@ fun UserMapScreen(
     onLoadMoreSearchResults: () -> Unit = {},
     onRememberSearch: (String) -> Unit = {},
     onCurrentLocationDetected: (Double, Double) -> Unit = { _, _ -> },
-    onBookFieldClick: (UserField) -> Unit = {}
+    onBookFieldClick: (UserField) -> Unit = {},
+    onFavoriteFieldClick: (UserField, Boolean) -> Unit = { _, _ -> },
+    onShareFieldClick: (UserField) -> Unit = {}
 ) {
     val context = LocalContext.current
+    ensureMapLibreInitialized(context)
     val focusManager = LocalFocusManager.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val layoutDirection = LocalLayoutDirection.current
@@ -123,6 +127,7 @@ fun UserMapScreen(
     var currentLocation by remember { mutableStateOf<LatLng?>(null) }
     var showFieldList by rememberSaveable { mutableStateOf(false) }
     var selectedFieldForDetail by remember { mutableStateOf<UserField?>(null) }
+    val favoriteFieldIds = remember(favoriteFields) { favoriteFields.map { it.fieldId }.toSet() }
 
     var mapLibreMap by remember { mutableStateOf<MapLibreMap?>(null) }
     val hanoiFields = remember(nearby) {
@@ -179,6 +184,19 @@ fun UserMapScreen(
                 currentLocation = point
                 point?.let { onCurrentLocationDetected(it.latitude, it.longitude) }
             }
+        }
+    }
+
+    LaunchedEffect(isLocationPermissionGranted) {
+        if (isLocationPermissionGranted) {
+            requestCurrentLocationPoint(context) { point ->
+                currentLocation = point
+                point?.let {
+                    onCurrentLocationDetected(it.latitude, it.longitude)
+                }
+            }
+        } else {
+            permissionLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION))
         }
     }
 
@@ -269,16 +287,16 @@ fun UserMapScreen(
                     .snippet(field.location)
                     .icon(
                         iconFactory.fromBitmap(
-                            createSportMarkerBitmap(
-                                context = context,
-                                sportIconType = field.sportIconType,
-                                markerWidthDp = 42f,
-                                markerHeightDp = 52f,
-                                centerYDp = 19f,
-                                iconSizeDp = 24f
+                                createSportMarkerBitmap(
+                                    context = context,
+                                    sportIconType = field.sportIconType,
+                                    markerWidthDp = 38f,
+                                    markerHeightDp = 48f,
+                                    centerYDp = 17f,
+                                    iconSizeDp = 21f
+                                )
                             )
                         )
-                    )
             )
         }
     }
@@ -329,6 +347,7 @@ fun UserMapScreen(
                 },
                 modifier = Modifier
                     .fillMaxWidth()
+                    .height(48.dp)
                     .onFocusChanged { focusState ->
                         if (focusState.isFocused) {
                             showSearchPopup = true
@@ -336,11 +355,18 @@ fun UserMapScreen(
                         }
                     },
                 singleLine = true,
-                placeholder = { Text(stringResource(R.string.map_search_placeholder_fields)) },
+                textStyle = MaterialTheme.typography.bodyMedium,
+                placeholder = {
+                    Text(
+                        text = stringResource(R.string.map_search_placeholder_fields),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                },
                 leadingIcon = {
                     Icon(
                         imageVector = Icons.Default.Search,
-                        contentDescription = null
+                        contentDescription = null,
+                        modifier = Modifier.size(22.dp)
                     )
                 },
                 trailingIcon = {
@@ -353,7 +379,8 @@ fun UserMapScreen(
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Close,
-                                contentDescription = stringResource(R.string.map_clear_search_content_description)
+                                contentDescription = stringResource(R.string.map_clear_search_content_description),
+                                modifier = Modifier.size(22.dp)
                             )
                         }
                     }
@@ -562,7 +589,11 @@ fun UserMapScreen(
         selectedFieldForDetail?.let { field ->
             FieldDetailBottomSheet(
                 field = field,
+                isFavorite = field.fieldId in favoriteFieldIds,
                 onDismissRequest = { selectedFieldForDetail = null },
+                onFavoriteClick = {
+                    onFavoriteFieldClick(field, field.fieldId !in favoriteFieldIds)
+                },
                 onBookClick = {
                     selectedFieldForDetail = null
                     onBookFieldClick(it)
@@ -571,6 +602,10 @@ fun UserMapScreen(
         }
 
     }
+}
+
+private fun ensureMapLibreInitialized(context: Context) {
+    MapLibre.getInstance(context.applicationContext, null, WellKnownTileServer.MapLibre)
 }
 
 private fun fieldPoint(field: UserField): LatLng? {
@@ -620,7 +655,7 @@ private fun MapSportCategoryItem(category: SportCategory, isSelected: Boolean, o
 
     Surface(
         modifier = Modifier
-            .height(52.dp)
+            .height(44.dp)
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(AppPillCornerRadius),
         shadowElevation = shadow,
@@ -632,23 +667,22 @@ private fun MapSportCategoryItem(category: SportCategory, isSelected: Boolean, o
     ) {
         Row(
             modifier = Modifier
-                .padding(horizontal = 12.dp, vertical = 7.dp),
+                .padding(horizontal = 10.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             SportMarkerIcon(
                 iconType = category.iconType,
                 contentDescription = stringResource(R.string.map_category_field_format, category.name),
-                markerSize = 34.dp,
-                iconSize = 16.dp
+                markerSize = 30.dp,
+                iconSize = 14.dp
             )
-            Spacer(Modifier.width(8.dp))
+            Spacer(Modifier.width(6.dp))
             Text(
-                text = stringResource(
-                    R.string.map_category_field_format,
-                    category.name.lowercase()
-                ),
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
+                text = category.name.replaceFirstChar { ch ->
+                    if (ch.isLowerCase()) ch.titlecase() else ch.toString()
+                },
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
                 color = textColor
             )
         }
@@ -760,7 +794,7 @@ private fun normalizeForSearch(text: String): String {
 private fun formatDistanceLabel(context: Context, currentLocation: LatLng?, field: UserField): String {
     val lat = field.latitude ?: return context.getString(R.string.map_distance_na)
     val lon = field.longitude ?: return context.getString(R.string.map_distance_na)
-    val from = currentLocation ?: LatLng(21.0285, 105.8542)
+    val from = currentLocation ?: return context.getString(R.string.map_distance_na)
     val meters = haversineMeters(from.latitude, from.longitude, lat, lon)
     return if (meters < 1000) {
         context.getString(R.string.map_distance_meter_format, meters.toInt())

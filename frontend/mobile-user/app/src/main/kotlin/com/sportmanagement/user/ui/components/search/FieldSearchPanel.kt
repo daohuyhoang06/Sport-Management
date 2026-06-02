@@ -182,8 +182,11 @@ fun FieldSearchPanel(
                         items(results, key = { it.fieldId }) { field ->
                             HomeVenueCard(
                                 field = field,
+                                isFavorite = false,
                                 onCardClick = { onFieldClick(field) },
-                                onBookClick = { onBookFieldClick(field) }
+                                onBookClick = { onBookFieldClick(field) },
+                                onFavoriteClick = {},
+                                onShareClick = {}
                             )
                             Spacer(Modifier.height(12.dp))
                         }

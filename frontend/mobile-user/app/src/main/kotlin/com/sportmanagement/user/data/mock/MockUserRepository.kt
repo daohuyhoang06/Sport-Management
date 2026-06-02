@@ -455,6 +455,9 @@ class   MockUserRepository : UserRepository {
             UserField(name = "Sân Bóng Duy Tân", location = "Cầu Giấy, Hà Nội", price = "400.000đ/h", rating = "4.7")
         )
 
+    override suspend fun setFavoriteField(fieldId: Int, isFavorite: Boolean): List<UserField> =
+        getFavoriteFields()
+
     override suspend fun getProfile(): UserProfile =
         UserProfile(
             name = "Nguyễn Văn An",
