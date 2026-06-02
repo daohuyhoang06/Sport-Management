@@ -87,7 +87,9 @@ fun UserHomeScreen(
     onLoadMore: () -> Unit,
     onBookFieldClick: (UserField) -> Unit,
     onFavoriteFieldClick: (UserField, Boolean) -> Unit,
-    onShareFieldClick: (UserField) -> Unit
+    onShareFieldClick: (UserField) -> Unit,
+    deepLinkFieldIdToOpen: Int? = null,
+    onDeepLinkFieldConsumed: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val layoutDirection = LocalLayoutDirection.current
@@ -169,6 +171,15 @@ fun UserHomeScreen(
     }
     val visibleFields = if (isSearching) filteredSearchResults else filteredHomeFields
     val favoriteFieldIds = remember(favoriteFields) { favoriteFields.map { it.fieldId }.toSet() }
+
+    LaunchedEffect(deepLinkFieldIdToOpen, fields, searchResults) {
+        val targetId = deepLinkFieldIdToOpen ?: return@LaunchedEffect
+        val fieldFromData = (fields + searchResults).firstOrNull { it.fieldId == targetId }
+        if (fieldFromData != null) {
+            selectedFieldForDetail = fieldFromData
+            onDeepLinkFieldConsumed()
+        }
+    }
 
     LaunchedEffect(searchQuery) {
         val cleaned = searchQuery.trim()
@@ -329,7 +340,6 @@ fun UserHomeScreen(
                 onFavoriteClick = {
                     onFavoriteFieldClick(selectedField, selectedField.fieldId !in favoriteFieldIds)
                 },
-                onShareClick = { onShareFieldClick(selectedField) },
                 onBookClick = { field ->
                     selectedFieldForDetail = null
                     onBookFieldClick(field)

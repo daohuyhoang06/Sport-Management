@@ -50,10 +50,15 @@ import java.util.Locale
 fun BookingScheduleScreen(
     fieldId: Int,
     initialDateText: String,
+    sessionKey: Int = 0,
     onBackClick: () -> Unit,
     onNextClick: (BookingConfirmationData) -> Unit,
     modifier: Modifier = Modifier,
-    viewModel: BookingScheduleViewModel = rememberBookingScheduleViewModel(fieldId, initialDateText)
+    viewModel: BookingScheduleViewModel = rememberBookingScheduleViewModel(
+        fieldId = fieldId,
+        initialDateText = initialDateText,
+        sessionKey = sessionKey
+    )
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -155,10 +160,11 @@ fun BookingScheduleScreen(
 @Composable
 private fun rememberBookingScheduleViewModel(
     fieldId: Int,
-    initialDateText: String
+    initialDateText: String,
+    sessionKey: Int
 ): BookingScheduleViewModel {
-    val key = remember(fieldId, initialDateText) {
-        "booking_schedule_${fieldId}_${initialDateText}"
+    val key = remember(fieldId, initialDateText, sessionKey) {
+        "booking_schedule_${fieldId}_${initialDateText}_$sessionKey"
     }
     return viewModel(
         key = key,
@@ -193,6 +199,7 @@ private fun BookingScheduleScreenPreview() {
         BookingScheduleScreen(
             fieldId = 1,
             initialDateText = "25/04/2026",
+            sessionKey = 1,
             onBackClick = {},
             onNextClick = {}
         )

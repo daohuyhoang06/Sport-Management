@@ -2,14 +2,19 @@
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -25,12 +30,18 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.sportmanagement.user.R
 import com.sportmanagement.user.domain.model.SportIconType
+import com.sportmanagement.user.ui.theme.AppCtaAmber
 import com.sportmanagement.user.ui.theme.AppCtaCompactHorizontalPadding
 import com.sportmanagement.user.ui.theme.AppCtaCompactVerticalPadding
 import com.sportmanagement.user.ui.theme.AppCtaCornerRadius
+import com.sportmanagement.user.ui.theme.AppOnCtaAmber
 import com.sportmanagement.user.ui.theme.AppPillCornerRadius
 
 @Composable
@@ -38,27 +49,148 @@ internal fun HomeBookButton(
     sportIconType: SportIconType,
     onClick: () -> Unit
 ) {
-    val containerColor = homeSportAccentColor(sportIconType)
-    val contentColor = if (containerColor.luminance() > 0.55f) Color(0xFF1A1A1A) else Color.White
+    BoxWithConstraints {
+        val compactLayout = maxWidth < 120.dp
+        val minWidth = if (compactLayout) 58.dp else 64.dp
+        val textSize: TextUnit = when {
+            maxWidth < 100.dp -> 10.sp
+            maxWidth < 116.dp -> 10.5.sp
+            else -> 11.sp
+        }
 
-    Button(
-        onClick = onClick,
-        modifier = Modifier.defaultMinSize(minWidth = 64.dp, minHeight = 30.dp),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = containerColor,
-            contentColor = contentColor
-        ),
-        shape = RoundedCornerShape(AppCtaCornerRadius),
-        contentPadding = PaddingValues(
-            horizontal = (AppCtaCompactHorizontalPadding - 3.dp),
-            vertical = (AppCtaCompactVerticalPadding - 1.dp)
-        )
-    ) {
+        Button(
+            onClick = onClick,
+            modifier = Modifier.defaultMinSize(minWidth = minWidth, minHeight = 30.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = AppCtaAmber,
+                contentColor = AppOnCtaAmber
+            ),
+            shape = RoundedCornerShape(AppCtaCornerRadius),
+            contentPadding = PaddingValues(
+                horizontal = if (compactLayout) 5.dp else (AppCtaCompactHorizontalPadding - 3.dp),
+                vertical = if (compactLayout) 3.dp else (AppCtaCompactVerticalPadding - 1.dp)
+            )
+        ) {
+            Text(
+                text = stringResource(R.string.home_book_button),
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = textSize),
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                softWrap = false,
+                overflow = TextOverflow.Clip
+            )
+        }
+    }
+}
+
+@Composable
+internal fun HomeVenueTitleText(
+    text: String,
+    modifier: Modifier = Modifier
+) {
+    BoxWithConstraints(modifier = modifier) {
+        val fontSize = when {
+            maxWidth < 240.dp -> 14.sp
+            maxWidth < 280.dp -> 14.sp
+            maxWidth < 320.dp -> 15.sp
+            maxWidth < 360.dp -> 16.sp
+            maxWidth < 400.dp -> 16.sp
+            else -> 17.sp
+        }
+        val lineHeight = when {
+            fontSize <= 14.sp -> 15.sp
+            fontSize <= 15.sp -> 16.sp
+            else -> 17.sp
+        }
+
         Text(
-            text = stringResource(R.string.home_book_button),
-            style = MaterialTheme.typography.labelSmall,
-            fontWeight = FontWeight.SemiBold
+            text = text,
+            style = MaterialTheme.typography.titleMedium.copy(
+                fontSize = fontSize,
+                lineHeight = lineHeight
+            ),
+            fontWeight = FontWeight.ExtraBold,
+            color = MaterialTheme.colorScheme.onSurface,
+            softWrap = true,
+            overflow = TextOverflow.Clip
         )
+    }
+}
+
+@Composable
+internal fun HomeVenueDistanceLocationText(
+    distance: String,
+    location: String,
+    modifier: Modifier = Modifier
+) {
+    BoxWithConstraints(modifier = modifier) {
+        val compact = maxWidth < 210.dp
+        val distanceSize = if (compact) 10.sp else 11.sp
+        val locationSize = if (compact) 11.sp else 12.sp
+        val locationLineHeight = if (compact) 13.sp else 14.sp
+
+        Row(
+            verticalAlignment = Alignment.Top,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            if (distance.isNotBlank()) {
+                Text(
+                    text = "($distance) ",
+                    style = MaterialTheme.typography.bodySmall.copy(fontSize = distanceSize),
+                    color = Color(0xFFD62828),
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1
+                )
+            }
+            Text(
+                text = location,
+                style = MaterialTheme.typography.bodySmall.copy(
+                    fontSize = locationSize,
+                    lineHeight = locationLineHeight,
+                    textAlign = TextAlign.Start
+                ),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                softWrap = false,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+@Composable
+internal fun HomeVenueHoursText(
+    hours: String,
+    modifier: Modifier = Modifier
+) {
+    BoxWithConstraints(modifier = modifier) {
+        val compact = maxWidth < 220.dp
+        val fontSize = if (compact) 10.5.sp else 11.5.sp
+        val lineHeight = if (compact) 12.sp else 13.sp
+        val maxLines = if (compact) 2 else 1
+
+        Row(verticalAlignment = Alignment.Top, modifier = Modifier.fillMaxWidth()) {
+            Icon(
+                imageVector = Icons.Default.AccessTime,
+                contentDescription = null,
+                modifier = Modifier.size(if (compact) 13.dp else 14.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.size(4.dp))
+            Text(
+                text = hours,
+                style = MaterialTheme.typography.bodySmall.copy(
+                    fontSize = fontSize,
+                    lineHeight = lineHeight
+                ),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = maxLines,
+                softWrap = true,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+        }
     }
 }
 

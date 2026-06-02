@@ -42,7 +42,6 @@ import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Launch
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.SportsSoccer
 import androidx.compose.material.icons.filled.SportsTennis
@@ -88,6 +87,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.window.Dialog
 import com.sportmanagement.user.R
@@ -95,15 +95,19 @@ import com.sportmanagement.user.domain.model.SportIconType
 import com.sportmanagement.user.domain.model.UserField
 import com.sportmanagement.user.ui.components.SportCircleAvatar
 import com.sportmanagement.user.ui.components.SportMarkerIcon
+import com.sportmanagement.user.ui.components.home.HomeVenueTitleText
+import com.sportmanagement.user.ui.share.FieldShareLink
 import com.sportmanagement.user.ui.theme.AppBadgeCornerRadius
 import com.sportmanagement.user.ui.theme.AppCardCornerRadius
 import com.sportmanagement.user.ui.theme.AppCtaCompactHorizontalPadding
 import com.sportmanagement.user.ui.theme.AppCtaCompactVerticalPadding
+import com.sportmanagement.user.ui.theme.AppCtaAmber
 import com.sportmanagement.user.ui.theme.AppCtaCornerRadius
 import com.sportmanagement.user.ui.theme.AppInputCornerRadius
 import com.sportmanagement.user.ui.theme.AppPillCornerRadius
 import com.sportmanagement.user.ui.theme.AppMediaCornerRadius
 import com.sportmanagement.user.ui.theme.AppSheetTopCornerRadius
+import com.sportmanagement.user.ui.theme.AppOnCtaAmber
 import kotlinx.coroutines.launch
 import java.text.Normalizer
 import java.util.Locale
@@ -130,7 +134,6 @@ fun FieldDetailBottomSheet(
     isFavorite: Boolean,
     onDismissRequest: () -> Unit,
     onFavoriteClick: () -> Unit,
-    onShareClick: () -> Unit,
     onBookClick: (UserField) -> Unit
 ) {
     val context = LocalContext.current
@@ -142,7 +145,7 @@ fun FieldDetailBottomSheet(
     var selectedTab by rememberSaveable(field.name) { mutableIntStateOf(0) }
     var previewImage by remember { mutableStateOf<Int?>(null) }
     var ratingBadgeHeightPx by remember { mutableIntStateOf(0) }
-    val bookingLink = remember(field.name) { bookingLinkFor(field.name) }
+    val bookingLink = remember(field.fieldId, field.name) { bookingLinkFor(field) }
     val hotline = remember(field.name) { context.getString(R.string.field_detail_default_hotline) }
     val headerImageHeight = 232.dp
     val infoCardOverlap = 28.dp
@@ -215,10 +218,6 @@ fun FieldDetailBottomSheet(
                                         onClick = { openDirections(context, field) }
                                     )
                                     CircleActionButton(
-                                        icon = Icons.Default.Share,
-                                        onClick = onShareClick
-                                    )
-                                    CircleActionButton(
                                         icon = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
                                         iconTint = if (isFavorite) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
                                         onClick = onFavoriteClick
@@ -227,8 +226,8 @@ fun FieldDetailBottomSheet(
                                         onClick = { onBookClick(field) },
                                         modifier = Modifier.defaultMinSize(minWidth = 70.dp, minHeight = 34.dp),
                                         colors = ButtonDefaults.buttonColors(
-                                            containerColor = sportAccentColor(field.sportIconType),
-                                            contentColor = sportAccentOnColor(field.sportIconType)
+                                            containerColor = AppCtaAmber,
+                                            contentColor = AppOnCtaAmber
                                         ),
                                         shape = RoundedCornerShape(AppCtaCornerRadius),
                                         contentPadding = PaddingValues(
@@ -271,9 +270,15 @@ fun FieldDetailBottomSheet(
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(
                                             text = field.name,
-                                            style = MaterialTheme.typography.titleMedium,
+                                            style = MaterialTheme.typography.titleLarge.copy(
+                                                fontSize = 18.sp,
+                                                lineHeight = 20.sp
+                                            ),
                                             color = colors.onSurface,
-                                            fontWeight = FontWeight.ExtraBold
+                                            fontWeight = FontWeight.ExtraBold,
+                                            maxLines = 2,
+                                            softWrap = true,
+                                            overflow = TextOverflow.Ellipsis
                                         )
                                         Spacer(Modifier.height(6.dp))
                                         SportTypeSelectedPill(type = field.sportIconType)
@@ -459,10 +464,13 @@ private fun CircleActionButton(
 @Composable
 private fun SportTypeSelectedPill(type: SportIconType) {
     val accent = sportAccentColor(type)
-    val contentColor = sportAccentOnColor(type)
     Surface(
         shape = RoundedCornerShape(AppPillCornerRadius),
-        color = accent
+        color = Color.Transparent,
+        border = androidx.compose.foundation.BorderStroke(
+            width = 1.8.dp,
+            color = accent.copy(alpha = 0.85f)
+        )
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
@@ -473,14 +481,13 @@ private fun SportTypeSelectedPill(type: SportIconType) {
                 contentDescription = null,
                 markerSize = 18.dp,
                 iconSize = 9.dp,
-                iconOffsetY = (-1).dp,
-                iconTint = contentColor
+                iconOffsetY = (-1).dp
             )
             Spacer(Modifier.width(6.dp))
             Text(
                 text = stringResource(sportLabelRes(type)).lowercase(Locale("vi", "VN")),
                 style = MaterialTheme.typography.bodySmall,
-                color = contentColor,
+                color = accent,
                 fontWeight = FontWeight.SemiBold
             )
         }
@@ -872,9 +879,13 @@ private fun ratingLabel(context: Context, rating: String): String {
     }
 }
 
-private fun bookingLinkFor(fieldName: String): String {
-    val slug = normalizeSlug(fieldName)
-    return "https://booking.sport-management.vn/san/$slug"
+private fun bookingLinkFor(field: UserField): String {
+    val fieldId = field.fieldId
+    if (fieldId > 0) {
+        return FieldShareLink.webFieldLink(fieldId)
+    }
+    val slug = normalizeSlug(field.name)
+    return "https://sport-management.vn/field/$slug"
 }
 
 private fun normalizeSlug(value: String): String {

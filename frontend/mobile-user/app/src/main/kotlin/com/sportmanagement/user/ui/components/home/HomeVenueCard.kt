@@ -37,7 +37,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.sportmanagement.user.domain.model.SportIconType
 import com.sportmanagement.user.domain.model.UserField
@@ -135,35 +134,20 @@ private fun LargeVenueCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(horizontal = 12.dp, vertical = 14.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.Top
                 ) {
                     SportCircleAvatar(iconType = field.sportIconType)
-                    Spacer(Modifier.width(10.dp))
 
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            field.name,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.ExtraBold
+                        HomeVenueTitleText(text = field.name)
+                        Spacer(Modifier.height(2.dp))
+                        HomeVenueDistanceLocationText(
+                            distance = field.distance,
+                            location = field.location
                         )
                         Spacer(Modifier.height(2.dp))
-                        HomeDistanceLocationText(field = field)
-                        Spacer(Modifier.height(2.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                Icons.Default.AccessTime,
-                                contentDescription = null,
-                                modifier = Modifier.size(14.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Spacer(Modifier.width(4.dp))
-                            Text(
-                                text = field.hours,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
+                        HomeVenueHoursText(hours = field.hours)
                     }
                     HomeBookButton(
                         sportIconType = field.sportIconType,
@@ -208,7 +192,7 @@ private fun SmallHorizontalCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(start = 12.dp, end = 12.dp, top = 42.dp, bottom = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.Top
             ) {
                 Image(
                     painter = painterResource(id = sportFieldDrawableRes(field.sportIconType)),
@@ -229,13 +213,12 @@ private fun SmallHorizontalCard(
                 Spacer(Modifier.width(10.dp))
 
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        field.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.ExtraBold
-                    )
+                    HomeVenueTitleText(text = field.name)
                     Spacer(Modifier.height(2.dp))
-                    HomeDistanceLocationText(field = field)
+                    HomeVenueDistanceLocationText(
+                        distance = field.distance,
+                        location = field.location
+                    )
                     if (field.availability.isNotEmpty()) {
                         Text(
                             field.availability,
@@ -303,20 +286,19 @@ private fun SmallNoImageCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(start = 12.dp, end = 12.dp, top = 42.dp, bottom = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.Top
             ) {
                 SportCircleAvatar(iconType = field.sportIconType, size = 60.dp, iconSize = 30.dp)
 
                 Spacer(Modifier.width(12.dp))
 
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        field.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.ExtraBold
-                    )
+                    HomeVenueTitleText(text = field.name)
                     Spacer(Modifier.height(2.dp))
-                    HomeDistanceLocationText(field = field)
+                    HomeVenueDistanceLocationText(
+                        distance = field.distance,
+                        location = field.location
+                    )
                     if (field.availability.isNotEmpty()) {
                         Text(
                             field.availability,
@@ -351,27 +333,3 @@ private fun SmallNoImageCard(
     }
 }
 
-@Composable
-private fun HomeDistanceLocationText(field: UserField) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        if (field.distance.isNotBlank()) {
-            Text(
-                text = "(${field.distance}) ",
-                style = MaterialTheme.typography.bodySmall,
-                color = Color(0xFFD62828),
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1
-            )
-        }
-        Text(
-            text = field.location,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-    }
-}

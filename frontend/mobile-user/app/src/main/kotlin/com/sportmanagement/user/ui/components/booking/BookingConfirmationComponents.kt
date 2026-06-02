@@ -1,4 +1,4 @@
-package com.sportmanagement.user.ui.components.booking
+﻿package com.sportmanagement.user.ui.components.booking
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -20,7 +20,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.Button
@@ -43,7 +42,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.input.KeyboardType
 import com.sportmanagement.user.R
 import com.sportmanagement.user.ui.theme.AppCompactCornerRadius
 import com.sportmanagement.user.ui.theme.AppCtaAmber
@@ -243,7 +244,11 @@ fun ConfirmFieldLabel(text: String) {
 }
 
 @Composable
-fun ConfirmReadonlyField(value: String) {
+fun ConfirmReadonlyField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String
+) {
     val inputCardShape = RoundedCornerShape(AppCompactCornerRadius)
     Surface(
         shape = inputCardShape,
@@ -253,29 +258,49 @@ fun ConfirmReadonlyField(value: String) {
             .padding(horizontal = AppScreenHorizontalPadding)
             .border(1.dp, MaterialTheme.colorScheme.outlineVariant, inputCardShape)
     ) {
-        Row(
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = AppFieldHorizontalPadding, vertical = AppFieldVerticalPadding),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                text = value,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface
+                .padding(horizontal = AppFieldHorizontalPadding, vertical = 2.dp),
+            textStyle = MaterialTheme.typography.titleMedium,
+            placeholder = {
+                Text(
+                    text = placeholder,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            },
+            singleLine = true,
+            trailingIcon = {
+                if (value.isNotBlank()) {
+                    IconButton(onClick = { onValueChange("") }) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = stringResource(R.string.booking_confirm_clear_input)
+                        )
+                    }
+                }
+            },
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent,
+                focusedBorderColor = Color.Transparent,
+                unfocusedBorderColor = Color.Transparent,
+                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                unfocusedTextColor = MaterialTheme.colorScheme.onSurface
             )
-            Icon(
-                imageVector = Icons.Default.Close,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary
-            )
-        }
+        )
     }
 }
 
 @Composable
-fun ConfirmPhoneField(value: String) {
+fun ConfirmPhoneField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    placeholder: String
+) {
     val inputCardShape = RoundedCornerShape(AppCompactCornerRadius)
     Surface(
         shape = inputCardShape,
@@ -285,48 +310,41 @@ fun ConfirmPhoneField(value: String) {
             .padding(horizontal = AppScreenHorizontalPadding)
             .border(1.dp, MaterialTheme.colorScheme.outlineVariant, inputCardShape)
     ) {
-        Row(
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = AppFieldHorizontalPadding, vertical = AppFieldVerticalPadding),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(28.dp)
-                    .background(Color(0xFFE53935), CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
+                .padding(horizontal = AppFieldHorizontalPadding, vertical = 2.dp),
+            textStyle = MaterialTheme.typography.titleMedium,
+            placeholder = {
                 Text(
-                    text = "\u2605",
-                    color = Color(0xFFFFEB3B),
-                    style = MaterialTheme.typography.bodyLarge
+                    text = placeholder,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-            }
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = "+84",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface
+            },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+            trailingIcon = {
+                if (value.isNotBlank()) {
+                    IconButton(onClick = { onValueChange("") }) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = stringResource(R.string.booking_confirm_clear_input)
+                        )
+                    }
+                }
+            },
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent,
+                focusedBorderColor = Color.Transparent,
+                unfocusedBorderColor = Color.Transparent,
+                focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                unfocusedTextColor = MaterialTheme.colorScheme.onSurface
             )
-            Icon(
-                imageVector = Icons.Default.ArrowDropDown,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Text(
-                text = value,
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.weight(1f)
-            )
-            Icon(
-                imageVector = Icons.Default.Close,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary
-            )
-        }
+        )
     }
 }
 

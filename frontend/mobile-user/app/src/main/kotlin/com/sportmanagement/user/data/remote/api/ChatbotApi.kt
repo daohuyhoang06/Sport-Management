@@ -1,5 +1,6 @@
 package com.sportmanagement.user.data.remote.api
 
+import com.sportmanagement.user.BuildConfig
 import com.sportmanagement.user.domain.model.ChatbotMessage
 import com.sportmanagement.user.domain.model.ChatbotSender
 import kotlinx.coroutines.Dispatchers
@@ -11,7 +12,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 object ChatbotApi {
-    private const val BASE_URL = "http://127.0.0.1:5000"
+    private val BASE_URL = BuildConfig.API_BASE_URL
 
     suspend fun sendMessage(
         message: String,
@@ -78,3 +79,4 @@ object ChatbotApi {
         }
     }
 }
+

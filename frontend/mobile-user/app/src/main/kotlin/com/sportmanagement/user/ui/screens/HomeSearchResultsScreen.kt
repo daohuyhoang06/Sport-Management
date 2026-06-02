@@ -269,7 +269,6 @@ fun HomeSearchResultsScreen(
                 onFavoriteClick = {
                     onFavoriteFieldClick(selectedField, selectedField.fieldId !in favoriteFieldIds)
                 },
-                onShareClick = { onShareFieldClick(selectedField) },
                 onBookClick = { field ->
                     selectedFieldForDetail = null
                     onBookFieldClick(field)

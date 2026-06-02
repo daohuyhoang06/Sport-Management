@@ -11,5 +11,8 @@ data class BookingConfirmationData(
     val selectedDate: String,
     val ranges: List<BookingConfirmationRange>,
     val totalMinutes: Int,
-    val totalPrice: Int
+    val totalPrice: Int,
+    val fieldId: Int? = null,
+    val fieldName: String = "",
+    val fieldAddress: String = ""
 )

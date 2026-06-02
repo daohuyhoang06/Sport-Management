@@ -1,5 +1,7 @@
 ﻿package com.sportmanagement.user.ui.components.booking
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -27,6 +29,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -35,7 +38,6 @@ import com.sportmanagement.user.domain.model.BookingSelectionSummary
 import com.sportmanagement.user.ui.theme.AppCardCornerRadius
 import com.sportmanagement.user.ui.theme.AppCtaAmber
 import com.sportmanagement.user.ui.theme.AppCtaCornerRadius
-import com.sportmanagement.user.ui.theme.AppPillCornerRadius
 import com.sportmanagement.user.ui.theme.AppCtaWideHeight
 import com.sportmanagement.user.ui.theme.AppOnCtaAmber
 import java.text.NumberFormat
@@ -61,26 +63,28 @@ fun BookingBottomActionBar(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
-                .padding(bottom = 10.dp),
+                .padding(bottom = 6.dp),
             horizontalArrangement = Arrangement.End
         ) {
             Surface(
-                shape = RoundedCornerShape(AppPillCornerRadius),
-                color = MaterialTheme.colorScheme.surface,
-                tonalElevation = 2.dp,
-                shadowElevation = 4.dp
+                shape = RoundedCornerShape(999.dp),
+                color = Color(0xFFF6F7F8),
+                border = BorderStroke(1.dp, Color(0xFFB8BEC6)),
+                tonalElevation = 0.dp,
+                shadowElevation = 2.dp
             ) {
                 Slider(
                     value = sliderValue,
                     onValueChange = onSliderChange,
                     valueRange = 4f..68f,
                     modifier = Modifier
-                        .width(170.dp)
-                        .padding(horizontal = 8.dp),
+                        .width(180.dp)
+                        .height(44.dp)
+                        .padding(horizontal = 10.dp),
                     colors = SliderDefaults.colors(
                         thumbColor = MaterialTheme.colorScheme.primary,
                         activeTrackColor = MaterialTheme.colorScheme.primary,
-                        inactiveTrackColor = MaterialTheme.colorScheme.outlineVariant
+                        inactiveTrackColor = Color(0xFFD4E7FA)
                     )
                 )
             }

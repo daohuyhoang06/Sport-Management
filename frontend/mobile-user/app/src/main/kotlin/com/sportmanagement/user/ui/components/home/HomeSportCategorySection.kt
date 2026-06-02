@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -41,7 +42,7 @@ fun HomeSportCategorySection(
     LazyRow(
         modifier = modifier,
         contentPadding = PaddingValues(horizontal = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp)
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         itemsIndexed(sportCategories) { index, category ->
             SportCategoryItem(
@@ -70,53 +71,60 @@ private fun SportCategoryItem(
         label = "textColor"
     )
     val chipScale by animateFloatAsState(
-        targetValue = if (isSelected) 1.12f else 1f,
+        targetValue = if (isSelected) 1.04f else 1f,
         animationSpec = tween(220),
         label = "chipScale"
     )
 
     Column(
+        modifier = Modifier.width(72.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.clickable(onClick = onClick)
+        verticalArrangement = Arrangement.Top
     ) {
-        Surface(
-            modifier = Modifier
-                .size(54.dp)
-                .graphicsLayer {
-                    scaleX = chipScale
-                    scaleY = chipScale
-                },
-            shape = RoundedCornerShape(AppInputCornerRadius),
-            color = bgColor,
-            border = BorderStroke(
-                width = if (isSelected) 2.dp else 1.5.dp,
-                color = if (isSelected) {
-                    lerp(
-                        MaterialTheme.colorScheme.primaryContainer,
-                        MaterialTheme.colorScheme.primary,
-                        0.2f
-                    )
-                } else {
-                    MaterialTheme.colorScheme.outlineVariant
-                }
-            )
+        Box(
+            modifier = Modifier.clickable(onClick = onClick),
+            contentAlignment = Alignment.Center
         ) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                SportMarkerIcon(
-                    iconType = category.iconType,
-                    contentDescription = category.name
+            Surface(
+                modifier = Modifier
+                    .size(54.dp)
+                    .graphicsLayer {
+                        scaleX = chipScale
+                        scaleY = chipScale
+                    },
+                shape = RoundedCornerShape(AppInputCornerRadius),
+                color = bgColor,
+                border = BorderStroke(
+                    width = if (isSelected) 2.dp else 1.5.dp,
+                    color = if (isSelected) {
+                        lerp(
+                            MaterialTheme.colorScheme.primaryContainer,
+                            MaterialTheme.colorScheme.primary,
+                            0.2f
+                        )
+                    } else {
+                        MaterialTheme.colorScheme.outlineVariant
+                    }
                 )
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    SportMarkerIcon(
+                        iconType = category.iconType,
+                        contentDescription = category.name
+                    )
+                }
             }
         }
         Spacer(Modifier.height(6.dp))
         Text(
             category.name,
-            style = MaterialTheme.typography.labelMedium,
+            style = MaterialTheme.typography.labelSmall,
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-            color = textColor
+            color = textColor,
+            maxLines = 1
         )
     }
 }

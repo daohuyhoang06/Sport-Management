@@ -1,5 +1,6 @@
 package com.sportmanagement.user.data.remote.api
 
+import com.sportmanagement.user.BuildConfig
 import com.sportmanagement.user.data.remote.dto.SportCategoryDto
 import com.sportmanagement.user.data.remote.dto.UserFieldDto
 import com.sportmanagement.user.data.remote.dto.UserProfileDto
@@ -18,7 +19,7 @@ import java.net.URLEncoder
 import java.net.URL
 
 class UserApi(
-    private val baseUrl: String = BASE_URL
+    private val baseUrl: String = BuildConfig.API_BASE_URL
 ) {
 
     suspend fun getHomeFields(
@@ -232,7 +233,9 @@ class UserApi(
             .filter { it.isNotBlank() }
 
         return UserFieldDto(
-            fieldId = optIntOrNull("field_id"),
+            fieldId = optIntOrNull("field_id")
+                ?: optIntOrNull("fieldId")
+                ?: optIntOrNull("id"),
             name = optString("name").ifBlank { optString("field_name") },
             location = optString("location"),
             price = optString("price"),
@@ -254,9 +257,6 @@ class UserApi(
         )
     }
 
-    companion object {
-        private const val BASE_URL = "http://127.0.0.1:5000"
-    }
 }
 
 private fun List<Pair<String, String>>.toQueryString(): String =
@@ -277,3 +277,4 @@ private fun JSONObject.optDoubleOrNull(name: String): Double? =
 
 private fun JSONObject.optBooleanOrNull(name: String): Boolean? =
     if (has(name) && !isNull(name)) optBoolean(name) else null
+
