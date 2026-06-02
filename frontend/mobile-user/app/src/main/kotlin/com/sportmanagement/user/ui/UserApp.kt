@@ -30,16 +30,12 @@ import com.sportmanagement.user.ui.screens.BookingConfirmationScreen
 import com.sportmanagement.user.ui.screens.HomeSearchFilterScreen
 import com.sportmanagement.user.ui.screens.BookingPaymentScreen
 import com.sportmanagement.user.ui.screens.BookingScheduleScreen
-<<<<<<< HEAD
-import com.sportmanagement.user.ui.screens.FieldDetailScreen
-=======
 import com.sportmanagement.user.ui.screens.BookingDetailScreen
 import com.sportmanagement.user.ui.screens.ConversationScreen
 import com.sportmanagement.user.ui.screens.BookingInfo
 import com.sportmanagement.user.ui.screens.ConversationInfo
 import com.sportmanagement.user.ui.screens.NotificationDetailScreen
 import com.sportmanagement.user.ui.screens.NotificationDetailInfo
->>>>>>> origin/develop
 import com.sportmanagement.user.ui.screens.LoginScreen
 import com.sportmanagement.user.ui.screens.RegisterScreen
 import com.sportmanagement.user.ui.screens.InboxScreen
@@ -74,13 +70,9 @@ fun UserApp(
     var showConversationScreen by rememberSaveable { mutableStateOf(false) }
     var showNotificationDetailScreen by rememberSaveable { mutableStateOf(false) }
     var bookingConfirmationData by remember { mutableStateOf<BookingConfirmationData?>(null) }
-<<<<<<< HEAD
-    var selectedFieldDetail by remember { mutableStateOf<FieldDetail?>(null) }
-=======
     var bookingDetailInfo by remember { mutableStateOf<BookingInfo?>(null) }
     var conversationInfo by remember { mutableStateOf<ConversationInfo?>(null) }
     var notificationDetailInfo by remember { mutableStateOf<NotificationDetailInfo?>(null) }
->>>>>>> origin/develop
 
     val closeHomeSearchResultsFlow = {
         showHomeSearchResultsScreen = false
@@ -208,11 +200,6 @@ fun UserApp(
                 BookingPaymentScreen(
                     confirmationData = bookingConfirmationData!!,
                     userName = uiState.profile.name,
-<<<<<<< HEAD
-                    onBookFieldClick = { field ->
-                        // Mở FieldDetailScreen trước, user sẽ bấm "Đặt sân ngay" từ đó
-                        selectedFieldDetail = mockFieldDetail().copy(name = field.name)
-=======
                     userPhone = uiState.profile.phone,
                     onBackClick = {
                         showBookingPaymentScreen = false
@@ -231,7 +218,6 @@ fun UserApp(
                         bookingConfirmationData = null
                         closeHomeSearchResultsFlow()
                         resolvedUserViewModel.onTabSelected(UserTab.Home)
->>>>>>> origin/develop
                     }
                 )
             } else if (showBookingConfirmationScreen && bookingConfirmationData != null) {

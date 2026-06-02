@@ -48,6 +48,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.sportmanagement.manager.ui.theme.AppCardCornerRadius
+import com.sportmanagement.manager.ui.theme.AppCtaWideHeight
+import com.sportmanagement.manager.ui.theme.AppHeaderGradientEnd
+import com.sportmanagement.manager.ui.theme.AppHeaderGradientStart
+import com.sportmanagement.manager.ui.theme.AppInputCornerRadius
+import com.sportmanagement.manager.ui.theme.AppPanelCornerRadius
 import com.sportmanagement.manager.ui.theme.SportManagerTheme
 
 @Composable
@@ -68,9 +74,9 @@ fun LoginScreen(
             .background(
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        Color(0xFF1565C0),
-                        Color(0xFF1976D2),
-                        Color(0xFFE3F2FD)
+                        AppHeaderGradientStart,
+                        AppHeaderGradientEnd,
+                        Color(0xFFE8F0FB)
                     )
                 )
             )
@@ -87,7 +93,7 @@ fun LoginScreen(
             Box(
                 modifier = Modifier
                     .size(80.dp)
-                    .clip(RoundedCornerShape(24.dp))
+                    .clip(RoundedCornerShape(AppCardCornerRadius * 2))
                     .background(Color.White.copy(alpha = 0.2f)),
                 contentAlignment = Alignment.Center
             ) {
@@ -108,7 +114,7 @@ fun LoginScreen(
                 color = Color.White
             )
             Text(
-                text = "Hệ thống quản lý sân bóng",
+                text = "Hệ thống quản lý sân thể thao",
                 fontSize = 14.sp,
                 color = Color.White.copy(alpha = 0.8f)
             )
@@ -118,7 +124,7 @@ fun LoginScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(24.dp))
+                    .clip(RoundedCornerShape(AppPanelCornerRadius))
                     .background(Color.White)
                     .padding(24.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -132,7 +138,7 @@ fun LoginScreen(
                 Text(
                     text = "Nhập thông tin tài khoản quản lý của bạn",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.secondary
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 Spacer(Modifier.height(4.dp))
@@ -145,7 +151,7 @@ fun LoginScreen(
                         Icon(Icons.Filled.Person, null, tint = MaterialTheme.colorScheme.outline)
                     },
                     singleLine = true,
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(AppInputCornerRadius),
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -168,7 +174,7 @@ fun LoginScreen(
                     visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                     singleLine = true,
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(AppInputCornerRadius),
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -204,8 +210,8 @@ fun LoginScreen(
                     enabled = isLoginEnabled,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(52.dp),
-                    shape = RoundedCornerShape(12.dp),
+                        .height(AppCtaWideHeight),
+                    shape = RoundedCornerShape(AppInputCornerRadius),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary
                     )
