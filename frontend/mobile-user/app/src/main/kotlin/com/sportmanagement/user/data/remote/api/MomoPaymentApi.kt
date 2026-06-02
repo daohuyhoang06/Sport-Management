@@ -1,5 +1,6 @@
 package com.sportmanagement.user.data.remote.api
 
+import com.sportmanagement.user.BuildConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -19,12 +20,20 @@ data class MomoPaymentResponse(
     val qrCodeUrl: String?
 )
 
+data class MomoPaymentStatusResponse(
+    val orderId: String,
+    val paymentStatus: String?,
+    val failureReason: String?,
+    val transactionId: String?
+)
+
 object MomoPaymentApi {
-    private const val BASE_URL = "http://10.0.2.2:5000"
+    private val BASE_URL = BuildConfig.API_BASE_URL
 
     suspend fun createDemoPayment(
         amount: Int,
-        orderInfo: String
+        orderInfo: String,
+        redirectUrl: String? = null
     ): MomoPaymentResponse = withContext(Dispatchers.IO) {
         val url = URL("$BASE_URL/api/payments/momo/create")
         val connection = (url.openConnection() as HttpURLConnection).apply {
@@ -40,6 +49,7 @@ object MomoPaymentApi {
             .put("demo", true)
             .put("amount", amount)
             .put("orderInfo", orderInfo)
+            .put("redirectUrl", redirectUrl)
             .toString()
 
         connection.outputStream.use { stream ->
@@ -72,6 +82,41 @@ object MomoPaymentApi {
             qrCodeUrl = json.optStringOrNull("qrCodeUrl")
         )
     }
+
+    suspend fun getPaymentByOrderId(orderId: String): MomoPaymentStatusResponse =
+        withContext(Dispatchers.IO) {
+            val connection = (URL("$BASE_URL/api/payments/order/$orderId").openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                connectTimeout = 30_000
+                readTimeout = 30_000
+                setRequestProperty("Accept", "application/json")
+            }
+
+            try {
+                val responseCode = connection.responseCode
+                val responseText = if (responseCode in 200..299) {
+                    connection.inputStream.bufferedReader().use { it.readText() }
+                } else {
+                    connection.errorStream?.bufferedReader()?.use { it.readText() }.orEmpty()
+                }
+
+                val json = responseText.takeIf { it.isNotBlank() }?.let(::JSONObject)
+                    ?: JSONObject()
+
+                if (responseCode !in 200..299) {
+                    throw IOException(json.optString("message", "HTTP $responseCode"))
+                }
+
+                MomoPaymentStatusResponse(
+                    orderId = json.optString("order_id"),
+                    paymentStatus = json.optStringOrNull("payment_status"),
+                    failureReason = json.optStringOrNull("failure_reason"),
+                    transactionId = json.optStringOrNull("transaction_id")
+                )
+            } finally {
+                connection.disconnect()
+            }
+        }
 }
 
 private fun JSONObject.optStringOrNull(name: String): String? =
@@ -79,3 +124,4 @@ private fun JSONObject.optStringOrNull(name: String): String? =
 
 private fun JSONObject.optIntOrNull(name: String): Int? =
     if (has(name) && !isNull(name)) optInt(name) else null
+

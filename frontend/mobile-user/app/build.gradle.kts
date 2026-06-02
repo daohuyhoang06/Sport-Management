@@ -7,6 +7,10 @@ plugins {
 }
 
 android {
+    val mobileApiHost = (project.findProperty("MOBILE_API_HOST") as String?) ?: "127.0.0.1"
+    val mobileApiPort = (project.findProperty("MOBILE_API_PORT") as String?) ?: "5000"
+    val shareWebBaseUrl = (project.findProperty("SHARE_WEB_BASE_URL") as String?) ?: "https://sport-management.vn"
+
     namespace = "com.sportmanagement.user"
     compileSdk = 35
 
@@ -16,6 +20,16 @@ android {
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
+        buildConfigField("String", "API_BASE_URL", "\"http://$mobileApiHost:$mobileApiPort\"")
+        buildConfigField("String", "DEEP_LINK_SCHEME", "\"sportmanagement\"")
+        buildConfigField("String", "SHARE_WEB_BASE_URL", "\"$shareWebBaseUrl\"")
+        buildConfigField("String", "DEEP_LINK_WEB_BASE_URL", "\"$shareWebBaseUrl\"")
+        buildConfigField(
+            "String",
+            "APP_DOWNLOAD_URL",
+            "\"https://play.google.com/store/apps/details?id=com.sportmanagement.user\""
+        )
+        manifestPlaceholders["deepLinkHost"] = mobileApiHost
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -43,6 +57,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     composeOptions {
@@ -83,6 +98,7 @@ dependencies {
     
     // Third-party Libraries
     implementation("io.coil-kt:coil-compose:2.6.0")
+    implementation("io.coil-kt:coil-svg:2.6.0")
     implementation("androidx.navigation:navigation-compose:2.7.7")
     implementation("com.google.android.material:material:1.12.0")
     implementation("org.osmdroid:osmdroid-android:6.1.16")
@@ -98,3 +114,4 @@ dependencies {
 
     implementation("com.google.android.gms:play-services-auth:21.2.0")
 }
+

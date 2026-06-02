@@ -1,12 +1,16 @@
-﻿package com.sportmanagement.user.ui
+package com.sportmanagement.user.ui
+
+import android.content.Intent
+import android.net.Uri
+import android.widget.Toast
 
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
 import androidx.compose.foundation.layout.Box
-import androidx.compose.ui.Modifier
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
@@ -18,11 +22,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.sportmanagement.user.R
 import com.sportmanagement.user.domain.model.BookingConfirmationData
+import com.sportmanagement.user.domain.model.UserField
 import com.sportmanagement.user.ui.components.UserBottomBar
 import com.sportmanagement.user.ui.components.chatbot.ChatbotOverlay
+import com.sportmanagement.user.ui.components.share.FieldShareSheet
 import com.sportmanagement.user.ui.navigation.UserTab
 import com.sportmanagement.user.ui.screens.BookingConfirmationScreen
 import com.sportmanagement.user.ui.screens.HomeSearchFilterScreen
@@ -41,18 +50,27 @@ import com.sportmanagement.user.ui.screens.HomeSearchResultsScreen
 import com.sportmanagement.user.ui.screens.UserHomeScreen
 import com.sportmanagement.user.ui.screens.UserMapScreen
 import com.sportmanagement.user.ui.screens.UserProfileScreen
+import com.sportmanagement.user.ui.share.FieldShareLink
+import com.sportmanagement.user.ui.share.FieldShareLink.MomoPaymentReturn
 import com.sportmanagement.user.ui.viewmodel.ChatbotViewModel
 import com.sportmanagement.user.ui.viewmodel.InboxViewModel
 import com.sportmanagement.user.ui.viewmodel.InboxViewModelFactory
 import com.sportmanagement.user.ui.viewmodel.UserViewModel
 import com.sportmanagement.user.ui.viewmodel.UserViewModelFactory
+import androidx.compose.runtime.mutableIntStateOf
 
 @Composable
 fun UserApp(
     userViewModel: UserViewModel? = null,
-    chatbotViewModel: ChatbotViewModel = viewModel()
+    chatbotViewModel: ChatbotViewModel = viewModel(),
+    incomingDeepLinkFieldId: Int? = null,
+    onDeepLinkConsumed: () -> Unit = {},
+    incomingMomoPaymentReturn: MomoPaymentReturn? = null,
+    onMomoPaymentReturnConsumed: () -> Unit = {}
 ) {
-    val appContext = LocalContext.current.applicationContext
+    val context = LocalContext.current
+    val clipboardManager = LocalClipboardManager.current
+    val appContext = context.applicationContext
     val resolvedUserViewModel = userViewModel ?: viewModel(
         factory = remember(appContext) { UserViewModelFactory(appContext) }
     )
@@ -65,28 +83,135 @@ fun UserApp(
     var showAuthScreen by rememberSaveable { mutableStateOf(false) }
     var showRegister by rememberSaveable { mutableStateOf(false) }
     var selectedFieldId by rememberSaveable { mutableStateOf<Int?>(null) }
+    var bookingSessionKey by rememberSaveable { mutableIntStateOf(0) }
     var showBookingScreen by rememberSaveable { mutableStateOf(false) }
     var showBookingConfirmationScreen by rememberSaveable { mutableStateOf(false) }
     var showBookingPaymentScreen by rememberSaveable { mutableStateOf(false) }
     var showHomeSearchFilterScreen by rememberSaveable { mutableStateOf(false) }
     var showHomeSearchResultsScreen by rememberSaveable { mutableStateOf(false) }
+    var showFavoriteFieldsScreen by rememberSaveable { mutableStateOf(false) }
     var showBookingDetailScreen by rememberSaveable { mutableStateOf(false) }
     var showConversationScreen by rememberSaveable { mutableStateOf(false) }
     var showNotificationDetailScreen by rememberSaveable { mutableStateOf(false) }
+    var bookingContactName by rememberSaveable { mutableStateOf("") }
+    var bookingContactPhone by rememberSaveable { mutableStateOf("") }
     var bookingConfirmationData by remember { mutableStateOf<BookingConfirmationData?>(null) }
+    var selectedBookingField by remember { mutableStateOf<UserField?>(null) }
     var bookingDetailInfo by remember { mutableStateOf<BookingInfo?>(null) }
     var conversationInfo by remember { mutableStateOf<ConversationInfo?>(null) }
     var notificationDetailInfo by remember { mutableStateOf<NotificationDetailInfo?>(null) }
+    var fieldToShare by remember { mutableStateOf<UserField?>(null) }
+    var pendingDeepLinkFieldId by rememberSaveable { mutableStateOf<Int?>(null) }
 
     val closeHomeSearchResultsFlow = {
         showHomeSearchResultsScreen = false
         resolvedUserViewModel.resetHomeSearchCriteria()
+    }
+    val closeFavoriteFieldsFlow = {
+        showFavoriteFieldsScreen = false
+    }
+    val closeHomeOverlayFlows = {
+        closeHomeSearchResultsFlow()
+        closeFavoriteFieldsFlow()
+    }
+    val openAuthFlow = {
+        resolvedUserViewModel.clearAuthError()
+        showRegister = false
+        showAuthScreen = true
+    }
+    val startBookingFlow: (UserField) -> Unit = { field ->
+        selectedBookingField = field
+        selectedFieldId = field.fieldId
+        bookingSessionKey += 1
+        bookingContactName = uiState.profile.name
+        bookingContactPhone = uiState.profile.phone
+        showBookingPaymentScreen = false
+        showBookingConfirmationScreen = false
+        bookingConfirmationData = null
+        showBookingScreen = true
+    }
+    val toggleFavoriteField: (UserField, Boolean) -> Unit = { field, isFavorite ->
+        if (!uiState.isAuthenticated) {
+            openAuthFlow()
+        } else {
+            resolvedUserViewModel.setFieldFavorite(field, isFavorite)
+        }
+    }
+    val shareField: (UserField) -> Unit = { field ->
+        fieldToShare = field
+    }
+
+    val selectedFieldShareUrl = remember(fieldToShare) {
+        fieldToShare?.fieldId?.takeIf { it > 0 }?.let(FieldShareLink::webFieldLink)
+    }
+    val selectedFieldShareText = remember(fieldToShare, selectedFieldShareUrl) {
+        val field = fieldToShare ?: return@remember null
+        val link = selectedFieldShareUrl.orEmpty()
+        buildString {
+            append(context.getString(R.string.share_text_prefix, context.getString(R.string.app_name)))
+            append('\n')
+            append(context.getString(R.string.share_text_field_label, field.name))
+            append('\n')
+            append(context.getString(R.string.share_text_location_label, field.location))
+            if (field.hours.isNotBlank()) {
+                append('\n')
+                append(context.getString(R.string.share_text_hours_label, field.hours))
+            }
+            if (field.price.isNotBlank()) {
+                append('\n')
+                append(context.getString(R.string.share_text_price_label, field.price))
+            }
+            if (link.isNotBlank()) {
+                append('\n')
+                append('\n')
+                append(link)
+            }
+        }
+    }
+    val performShareNow: () -> Unit = {
+        val field = fieldToShare
+        val shareText = selectedFieldShareText
+        if (field != null && shareText != null) {
+            try {
+                context.startActivity(
+                    Intent.createChooser(
+                        Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_TEXT, shareText)
+                        },
+                        null
+                    )
+                )
+                fieldToShare = null
+            } catch (_: Exception) {
+                Toast.makeText(context, context.getString(R.string.share_fail), Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    LaunchedEffect(incomingDeepLinkFieldId) {
+        val id = incomingDeepLinkFieldId ?: return@LaunchedEffect
+        pendingDeepLinkFieldId = id
+        showHomeSearchFilterScreen = false
+        showHomeSearchResultsScreen = false
+        showFavoriteFieldsScreen = false
+        showBookingDetailScreen = false
+        showConversationScreen = false
+        showNotificationDetailScreen = false
+        showBookingScreen = false
+        showBookingConfirmationScreen = false
+        showBookingPaymentScreen = false
+        selectedFieldId = null
+        bookingConfirmationData = null
+        selectedBookingField = null
+        resolvedUserViewModel.onTabSelected(UserTab.Home)
     }
 
     val statusBarColor = when {
         showAuthScreen -> Color.Transparent
         showHomeSearchFilterScreen -> Color.Transparent
         showHomeSearchResultsScreen -> Color.Transparent
+        showFavoriteFieldsScreen -> Color.Transparent
         showBookingScreen || showBookingPaymentScreen || showBookingConfirmationScreen -> Color.Transparent
         showBookingDetailScreen || showConversationScreen || showNotificationDetailScreen -> MaterialTheme.colorScheme.surface
         uiState.selectedTab == UserTab.Home || uiState.selectedTab == UserTab.Profile -> Color.Transparent
@@ -95,6 +220,7 @@ fun UserApp(
     val useDarkStatusBarIcons = !showAuthScreen &&
         !showHomeSearchFilterScreen &&
         !showHomeSearchResultsScreen &&
+        !showFavoriteFieldsScreen &&
         !showBookingScreen &&
         !showBookingConfirmationScreen &&
         !showBookingPaymentScreen &&
@@ -111,7 +237,8 @@ fun UserApp(
         !showNotificationDetailScreen &&
         !showAuthScreen &&
         !showHomeSearchFilterScreen &&
-        !showHomeSearchResultsScreen
+        !showHomeSearchResultsScreen &&
+        !showFavoriteFieldsScreen
 
     AppStatusBarEffect(
         statusBarColor = statusBarColor,
@@ -205,8 +332,10 @@ fun UserApp(
             } else if (showBookingPaymentScreen && bookingConfirmationData != null) {
                 BookingPaymentScreen(
                     confirmationData = bookingConfirmationData!!,
-                    userName = uiState.profile.name,
-                    userPhone = uiState.profile.phone,
+                    userName = bookingContactName,
+                    userPhone = bookingContactPhone,
+                    incomingMomoPaymentReturn = incomingMomoPaymentReturn,
+                    onMomoPaymentReturnConsumed = onMomoPaymentReturnConsumed,
                     onBackClick = {
                         showBookingPaymentScreen = false
                         showBookingConfirmationScreen = true
@@ -216,26 +345,40 @@ fun UserApp(
                         showBookingConfirmationScreen = false
                         showBookingScreen = false
                         bookingConfirmationData = null
+                        selectedBookingField = null
+                    },
+                    onViewCancelledBookingClick = {
+                        showBookingPaymentScreen = false
+                        showBookingConfirmationScreen = false
+                        showBookingScreen = false
+                        bookingConfirmationData = null
+                        selectedBookingField = null
+                        closeHomeOverlayFlows()
+                        resolvedUserViewModel.onTabSelected(UserTab.Inbox)
                     },
                     onReturnHomeClick = {
                         showBookingPaymentScreen = false
                         showBookingConfirmationScreen = false
                         showBookingScreen = false
                         bookingConfirmationData = null
-                        closeHomeSearchResultsFlow()
+                        selectedBookingField = null
+                        closeHomeOverlayFlows()
                         resolvedUserViewModel.onTabSelected(UserTab.Home)
                     }
                 )
             } else if (showBookingConfirmationScreen && bookingConfirmationData != null) {
                 BookingConfirmationScreen(
                     confirmationData = bookingConfirmationData!!,
-                    userName = uiState.profile.name,
-                    userPhone = uiState.profile.phone,
+                    userName = bookingContactName,
+                    userPhone = bookingContactPhone,
+                    isLoggedIn = uiState.isAuthenticated,
                     onBackClick = {
                         showBookingConfirmationScreen = false
                         showBookingScreen = true
                     },
-                    onConfirmPaymentClick = {
+                    onConfirmPaymentClick = { name, phone ->
+                        bookingContactName = name
+                        bookingContactPhone = phone
                         showBookingConfirmationScreen = false
                         showBookingPaymentScreen = true
                     }
@@ -305,12 +448,19 @@ fun UserApp(
                 BookingScheduleScreen(
                     fieldId = selectedFieldId!!,
                     initialDateText = todayStr,
+                    sessionKey = bookingSessionKey,
                     onBackClick = {
                         showBookingScreen = false
                         bookingConfirmationData = null
+                        selectedBookingField = null
                     },
                     onNextClick = { confirmationData ->
-                        bookingConfirmationData = confirmationData
+                        val selectedField = selectedBookingField
+                        bookingConfirmationData = confirmationData.copy(
+                            fieldId = selectedField?.fieldId,
+                            fieldName = selectedField?.name.orEmpty(),
+                            fieldAddress = selectedField?.location.orEmpty()
+                        )
                         showBookingScreen = false
                         showBookingPaymentScreen = false
                         showBookingConfirmationScreen = true
@@ -322,23 +472,40 @@ fun UserApp(
                         HomeSearchResultsScreen(
                             padding = padding,
                             fields = uiState.homeFields,
+                            favoriteFields = uiState.favoriteFields,
                             isLoading = uiState.isHomeLoading,
+                            title = appContext.getString(R.string.home_search_results_title),
+                            emptyTitle = appContext.getString(R.string.home_search_results_empty_title),
+                            emptyBody = appContext.getString(R.string.home_search_results_empty_body),
                             onBackClick = closeHomeSearchResultsFlow,
                             onFilterClick = {
                                 showHomeSearchFilterScreen = true
                             },
-                            onBookFieldClick = { field ->
-                                selectedFieldId = field.fieldId
-                                showBookingPaymentScreen = false
-                                showBookingConfirmationScreen = false
-                                bookingConfirmationData = null
-                                showBookingScreen = true
-                            }
+                            onBookFieldClick = startBookingFlow,
+                            onFavoriteFieldClick = toggleFavoriteField,
+                            onShareFieldClick = shareField
+                        )
+                    } else if (showFavoriteFieldsScreen) {
+                        HomeSearchResultsScreen(
+                            padding = padding,
+                            fields = uiState.favoriteFields,
+                            favoriteFields = uiState.favoriteFields,
+                            isLoading = false,
+                            title = appContext.getString(R.string.favorite_title),
+                            emptyTitle = "Chua co san yeu thich",
+                            emptyBody = "Nhan tim o the san de luu san vao danh sach nay.",
+                            onBackClick = closeFavoriteFieldsFlow,
+                            onFilterClick = {},
+                            onBookFieldClick = startBookingFlow,
+                            onFavoriteFieldClick = toggleFavoriteField,
+                            onShareFieldClick = shareField,
+                            showFilterButton = false
                         )
                     } else {
                         UserHomeScreen(
                             padding = padding,
                             fields = uiState.homeFields,
+                            favoriteFields = uiState.favoriteFields,
                             sportCategories = uiState.sportCategories,
                             userName = uiState.profile.name,
                             userAvatarUrl = uiState.profile.avatarUrl,
@@ -351,15 +518,18 @@ fun UserApp(
                             isSearchLoading = uiState.isFieldSearchLoading,
                             isSearchLoadingMore = uiState.isFieldSearchLoadingMore,
                             hasMoreSearchResults = uiState.hasMoreFieldSearchResults,
-                            onLoginClick = {
-                                resolvedUserViewModel.clearAuthError()
-                                showRegister = false
-                                showAuthScreen = true
-                            },
+                            onLoginClick = openAuthFlow,
                             onRegisterClick = {
                                 resolvedUserViewModel.clearAuthError()
                                 showRegister = true
                                 showAuthScreen = true
+                            },
+                            onFavoriteHeaderClick = {
+                                if (uiState.isAuthenticated) {
+                                    showFavoriteFieldsScreen = true
+                                } else {
+                                    openAuthFlow()
+                                }
                             },
                             onFilterClick = {
                                 showHomeSearchFilterScreen = true
@@ -392,12 +562,13 @@ fun UserApp(
                             onLoadMore = {
                                 resolvedUserViewModel.loadMoreHomeFields()
                             },
-                            onBookFieldClick = { field ->
-                                selectedFieldId = field.fieldId
-                                showBookingPaymentScreen = false
-                                showBookingConfirmationScreen = false
-                                bookingConfirmationData = null
-                                showBookingScreen = true
+                            onBookFieldClick = startBookingFlow,
+                            onFavoriteFieldClick = toggleFavoriteField,
+                            onShareFieldClick = shareField,
+                            deepLinkFieldIdToOpen = pendingDeepLinkFieldId,
+                            onDeepLinkFieldConsumed = {
+                                pendingDeepLinkFieldId = null
+                                onDeepLinkConsumed()
                             }
                         )
                     }
@@ -405,6 +576,7 @@ fun UserApp(
                         padding = padding,
                         sportCategories = uiState.sportCategories,
                         nearby = uiState.nearbyFields,
+                        favoriteFields = uiState.favoriteFields,
                         searchResults = uiState.fieldSearchResults,
                         recentSearches = uiState.recentFieldSearches,
                         isSearchLoading = uiState.isFieldSearchLoading,
@@ -432,13 +604,9 @@ fun UserApp(
                         onCurrentLocationDetected = { latitude, longitude ->
                             resolvedUserViewModel.onHomeLocationUpdated(latitude, longitude)
                         },
-                        onBookFieldClick = { field ->
-                            selectedFieldId = field.fieldId
-                            showBookingPaymentScreen = false
-                            showBookingConfirmationScreen = false
-                            bookingConfirmationData = null
-                            showBookingScreen = true
-                        }
+                        onBookFieldClick = startBookingFlow,
+                        onFavoriteFieldClick = toggleFavoriteField,
+                        onShareFieldClick = shareField
                     )
                     UserTab.Inbox -> InboxScreen(
                         padding = padding,
@@ -504,6 +672,38 @@ fun UserApp(
                 onDismissError = chatbotViewModel::dismissError,
                 onButtonAnchorChanged = chatbotViewModel::onButtonAnchorChanged
             )
+
+            if (fieldToShare != null) {
+                FieldShareSheet(
+                    field = fieldToShare!!,
+                    shareUrl = selectedFieldShareUrl ?: "",
+                    onDismiss = { fieldToShare = null },
+                    onCopyLink = {
+                        val link = selectedFieldShareUrl
+                        if (link.isNullOrBlank()) {
+                            Toast.makeText(context, context.getString(R.string.share_link_invalid), Toast.LENGTH_SHORT).show()
+                        } else {
+                            clipboardManager.setText(AnnotatedString(link))
+                            Toast.makeText(context, context.getString(R.string.share_link_copied), Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    onShareNow = performShareNow,
+                    onOpenLink = {
+                        val link = selectedFieldShareUrl
+                        if (link.isNullOrBlank()) {
+                            Toast.makeText(context, context.getString(R.string.share_link_invalid), Toast.LENGTH_SHORT).show()
+                        } else {
+                            try {
+                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(link)))
+                            } catch (_: Exception) {
+                                Toast.makeText(context, context.getString(R.string.share_link_open_fail), Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+                )
+            }
         }
     }
 }
+
+

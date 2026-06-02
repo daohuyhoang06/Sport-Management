@@ -89,6 +89,7 @@ class UserViewModel(
                         profile = profile
                     )
                 }
+                refreshFavoriteFields()
             }.onFailure { error ->
                 _uiState.update { current ->
                     current.copy(
@@ -118,6 +119,7 @@ class UserViewModel(
                         profile = profile
                     )
                 }
+                refreshFavoriteFields()
             }.onFailure { error ->
                 _uiState.update { current ->
                     current.copy(
@@ -175,6 +177,7 @@ class UserViewModel(
                         homeSearchFilterOptions = filterHomeSearchFilterOptions(homeSearchFilterOptions)
                     )
                 }
+                refreshFavoriteFields()
             }.onFailure { error ->
                 _uiState.update { current ->
                     current.copy(
@@ -192,8 +195,80 @@ class UserViewModel(
             current.copy(
                 isAuthenticated = false,
                 authError = null,
-                profile = UserUiState().profile
+                profile = UserUiState().profile,
+                favoriteFields = emptyList()
             )
+        }
+    }
+
+    fun setFieldFavorite(field: UserField, isFavorite: Boolean) {
+        val fieldId = field.fieldId
+        if (fieldId <= 0) return
+        val previousFavorites = _uiState.value.favoriteFields
+        val optimisticFavorites = mergeFavoriteState(
+            currentFavorites = previousFavorites,
+            field = field,
+            isFavorite = isFavorite
+        )
+
+        _uiState.update { current ->
+            current.copy(
+                favoriteFields = optimisticFavorites,
+                authError = null
+            )
+        }
+
+        viewModelScope.launch {
+            runCatching {
+                repository.setFavoriteField(fieldId = fieldId, isFavorite = isFavorite)
+            }.onSuccess { favorites ->
+                _uiState.update { current ->
+                    current.copy(
+                        favoriteFields = favorites,
+                        authError = null
+                    )
+                }
+            }.onFailure { error ->
+                _uiState.update { current ->
+                    current.copy(
+                        favoriteFields = previousFavorites,
+                        authError = error.message ?: "Không thể cập nhật sân yêu thích"
+                    )
+                }
+            }
+        }
+    }
+
+    private fun mergeFavoriteState(
+        currentFavorites: List<UserField>,
+        field: UserField,
+        isFavorite: Boolean
+    ): List<UserField> {
+        return if (isFavorite) {
+            if (currentFavorites.any { isSameField(it, field) }) {
+                currentFavorites
+            } else {
+                currentFavorites + field
+            }
+        } else {
+            currentFavorites.filterNot { isSameField(it, field) }
+        }
+    }
+
+    private fun isSameField(left: UserField, right: UserField): Boolean {
+        if (left.fieldId > 0 && right.fieldId > 0) {
+            return left.fieldId == right.fieldId
+        }
+        return left.name.equals(right.name, ignoreCase = true) &&
+            left.location.equals(right.location, ignoreCase = true)
+    }
+
+    fun refreshFavoriteFields() {
+        viewModelScope.launch {
+            val favorites = repository.getFavoriteFields()
+            _uiState.update { current ->
+                current.copy(favoriteFields = favorites)
+            }
         }
     }
 
@@ -627,3 +702,4 @@ class UserViewModel(
         private const val SEARCH_PAGE_SIZE = 10
     }
 }
+

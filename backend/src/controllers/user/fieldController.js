@@ -127,7 +127,7 @@ const sportTypeAliases = (sportType) => {
   return aliases[normalized] || [normalized];
 };
 
-const mapFieldRowToListPayload = (row) => {
+export const mapFieldRowToListPayload = (row) => {
   const ratingValue = Number(row.rating_value || 0);
   const priceLabel = formatPriceLabel(row.slot_price);
   const hoursLabel = formatHoursLabel(row.open_time, row.close_time);

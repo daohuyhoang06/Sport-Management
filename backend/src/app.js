@@ -41,6 +41,57 @@ app.use("/api/chat", chatRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/payments", paymentRoutes);
 
+app.get("/l/field/:fieldId", (req, res) => {
+  const fieldId = Number.parseInt(req.params.fieldId, 10);
+  if (!Number.isInteger(fieldId) || fieldId <= 0) {
+    res.status(400).send("Invalid field id");
+    return;
+  }
+
+  const deepLinkScheme = process.env.APP_DEEP_LINK_SCHEME || "sportmanagement";
+  const downloadUrl =
+    process.env.APP_DOWNLOAD_URL ||
+    "https://play.google.com/store/apps/details?id=com.sportmanagement.user";
+  const deepLink = `${deepLinkScheme}://field/${fieldId}`;
+
+  res.setHeader("Content-Type", "text/html; charset=utf-8");
+  res.send(`<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Open Sport Management</title>
+    <style>
+      body { font-family: Arial, sans-serif; padding: 24px; background: #f7f9fc; color: #0f172a; }
+      .card { max-width: 520px; margin: 40px auto; background: #fff; border-radius: 16px; padding: 20px; box-shadow: 0 8px 24px rgba(15,23,42,0.08); }
+      .btn { display: inline-block; margin-right: 10px; margin-top: 12px; padding: 10px 14px; border-radius: 10px; text-decoration: none; }
+      .btn-primary { background: #1d4ed8; color: #fff; }
+      .btn-secondary { border: 1px solid #cbd5e1; color: #1e293b; }
+      p { line-height: 1.5; }
+    </style>
+    <script>
+      (function () {
+        var deepLink = ${JSON.stringify(deepLink)};
+        var fallback = ${JSON.stringify(downloadUrl)};
+        window.location.href = deepLink;
+        setTimeout(function () {
+          window.location.href = fallback;
+        }, 1200);
+      })();
+    </script>
+  </head>
+  <body>
+    <div class="card">
+      <h2>Opening app...</h2>
+      <p>If the app is installed, this page will open field detail directly.</p>
+      <p>If it is not installed, tap Download to install the app.</p>
+      <a class="btn btn-primary" href="${deepLink}">Open app</a>
+      <a class="btn btn-secondary" href="${downloadUrl}">Download app</a>
+    </div>
+  </body>
+</html>`);
+});
+
 app.get("/", (_, res) =>
   res.json({
     name: "sport-management-backend",

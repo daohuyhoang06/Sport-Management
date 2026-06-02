@@ -1,5 +1,6 @@
 package com.sportmanagement.user.ui.screens
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -23,6 +24,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
@@ -46,21 +48,35 @@ fun BookingConfirmationScreen(
     confirmationData: BookingConfirmationData,
     userName: String,
     userPhone: String,
+    isLoggedIn: Boolean,
     onBackClick: () -> Unit,
-    onConfirmPaymentClick: () -> Unit,
+    onConfirmPaymentClick: (name: String, phone: String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
     var note by rememberSaveable { mutableStateOf("") }
+    var editableUserName by rememberSaveable(userName) { mutableStateOf(userName) }
+    var editableUserPhone by rememberSaveable(userPhone) { mutableStateOf(userPhone) }
 
     Scaffold(
-        modifier = modifier,
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        containerColor = MaterialTheme.colorScheme.primary,
-        bottomBar = {
-            BookingConfirmationBottomBar(
-                onConfirmPaymentClick = onConfirmPaymentClick
-            )
-        }
+            modifier = modifier,
+            contentWindowInsets = WindowInsets(0, 0, 0, 0),
+            containerColor = MaterialTheme.colorScheme.primary,
+            bottomBar = {
+                BookingConfirmationBottomBar(
+                    onConfirmPaymentClick = {
+                        if (!isLoggedIn) {
+                            Toast.makeText(
+                                context,
+                                context.getString(R.string.booking_confirm_login_required),
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        } else {
+                            onConfirmPaymentClick(editableUserName.trim(), editableUserPhone.trim())
+                        }
+                    }
+                )
+            }
     ) { innerPadding ->
         LazyColumn(
             modifier = Modifier
@@ -73,8 +89,13 @@ fun BookingConfirmationScreen(
             }
 
             item {
-                val clubName = confirmationData.ranges.firstOrNull()?.courtName
-                    ?: stringResource(R.string.booking_confirm_default_club_name)
+                val clubName = confirmationData.fieldName.ifBlank {
+                    confirmationData.ranges.firstOrNull()?.courtName
+                        ?: stringResource(R.string.booking_confirm_default_club_name)
+                }
+                val fieldAddress = confirmationData.fieldAddress.ifBlank {
+                    stringResource(R.string.booking_confirm_default_address)
+                }
                 ConfirmationInfoCard(
                     title = stringResource(R.string.booking_confirm_field_info_title),
                     icon = Icons.Default.Map
@@ -86,7 +107,7 @@ fun BookingConfirmationScreen(
                     Spacer(modifier = Modifier.height(10.dp))
                     InfoLine(
                         label = stringResource(R.string.booking_confirm_address),
-                        value = stringResource(R.string.booking_confirm_default_address)
+                        value = fieldAddress
                     )
                 }
             }
@@ -140,13 +161,21 @@ fun BookingConfirmationScreen(
 
             item {
                 ConfirmFieldLabel(text = stringResource(R.string.booking_confirm_name_label))
-                ConfirmReadonlyField(value = userName)
+                ConfirmReadonlyField(
+                    value = editableUserName,
+                    onValueChange = { editableUserName = it },
+                    placeholder = "Nhập tên của bạn"
+                )
             }
             item { Spacer(modifier = Modifier.height(8.dp)) }
 
             item {
                 ConfirmFieldLabel(text = stringResource(R.string.booking_confirm_phone_label))
-                ConfirmPhoneField(value = userPhone)
+                ConfirmPhoneField(
+                    value = editableUserPhone,
+                    onValueChange = { editableUserPhone = it },
+                    placeholder = "Nhập số điện thoại"
+                )
             }
             item { Spacer(modifier = Modifier.height(8.dp)) }
 

@@ -29,6 +29,7 @@ class UserRepositoryImpl(
 ) : UserRepository {
 
     private val cacheByLocationKey = mutableMapOf<String, List<UserField>>()
+    private val cacheUpdatedAtByLocationKey = mutableMapOf<String, Long>()
     private val prefs by lazy { appContext?.getSharedPreferences(CACHE_PREFS, Context.MODE_PRIVATE) }
     private var diskCacheLoaded = false
 
@@ -44,7 +45,8 @@ class UserRepositoryImpl(
 
     override fun getCachedHomeFields(latitude: Double?, longitude: Double?): List<UserField> {
         ensureDiskCacheLoaded()
-        return cacheByLocationKey[locationKey(latitude, longitude)].orEmpty()
+        val key = locationKey(latitude, longitude)
+        return getFreshCachedFields(key)
     }
 
     override fun getSavedUserLocation(): Pair<Double, Double>? {
@@ -152,10 +154,25 @@ class UserRepositoryImpl(
     ): List<UserField> = fetchFieldsPage(page, limit, latitude, longitude)
 
     override suspend fun getFavoriteFields(): List<UserField> {
-        ensureDiskCacheLoaded()
-        val cached = cacheByLocationKey.values.firstOrNull().orEmpty()
-        if (cached.isEmpty()) return emptyList()
-        return cached.sortedByDescending { it.rating.toDoubleOrNull() ?: 0.0 }.take(5)
+        val authToken = getAuthToken() ?: return emptyList()
+        val savedLocation = getSavedUserLocation()
+        return runCatching {
+            api.getFavoriteFields(authToken).map {
+                mapDtoToField(it, savedLocation?.first, savedLocation?.second)
+            }
+        }.getOrDefault(emptyList())
+    }
+
+    override suspend fun setFavoriteField(fieldId: Int, isFavorite: Boolean): List<UserField> {
+        val authToken = getAuthToken()
+            ?: throw IllegalStateException("Phiên đăng nhập đã hết hạn")
+
+        if (isFavorite) {
+            api.addFavoriteField(authToken, fieldId)
+        } else {
+            api.removeFavoriteField(authToken, fieldId)
+        }
+        return getFavoriteFields()
     }
 
     override suspend fun login(identifier: String, password: String): UserProfile {
@@ -369,7 +386,7 @@ class UserRepositoryImpl(
                 .map { dto -> mapDtoToField(dto, latitude, longitude) }
         }.getOrElse {
             // Do not fallback to mock for paged field list. Keep UI in loading/empty state if no cache.
-            return if (safePage == 1) cacheByLocationKey[key].orEmpty() else emptyList()
+            return if (safePage == 1) getFreshCachedFields(key) else emptyList()
         }
 
         val updated = if (safePage == 1) {
@@ -379,6 +396,8 @@ class UserRepositoryImpl(
         }
 
         cacheByLocationKey[key] = updated
+        cacheUpdatedAtByLocationKey[key] = System.currentTimeMillis()
+        enforceCacheLimit()
         persistDiskCache()
         return loadedPage
     }
@@ -403,13 +422,34 @@ class UserRepositoryImpl(
         runCatching {
             val root = JSONObject(raw)
             root.keys().forEach { key ->
-                val arr = root.optJSONArray(key) ?: JSONArray()
+                val entry = root.opt(key)
+                val (arr, updatedAt) = when (entry) {
+                    is JSONObject -> {
+                        val fields = entry.optJSONArray("fields") ?: JSONArray()
+                        val ts = entry.optLong("updatedAt", 0L).takeIf { it > 0L } ?: System.currentTimeMillis()
+                        fields to ts
+                    }
+                    is JSONArray -> {
+                        entry to System.currentTimeMillis()
+                    }
+                    else -> {
+                        JSONArray() to 0L
+                    }
+                }
                 val list = mutableListOf<UserField>()
                 for (i in 0 until arr.length()) {
                     val item = arr.optJSONObject(i) ?: continue
                     list.add(item.toUserField())
                 }
-                cacheByLocationKey[key] = list
+                if (list.isNotEmpty()) {
+                    cacheByLocationKey[key] = list
+                    cacheUpdatedAtByLocationKey[key] = updatedAt
+                }
+            }
+            val removedExpired = evictExpiredCacheEntries()
+            val removedOverflow = enforceCacheLimit()
+            if (removedExpired || removedOverflow) {
+                persistDiskCache()
             }
         }
     }
@@ -418,9 +458,55 @@ class UserRepositoryImpl(
         val editor = prefs?.edit() ?: return
         val root = JSONObject()
         cacheByLocationKey.forEach { (key, fields) ->
-            root.put(key, fields.toJsonArray())
+            val entry = JSONObject()
+                .put("updatedAt", cacheUpdatedAtByLocationKey[key] ?: System.currentTimeMillis())
+                .put("fields", fields.toJsonArray())
+            root.put(key, entry)
         }
         editor.putString(CACHE_FIELDS_KEY, root.toString()).apply()
+    }
+
+    private fun getFreshCachedFields(key: String): List<UserField> {
+        val updatedAt = cacheUpdatedAtByLocationKey[key] ?: return emptyList()
+        if (!isCacheFresh(updatedAt)) {
+            removeCacheKey(key)
+            persistDiskCache()
+            return emptyList()
+        }
+        return cacheByLocationKey[key].orEmpty()
+    }
+
+    private fun isCacheFresh(updatedAtMillis: Long): Boolean {
+        return System.currentTimeMillis() - updatedAtMillis <= CACHE_FIELDS_TTL_MS
+    }
+
+    private fun evictExpiredCacheEntries(): Boolean {
+        if (cacheByLocationKey.isEmpty()) return false
+        val now = System.currentTimeMillis()
+        val expiredKeys = cacheUpdatedAtByLocationKey
+            .filterValues { now - it > CACHE_FIELDS_TTL_MS }
+            .keys
+            .toList()
+        if (expiredKeys.isEmpty()) return false
+        expiredKeys.forEach { removeCacheKey(it) }
+        return true
+    }
+
+    private fun enforceCacheLimit(): Boolean {
+        val overflow = cacheByLocationKey.size - MAX_LOCATION_CACHE_KEYS
+        if (overflow <= 0) return false
+        val keysToRemove = cacheUpdatedAtByLocationKey
+            .entries
+            .sortedBy { it.value }
+            .take(overflow)
+            .map { it.key }
+        keysToRemove.forEach { removeCacheKey(it) }
+        return keysToRemove.isNotEmpty()
+    }
+
+    private fun removeCacheKey(key: String) {
+        cacheByLocationKey.remove(key)
+        cacheUpdatedAtByLocationKey.remove(key)
     }
 
     private fun mergeDedup(existing: List<UserField>, incoming: List<UserField>): List<UserField> {
@@ -498,6 +584,8 @@ class UserRepositoryImpl(
         private const val HANOI_LON = 105.8542
         private const val CACHE_PREFS = "user_repository_cache"
         private const val CACHE_FIELDS_KEY = "fields_by_location"
+        private const val CACHE_FIELDS_TTL_MS = 30 * 60 * 1000L
+        private const val MAX_LOCATION_CACHE_KEYS = 8
         private const val CACHE_LAST_LAT_KEY = "last_user_lat"
         private const val CACHE_LAST_LNG_KEY = "last_user_lng"
         private const val CACHE_RECENT_SEARCHES_KEY = "recent_field_searches"
@@ -536,6 +624,7 @@ private fun List<UserField>.toJsonArray(): JSONArray {
     val arr = JSONArray()
     forEach { field ->
         val item = JSONObject()
+            .put("fieldId", field.fieldId)
             .put("name", field.name)
             .put("location", field.location)
             .put("price", field.price)
@@ -576,6 +665,7 @@ private fun JSONObject.toUserField(): UserField {
     }
 
     return UserField(
+        fieldId = optInt("fieldId", 0),
         name = optString("name"),
         location = optString("location"),
         price = optString("price"),

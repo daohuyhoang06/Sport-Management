@@ -222,7 +222,7 @@ private fun BookingTimeGridRow(
                                 }
                             } ?: Modifier
                         ),
-                    iconSize = bookingCellWidth * 0.26f,
+                    iconSize = bookingCellWidth * 0.36f,
                     borderColor = Color.Transparent,
                     showSelectionIcon = cellState.showSelectionIcon
                 )
