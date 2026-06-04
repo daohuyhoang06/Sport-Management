@@ -133,6 +133,7 @@ fun BookingPaymentScreen(
     onViewInvoiceClick: (BookingInfo) -> Unit,
     onViewCancelledBookingClick: () -> Unit,
     onReturnHomeClick: () -> Unit,
+    onPaymentConfirmed: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -335,6 +336,8 @@ fun BookingPaymentScreen(
                     resultCode = resultCode,
                     message = callback.message
                 )
+            }.onSuccess {
+                onPaymentConfirmed()
             }
         }
         onMomoPaymentReturnConsumed()
@@ -352,6 +355,7 @@ fun BookingPaymentScreen(
                 "completed" -> {
                     paymentStatus = PaymentReturnStatus.Success
                     paymentMessage = context.getString(R.string.payment_message_momo_confirmed)
+                    onPaymentConfirmed()
                     return@LaunchedEffect
                 }
                 "failed" -> {
@@ -383,6 +387,8 @@ fun BookingPaymentScreen(
                     resultCode = 0,
                     message = context.getString(R.string.payment_message_momo_confirmed)
                 )
+            }.onSuccess {
+                onPaymentConfirmed()
             }
         }
     }

@@ -30,6 +30,20 @@ const findConversation = async ({ userId, managerId, fieldId, bookingId }) => {
   return rows?.[0] || null;
 };
 
+const findConversationForField = async ({ userId, managerId, fieldId }) => {
+  const [rows] = await sequelize.query(
+    `SELECT chat_id, user_id, manager_id, field_id, booking_id
+     FROM chats
+     WHERE user_id = ?
+       AND manager_id = ?
+       AND field_id <=> ?
+     ORDER BY COALESCE(last_message_at, updated_at, created_at) DESC, chat_id DESC
+     LIMIT 1`,
+    { replacements: [userId, managerId, fieldId ?? null] },
+  );
+  return rows?.[0] || null;
+};
+
 // POST /api/user/conversations
 export const createConversation = async (req, res) => {
   try {
@@ -86,6 +100,23 @@ export const createConversation = async (req, res) => {
     }
 
     const managerId = Number(field.manager_id);
+
+    const existingForField = await findConversationForField({
+      userId,
+      managerId,
+      fieldId: resolvedFieldId,
+    });
+
+    if (existingForField) {
+      return res.json({
+        success: true,
+        data: {
+          conversationId: existingForField.chat_id,
+          fieldId: existingForField.field_id,
+          bookingId: existingForField.booking_id,
+        },
+      });
+    }
 
     const existing = await findConversation({
       userId,
@@ -183,6 +214,15 @@ export const listConversations = async (req, res) => {
       LEFT JOIN fields f ON c.field_id = f.field_id
       LEFT JOIN person m ON c.manager_id = m.person_id
       WHERE c.user_id = ?
+        AND c.chat_id = (
+          SELECT c2.chat_id
+          FROM chats c2
+          WHERE c2.user_id = c.user_id
+            AND c2.manager_id = c.manager_id
+            AND c2.field_id <=> c.field_id
+          ORDER BY COALESCE(c2.last_message_at, c2.updated_at, c2.created_at) DESC, c2.chat_id DESC
+          LIMIT 1
+        )
       ORDER BY COALESCE(c.last_message_at, c.updated_at) DESC`,
       { replacements: [userId, userId] },
     );

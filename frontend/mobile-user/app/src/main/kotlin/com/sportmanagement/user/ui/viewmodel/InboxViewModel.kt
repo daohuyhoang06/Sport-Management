@@ -51,7 +51,7 @@ class InboxViewModel(
             _uiState.value = _uiState.value.copy(
                 isLoadingInbox = false,
                 sections = emptyList(),
-                inboxError = "Ban chua dang nhap. Vui long dang nhap de xem hop thu."
+                inboxError = "Bạn chưa đăng nhập. Vui lòng đăng nhập để xem hộp thư."
             )
             return
         }
@@ -67,16 +67,21 @@ class InboxViewModel(
             _uiState.value = _uiState.value.copy(
                 isLoadingInbox = false,
                 sections = sections,
-                inboxError = if (sections.all { it.items.isEmpty() }) "Hop thu chua co du lieu." else null
+                inboxError = if (sections.all { it.items.isEmpty() }) "Hộp thư chưa có dữ liệu." else null
             )
         }
     }
 
     fun markAllRead() {
         val token = token() ?: return
+        val currentItems = _uiState.value.sections.flatMap { it.items }
 
-        val unreadConversationIds = _uiState.value.sections
-            .flatMap { it.items }
+        val unreadNotificationIds = currentItems
+            .filter { it.category != InboxCategoryType.Message && it.unread }
+            .mapNotNull { it.id }
+            .distinct()
+
+        val unreadConversationIds = currentItems
             .filter { it.category == InboxCategoryType.Message && it.unread }
             .mapNotNull { it.conversationId }
             .distinct()
@@ -93,6 +98,11 @@ class InboxViewModel(
 
         viewModelScope.launch {
             runCatching { api.markAllNotificationsRead(token) }
+                .recoverCatching {
+                    unreadNotificationIds.forEach { notificationId ->
+                        runCatching { api.markNotificationRead(token, notificationId) }
+                    }
+                }
             unreadConversationIds.forEach { conversationId ->
                 runCatching { api.markConversationRead(token, conversationId) }
                     .recoverCatching {
@@ -270,7 +280,7 @@ class InboxViewModel(
             }.onFailure {
                 _uiState.value = _uiState.value.copy(
                     isLoadingConversation = false,
-                    conversationError = it.message ?: "Khong tai duoc tin nhan"
+                    conversationError = it.message ?: "Không tải được tin nhắn"
                 )
             }
         }
@@ -307,7 +317,7 @@ class InboxViewModel(
                 .onFailure {
                     _uiState.value = _uiState.value.copy(
                         isSendingMessage = false,
-                        conversationError = it.message ?: "Gui tin nhan that bai"
+                        conversationError = it.message ?: "Gửi tin nhắn thất bại"
                     )
                 }
         }
@@ -382,7 +392,7 @@ class InboxViewModel(
                 NotificationItem(
                     id = row.conversationId,
                     type = "message",
-                    title = row.fieldName.ifBlank { row.ownerName ?: "Hoi thoai" },
+                    title = row.fieldName.ifBlank { row.ownerName ?: "Hội thoại" },
                     subtitle = row.lastMessage,
                     detail = "",
                     timeLabel = formatTime(row.lastMessageTime),
@@ -393,8 +403,8 @@ class InboxViewModel(
                     conversationId = row.conversationId,
                     category = InboxCategoryType.Message,
                     conversationInfo = ConversationInfo(
-                        fieldName = row.fieldName.ifBlank { row.ownerName ?: "Hoi thoai" },
-                        statusLabel = "Dang hoat dong",
+                        fieldName = row.fieldName.ifBlank { row.ownerName ?: "Hội thoại" },
+                        statusLabel = "Đang hoạt động",
                         phoneNumber = row.ownerPhone ?: "",
                         avatarRes = R.drawable.field_football,
                         conversationId = row.conversationId,
@@ -445,8 +455,8 @@ class InboxViewModel(
 
         val conversationInfo = if (category == InboxCategoryType.Message) {
             ConversationInfo(
-                fieldName = title.ifBlank { "Hoi thoai" },
-                statusLabel = "Dang hoat dong",
+                fieldName = title.ifBlank { "Hội thoại" },
+                statusLabel = "Đang hoạt động",
                 phoneNumber = "",
                 avatarRes = R.drawable.field_football,
                 conversationId = conversationId ?: targetId,

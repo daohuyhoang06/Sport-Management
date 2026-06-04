@@ -263,6 +263,7 @@ fun UserApp(
     LaunchedEffect(inboxUiState.activeBookingDetail) {
         inboxUiState.activeBookingDetail?.let { detail ->
             bookingDetailInfo = detail
+            showBookingDetailScreen = true
         }
     }
 
@@ -350,14 +351,15 @@ fun UserApp(
                         showBookingConfirmationScreen = true
                     },
                     onViewInvoiceClick = { invoiceInfo ->
-                        bookingDetailInfo = invoiceInfo
                         showBookingPaymentScreen = false
                         showBookingConfirmationScreen = false
                         showBookingScreen = false
-                        showBookingDetailScreen = true
                         closeHomeOverlayFlows()
                         resolvedUserViewModel.onTabSelected(UserTab.Inbox)
+                        bookingDetailInfo = invoiceInfo.takeIf { it.bookingId == null }
+                        showBookingDetailScreen = invoiceInfo.bookingId == null
                         invoiceInfo.bookingId?.let { bookingId ->
+                            inboxViewModel.clearActiveBookingDetail()
                             inboxViewModel.loadBookingDetail(bookingId, null)
                         }
                     },
@@ -378,6 +380,9 @@ fun UserApp(
                         selectedBookingField = null
                         closeHomeOverlayFlows()
                         resolvedUserViewModel.onTabSelected(UserTab.Home)
+                    },
+                    onPaymentConfirmed = {
+                        inboxViewModel.refreshInbox()
                     }
                 )
             } else if (showBookingConfirmationScreen && bookingConfirmationData != null) {

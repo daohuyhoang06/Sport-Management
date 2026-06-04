@@ -318,6 +318,19 @@ const updatePaymentFromMomoResult = async (payload) => {
          )`,
       { replacements: bookingIds },
     );
+
+    const [confirmedRows] = await sequelize.query(
+      `SELECT booking_id
+       FROM bookings
+       WHERE booking_id IN (${buildInClause(bookingIds)})
+         AND status = 'confirmed'`,
+      { replacements: bookingIds },
+    );
+
+    await ensureBookingSuccessNotifications(
+      confirmedRows.map((item) => item.booking_id),
+    );
+
     await bulkEnsureBookingShareAccess(bookingIds);
   }
 
