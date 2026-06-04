@@ -82,6 +82,7 @@ data class BookingDetailDto(
     val timeRange: String,
     val totalPrice: String,
     val paymentMethod: String,
+    val paymentStatus: String,
     val transactionId: String,
     val orderId: String,
     val ownerNote: String,
@@ -98,7 +99,7 @@ data class BookingDetailDto(
 )
 
 class InboxApi(
-    private val baseUrl: String = BASE_URL
+    private val baseUrl: String = ApiConfig.BASE_URL
 ) {
     suspend fun getInbox(token: String): List<InboxItemDto> = withContext(Dispatchers.IO) {
         val root = getJson("$baseUrl/api/user/inbox", token)
@@ -174,8 +175,10 @@ class InboxApi(
             timeRange = data.optString("timeRange"),
             totalPrice = data.optString("totalPrice"),
             paymentMethod = data.optString("paymentMethod"),
+            paymentStatus = data.optString("paymentStatus"),
             transactionId = data.optString("transactionId"),
             orderId = data.optString("orderId"),
+
             ownerNote = data.optString("ownerNote"),
             checkInCode = data.optString("checkInCode"),
             shareUrl = data.optString("shareUrl"),
@@ -201,7 +204,7 @@ class InboxApi(
                 fieldName = row.optString("fieldName"),
                 fieldAvatar = row.optString("fieldAvatar").takeIf { it.isNotBlank() },
                 ownerName = row.optString("ownerName").takeIf { it.isNotBlank() },
-                ownerPhone = null,
+                ownerPhone = row.optString("ownerPhone").takeIf { it.isNotBlank() },
                 lastMessage = row.optString("lastMessage"),
                 lastMessageTime = row.optString("lastMessageTime"),
                 unreadCount = row.optInt("unreadCount", 0)

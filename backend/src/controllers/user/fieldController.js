@@ -55,10 +55,10 @@ const formatDistanceLabel = (distanceKm) => {
 const getVnDateString = (date = new Date()) =>
   (() => {
     const parts = new Intl.DateTimeFormat("en-GB", {
-    timeZone: VN_TIME_ZONE,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
+      timeZone: VN_TIME_ZONE,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
     }).formatToParts(date);
     const year = parts.find((item) => item.type === "year")?.value || "0000";
     const month = parts.find((item) => item.type === "month")?.value || "00";
@@ -75,7 +75,9 @@ const getVnTimeMinutes = (date = new Date()) => {
   }).formatToParts(date);
 
   const hours = Number(parts.find((item) => item.type === "hour")?.value || 0);
-  const minutes = Number(parts.find((item) => item.type === "minute")?.value || 0);
+  const minutes = Number(
+    parts.find((item) => item.type === "minute")?.value || 0,
+  );
   return hours * 60 + minutes;
 };
 
@@ -84,7 +86,6 @@ const buildTimeRange = (courtId, startMinutes, endMinutes) => ({
   startTime: `${String(Math.floor(startMinutes / 60)).padStart(2, "0")}:${String(startMinutes % 60).padStart(2, "0")}`,
   endTime: `${String(Math.floor(endMinutes / 60)).padStart(2, "0")}:${String(endMinutes % 60).padStart(2, "0")}`,
 });
-
 
 const parseTags = (tagsCsv) => {
   if (!tagsCsv) return [];
@@ -596,7 +597,7 @@ export const getFieldGrid = async (req, res) => {
     }
 
     const [[fieldRow]] = await sequelize.query(
-      `SELECT field_id, open_time, close_time, slot_minutes, slot_price 
+      `SELECT field_id, field_name, open_time, close_time, slot_minutes, slot_price 
        FROM fields WHERE field_id = ? LIMIT 1`,
       { replacements: [id] },
     );
@@ -612,6 +613,10 @@ export const getFieldGrid = async (req, res) => {
        FROM field_courts WHERE field_id = ? ORDER BY sort_order ASC`,
       { replacements: [id] },
     );
+    const gridCourts =
+      courts.length > 0
+        ? courts
+        : [{ court_id: "default", court_name: fieldRow.field_name || "San" }];
 
     const formatTime = (timeStr) =>
       timeStr ? String(timeStr).substring(0, 5) : "";
@@ -641,30 +646,34 @@ export const getFieldGrid = async (req, res) => {
     );
 
     const bookedSlots = bookings.flatMap((b) => {
-        const targetCourts = b.court_id
-          ? [String(b.court_id)]
-          : courts.map((court) => String(court.court_id));
+      const targetCourts = b.court_id
+        ? [String(b.court_id)]
+        : gridCourts.map((court) => String(court.court_id));
 
-        // Need local time of the server, actually time is usually stored in DB in UTC or local.
-        // Using string slice to get HH:mm from ISO string or Date object
-        const startStr = new Date(b.start_time).toISOString().substring(11, 16);
-        const endStr = new Date(b.end_time).toISOString().substring(11, 16);
+      // Need local time of the server, actually time is usually stored in DB in UTC or local.
+      // Using string slice to get HH:mm from ISO string or Date object
+      const startStr = new Date(b.start_time).toISOString().substring(11, 16);
+      const endStr = new Date(b.end_time).toISOString().substring(11, 16);
 
-        return targetCourts.map((courtId) => ({
-          courtId,
-          startTime: startStr,
-          endTime: endStr,
-        }));
-      });
+      return targetCourts.map((courtId) => ({
+        courtId,
+        startTime: startStr,
+        endTime: endStr,
+      }));
+    });
 
     const blockedSlots = [];
     if (isPastDate || isToday) {
       const openMinutesValue = (() => {
-        const [hours, minutes] = String(openTime).split(":").map((item) => Number.parseInt(item, 10) || 0);
+        const [hours, minutes] = String(openTime)
+          .split(":")
+          .map((item) => Number.parseInt(item, 10) || 0);
         return hours * 60 + minutes;
       })();
       const closeMinutesValue = (() => {
-        const [hours, minutes] = String(closeTime).split(":").map((item) => Number.parseInt(item, 10) || 0);
+        const [hours, minutes] = String(closeTime)
+          .split(":")
+          .map((item) => Number.parseInt(item, 10) || 0);
         return hours * 60 + minutes;
       })();
       const blockMinutes = Math.max(1, Number(slotMinutes) || 60);
@@ -697,7 +706,7 @@ export const getFieldGrid = async (req, res) => {
         closeTime: closeTime,
         gridStepMinutes: slotMinutes,
         minBookingMinutes: slotMinutes,
-        courts: courts.map((c) => ({
+        courts: gridCourts.map((c) => ({
           id: String(c.court_id),
           name: c.court_name,
         })),
@@ -746,6 +755,14 @@ export const createBooking = async (req, res) => {
     }
 
     const finalPrice = price || 0;
+    const snapshotCustomerName =
+      typeof customer_name === "string" && customer_name.trim()
+        ? customer_name.trim()
+        : null;
+    const snapshotCustomerPhone =
+      typeof customer_phone === "string" && customer_phone.trim()
+        ? customer_phone.trim()
+        : null;
     // Combine customer info with note
     let finalNote = "";
     if (customer_name || customer_phone) {
@@ -800,7 +817,11 @@ export const createBooking = async (req, res) => {
       });
     }
 
-    if (court_id !== undefined && court_id !== null && !Number.isInteger(normalizedCourtId)) {
+    if (
+      court_id !== undefined &&
+      court_id !== null &&
+      !Number.isInteger(normalizedCourtId)
+    ) {
       return res.status(400).json({
         message: "Invalid court_id",
         error: "INVALID_COURT_ID",
@@ -876,9 +897,9 @@ export const createBooking = async (req, res) => {
 
       await sequelize.query(
         `INSERT INTO bookings (
-          customer_id, field_id, court_id, manager_id, start_time, end_time, price, note, status, pending_expires_at
+          customer_id, field_id, court_id, manager_id, start_time, end_time, price, note, customer_name, customer_phone, status, pending_expires_at
         )
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', DATE_ADD(NOW(), INTERVAL ? MINUTE))`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', DATE_ADD(NOW(), INTERVAL ? MINUTE))`,
         {
           replacements: [
             customer_id,
@@ -889,6 +910,8 @@ export const createBooking = async (req, res) => {
             mysqlEndTime,
             finalPrice,
             finalNote,
+            snapshotCustomerName,
+            snapshotCustomerPhone,
             PENDING_HOLD_MINUTES,
           ],
           transaction,
@@ -901,31 +924,6 @@ export const createBooking = async (req, res) => {
       );
       booking = rows?.[0] || null;
     });
-
-    const [[fieldInfo]] = await sequelize.query(
-      "SELECT field_name FROM fields WHERE field_id = ? LIMIT 1",
-      { replacements: [field_id] },
-    );
-
-    if (booking?.booking_id) {
-      await sequelize.query(
-        `INSERT INTO notifications
-          (user_id, type, section, title, subtitle, content, target_type, target_id, booking_id, field_id, is_read, metadata, created_at, updated_at)
-         VALUES (?, 'booking_success', 'priority', ?, ?, ?, 'booking', ?, ?, ?, 0, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-        {
-          replacements: [
-            customer_id,
-            `Dat san thanh cong - ${fieldInfo?.field_name || "San the thao"}`,
-            `Ma dat san #B${booking.booking_id}`,
-            `Ban vua tao yeu cau dat san tu ${mysqlStartTime} den ${mysqlEndTime}`,
-            booking.booking_id,
-            booking.booking_id,
-            field_id,
-            JSON.stringify({ icon: "booking_success" }),
-          ],
-        },
-      );
-    }
 
     res.status(201).json({
       message: "Booking created",
@@ -962,13 +960,8 @@ export const createBooking = async (req, res) => {
 export const createBatchBookings = async (req, res) => {
   try {
     const customer_id = req.user?.id;
-    const {
-      field_id,
-      bookings,
-      note,
-      customer_name,
-      customer_phone,
-    } = req.body || {};
+    const { field_id, bookings, note, customer_name, customer_phone } =
+      req.body || {};
 
     if (!customer_id) {
       return res.status(400).json({ message: "Missing customer_id" });
@@ -977,7 +970,9 @@ export const createBatchBookings = async (req, res) => {
       return res.status(400).json({ message: "Missing field_id" });
     }
     if (!Array.isArray(bookings) || bookings.length === 0) {
-      return res.status(400).json({ message: "bookings must be a non-empty array" });
+      return res
+        .status(400)
+        .json({ message: "bookings must be a non-empty array" });
     }
 
     const [customerCheck] = await sequelize.query(
@@ -1004,6 +999,14 @@ export const createBatchBookings = async (req, res) => {
     }
 
     let finalNote = "";
+    const snapshotCustomerName =
+      typeof customer_name === "string" && customer_name.trim()
+        ? customer_name.trim()
+        : null;
+    const snapshotCustomerPhone =
+      typeof customer_phone === "string" && customer_phone.trim()
+        ? customer_phone.trim()
+        : null;
     if (customer_name || customer_phone) {
       finalNote += `Ten: ${customer_name || "N/A"}, SDT: ${customer_phone || "N/A"}`;
       if (note) {
@@ -1028,7 +1031,11 @@ export const createBatchBookings = async (req, res) => {
     const normalizedBookings = [];
     for (const item of bookings) {
       const normalizedCourtId = Number.parseInt(item?.court_id, 10);
-      if (item?.court_id !== undefined && item?.court_id !== null && !Number.isInteger(normalizedCourtId)) {
+      if (
+        item?.court_id !== undefined &&
+        item?.court_id !== null &&
+        !Number.isInteger(normalizedCourtId)
+      ) {
         return res.status(400).json({
           message: "Invalid court_id",
           error: "INVALID_COURT_ID",
@@ -1041,16 +1048,22 @@ export const createBatchBookings = async (req, res) => {
       }
       const priceValue = Number(item?.price || 0);
       normalizedBookings.push({
-        court_id: Number.isInteger(normalizedCourtId) ? normalizedCourtId : null,
+        court_id: Number.isInteger(normalizedCourtId)
+          ? normalizedCourtId
+          : null,
         start_time: formatDatetime(item.start_time),
         end_time: formatDatetime(item.end_time),
         price: Number.isFinite(priceValue) ? priceValue : 0,
       });
     }
 
-    const distinctCourtIds = [...new Set(
-      normalizedBookings.map((item) => item.court_id).filter((item) => Number.isInteger(item)),
-    )];
+    const distinctCourtIds = [
+      ...new Set(
+        normalizedBookings
+          .map((item) => item.court_id)
+          .filter((item) => Number.isInteger(item)),
+      ),
+    ];
     if (distinctCourtIds.length > 0) {
       const [courtRows] = await sequelize.query(
         `SELECT court_id
@@ -1058,8 +1071,12 @@ export const createBatchBookings = async (req, res) => {
          WHERE field_id = ? AND court_id IN (${distinctCourtIds.map(() => "?").join(", ")})`,
         { replacements: [field_id, ...distinctCourtIds] },
       );
-      const validCourtIds = new Set(courtRows.map((item) => Number.parseInt(item.court_id, 10)));
-      const invalidCourtId = distinctCourtIds.find((item) => !validCourtIds.has(item));
+      const validCourtIds = new Set(
+        courtRows.map((item) => Number.parseInt(item.court_id, 10)),
+      );
+      const invalidCourtId = distinctCourtIds.find(
+        (item) => !validCourtIds.has(item),
+      );
       if (invalidCourtId) {
         return res.status(400).json({
           message: "Court ID does not exist for this field",
@@ -1120,9 +1137,9 @@ export const createBatchBookings = async (req, res) => {
 
         await sequelize.query(
           `INSERT INTO bookings (
-            customer_id, field_id, court_id, manager_id, start_time, end_time, price, note, status, pending_expires_at
+            customer_id, field_id, court_id, manager_id, start_time, end_time, price, note, customer_name, customer_phone, status, pending_expires_at
           )
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', DATE_ADD(NOW(), INTERVAL ? MINUTE))`,
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', DATE_ADD(NOW(), INTERVAL ? MINUTE))`,
           {
             replacements: [
               customer_id,
@@ -1133,6 +1150,8 @@ export const createBatchBookings = async (req, res) => {
               item.end_time,
               item.price,
               finalNote,
+              snapshotCustomerName,
+              snapshotCustomerPhone,
               PENDING_HOLD_MINUTES,
             ],
             transaction,
@@ -1148,31 +1167,6 @@ export const createBatchBookings = async (req, res) => {
         }
       }
     });
-
-    const [[fieldInfo]] = await sequelize.query(
-      "SELECT field_name FROM fields WHERE field_id = ? LIMIT 1",
-      { replacements: [field_id] },
-    );
-
-    for (const booking of createdBookings) {
-      await sequelize.query(
-        `INSERT INTO notifications
-          (user_id, type, section, title, subtitle, content, target_type, target_id, booking_id, field_id, is_read, metadata, created_at, updated_at)
-         VALUES (?, 'booking_success', 'priority', ?, ?, ?, 'booking', ?, ?, ?, 0, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-        {
-          replacements: [
-            customer_id,
-            `Dat san thanh cong - ${fieldInfo?.field_name || "San the thao"}`,
-            `Ma dat san #B${booking.booking_id}`,
-            `Ban vua tao yeu cau dat san tu ${booking.start_time} den ${booking.end_time}`,
-            booking.booking_id,
-            booking.booking_id,
-            field_id,
-            JSON.stringify({ icon: "booking_success" }),
-          ],
-        },
-      );
-    }
 
     res.status(201).json({
       message: "Bookings created",
@@ -1303,10 +1297,8 @@ export const getBooking = async (req, res) => {
         message: "Booking not found",
       });
     }
-
     const publicBaseUrl =
-      process.env.PUBLIC_WEB_BASE_URL ||
-      `${req.protocol}://${req.get("host")}`;
+      process.env.PUBLIC_WEB_BASE_URL || `${req.protocol}://${req.get("host")}`;
     const responseData = buildBookingShareResponse(booking, publicBaseUrl);
 
     res.json({

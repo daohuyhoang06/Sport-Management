@@ -103,7 +103,17 @@ export const getInbox = async (req, res) => {
         f.card_image_url
       FROM notifications n
       LEFT JOIN fields f ON n.field_id = f.field_id
+      LEFT JOIN bookings b ON n.booking_id = b.booking_id
       WHERE n.user_id = ?
+        AND (
+          n.type <> 'booking_success'
+          OR (
+            n.booking_id IS NOT NULL
+            AND b.booking_id IS NOT NULL
+            AND b.customer_id = n.user_id
+            AND b.status IN ('confirmed', 'completed')
+          )
+        )
       ORDER BY n.created_at DESC
       LIMIT ? OFFSET ?`,
       { replacements: [userId, safeLimit, offset] },
@@ -147,6 +157,15 @@ export const getInbox = async (req, res) => {
       LEFT JOIN fields f ON c.field_id = f.field_id
       LEFT JOIN person m ON c.manager_id = m.person_id
       WHERE c.user_id = ?
+        AND c.chat_id = (
+          SELECT c2.chat_id
+          FROM chats c2
+          WHERE c2.user_id = c.user_id
+            AND c2.manager_id = c.manager_id
+            AND c2.field_id <=> c.field_id
+          ORDER BY COALESCE(c2.last_message_at, c2.updated_at, c2.created_at) DESC, c2.chat_id DESC
+          LIMIT 1
+        )
       ORDER BY COALESCE(c.last_message_at, c.updated_at) DESC
       LIMIT ? OFFSET ?`,
       { replacements: [userId, userId, safeLimit, offset] },

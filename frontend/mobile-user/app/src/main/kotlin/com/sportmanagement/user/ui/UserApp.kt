@@ -217,7 +217,7 @@ fun UserApp(
         showFavoriteFieldsScreen -> Color.Transparent
         showBookingScreen || showBookingPaymentScreen || showBookingConfirmationScreen -> Color.Transparent
         showBookingDetailScreen || showConversationScreen || showNotificationDetailScreen -> MaterialTheme.colorScheme.surface
-        uiState.selectedTab == UserTab.Home || uiState.selectedTab == UserTab.Profile -> Color.Transparent
+        uiState.selectedTab == UserTab.Home || uiState.selectedTab == UserTab.Inbox || uiState.selectedTab == UserTab.Profile -> Color.Transparent
         else -> MaterialTheme.colorScheme.surface
     }
     val useDarkStatusBarIcons = !showAuthScreen &&
@@ -231,6 +231,7 @@ fun UserApp(
         !showConversationScreen &&
         !showNotificationDetailScreen &&
         uiState.selectedTab != UserTab.Home &&
+        uiState.selectedTab != UserTab.Inbox &&
         uiState.selectedTab != UserTab.Profile
     val shouldShowBottomBar = !showBookingScreen &&
         !showBookingConfirmationScreen &&
@@ -262,6 +263,7 @@ fun UserApp(
     LaunchedEffect(inboxUiState.activeBookingDetail) {
         inboxUiState.activeBookingDetail?.let { detail ->
             bookingDetailInfo = detail
+            showBookingDetailScreen = true
         }
     }
 
@@ -349,14 +351,15 @@ fun UserApp(
                         showBookingConfirmationScreen = true
                     },
                     onViewInvoiceClick = { invoiceInfo ->
-                        bookingDetailInfo = invoiceInfo
                         showBookingPaymentScreen = false
                         showBookingConfirmationScreen = false
                         showBookingScreen = false
-                        showBookingDetailScreen = true
                         closeHomeOverlayFlows()
                         resolvedUserViewModel.onTabSelected(UserTab.Inbox)
+                        bookingDetailInfo = invoiceInfo.takeIf { it.bookingId == null }
+                        showBookingDetailScreen = invoiceInfo.bookingId == null
                         invoiceInfo.bookingId?.let { bookingId ->
+                            inboxViewModel.clearActiveBookingDetail()
                             inboxViewModel.loadBookingDetail(bookingId, null)
                         }
                     },
@@ -377,6 +380,9 @@ fun UserApp(
                         selectedBookingField = null
                         closeHomeOverlayFlows()
                         resolvedUserViewModel.onTabSelected(UserTab.Home)
+                    },
+                    onPaymentConfirmed = {
+                        inboxViewModel.refreshInbox()
                     }
                 )
             } else if (showBookingConfirmationScreen && bookingConfirmationData != null) {

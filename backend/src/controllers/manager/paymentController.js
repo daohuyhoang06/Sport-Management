@@ -1,6 +1,8 @@
 import sequelize from "../../config/database.js";
 import Payment from "../../models/Payment.js";
+import { ensureBookingSuccessNotifications } from "../../services/user/bookingNotificationService.js";
 import { bulkEnsureBookingShareAccess } from "../../services/bookingShareService.js";
+
 import {
   assertMomoConfigured,
   createMomoPaymentRequest,
@@ -23,13 +25,21 @@ const parseBookingIds = (bookingIds, bookingId) => {
   const source = Array.isArray(bookingIds) ? bookingIds : [];
   source.forEach((value) => {
     const parsed = Number.parseInt(value, 10);
-    if (Number.isInteger(parsed) && parsed > 0 && !normalized.includes(parsed)) {
+    if (
+      Number.isInteger(parsed) &&
+      parsed > 0 &&
+      !normalized.includes(parsed)
+    ) {
       normalized.push(parsed);
     }
   });
 
   const singleId = Number.parseInt(bookingId, 10);
-  if (Number.isInteger(singleId) && singleId > 0 && !normalized.includes(singleId)) {
+  if (
+    Number.isInteger(singleId) &&
+    singleId > 0 &&
+    !normalized.includes(singleId)
+  ) {
     normalized.unshift(singleId);
   }
 
@@ -113,13 +123,21 @@ export const createMomoPayment = async (req, res) => {
     if (normalizedBookingIds.length > 0) {
       paymentContexts = await getBookingPaymentContexts(normalizedBookingIds);
       if (paymentContexts.length !== normalizedBookingIds.length) {
-        return res.status(404).json({ message: "One or more bookings were not found" });
+        return res
+          .status(404)
+          .json({ message: "One or more bookings were not found" });
       }
 
-      const bookingIdsSet = new Set(paymentContexts.map((item) => item.booking_id));
-      const missingIds = normalizedBookingIds.filter((item) => !bookingIdsSet.has(item));
+      const bookingIdsSet = new Set(
+        paymentContexts.map((item) => item.booking_id),
+      );
+      const missingIds = normalizedBookingIds.filter(
+        (item) => !bookingIdsSet.has(item),
+      );
       if (missingIds.length > 0) {
-        return res.status(404).json({ message: "One or more bookings were not found" });
+        return res
+          .status(404)
+          .json({ message: "One or more bookings were not found" });
       }
 
       if (Number.isInteger(currentUserId)) {
@@ -127,7 +145,9 @@ export const createMomoPayment = async (req, res) => {
           (item) => Number.parseInt(item.customer_id, 10) !== currentUserId,
         );
         if (foreignBooking) {
-          return res.status(403).json({ message: "Booking does not belong to current user" });
+          return res
+            .status(403)
+            .json({ message: "Booking does not belong to current user" });
         }
       }
 
@@ -154,13 +174,15 @@ export const createMomoPayment = async (req, res) => {
         `Thanh toan dat san ${paymentContexts.length} khung gio - ${firstContext.field_name || "Sport Management"}`;
     } else if (!demo) {
       return res.status(400).json({
-        message: "booking_id or booking_ids is required unless demo=true is provided",
+        message:
+          "booking_id or booking_ids is required unless demo=true is provided",
       });
     }
 
     if (!finalAmount) {
       return res.status(400).json({
-        message: "Invalid amount. MoMo sandbox amount must be at least 1000 VND",
+        message:
+          "Invalid amount. MoMo sandbox amount must be at least 1000 VND",
       });
     }
 
@@ -271,7 +293,9 @@ const updatePaymentFromMomoResult = async (payload) => {
       }
     })();
     const normalized = Array.isArray(parsed)
-      ? parsed.map((item) => Number.parseInt(item, 10)).filter((item) => Number.isInteger(item) && item > 0)
+      ? parsed
+          .map((item) => Number.parseInt(item, 10))
+          .filter((item) => Number.isInteger(item) && item > 0)
       : [];
     if (normalized.length > 0) {
       return [...new Set(normalized)];
@@ -293,6 +317,18 @@ const updatePaymentFromMomoResult = async (payload) => {
            )
          )`,
       { replacements: bookingIds },
+    );
+
+    const [confirmedRows] = await sequelize.query(
+      `SELECT booking_id
+       FROM bookings
+       WHERE booking_id IN (${buildInClause(bookingIds)})
+         AND status = 'confirmed'`,
+      { replacements: bookingIds },
+    );
+
+    await ensureBookingSuccessNotifications(
+      confirmedRows.map((item) => item.booking_id),
     );
 
     await bulkEnsureBookingShareAccess(bookingIds);
@@ -414,7 +450,9 @@ export const confirmMomoClientResult = async (req, res) => {
     const orderId = payload.orderId || payload.order_id;
     const requestId = payload.requestId || payload.request_id;
     const resultCode =
-      payload.resultCode !== undefined ? payload.resultCode : payload.result_code;
+      payload.resultCode !== undefined
+        ? payload.resultCode
+        : payload.result_code;
 
     if (!orderId || resultCode === undefined || resultCode === null) {
       return res.status(400).json({
@@ -437,7 +475,9 @@ export const confirmMomoClientResult = async (req, res) => {
       Number.isInteger(currentUserId) &&
       Number.parseInt(payment.customer_id, 10) !== currentUserId
     ) {
-      return res.status(403).json({ message: "Payment does not belong to current user" });
+      return res
+        .status(403)
+        .json({ message: "Payment does not belong to current user" });
     }
 
     const updatedPayment = await updatePaymentFromMomoResult({
