@@ -3,6 +3,10 @@ import {
   getAvailableSlots,
   releaseExpiredPendingBookings,
 } from "../../services/user/scheduleService.js";
+import {
+  buildBookingShareResponse,
+  getBookingShareDetailByBookingId,
+} from "../../services/bookingShareService.js";
 
 const PENDING_HOLD_MINUTES = 6;
 const SPORT_NAME_TO_ICON = {
@@ -14,6 +18,7 @@ const SPORT_NAME_TO_ICON = {
 };
 const DEFAULT_IMAGE_URL = "/images/fields/placeholder.svg";
 const EARTH_RADIUS_KM = 6371;
+const VN_TIME_ZONE = "Asia/Ho_Chi_Minh";
 
 const formatPriceLabel = (slotPrice) => {
   if (slotPrice === null || slotPrice === undefined || Number(slotPrice) <= 0) {
@@ -46,6 +51,39 @@ const formatDistanceLabel = (distanceKm) => {
   }
   return `${numeric.toFixed(1)} km`;
 };
+
+const getVnDateString = (date = new Date()) =>
+  (() => {
+    const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: VN_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    }).formatToParts(date);
+    const year = parts.find((item) => item.type === "year")?.value || "0000";
+    const month = parts.find((item) => item.type === "month")?.value || "00";
+    const day = parts.find((item) => item.type === "day")?.value || "00";
+    return `${year}-${month}-${day}`;
+  })();
+
+const getVnTimeMinutes = (date = new Date()) => {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: VN_TIME_ZONE,
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+
+  const hours = Number(parts.find((item) => item.type === "hour")?.value || 0);
+  const minutes = Number(parts.find((item) => item.type === "minute")?.value || 0);
+  return hours * 60 + minutes;
+};
+
+const buildTimeRange = (courtId, startMinutes, endMinutes) => ({
+  courtId,
+  startTime: `${String(Math.floor(startMinutes / 60)).padStart(2, "0")}:${String(startMinutes % 60).padStart(2, "0")}`,
+  endTime: `${String(Math.floor(endMinutes / 60)).padStart(2, "0")}:${String(endMinutes % 60).padStart(2, "0")}`,
+});
 
 
 const parseTags = (tagsCsv) => {
@@ -581,6 +619,11 @@ export const getFieldGrid = async (req, res) => {
     const closeTime = formatTime(fieldRow.close_time) || "22:00";
     const slotMinutes = fieldRow.slot_minutes || 60;
     const price = Number(fieldRow.slot_price) || 0;
+    const selectedDate = String(date || "").trim();
+    const todayVn = getVnDateString();
+    const currentVnMinutes = getVnTimeMinutes();
+    const isPastDate = selectedDate < todayVn;
+    const isToday = selectedDate === todayVn;
 
     // Fetch booked slots for the date
     const [bookings] = await sequelize.query(
@@ -602,15 +645,6 @@ export const getFieldGrid = async (req, res) => {
           ? [String(b.court_id)]
           : courts.map((court) => String(court.court_id));
 
-        const formatDateTimeTime = (dateObj) => {
-          const d = new Date(dateObj);
-          return d.toLocaleTimeString("en-GB", {
-            hour: "2-digit",
-            minute: "2-digit",
-            timeZone: "UTC",
-          });
-        };
-
         // Need local time of the server, actually time is usually stored in DB in UTC or local.
         // Using string slice to get HH:mm from ISO string or Date object
         const startStr = new Date(b.start_time).toISOString().substring(11, 16);
@@ -622,6 +656,39 @@ export const getFieldGrid = async (req, res) => {
           endTime: endStr,
         }));
       });
+
+    const blockedSlots = [];
+    if (isPastDate || isToday) {
+      const openMinutesValue = (() => {
+        const [hours, minutes] = String(openTime).split(":").map((item) => Number.parseInt(item, 10) || 0);
+        return hours * 60 + minutes;
+      })();
+      const closeMinutesValue = (() => {
+        const [hours, minutes] = String(closeTime).split(":").map((item) => Number.parseInt(item, 10) || 0);
+        return hours * 60 + minutes;
+      })();
+      const blockMinutes = Math.max(1, Number(slotMinutes) || 60);
+      const allSlotStarts = [];
+      let current = openMinutesValue;
+      while (current + blockMinutes <= closeMinutesValue) {
+        allSlotStarts.push(current);
+        current += blockMinutes;
+      }
+
+      const lockedStarts = isPastDate
+        ? allSlotStarts
+        : allSlotStarts.filter((slotStart) => slotStart < currentVnMinutes);
+
+      blockedSlots.push(
+        ...lockedStarts.flatMap((slotStart) =>
+          courts.map((court) => ({
+            courtId: String(court.court_id),
+            startTime: `${String(Math.floor(slotStart / 60)).padStart(2, "0")}:${String(slotStart % 60).padStart(2, "0")}`,
+            endTime: `${String(Math.floor((slotStart + blockMinutes) / 60)).padStart(2, "0")}:${String((slotStart + blockMinutes) % 60).padStart(2, "0")}`,
+          })),
+        ),
+      );
+    }
 
     const responseData = {
       selectedDate: date,
@@ -635,7 +702,7 @@ export const getFieldGrid = async (req, res) => {
           name: c.court_name,
         })),
         bookedSlots: bookedSlots,
-        blockedSlots: [], // Can be filled if we have schedule blocks per court
+        blockedSlots: blockedSlots,
       },
       pricePerHour: price,
       estimatedPrice:
@@ -1229,49 +1296,7 @@ export const getBooking = async (req, res) => {
       });
     }
 
-    const [rows] = await sequelize.query(
-      `SELECT
-        b.booking_id,
-        b.customer_id,
-        b.field_id,
-        b.court_id,
-        b.start_time,
-        b.end_time,
-        DATE_FORMAT(b.start_time, '%Y-%m-%d') AS booking_date,
-        DATE_FORMAT(b.start_time, '%H:%i') AS booking_start_time,
-        DATE_FORMAT(b.end_time, '%H:%i') AS booking_end_time,
-        b.price,
-        b.status,
-        b.note,
-        p.person_name AS customer_name,
-        p.phone AS customer_phone,
-        f.field_name,
-        f.location,
-        f.avatar_image_url,
-        f.card_image_url,
-        f.phone AS field_phone,
-        m.person_name AS owner_name,
-        m.phone AS owner_phone,
-        fc.court_name,
-        pay.payment_method
-      FROM bookings b
-      LEFT JOIN person p ON b.customer_id = p.person_id
-      LEFT JOIN fields f ON b.field_id = f.field_id
-      LEFT JOIN person m ON f.manager_id = m.person_id
-      LEFT JOIN field_courts fc ON b.court_id = fc.court_id
-      LEFT JOIN payments pay ON pay.payment_id = (
-        SELECT p2.payment_id
-        FROM payments p2
-        WHERE p2.booking_id = b.booking_id
-        ORDER BY p2.payment_date DESC, p2.payment_id DESC
-        LIMIT 1
-      )
-      WHERE b.booking_id = ? AND b.customer_id = ?
-      LIMIT 1`,
-      { replacements: [id, userId] },
-    );
-
-    const booking = rows?.[0];
+    const booking = await getBookingShareDetailByBookingId(id, { userId });
     if (!booking) {
       return res.status(404).json({
         success: false,
@@ -1279,48 +1304,14 @@ export const getBooking = async (req, res) => {
       });
     }
 
-      const dateLabel = booking.booking_date || null;
-      const startTime = booking.booking_start_time || null;
-      const endTime = booking.booking_end_time || null;
-    const fieldImage =
-      booking.card_image_url || booking.avatar_image_url || null;
-    const totalPrice = Number(booking.price || 0);
-    const totalPriceLabel = `${totalPrice.toLocaleString("vi-VN")} VND`;
-    const paymentMethod =
-      booking.payment_method || (booking.status === "paid" ? "momo" : "");
+    const publicBaseUrl =
+      process.env.PUBLIC_WEB_BASE_URL ||
+      `${req.protocol}://${req.get("host")}`;
+    const responseData = buildBookingShareResponse(booking, publicBaseUrl);
 
     res.json({
       success: true,
-      data: {
-        bookingId: booking.booking_id,
-        bookingCode: `#B${booking.booking_id}`,
-        status: booking.status,
-        date: dateLabel,
-        startTime,
-        endTime,
-        totalPrice: totalPriceLabel,
-        paymentMethod,
-        note: booking.note || null,
-        ownerNote: booking.note || null,
-        user: {
-          name: booking.customer_name || "",
-          phone: booking.customer_phone || "",
-        },
-        field: {
-          fieldId: booking.field_id,
-          fieldName: booking.field_name || "",
-          address: booking.location || "",
-          avatar: fieldImage,
-          ownerName: booking.owner_name || "",
-          ownerPhone: booking.field_phone || booking.owner_phone || "",
-        },
-        court: booking.court_id
-          ? {
-              courtId: booking.court_id,
-              courtName: booking.court_name || null,
-            }
-          : null,
-      },
+      data: responseData,
     });
   } catch (err) {
     console.error("getBooking error", err);

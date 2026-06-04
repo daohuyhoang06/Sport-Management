@@ -3,6 +3,11 @@ import {
   getManagerBookingByIdService,
   updateBookingStatusService,
 } from "../../services/manager/bookingService.js";
+import {
+  buildBookingShareResponse,
+  getBookingShareDetailByCheckInCode,
+  markBookingCheckedInByCode,
+} from "../../services/bookingShareService.js";
 
 /**
  * Get all bookings for manager's fields
@@ -124,5 +129,63 @@ export const cancelBooking = async (req, res) => {
   } catch (err) {
     console.error("Error cancelling booking:", err);
     res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+/**
+ * Get booking by check-in code
+ * GET /api/manager/bookings/check-in/:code
+ */
+export const getBookingByCheckInCode = async (req, res) => {
+  try {
+    const managerId = req.user.id;
+    const detail = await getBookingShareDetailByCheckInCode(
+      managerId,
+      req.params.code,
+    );
+
+    if (!detail) {
+      return res.status(404).json({ message: "Check-in code not found" });
+    }
+
+    const publicBaseUrl =
+      process.env.PUBLIC_WEB_BASE_URL ||
+      `${req.protocol}://${req.get("host")}`;
+
+    return res.json({
+      success: true,
+      data: buildBookingShareResponse(detail, publicBaseUrl),
+    });
+  } catch (err) {
+    console.error("Error fetching booking by check-in code:", err);
+    return res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+/**
+ * Confirm booking check-in
+ * PUT /api/manager/bookings/check-in/:code/confirm
+ */
+export const confirmBookingCheckIn = async (req, res) => {
+  try {
+    const managerId = req.user.id;
+    const detail = await markBookingCheckedInByCode(managerId, req.params.code);
+
+    if (!detail) {
+      return res.status(404).json({ message: "Check-in code not found" });
+    }
+
+    const publicBaseUrl =
+      process.env.PUBLIC_WEB_BASE_URL ||
+      `${req.protocol}://${req.get("host")}`;
+
+    return res.json({
+      success: true,
+      message: "Booking checked in successfully",
+      data: buildBookingShareResponse(detail, publicBaseUrl),
+    });
+  } catch (err) {
+    console.error("Error confirming booking check-in:", err);
+    return res.status(500).json({ message: "Server error", error: err.message });
   }
 };

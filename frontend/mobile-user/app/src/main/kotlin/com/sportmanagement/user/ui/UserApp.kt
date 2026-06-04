@@ -348,12 +348,17 @@ fun UserApp(
                         showBookingPaymentScreen = false
                         showBookingConfirmationScreen = true
                     },
-                    onConfirmBookingClick = {
+                    onViewInvoiceClick = { invoiceInfo ->
+                        bookingDetailInfo = invoiceInfo
                         showBookingPaymentScreen = false
                         showBookingConfirmationScreen = false
                         showBookingScreen = false
-                        bookingConfirmationData = null
-                        selectedBookingField = null
+                        showBookingDetailScreen = true
+                        closeHomeOverlayFlows()
+                        resolvedUserViewModel.onTabSelected(UserTab.Inbox)
+                        invoiceInfo.bookingId?.let { bookingId ->
+                            inboxViewModel.loadBookingDetail(bookingId, null)
+                        }
                     },
                     onViewCancelledBookingClick = {
                         showBookingPaymentScreen = false

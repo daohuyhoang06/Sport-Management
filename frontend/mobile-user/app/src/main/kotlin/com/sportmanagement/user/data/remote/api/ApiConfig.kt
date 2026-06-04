@@ -1,5 +1,7 @@
 package com.sportmanagement.user.data.remote.api
 
+import com.sportmanagement.user.BuildConfig
+
 object ApiConfig {
-    const val BASE_URL = "http://127.0.0.1:5000"
+    val BASE_URL: String = BuildConfig.API_BASE_URL
 }

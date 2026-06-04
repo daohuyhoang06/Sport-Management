@@ -75,12 +75,18 @@ data class BookingDetailDto(
     val bookingId: Int,
     val bookingCode: String,
     val status: String,
+    val statusCode: String,
     val date: String,
     val startTime: String,
     val endTime: String,
+    val timeRange: String,
     val totalPrice: String,
     val paymentMethod: String,
+    val transactionId: String,
+    val orderId: String,
     val ownerNote: String,
+    val checkInCode: String,
+    val shareUrl: String,
     val userName: String,
     val userPhone: String,
     val fieldId: Int,
@@ -161,12 +167,18 @@ class InboxApi(
             bookingId = data.optInt("bookingId"),
             bookingCode = data.optString("bookingCode"),
             status = data.optString("status"),
+            statusCode = data.optString("statusCode"),
             date = data.optString("date"),
             startTime = data.optString("startTime"),
             endTime = data.optString("endTime"),
+            timeRange = data.optString("timeRange"),
             totalPrice = data.optString("totalPrice"),
             paymentMethod = data.optString("paymentMethod"),
+            transactionId = data.optString("transactionId"),
+            orderId = data.optString("orderId"),
             ownerNote = data.optString("ownerNote"),
+            checkInCode = data.optString("checkInCode"),
+            shareUrl = data.optString("shareUrl"),
             userName = user.optString("name"),
             userPhone = user.optString("phone"),
             fieldId = field.optInt("fieldId"),
@@ -342,7 +354,7 @@ class InboxApi(
     }
 
     companion object {
-        private const val BASE_URL = "http://10.0.2.2:5000"
+        private val BASE_URL = ApiConfig.BASE_URL
     }
 }
 

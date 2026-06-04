@@ -3,6 +3,9 @@ import sequelize from "./src/config/database.js";
 const MOMO_MIGRATION = "20260509000001-add-momo-fields-to-payments.cjs";
 
 const columnDefinitions = [
+  ["payment_status", "VARCHAR(45) NULL DEFAULT 'pending' AFTER payment_method"],
+  ["transaction_id", "VARCHAR(100) NULL AFTER payment_status"],
+  ["paid_at", "DATETIME NULL AFTER transaction_id"],
   ["provider", "VARCHAR(45) NULL AFTER payment_method"],
   ["order_id", "VARCHAR(200) NULL AFTER provider"],
   ["request_id", "VARCHAR(200) NULL AFTER order_id"],
@@ -35,14 +38,6 @@ const indexExists = async (indexName) => {
 const ensureMomoPaymentColumns = async () => {
   try {
     const columns = await getPaymentColumns();
-
-    if (!columns.has("payment_status")) {
-      throw new Error("payments.payment_status column is required");
-    }
-
-    if (!columns.has("transaction_id")) {
-      throw new Error("payments.transaction_id column is required");
-    }
 
     for (const [name, definition] of columnDefinitions) {
       if (!columns.has(name)) {

@@ -1,5 +1,6 @@
 import sequelize from "../../config/database.js";
 import Payment from "../../models/Payment.js";
+import { bulkEnsureBookingShareAccess } from "../../services/bookingShareService.js";
 import {
   assertMomoConfigured,
   createMomoPaymentRequest,
@@ -293,6 +294,8 @@ const updatePaymentFromMomoResult = async (payload) => {
          )`,
       { replacements: bookingIds },
     );
+
+    await bulkEnsureBookingShareAccess(bookingIds);
   }
 
   return payment;
@@ -329,12 +332,76 @@ export const momoReturn = async (req, res) => {
       await updatePaymentFromMomoResult(payload);
     }
 
-    res.json({
-      message: "MoMo payment return received",
-      order_id: payload.orderId,
-      resultCode: payload.resultCode,
-      momoMessage: payload.message,
-    });
+    const appDeepLink = new URL("sportmanagement://payment/momo");
+    const query = new URLSearchParams();
+    for (const [key, value] of Object.entries({
+      orderId: payload.orderId || payload.order_id || "",
+      requestId: payload.requestId || payload.request_id || "",
+      resultCode: payload.resultCode ?? payload.result_code ?? "",
+      message: payload.message || payload.momoMessage || "",
+    })) {
+      if (value !== "") {
+        query.set(key, String(value));
+      }
+    }
+    appDeepLink.search = query.toString();
+
+    const html = `<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Returning to app</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background: #f7f9fc;
+        color: #0f172a;
+        display: grid;
+        place-items: center;
+        min-height: 100vh;
+        margin: 0;
+        padding: 24px;
+      }
+      .card {
+        width: min(100%, 520px);
+        background: #fff;
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+        text-align: center;
+      }
+      .btn {
+        display: inline-block;
+        margin-top: 16px;
+        padding: 12px 16px;
+        border-radius: 12px;
+        text-decoration: none;
+        background: #1d4ed8;
+        color: #fff;
+      }
+      p { line-height: 1.5; }
+    </style>
+    <script>
+      (function () {
+        var deepLink = ${JSON.stringify(appDeepLink.toString())};
+        setTimeout(function () {
+          window.location.href = deepLink;
+        }, 150);
+      })();
+    </script>
+  </head>
+  <body>
+    <div class="card">
+      <h2>Đang quay lại ứng dụng</h2>
+      <p>MoMo đã hoàn tất luồng thanh toán. Nếu ứng dụng không mở tự động, hãy bấm nút bên dưới.</p>
+      <a class="btn" href="${appDeepLink.toString()}">Quay lại app</a>
+    </div>
+  </body>
+</html>`;
+
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    res.send(html);
   } catch (error) {
     console.error("momoReturn error:", error);
     res.status(500).json({ message: "Server error", error: error.message });

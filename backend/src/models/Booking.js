@@ -75,6 +75,18 @@ const Booking = sequelize.define('Booking', {
   price: {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: false
+  },
+  share_token: {
+    type: DataTypes.STRING(120),
+    allowNull: true
+  },
+  checkin_code: {
+    type: DataTypes.STRING(32),
+    allowNull: true
+  },
+  checked_in_at: {
+    type: DataTypes.DATE,
+    allowNull: true
   }
 }, {
   tableName: 'bookings',
@@ -84,7 +96,9 @@ const Booking = sequelize.define('Booking', {
     { fields: ['field_id'] },
     { fields: ['status'] },
     { fields: ['status', 'pending_expires_at'] },
-    { fields: ['start_time', 'end_time'] }
+    { fields: ['start_time', 'end_time'] },
+    { fields: ['share_token'] },
+    { fields: ['checkin_code'] }
   ]
 });
 

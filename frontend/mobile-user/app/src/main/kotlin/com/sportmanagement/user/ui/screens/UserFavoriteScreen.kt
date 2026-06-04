@@ -1,7 +1,11 @@
 ﻿package com.sportmanagement.user.ui.screens
 
 import android.content.Intent
+import android.graphics.Bitmap
 import android.net.Uri
+import android.os.Build
+import android.provider.MediaStore
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -35,6 +39,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.ChatBubble
 import androidx.compose.material.icons.outlined.CameraAlt
@@ -81,6 +86,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
@@ -93,6 +99,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.FileProvider
 import com.sportmanagement.user.R
 import com.sportmanagement.user.ui.theme.AppCardCornerRadius
 import com.sportmanagement.user.ui.theme.AppCtaCornerRadius
@@ -103,6 +110,11 @@ import com.sportmanagement.user.ui.theme.AppPanelCornerRadius
 import com.sportmanagement.user.ui.theme.AppPillCornerRadius
 import com.sportmanagement.user.ui.theme.AppScreenHorizontalPadding
 import com.sportmanagement.user.ui.theme.AppSheetTopCornerRadius
+import com.google.zxing.BarcodeFormat
+import com.google.zxing.EncodeHintType
+import com.google.zxing.qrcode.QRCodeWriter
+import java.io.File
+import java.io.FileOutputStream
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -796,15 +808,15 @@ private fun VenueInfoCard(info: BookingInfo) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
+                .padding(14.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.Top
         ) {
             Image(
                 painter = painterResource(id = R.drawable.field_football),
                 contentDescription = null,
                 modifier = Modifier
-                    .size(width = 92.dp, height = 68.dp)
+                    .size(width = 96.dp, height = 72.dp)
                     .background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(AppCardCornerRadius)),
                 contentScale = ContentScale.Crop
             )
@@ -815,48 +827,12 @@ private fun VenueInfoCard(info: BookingInfo) {
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
-                Spacer(Modifier.height(6.dp))
-                Surface(
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    shape = RoundedCornerShape(AppPillCornerRadius)
-                ) {
-                    Text(
-                        text = info.statusLabel,
-                        style = MaterialTheme.typography.labelSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                    )
-                }
-                Spacer(Modifier.height(6.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Outlined.Place,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(14.dp)
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        text = info.address,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-            Surface(
-                modifier = Modifier.size(32.dp),
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.primaryContainer
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        imageVector = Icons.Outlined.Phone,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = info.address,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }
@@ -875,64 +851,9 @@ private fun BookerInfoCard(info: BookingInfo) {
                 title = "Thông tin người đặt",
                 icon = Icons.Outlined.Person
             )
-            Spacer(Modifier.height(8.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(32.dp)
-                            .background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Outlined.Person,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(18.dp)
-                        )
-                    }
-                    Spacer(Modifier.width(10.dp))
-                    Column {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = info.customerName,
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                            Spacer(Modifier.width(6.dp))
-                            Surface(
-                                color = MaterialTheme.colorScheme.primaryContainer,
-                                shape = RoundedCornerShape(AppPillCornerRadius)
-                            ) {
-                                Text(
-                                    text = "Người đặt",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                )
-                            }
-                        }
-                        Text(
-                            text = info.customerPhone,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                }
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = Icons.Outlined.Phone,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(18.dp)
-                    )
-                }
-            }
+            Spacer(Modifier.height(10.dp))
+            BookingDetailRow(label = "Tên", value = info.customerName)
+            BookingDetailRow(label = "Số điện thoại", value = info.customerPhone)
         }
     }
 }
@@ -993,9 +914,14 @@ data class BookingInfo(
     val dateLabel: String,
     val bookingCode: String,
     val statusLabel: String,
+    val statusCode: String = "paid",
     val address: String,
     val paymentMethod: String,
     val totalAmount: String,
+    val transactionId: String = "",
+    val orderId: String = "",
+    val checkInCode: String = "",
+    val shareUrl: String = "",
     val customerName: String,
     val customerPhone: String,
     val ownerPhone: String = "",
@@ -1300,6 +1226,36 @@ fun BookingDetailScreen(
     var showContactSheet by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val screenBackground = MaterialTheme.colorScheme.background
+    val qrBitmap = rememberQrBitmap(info.shareUrl)
+    val shareText = remember(info) {
+        buildString {
+            append("Hóa đơn & QR Check-in")
+            append('\n')
+            append("Sân: ${info.fieldName}")
+            append('\n')
+            append("Ngày: ${info.dateLabel}")
+            append('\n')
+            append("Khung giờ: ${info.timeRange}")
+            append('\n')
+            append("Người đặt: ${info.customerName.ifBlank { "Chưa cập nhật" }}")
+            append('\n')
+            append("Trạng thái: ${info.statusLabel}")
+            if (info.paymentMethod.isNotBlank() || info.totalAmount.isNotBlank()) {
+                append('\n')
+                append(
+                    listOf(info.paymentMethod, info.totalAmount)
+                        .filter { it.isNotBlank() }
+                        .joinToString(" • ")
+                        .let { "Thanh toán: $it" }
+                )
+            }
+            if (info.shareUrl.isNotBlank()) {
+                append('\n')
+                append('\n')
+                append(info.shareUrl)
+            }
+        }
+    }
 
     Box(
         modifier = Modifier
@@ -1310,12 +1266,76 @@ fun BookingDetailScreen(
             modifier = Modifier
                 .fillMaxSize()
         ) {
-            BookingDetailTopBar(onBackClick = onBackClick)
-            BookingDetailContent(
-                info = info,
-                modifier = Modifier
-                    .weight(1f)
-                    .verticalScroll(rememberScrollState())
+            BookingDetailTopBar(
+                onBackClick = onBackClick,
+                onShareClick = {
+                    try {
+                        context.startActivity(
+                            Intent.createChooser(
+                                Intent(Intent.ACTION_SEND).apply {
+                                    type = "text/plain"
+                                    putExtra(Intent.EXTRA_TEXT, shareText)
+                                },
+                                null
+                            )
+                        )
+                    } catch (_: Exception) {
+                        Toast.makeText(
+                            context,
+                            "Không thể chia sẻ hóa đơn lúc này",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+            )
+        BookingDetailContent(
+            info = info,
+            onShareQr = {
+                if (qrBitmap == null || info.shareUrl.isBlank()) {
+                    Toast.makeText(
+                        context,
+                        "QR check-in chưa sẵn sàng",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                } else {
+                    runCatching { shareQrBitmap(context, qrBitmap, info.bookingCode) }
+                        .onFailure {
+                            Toast.makeText(
+                                context,
+                                "Không thể chia sẻ QR lúc này",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                }
+            },
+            onDownloadQr = {
+                if (qrBitmap == null || info.shareUrl.isBlank()) {
+                    Toast.makeText(
+                        context,
+                        "QR check-in chưa sẵn sàng",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                } else {
+                    runCatching { saveQrBitmap(context, qrBitmap, info.bookingCode) }
+                        .onSuccess {
+                            Toast.makeText(
+                                context,
+                                "Đã tải QR xuống máy",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                        .onFailure {
+                            Toast.makeText(
+                                context,
+                                "Không thể tải QR xuống",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                }
+            },
+            modifier = Modifier
+                .weight(1f)
+                .verticalScroll(rememberScrollState())
                     .padding(horizontal = AppScreenHorizontalPadding, vertical = 12.dp)
             )
         }
@@ -1367,7 +1387,10 @@ fun BookingDetailScreen(
 }
 
 @Composable
-private fun BookingDetailTopBar(onBackClick: () -> Unit) {
+private fun BookingDetailTopBar(
+    onBackClick: () -> Unit,
+    onShareClick: () -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1389,9 +1412,9 @@ private fun BookingDetailTopBar(onBackClick: () -> Unit) {
             modifier = Modifier.weight(1f),
             color = MaterialTheme.colorScheme.onSurface
         )
-        IconButton(onClick = { }) {
+        IconButton(onClick = onShareClick) {
             Icon(
-                imageVector = Icons.Outlined.MoreVert,
+                imageVector = Icons.Default.Share,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -1400,7 +1423,12 @@ private fun BookingDetailTopBar(onBackClick: () -> Unit) {
 }
 
 @Composable
-private fun BookingDetailContent(info: BookingInfo, modifier: Modifier = Modifier) {
+private fun BookingDetailContent(
+    info: BookingInfo,
+    onShareQr: () -> Unit,
+    onDownloadQr: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     Column(modifier = modifier) {
         BookingStatusCard(info)
         Spacer(Modifier.height(12.dp))
@@ -1411,16 +1439,46 @@ private fun BookingDetailContent(info: BookingInfo, modifier: Modifier = Modifie
         BookerInfoCard(info)
         Spacer(Modifier.height(12.dp))
         BookingOwnerNoteCard(note = info.ownerNote)
-        Spacer(Modifier.height(80.dp))
+        Spacer(Modifier.height(16.dp))
+        BookingCheckInCard(
+            info = info,
+            onShareQr = onShareQr,
+            onDownloadQr = onDownloadQr
+        )
+        Spacer(Modifier.height(140.dp))
     }
 }
 
 @Composable
 private fun BookingStatusCard(info: BookingInfo) {
+    val isActive = info.statusCode == "paid" || info.statusCode == "checked_in"
+    val cardColor = if (isActive) {
+        MaterialTheme.colorScheme.primaryContainer
+    } else {
+        MaterialTheme.colorScheme.errorContainer
+    }
+    val textColor = if (isActive) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        MaterialTheme.colorScheme.error
+    }
+    val title = when (info.statusCode) {
+        "checked_in" -> "Đã check-in"
+        "expired" -> "Mã check-in đã hết hạn"
+        "cancelled" -> "Đơn đặt sân đã hủy"
+        else -> "Đặt sân thành công"
+    }
+    val subtitle = when (info.statusCode) {
+        "checked_in" -> "Booking ${info.bookingCode} đã được chủ sân xác nhận check-in."
+        "expired" -> "Booking ${info.bookingCode} đã qua thời gian sử dụng."
+        "cancelled" -> "Booking ${info.bookingCode} không còn hiệu lực."
+        else -> "Booking ${info.bookingCode} đã được thanh toán."
+    }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(AppCardCornerRadius),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+        colors = CardDefaults.cardColors(containerColor = cardColor),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Row(
@@ -1431,7 +1489,7 @@ private fun BookingStatusCard(info: BookingInfo) {
             Box(
                 modifier = Modifier
                     .size(28.dp)
-                    .background(MaterialTheme.colorScheme.primary, CircleShape),
+                    .background(textColor, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
@@ -1443,17 +1501,211 @@ private fun BookingStatusCard(info: BookingInfo) {
             }
             Column {
                 Text(
-                    text = "Đặt sân thành công",
+                    text = title,
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.primary
+                    color = textColor
                 )
                 Text(
-                    text = "Booking ${info.bookingCode} đã được xác nhận.",
+                    text = subtitle,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun BookingCheckInCard(
+    info: BookingInfo,
+    onShareQr: () -> Unit,
+    onDownloadQr: () -> Unit
+) {
+    val qrBitmap = rememberQrBitmap(info.shareUrl)
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(AppCardCornerRadius),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            SectionHeader(
+                title = "QR Check-in",
+                icon = Icons.Outlined.EventAvailable
+            )
+            Spacer(Modifier.height(10.dp))
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .background(
+                            MaterialTheme.colorScheme.surfaceContainerLow,
+                            RoundedCornerShape(AppCardCornerRadius)
+                        )
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (qrBitmap != null) {
+                        Image(
+                            bitmap = qrBitmap.asImageBitmap(),
+                            contentDescription = "QR check-in",
+                            modifier = Modifier.size(196.dp)
+                        )
+                    } else {
+                        Text(
+                            text = "Đang tạo QR...",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+            if (info.shareUrl.isNotBlank()) {
+                Spacer(Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = onShareQr,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(AppCtaCornerRadius),
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.dp,
+                            MaterialTheme.colorScheme.primary
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Share,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = "Chia sẻ",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    Button(
+                        onClick = onDownloadQr,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(AppCtaCornerRadius),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.ContentCopy,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = "Tải xuống",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun rememberQrBitmap(
+    content: String,
+    size: Int = 768
+): Bitmap? = remember(content, size) {
+    if (content.isBlank()) {
+        null
+    } else {
+        runCatching {
+            val matrix = QRCodeWriter().encode(
+                content,
+                BarcodeFormat.QR_CODE,
+                size,
+                size,
+                mapOf(EncodeHintType.MARGIN to 1)
+            )
+            Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888).apply {
+                for (x in 0 until size) {
+                    for (y in 0 until size) {
+                        setPixel(
+                            x,
+                            y,
+                            if (matrix[x, y]) android.graphics.Color.BLACK else android.graphics.Color.WHITE,
+                        )
+                    }
+                }
+            }
+        }.getOrNull()
+    }
+}
+
+private fun shareQrBitmap(
+    context: android.content.Context,
+    bitmap: Bitmap,
+    bookingCode: String
+) {
+    val fileName = "qr_${bookingCode.trim('#', 'B', 'b').ifBlank { "checkin" }}.png"
+    val cacheDir = File(context.cacheDir, "shared_qr").apply { mkdirs() }
+    val file = File(cacheDir, fileName)
+
+    FileOutputStream(file).use { outputStream ->
+        bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
+    }
+
+    val uri = FileProvider.getUriForFile(
+        context,
+        "${context.packageName}.fileprovider",
+        file
+    )
+
+    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+        type = "image/png"
+        putExtra(Intent.EXTRA_STREAM, uri)
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        clipData = android.content.ClipData.newRawUri("QR Check-in", uri)
+    }
+    context.startActivity(Intent.createChooser(shareIntent, "Chia sẻ QR Check-in"))
+}
+
+private fun saveQrBitmap(
+    context: android.content.Context,
+    bitmap: Bitmap,
+    bookingCode: String
+) {
+    val fileName = "qr_${bookingCode.trim('#', 'B', 'b').ifBlank { "checkin" }}_${System.currentTimeMillis()}.png"
+    val resolver = context.contentResolver
+
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        val values = android.content.ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+            put(MediaStore.MediaColumns.MIME_TYPE, "image/png")
+            put(MediaStore.MediaColumns.RELATIVE_PATH, "${android.os.Environment.DIRECTORY_PICTURES}/SportManagement")
+        }
+        val uri = resolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, values)
+            ?: error("Unable to create media entry")
+        resolver.openOutputStream(uri)?.use { outputStream ->
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
+        } ?: error("Unable to open media output stream")
+    } else {
+        val picturesDir = android.os.Environment
+            .getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_PICTURES)
+        val targetDir = File(picturesDir, "SportManagement").apply { mkdirs() }
+        val file = File(targetDir, fileName)
+        FileOutputStream(file).use { outputStream ->
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
         }
     }
 }
@@ -1474,8 +1726,8 @@ private fun BookingOwnerNoteCard(note: String) {
             Spacer(Modifier.height(8.dp))
             Text(
                 text = note,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurface
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
@@ -1489,12 +1741,22 @@ private fun BookingDetailBottomActions(
 ) {
     Surface(
         modifier = modifier
-            .fillMaxWidth()
-            .navigationBarsPadding()
-            .padding(horizontal = AppScreenHorizontalPadding, vertical = 12.dp),
-        color = Color.Transparent
+            .fillMaxWidth(),
+        shape = RoundedCornerShape(
+            topStart = AppCardCornerRadius,
+            topEnd = AppCardCornerRadius
+        ),
+        color = Color.White,
+        tonalElevation = 4.dp,
+        shadowElevation = 16.dp
     ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(horizontal = AppScreenHorizontalPadding, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
             OutlinedButton(
                 onClick = onDirectionsClick,
                 modifier = Modifier
@@ -2162,15 +2424,17 @@ private fun NotificationDetailBottomAction(
 ) {
     Surface(
         modifier = modifier
-            .fillMaxWidth()
-            .navigationBarsPadding()
-            .padding(horizontal = AppScreenHorizontalPadding, vertical = 12.dp),
-        color = Color.Transparent
+            .fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 4.dp,
+        shadowElevation = 12.dp
     ) {
         Button(
             onClick = onClick,
             modifier = Modifier
                 .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(horizontal = AppScreenHorizontalPadding, vertical = 12.dp)
                 .height(AppCtaWideHeight),
             shape = RoundedCornerShape(AppCtaCornerRadius),
             colors = ButtonDefaults.buttonColors(

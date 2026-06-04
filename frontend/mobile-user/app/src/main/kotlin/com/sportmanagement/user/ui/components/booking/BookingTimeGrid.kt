@@ -18,6 +18,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -30,12 +33,16 @@ import com.sportmanagement.user.domain.model.BookingTimeGridData
 import com.sportmanagement.user.domain.model.BookingTimeGridSupport
 import com.sportmanagement.user.domain.model.BookingTimeRange
 import com.sportmanagement.user.domain.model.SlotStatus
+import kotlinx.coroutines.delay
+import java.util.Calendar
+import java.util.TimeZone
 
 @Composable
 fun BookingTimeGrid(
     gridData: BookingTimeGridData,
     cellWidth: Dp,
     selectedSlots: List<BookingTimeRange>,
+    selectedDate: String,
     onSlotClick: (courtId: String, startTime: String, endTime: String) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -45,6 +52,7 @@ fun BookingTimeGrid(
     val closeMinutes = remember(gridData.closeTime) {
         BookingTimeGridSupport.parseTimeToMinutes(gridData.closeTime)
     }
+    val vnClock by rememberVietnamClock()
 
     val headerSlotStarts = remember(gridData.openTime, gridData.closeTime, stepMinutes) {
         BookingTimeGridSupport.generateGridSlotStarts(
@@ -88,6 +96,9 @@ fun BookingTimeGrid(
                 bookingSlotStarts = bookingSlotStarts,
                 closeMinutes = closeMinutes,
                 selectedSlots = selectedSlots,
+                selectedDate = selectedDate,
+                currentDateText = vnClock.dateText,
+                currentTimeMinutes = vnClock.timeMinutes,
                 bookingCellWidth = bookingCellWidth,
                 cellHeight = cellHeight,
                 leftLabelWidth = leftLabelWidth,
@@ -164,6 +175,9 @@ private fun BookingTimeGridRow(
     bookingSlotStarts: List<Int>,
     closeMinutes: Int,
     selectedSlots: List<BookingTimeRange>,
+    selectedDate: String,
+    currentDateText: String,
+    currentTimeMinutes: Int,
     bookingCellWidth: Dp,
     cellHeight: Dp,
     leftLabelWidth: Dp,
@@ -202,7 +216,10 @@ private fun BookingTimeGridRow(
                     slotStart = slotStart,
                     closeMinutes = closeMinutes,
                     gridData = gridData,
-                    selectedSlots = selectedSlots
+                    selectedSlots = selectedSlots,
+                    selectedDate = selectedDate,
+                    currentDateText = currentDateText,
+                    currentTimeMinutes = currentTimeMinutes
                 )
 
                 BookingSlotCell(
@@ -242,7 +259,10 @@ private fun resolveBookingBlockState(
     slotStart: Int,
     closeMinutes: Int,
     gridData: BookingTimeGridData,
-    selectedSlots: List<BookingTimeRange>
+    selectedSlots: List<BookingTimeRange>,
+    selectedDate: String,
+    currentDateText: String,
+    currentTimeMinutes: Int
 ): GridCellState {
     val selectionMinutes = gridData.minBookingMinutes.coerceAtLeast(1)
     val requestedEnd = slotStart + selectionMinutes
@@ -256,6 +276,18 @@ private fun resolveBookingBlockState(
         endTime = BookingTimeGridSupport.formatMinutesAsTime(requestedEnd)
     )
 
+    val overlapsBookedRange = gridData.bookedSlots.any { slot ->
+        slot.courtId == courtId &&
+            BookingTimeGridSupport.rangeOverlaps(slot, requestedRange)
+    }
+    if (overlapsBookedRange) {
+        return GridCellState(status = SlotStatus.BOOKED)
+    }
+
+    if (shouldLockByTime(selectedDate, currentDateText, slotStart, currentTimeMinutes)) {
+        return GridCellState(status = SlotStatus.LOCKED)
+    }
+
     val selectedRange = selectedSlots.firstOrNull { slot ->
         slot.courtId == courtId &&
             BookingTimeGridSupport.rangeOverlaps(slot, requestedRange)
@@ -266,14 +298,6 @@ private fun resolveBookingBlockState(
             clickRange = selectedRange,
             showSelectionIcon = BookingTimeGridSupport.parseTimeToMinutes(selectedRange.startTime) == slotStart
         )
-    }
-
-    val overlapsBookedRange = gridData.bookedSlots.any { slot ->
-        slot.courtId == courtId &&
-            BookingTimeGridSupport.rangeOverlaps(slot, requestedRange)
-    }
-    if (overlapsBookedRange) {
-        return GridCellState(status = SlotStatus.BOOKED)
     }
 
     val overlapsBlockedRange = gridData.blockedSlots.any { slot ->
@@ -288,6 +312,20 @@ private fun resolveBookingBlockState(
         status = SlotStatus.AVAILABLE,
         clickRange = requestedRange
     )
+}
+
+private fun shouldLockByTime(
+    selectedDate: String,
+    currentDateText: String,
+    slotStart: Int,
+    currentTimeMinutes: Int
+): Boolean {
+    if (selectedDate.isBlank() || currentDateText.isBlank()) return false
+    return when {
+        selectedDate < currentDateText -> true
+        selectedDate > currentDateText -> false
+        else -> slotStart < currentTimeMinutes
+    }
 }
 
 private fun generateBookingSlotStarts(
@@ -307,4 +345,34 @@ private fun generateBookingSlotStarts(
         current += blockMinutes
     }
     return starts
+}
+
+@Immutable
+private data class VietnamClock(
+    val dateText: String,
+    val timeMinutes: Int
+)
+
+@Composable
+private fun rememberVietnamClock() = produceState(initialValue = currentVietnamClock()) {
+    while (true) {
+        value = currentVietnamClock()
+        val now = System.currentTimeMillis()
+        val delayMillis = 60_000L - (now % 60_000L)
+        delay(delayMillis)
+    }
+}
+
+private fun currentVietnamClock(): VietnamClock {
+    val timeZone = TimeZone.getTimeZone("Asia/Ho_Chi_Minh")
+    val calendar = Calendar.getInstance(timeZone)
+    val year = calendar.get(Calendar.YEAR)
+    val month = calendar.get(Calendar.MONTH) + 1
+    val day = calendar.get(Calendar.DAY_OF_MONTH)
+    val hour = calendar.get(Calendar.HOUR_OF_DAY)
+    val minute = calendar.get(Calendar.MINUTE)
+    return VietnamClock(
+        dateText = "%04d-%02d-%02d".format(year, month, day),
+        timeMinutes = hour * 60 + minute
+    )
 }
