@@ -155,7 +155,9 @@ export const listConversations = async (req, res) => {
         f.field_name,
         f.avatar_image_url,
         f.card_image_url,
+        f.phone AS field_phone,
         m.person_name AS owner_name,
+        m.phone AS owner_phone,
         (
           SELECT message_text
           FROM messages
@@ -191,6 +193,7 @@ export const listConversations = async (req, res) => {
       fieldName: row.field_name || null,
       fieldAvatar: row.card_image_url || row.avatar_image_url || null,
       ownerName: row.owner_name || null,
+      ownerPhone: row.field_phone || row.owner_phone || null,
       isOnline: false,
       lastMessage: row.last_message || row.last_message_text || null,
       lastMessageTime:
@@ -287,7 +290,7 @@ export const getConversationMessages = async (req, res) => {
     const fieldAvatar =
       conversation.card_image_url || conversation.avatar_image_url || null;
     const ownerPhone =
-      conversation.owner_phone || conversation.field_phone || null;
+      conversation.field_phone || conversation.owner_phone || null;
 
     res.json({
       success: true,

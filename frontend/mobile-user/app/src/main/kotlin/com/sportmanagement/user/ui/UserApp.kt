@@ -217,7 +217,7 @@ fun UserApp(
         showFavoriteFieldsScreen -> Color.Transparent
         showBookingScreen || showBookingPaymentScreen || showBookingConfirmationScreen -> Color.Transparent
         showBookingDetailScreen || showConversationScreen || showNotificationDetailScreen -> MaterialTheme.colorScheme.surface
-        uiState.selectedTab == UserTab.Home || uiState.selectedTab == UserTab.Profile -> Color.Transparent
+        uiState.selectedTab == UserTab.Home || uiState.selectedTab == UserTab.Inbox || uiState.selectedTab == UserTab.Profile -> Color.Transparent
         else -> MaterialTheme.colorScheme.surface
     }
     val useDarkStatusBarIcons = !showAuthScreen &&
@@ -231,6 +231,7 @@ fun UserApp(
         !showConversationScreen &&
         !showNotificationDetailScreen &&
         uiState.selectedTab != UserTab.Home &&
+        uiState.selectedTab != UserTab.Inbox &&
         uiState.selectedTab != UserTab.Profile
     val shouldShowBottomBar = !showBookingScreen &&
         !showBookingConfirmationScreen &&

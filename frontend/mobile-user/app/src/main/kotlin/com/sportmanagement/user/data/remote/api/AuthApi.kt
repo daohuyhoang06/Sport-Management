@@ -298,10 +298,6 @@ class AuthApi(
         }.getOrNull().orEmpty()
         return message.ifBlank { "HTTP $responseCode: auth request failed" }
     }
-
-    companion object {
-        private const val BASE_URL = "http://10.0.2.2:5000"
-    }
 }
 
 private fun JSONObject.optSanitizedString(name: String): String {

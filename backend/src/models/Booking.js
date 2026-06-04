@@ -72,6 +72,14 @@ const Booking = sequelize.define('Booking', {
     type: DataTypes.TEXT,
     allowNull: true
   },
+  customer_name: {
+    type: DataTypes.STRING(255),
+    allowNull: true
+  },
+  customer_phone: {
+    type: DataTypes.STRING(30),
+    allowNull: true
+  },
   price: {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: false

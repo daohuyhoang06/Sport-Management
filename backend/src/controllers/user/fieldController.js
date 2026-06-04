@@ -558,7 +558,7 @@ export const getFieldGrid = async (req, res) => {
     }
 
     const [[fieldRow]] = await sequelize.query(
-      `SELECT field_id, open_time, close_time, slot_minutes, slot_price 
+      `SELECT field_id, field_name, open_time, close_time, slot_minutes, slot_price 
        FROM fields WHERE field_id = ? LIMIT 1`,
       { replacements: [id] },
     );
@@ -574,6 +574,9 @@ export const getFieldGrid = async (req, res) => {
        FROM field_courts WHERE field_id = ? ORDER BY sort_order ASC`,
       { replacements: [id] },
     );
+    const gridCourts = courts.length > 0
+      ? courts
+      : [{ court_id: "default", court_name: fieldRow.field_name || "San" }];
 
     const formatTime = (timeStr) =>
       timeStr ? String(timeStr).substring(0, 5) : "";
@@ -600,7 +603,7 @@ export const getFieldGrid = async (req, res) => {
     const bookedSlots = bookings.flatMap((b) => {
         const targetCourts = b.court_id
           ? [String(b.court_id)]
-          : courts.map((court) => String(court.court_id));
+          : gridCourts.map((court) => String(court.court_id));
 
         const formatDateTimeTime = (dateObj) => {
           const d = new Date(dateObj);
@@ -630,7 +633,7 @@ export const getFieldGrid = async (req, res) => {
         closeTime: closeTime,
         gridStepMinutes: slotMinutes,
         minBookingMinutes: slotMinutes,
-        courts: courts.map((c) => ({
+        courts: gridCourts.map((c) => ({
           id: String(c.court_id),
           name: c.court_name,
         })),
@@ -679,6 +682,14 @@ export const createBooking = async (req, res) => {
     }
 
     const finalPrice = price || 0;
+    const snapshotCustomerName =
+      typeof customer_name === "string" && customer_name.trim()
+        ? customer_name.trim()
+        : null;
+    const snapshotCustomerPhone =
+      typeof customer_phone === "string" && customer_phone.trim()
+        ? customer_phone.trim()
+        : null;
     // Combine customer info with note
     let finalNote = "";
     if (customer_name || customer_phone) {
@@ -809,9 +820,9 @@ export const createBooking = async (req, res) => {
 
       await sequelize.query(
         `INSERT INTO bookings (
-          customer_id, field_id, court_id, manager_id, start_time, end_time, price, note, status, pending_expires_at
+          customer_id, field_id, court_id, manager_id, start_time, end_time, price, note, customer_name, customer_phone, status, pending_expires_at
         )
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', DATE_ADD(NOW(), INTERVAL ? MINUTE))`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', DATE_ADD(NOW(), INTERVAL ? MINUTE))`,
         {
           replacements: [
             customer_id,
@@ -822,6 +833,8 @@ export const createBooking = async (req, res) => {
             mysqlEndTime,
             finalPrice,
             finalNote,
+            snapshotCustomerName,
+            snapshotCustomerPhone,
             PENDING_HOLD_MINUTES,
           ],
           transaction,
@@ -834,31 +847,6 @@ export const createBooking = async (req, res) => {
       );
       booking = rows?.[0] || null;
     });
-
-    const [[fieldInfo]] = await sequelize.query(
-      "SELECT field_name FROM fields WHERE field_id = ? LIMIT 1",
-      { replacements: [field_id] },
-    );
-
-    if (booking?.booking_id) {
-      await sequelize.query(
-        `INSERT INTO notifications
-          (user_id, type, section, title, subtitle, content, target_type, target_id, booking_id, field_id, is_read, metadata, created_at, updated_at)
-         VALUES (?, 'booking_success', 'priority', ?, ?, ?, 'booking', ?, ?, ?, 0, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-        {
-          replacements: [
-            customer_id,
-            `Dat san thanh cong - ${fieldInfo?.field_name || "San the thao"}`,
-            `Ma dat san #B${booking.booking_id}`,
-            `Ban vua tao yeu cau dat san tu ${mysqlStartTime} den ${mysqlEndTime}`,
-            booking.booking_id,
-            booking.booking_id,
-            field_id,
-            JSON.stringify({ icon: "booking_success" }),
-          ],
-        },
-      );
-    }
 
     res.status(201).json({
       message: "Booking created",
@@ -937,6 +925,14 @@ export const createBatchBookings = async (req, res) => {
     }
 
     let finalNote = "";
+    const snapshotCustomerName =
+      typeof customer_name === "string" && customer_name.trim()
+        ? customer_name.trim()
+        : null;
+    const snapshotCustomerPhone =
+      typeof customer_phone === "string" && customer_phone.trim()
+        ? customer_phone.trim()
+        : null;
     if (customer_name || customer_phone) {
       finalNote += `Ten: ${customer_name || "N/A"}, SDT: ${customer_phone || "N/A"}`;
       if (note) {
@@ -1053,9 +1049,9 @@ export const createBatchBookings = async (req, res) => {
 
         await sequelize.query(
           `INSERT INTO bookings (
-            customer_id, field_id, court_id, manager_id, start_time, end_time, price, note, status, pending_expires_at
+            customer_id, field_id, court_id, manager_id, start_time, end_time, price, note, customer_name, customer_phone, status, pending_expires_at
           )
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', DATE_ADD(NOW(), INTERVAL ? MINUTE))`,
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', DATE_ADD(NOW(), INTERVAL ? MINUTE))`,
           {
             replacements: [
               customer_id,
@@ -1066,6 +1062,8 @@ export const createBatchBookings = async (req, res) => {
               item.end_time,
               item.price,
               finalNote,
+              snapshotCustomerName,
+              snapshotCustomerPhone,
               PENDING_HOLD_MINUTES,
             ],
             transaction,
@@ -1081,31 +1079,6 @@ export const createBatchBookings = async (req, res) => {
         }
       }
     });
-
-    const [[fieldInfo]] = await sequelize.query(
-      "SELECT field_name FROM fields WHERE field_id = ? LIMIT 1",
-      { replacements: [field_id] },
-    );
-
-    for (const booking of createdBookings) {
-      await sequelize.query(
-        `INSERT INTO notifications
-          (user_id, type, section, title, subtitle, content, target_type, target_id, booking_id, field_id, is_read, metadata, created_at, updated_at)
-         VALUES (?, 'booking_success', 'priority', ?, ?, ?, 'booking', ?, ?, ?, 0, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-        {
-          replacements: [
-            customer_id,
-            `Dat san thanh cong - ${fieldInfo?.field_name || "San the thao"}`,
-            `Ma dat san #B${booking.booking_id}`,
-            `Ban vua tao yeu cau dat san tu ${booking.start_time} den ${booking.end_time}`,
-            booking.booking_id,
-            booking.booking_id,
-            field_id,
-            JSON.stringify({ icon: "booking_success" }),
-          ],
-        },
-      );
-    }
 
     res.status(201).json({
       message: "Bookings created",
@@ -1243,6 +1216,8 @@ export const getBooking = async (req, res) => {
         b.price,
         b.status,
         b.note,
+        b.customer_name AS booking_customer_name,
+        b.customer_phone AS booking_customer_phone,
         p.person_name AS customer_name,
         p.phone AS customer_phone,
         f.field_name,
@@ -1253,7 +1228,8 @@ export const getBooking = async (req, res) => {
         m.person_name AS owner_name,
         m.phone AS owner_phone,
         fc.court_name,
-        pay.payment_method
+        pay.payment_method,
+        pay.payment_status
       FROM bookings b
       LEFT JOIN person p ON b.customer_id = p.person_id
       LEFT JOIN fields f ON b.field_id = f.field_id
@@ -1263,6 +1239,11 @@ export const getBooking = async (req, res) => {
         SELECT p2.payment_id
         FROM payments p2
         WHERE p2.booking_id = b.booking_id
+           OR (
+             p2.booking_ids_json IS NOT NULL
+             AND CONCAT(',', REPLACE(REPLACE(REPLACE(p2.booking_ids_json, '[', ''), ']', ''), ' ', ''), ',')
+                 LIKE CONCAT('%,', b.booking_id, ',%')
+           )
         ORDER BY p2.payment_date DESC, p2.payment_id DESC
         LIMIT 1
       )
@@ -1288,6 +1269,7 @@ export const getBooking = async (req, res) => {
     const totalPriceLabel = `${totalPrice.toLocaleString("vi-VN")} VND`;
     const paymentMethod =
       booking.payment_method || (booking.status === "paid" ? "momo" : "");
+    const paymentStatus = booking.payment_status || "";
 
     res.json({
       success: true,
@@ -1300,11 +1282,12 @@ export const getBooking = async (req, res) => {
         endTime,
         totalPrice: totalPriceLabel,
         paymentMethod,
+        paymentStatus,
         note: booking.note || null,
         ownerNote: booking.note || null,
         user: {
-          name: booking.customer_name || "",
-          phone: booking.customer_phone || "",
+          name: booking.booking_customer_name || booking.customer_name || "",
+          phone: booking.booking_customer_phone || booking.customer_phone || "",
         },
         field: {
           fieldId: booking.field_id,

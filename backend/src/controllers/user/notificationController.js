@@ -71,7 +71,19 @@ export const listNotifications = async (req, res) => {
     const whereSql = whereClauses.join(" AND ");
 
     const [countRows] = await sequelize.query(
-      `SELECT COUNT(*) AS total FROM notifications n WHERE ${whereSql}`,
+      `SELECT COUNT(*) AS total
+       FROM notifications n
+       LEFT JOIN bookings b ON n.booking_id = b.booking_id
+       WHERE ${whereSql}
+        AND (
+          n.type <> 'booking_success'
+          OR (
+            n.booking_id IS NOT NULL
+            AND b.booking_id IS NOT NULL
+            AND b.customer_id = n.user_id
+            AND b.status IN ('confirmed', 'completed')
+          )
+        )`,
       { replacements },
     );
     const total = Number(countRows?.[0]?.total || 0);
@@ -93,7 +105,17 @@ export const listNotifications = async (req, res) => {
         n.created_at,
         n.updated_at
       FROM notifications n
+      LEFT JOIN bookings b ON n.booking_id = b.booking_id
       WHERE ${whereSql}
+        AND (
+          n.type <> 'booking_success'
+          OR (
+            n.booking_id IS NOT NULL
+            AND b.booking_id IS NOT NULL
+            AND b.customer_id = n.user_id
+            AND b.status IN ('confirmed', 'completed')
+          )
+        )
       ORDER BY n.created_at DESC
       LIMIT ? OFFSET ?`,
       { replacements: [...replacements, safeLimit, offset] },
@@ -155,7 +177,17 @@ export const getNotificationDetail = async (req, res) => {
         n.created_at,
         n.updated_at
       FROM notifications n
+      LEFT JOIN bookings b ON n.booking_id = b.booking_id
       WHERE n.id = ? AND n.user_id = ?
+        AND (
+          n.type <> 'booking_success'
+          OR (
+            n.booking_id IS NOT NULL
+            AND b.booking_id IS NOT NULL
+            AND b.customer_id = n.user_id
+            AND b.status IN ('confirmed', 'completed')
+          )
+        )
       LIMIT 1`,
       { replacements: [id, userId] },
     );

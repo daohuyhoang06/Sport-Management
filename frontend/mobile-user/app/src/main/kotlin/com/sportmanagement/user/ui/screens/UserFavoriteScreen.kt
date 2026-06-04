@@ -97,12 +97,16 @@ import com.sportmanagement.user.R
 import com.sportmanagement.user.ui.theme.AppCardCornerRadius
 import com.sportmanagement.user.ui.theme.AppCtaCornerRadius
 import com.sportmanagement.user.ui.theme.AppCtaWideHeight
+import com.sportmanagement.user.ui.theme.AppFieldHorizontalPadding
 import com.sportmanagement.user.ui.theme.AppHeaderGradientEnd
 import com.sportmanagement.user.ui.theme.AppHeaderGradientStart
-import com.sportmanagement.user.ui.theme.AppPanelCornerRadius
+import com.sportmanagement.user.ui.theme.AppInputCornerRadius
 import com.sportmanagement.user.ui.theme.AppPillCornerRadius
 import com.sportmanagement.user.ui.theme.AppScreenHorizontalPadding
 import com.sportmanagement.user.ui.theme.AppSheetTopCornerRadius
+
+private val InboxSectionGap = AppFieldHorizontalPadding
+private val InboxListBottomPadding = 112.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -136,7 +140,7 @@ fun InboxScreen(
                 end = padding.calculateEndPadding(layoutDirection),
                 bottom = padding.calculateBottomPadding()
             ),
-        contentPadding = PaddingValues(bottom = 24.dp)
+        contentPadding = PaddingValues(bottom = InboxListBottomPadding)
     ) {
         item {
             InboxHeader()
@@ -178,8 +182,8 @@ fun InboxScreen(
                     selectedCategory = if (selectedCategory == category) null else category
                 },
                 modifier = Modifier
-                    .offset(y = (-18).dp)
-                    .padding(horizontal = AppScreenHorizontalPadding)
+                    .offset(y = (-32).dp)
+                    .padding(horizontal = 16.dp)
             )
             Spacer(Modifier.height(6.dp))
         }
@@ -207,7 +211,7 @@ fun InboxScreen(
                     },
                     modifier = Modifier.padding(horizontal = AppScreenHorizontalPadding)
                 )
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(InboxSectionGap))
             }
         }
 
@@ -229,7 +233,7 @@ fun InboxHeader(modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(188.dp)
+            .height(156.dp)
     ) {
         Box(
             modifier = Modifier
@@ -315,9 +319,9 @@ fun InboxQuickActions(
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(AppPanelCornerRadius),
+        shape = RoundedCornerShape(AppInputCornerRadius),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 10.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
     ) {
         Row(
             modifier = Modifier
@@ -420,11 +424,11 @@ fun NotificationSection(
                 )
             }
         }
-        Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(InboxSectionGap))
         section.items.forEachIndexed { index, item ->
             NotificationCard(item = item, onClick = { onItemClick(item) })
             if (index != section.items.lastIndex) {
-                Spacer(Modifier.height(10.dp))
+                Spacer(Modifier.height(InboxSectionGap))
             }
         }
     }
@@ -445,7 +449,7 @@ fun NotificationCard(item: NotificationItem, onClick: () -> Unit) {
                 .fillMaxWidth()
                 .padding(horizontal = 14.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.Top
         ) {
             Box(
                 modifier = Modifier
@@ -462,51 +466,67 @@ fun NotificationCard(item: NotificationItem, onClick: () -> Unit) {
             }
 
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = item.title,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    text = item.subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                if (item.detail.isNotBlank()) {
-                    Spacer(Modifier.height(2.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.Top
+                ) {
                     Text(
-                        text = item.detail,
-                        style = MaterialTheme.typography.bodySmall,
+                        text = item.title,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        text = item.timeLabel,
+                        style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-            }
 
-            Column(
-                horizontalAlignment = Alignment.End,
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text(
-                    text = item.timeLabel,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                when {
-                    item.badgeCount > 0 -> {
-                        NotificationBadge(value = item.badgeCount.toString())
-                    }
-
-                    item.unread -> {
-                        Box(
-                            modifier = Modifier
-                                .size(8.dp)
-                                .background(MaterialTheme.colorScheme.error, CircleShape)
+                Spacer(Modifier.height(4.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = item.subtitle,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                        if (item.detail.isNotBlank()) {
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                text = item.detail,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
                     }
+
+                    NotificationStatusIndicator(item = item)
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun NotificationStatusIndicator(item: NotificationItem) {
+    when {
+        item.badgeCount > 0 -> {
+            NotificationBadge(value = item.badgeCount.toString())
+        }
+
+        item.unread -> {
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .background(MaterialTheme.colorScheme.error, CircleShape)
+            )
         }
     }
 }
@@ -1331,7 +1351,8 @@ fun BookingDetailScreen(
         )
 
         if (showContactSheet) {
-            val ownerPhone = info.ownerPhone.ifBlank { info.customerPhone }.ifBlank { "1900 636 818" }
+            val ownerPhone = info.ownerPhone.trim()
+            val ownerPhoneLabel = ownerPhone.ifBlank { "Chưa có số liên hệ" }
             ModalBottomSheet(
                 onDismissRequest = { showContactSheet = false },
                 sheetState = sheetState,
@@ -1339,12 +1360,14 @@ fun BookingDetailScreen(
                 shape = RoundedCornerShape(topStart = AppSheetTopCornerRadius, topEnd = AppSheetTopCornerRadius)
             ) {
                 ContactOwnerSheet(
-                    phoneNumber = ownerPhone,
+                    phoneNumber = ownerPhoneLabel,
                     onCloseClick = { showContactSheet = false },
                     onCallClick = {
-                        val intent = Intent(Intent.ACTION_DIAL)
-                        intent.data = Uri.parse("tel:${ownerPhone}")
-                        context.startActivity(intent)
+                        if (ownerPhone.isNotBlank()) {
+                            val intent = Intent(Intent.ACTION_DIAL)
+                            intent.data = Uri.parse("tel:${ownerPhone}")
+                            context.startActivity(intent)
+                        }
                         showContactSheet = false
                     },
                     onMessageClick = {
@@ -2232,7 +2255,8 @@ fun ConversationScreen(
                 .weight(1f)
                 .fillMaxWidth()
                 .padding(horizontal = AppScreenHorizontalPadding),
-            contentPadding = PaddingValues(bottom = 16.dp, top = 8.dp)
+            contentPadding = PaddingValues(bottom = 8.dp, top = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.Bottom)
         ) {
             item {
                 Text(
@@ -2252,7 +2276,6 @@ fun ConversationScreen(
                         text = "Đang tải tin nhắn...",
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                    Spacer(Modifier.height(10.dp))
                 }
             }
 
@@ -2262,13 +2285,11 @@ fun ConversationScreen(
                         Text(text = message, color = MaterialTheme.colorScheme.error)
                         Text(text = "Thử lại", color = MaterialTheme.colorScheme.primary, modifier = Modifier.clickable(onClick = onRetry))
                     }
-                    Spacer(Modifier.height(10.dp))
                 }
             }
 
             items(sortedMessages.size, key = { index -> sortedMessages[index].id }) { index ->
                 ConversationMessageBubble(sortedMessages[index])
-                Spacer(Modifier.height(10.dp))
             }
         }
 
@@ -2296,7 +2317,7 @@ private fun ConversationTopBar(
             .fillMaxWidth()
             .statusBarsPadding()
             .background(MaterialTheme.colorScheme.surface)
-            .padding(horizontal = AppScreenHorizontalPadding, vertical = 8.dp),
+            .padding(horizontal = AppScreenHorizontalPadding, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         IconButton(onClick = onBackClick) {
@@ -2306,35 +2327,39 @@ private fun ConversationTopBar(
                 tint = MaterialTheme.colorScheme.onSurface
             )
         }
-        Box(modifier = Modifier.size(40.dp)) {
+        Box(modifier = Modifier.size(46.dp)) {
             Image(
                 painter = painterResource(id = info.avatarRes),
                 contentDescription = null,
                 modifier = Modifier
-                    .size(40.dp)
+                    .size(46.dp)
                     .background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape)
                     .border(1.dp, MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape),
                 contentScale = ContentScale.Crop
             )
             Box(
                 modifier = Modifier
-                    .size(10.dp)
+                    .size(11.dp)
                     .background(MaterialTheme.colorScheme.primary, CircleShape)
                     .border(2.dp, MaterialTheme.colorScheme.surface, CircleShape)
                     .align(Alignment.BottomEnd)
             )
         }
-        Spacer(Modifier.width(10.dp))
-        Column(modifier = Modifier.weight(1f)) {
+        Spacer(Modifier.width(12.dp))
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(3.dp)
+        ) {
             Text(
                 text = info.fieldName,
-                style = MaterialTheme.typography.titleSmall,
+                style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface
             )
             Text(
                 text = info.statusLabel,
-                style = MaterialTheme.typography.labelSmall,
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.Medium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
@@ -2379,7 +2404,7 @@ private fun ConversationMessageBubble(message: ConversationMessageUi) {
             shape = RoundedCornerShape(AppCardCornerRadius),
             modifier = Modifier.widthIn(max = screenWidth * 0.76f)
         ) {
-            Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+            Column(modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)) {
                 Text(
                     text = message.text,
                     style = MaterialTheme.typography.bodyMedium,
@@ -2387,7 +2412,7 @@ private fun ConversationMessageBubble(message: ConversationMessageUi) {
                 )
             }
         }
-        Spacer(Modifier.height(4.dp))
+        Spacer(Modifier.height(6.dp))
         Text(
             text = message.time,
             style = MaterialTheme.typography.labelSmall,
@@ -2406,35 +2431,38 @@ private fun ConversationInputBar(
 ) {
     Surface(
         modifier = modifier,
-        color = Color.Transparent
+        color = MaterialTheme.colorScheme.surface,
+        shadowElevation = 4.dp
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = AppScreenHorizontalPadding, vertical = 10.dp),
+                .padding(horizontal = AppScreenHorizontalPadding, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Surface(
                 shape = CircleShape,
                 color = MaterialTheme.colorScheme.surface
             ) {
                 Box(
-                    modifier = Modifier.size(34.dp),
+                    modifier = Modifier.size(40.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.Add,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }
             TextField(
                 value = draft,
                 onValueChange = onDraftChange,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(1f)
+                    .heightIn(min = 48.dp),
                 placeholder = { Text(stringResource(R.string.inbox_chat_placeholder)) },
                 singleLine = true,
                 shape = RoundedCornerShape(AppPillCornerRadius)
@@ -2445,7 +2473,7 @@ private fun ConversationInputBar(
             ) {
                 Box(
                     modifier = Modifier
-                        .size(34.dp)
+                        .size(40.dp)
                         .clickable(enabled = !isSending, onClick = onSend),
                     contentAlignment = Alignment.Center
                 ) {
@@ -2453,7 +2481,7 @@ private fun ConversationInputBar(
                         imageVector = Icons.Outlined.Send,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }

@@ -103,7 +103,17 @@ export const getInbox = async (req, res) => {
         f.card_image_url
       FROM notifications n
       LEFT JOIN fields f ON n.field_id = f.field_id
+      LEFT JOIN bookings b ON n.booking_id = b.booking_id
       WHERE n.user_id = ?
+        AND (
+          n.type <> 'booking_success'
+          OR (
+            n.booking_id IS NOT NULL
+            AND b.booking_id IS NOT NULL
+            AND b.customer_id = n.user_id
+            AND b.status IN ('confirmed', 'completed')
+          )
+        )
       ORDER BY n.created_at DESC
       LIMIT ? OFFSET ?`,
       { replacements: [userId, safeLimit, offset] },

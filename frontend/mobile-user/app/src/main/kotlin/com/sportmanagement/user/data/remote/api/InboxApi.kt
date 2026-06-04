@@ -80,6 +80,7 @@ data class BookingDetailDto(
     val endTime: String,
     val totalPrice: String,
     val paymentMethod: String,
+    val paymentStatus: String,
     val ownerNote: String,
     val userName: String,
     val userPhone: String,
@@ -92,7 +93,7 @@ data class BookingDetailDto(
 )
 
 class InboxApi(
-    private val baseUrl: String = BASE_URL
+    private val baseUrl: String = ApiConfig.BASE_URL
 ) {
     suspend fun getInbox(token: String): List<InboxItemDto> = withContext(Dispatchers.IO) {
         val root = getJson("$baseUrl/api/user/inbox", token)
@@ -166,6 +167,7 @@ class InboxApi(
             endTime = data.optString("endTime"),
             totalPrice = data.optString("totalPrice"),
             paymentMethod = data.optString("paymentMethod"),
+            paymentStatus = data.optString("paymentStatus"),
             ownerNote = data.optString("ownerNote"),
             userName = user.optString("name"),
             userPhone = user.optString("phone"),
@@ -189,7 +191,7 @@ class InboxApi(
                 fieldName = row.optString("fieldName"),
                 fieldAvatar = row.optString("fieldAvatar").takeIf { it.isNotBlank() },
                 ownerName = row.optString("ownerName").takeIf { it.isNotBlank() },
-                ownerPhone = null,
+                ownerPhone = row.optString("ownerPhone").takeIf { it.isNotBlank() },
                 lastMessage = row.optString("lastMessage"),
                 lastMessageTime = row.optString("lastMessageTime"),
                 unreadCount = row.optInt("unreadCount", 0)
@@ -341,9 +343,6 @@ class InboxApi(
         return message.ifBlank { "HTTP $responseCode: inbox request failed" }
     }
 
-    companion object {
-        private const val BASE_URL = "http://10.0.2.2:5000"
-    }
 }
 
 private fun JSONObject.optIntOrNull(name: String): Int? =
