@@ -61,29 +61,34 @@ import java.util.Locale
 
 @Composable
 fun BookingConfirmationBottomBar(onConfirmPaymentClick: () -> Unit) {
-    Box(
+    Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .navigationBarsPadding()
-            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .navigationBarsPadding(),
+        color = MaterialTheme.colorScheme.primary,
     ) {
-        Button(
-            onClick = onConfirmPaymentClick,
-            shape = RoundedCornerShape(AppCtaCornerRadius),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = AppCtaAmber,
-                contentColor = AppOnCtaAmber
-            ),
+        Column(
             modifier = Modifier
-                .align(Alignment.Center)
                 .fillMaxWidth()
-                .height(AppCtaWideHeight)
+                .padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
-            Text(
-                text = stringResource(R.string.booking_confirm_and_pay),
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold
-            )
+            Button(
+                onClick = onConfirmPaymentClick,
+                shape = RoundedCornerShape(AppCtaCornerRadius),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = AppCtaAmber,
+                    contentColor = AppOnCtaAmber
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(AppCtaWideHeight)
+            ) {
+                Text(
+                    text = stringResource(R.string.booking_confirm_and_pay),
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
         }
     }
 }

@@ -92,16 +92,18 @@ fun BookingBottomActionBar(
 
         if (summary != null) {
             Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding(),
                 shape = RoundedCornerShape(
                     topStart = AppCardCornerRadius,
                     topEnd = AppCardCornerRadius
                 ),
                 color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.fillMaxWidth()
             ) {
                 Column(
                     modifier = Modifier
-                        .navigationBarsPadding()
+                        .fillMaxWidth()
                         .padding(horizontal = 16.dp, vertical = 14.dp)
                 ) {
                     TextButton(
@@ -191,14 +193,20 @@ fun BookingBottomActionBar(
                 }
             }
         } else {
-            BookingNextButton(
-                hasSelection = hasSelection,
-                onNextClick = onNextClick,
-                onRequireSelection = onRequireSelection,
+            Surface(
                 modifier = Modifier
-                    .navigationBarsPadding()
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                    .fillMaxWidth()
+                    .navigationBarsPadding(),
+                color = MaterialTheme.colorScheme.primary,
             )
+            {
+                BookingNextButton(
+                    hasSelection = hasSelection,
+                    onNextClick = onNextClick,
+                    onRequireSelection = onRequireSelection,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)
+                )
+            }
         }
     }
 }

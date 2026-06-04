@@ -5,7 +5,9 @@ import {
   approveBooking, 
   rejectBooking,
   completeBooking,
-  cancelBooking
+  cancelBooking,
+  getBookingByCheckInCode,
+  confirmBookingCheckIn
 } from "../../controllers/manager/bookingController.js";
 import { 
   getAllFields, 
@@ -53,6 +55,8 @@ r.get('/dashboard/monthly-revenue', getMonthlyRevenue);
 
 // Booking management
 r.get('/bookings', listBookings);
+r.get('/bookings/check-in/:code', getBookingByCheckInCode);
+r.put('/bookings/check-in/:code/confirm', confirmBookingCheckIn);
 r.get('/bookings/:id', getBookingById);
 r.put('/bookings/:id/approve', approveBooking);
 r.put('/bookings/:id/reject', rejectBooking);

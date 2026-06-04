@@ -126,9 +126,11 @@ class InboxViewModel(
                 .onSuccess { booking ->
                     if (booking == null) return@onSuccess
                     val dateLabel = booking.date.ifBlank { "" }
-                    val timeRange = listOf(booking.startTime, booking.endTime)
-                        .filter { it.isNotBlank() }
-                        .joinToString(" - ")
+                    val timeRange = booking.timeRange.ifBlank {
+                        listOf(booking.startTime, booking.endTime)
+                            .filter { it.isNotBlank() }
+                            .joinToString(" - ")
+                    }
 
                     _uiState.value = _uiState.value.copy(
                         activeBookingDetail = BookingInfo(
@@ -137,9 +139,14 @@ class InboxViewModel(
                             dateLabel = dateLabel,
                             bookingCode = booking.bookingCode,
                             statusLabel = booking.status,
+                            statusCode = booking.statusCode,
                             address = booking.fieldAddress,
                             paymentMethod = booking.paymentMethod,
                             totalAmount = booking.totalPrice,
+                            transactionId = booking.transactionId,
+                            orderId = booking.orderId,
+                            checkInCode = booking.checkInCode,
+                            shareUrl = booking.shareUrl,
                             customerName = booking.userName,
                             customerPhone = booking.userPhone,
                             ownerPhone = booking.ownerPhone,

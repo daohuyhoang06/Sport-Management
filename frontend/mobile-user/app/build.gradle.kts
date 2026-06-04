@@ -10,6 +10,8 @@ android {
     val mobileApiHost = (project.findProperty("MOBILE_API_HOST") as String?) ?: "127.0.0.1"
     val mobileApiPort = (project.findProperty("MOBILE_API_PORT") as String?) ?: "5000"
     val shareWebBaseUrl = (project.findProperty("SHARE_WEB_BASE_URL") as String?) ?: "https://sport-management.vn"
+    val paymentSandboxAutoComplete =
+        project.findProperty("PAYMENT_SANDBOX_AUTO_COMPLETE") as String?
 
     namespace = "com.sportmanagement.user"
     compileSdk = 35
@@ -38,7 +40,15 @@ android {
     }
 
     buildTypes {
+        debug {
+        buildConfigField(
+                "boolean",
+                "PAYMENT_SANDBOX_AUTO_COMPLETE",
+                paymentSandboxAutoComplete ?: "true"
+            )
+        }
         release {
+            buildConfigField("boolean", "PAYMENT_SANDBOX_AUTO_COMPLETE", "false")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
@@ -103,6 +113,7 @@ dependencies {
     implementation("com.google.android.material:material:1.12.0")
     implementation("org.osmdroid:osmdroid-android:6.1.16")
     implementation("org.maplibre.gl:android-sdk:11.0.0")
+    implementation("com.google.zxing:core:3.5.3")
 
     // Debug & Test
     debugImplementation("androidx.compose.ui:ui-tooling")

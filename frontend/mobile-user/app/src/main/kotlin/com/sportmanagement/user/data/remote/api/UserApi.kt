@@ -155,6 +155,12 @@ class UserApi(
                 BookingTimeRange(b.optString("courtId"), b.optString("startTime"), b.optString("endTime"))
             }
 
+            val blockedArray = gridObj.optJSONArray("blockedSlots") ?: JSONArray()
+            val blockedSlots = List(blockedArray.length()) { i ->
+                val b = blockedArray.getJSONObject(i)
+                BookingTimeRange(b.optString("courtId"), b.optString("startTime"), b.optString("endTime"))
+            }
+
             BookingScheduleData(
                 selectedDate = obj.optString("selectedDate"),
                 grid = BookingTimeGridData(
@@ -164,7 +170,7 @@ class UserApi(
                     minBookingMinutes = gridObj.optInt("minBookingMinutes", 60),
                     courts = courts,
                     bookedSlots = bookedSlots,
-                    blockedSlots = emptyList()
+                    blockedSlots = blockedSlots
                 ),
                 pricePerHour = obj.optInt("pricePerHour"),
                 estimatedPrice = obj.optString("estimatedPrice")

@@ -67,6 +67,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -82,12 +83,14 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.decode.SvgDecoder
 import coil.request.ImageRequest
+import com.sportmanagement.user.BuildConfig
 import com.sportmanagement.user.R
 import com.sportmanagement.user.data.remote.api.CreateBookingRequest
 import com.sportmanagement.user.data.remote.api.MomoPaymentApi
 import com.sportmanagement.user.data.remote.api.MomoPaymentResponse
 import com.sportmanagement.user.data.remote.api.UserApi
 import com.sportmanagement.user.domain.model.BookingConfirmationData
+import com.sportmanagement.user.ui.AppNavigationBarEffect
 import com.sportmanagement.user.ui.components.booking.formatConfirmationCurrencyVnd
 import com.sportmanagement.user.ui.share.FieldShareLink
 import com.sportmanagement.user.ui.share.FieldShareLink.MomoPaymentReturn
@@ -127,7 +130,7 @@ fun BookingPaymentScreen(
     incomingMomoPaymentReturn: MomoPaymentReturn?,
     onMomoPaymentReturnConsumed: () -> Unit,
     onBackClick: () -> Unit,
-    onConfirmBookingClick: () -> Unit,
+    onViewInvoiceClick: (BookingInfo) -> Unit,
     onViewCancelledBookingClick: () -> Unit,
     onReturnHomeClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -151,6 +154,55 @@ fun BookingPaymentScreen(
     val paidAmount = if (paymentStatus == PaymentReturnStatus.Success) totalAmount else 0
     val dueAmount = (totalAmount - paidAmount).coerceAtLeast(0)
     val lowerBackgroundColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.36f)
+    AppNavigationBarEffect(
+        navigationBarColor = lowerBackgroundColor,
+        useDarkIcons = lowerBackgroundColor.luminance() > 0.5f
+    )
+    val invoiceInfo = remember(
+        confirmationData,
+        userName,
+        userPhone,
+        currentOrderId,
+        pendingBookingIds,
+        paymentMessage
+    ) {
+        val fieldName = confirmationData.fieldName.ifBlank {
+            confirmationData.ranges.firstOrNull()?.courtName
+                ?: context.getString(R.string.payment_field_unknown)
+        }
+        val fieldAddress = confirmationData.fieldAddress.ifBlank {
+            context.getString(R.string.payment_field_unknown)
+        }
+        val timeRange = confirmationData.ranges.joinToString("\n") { range ->
+            "${range.courtName}: ${range.startTimeLabel} - ${range.endTimeLabel}"
+        }
+        val bookingCode = pendingBookingIds.firstOrNull()?.let { "#B$it" }
+            ?: currentOrderId
+            ?: context.getString(R.string.payment_order_code_pending)
+
+        BookingInfo(
+            fieldName = fieldName,
+            timeRange = timeRange.ifBlank { confirmationData.selectedDate },
+            dateLabel = confirmationData.selectedDate,
+            bookingCode = bookingCode,
+            statusLabel = context.getString(R.string.payment_status_success),
+            statusCode = "paid",
+            address = fieldAddress,
+            paymentMethod = context.getString(R.string.payment_method_momo_title),
+            totalAmount = formatConfirmationCurrencyVnd(totalAmount),
+            transactionId = "",
+            orderId = currentOrderId ?: "",
+            checkInCode = "",
+            shareUrl = "",
+            customerName = userName.ifBlank { context.getString(R.string.payment_customer_name_placeholder) },
+            customerPhone = userPhone.ifBlank { context.getString(R.string.payment_customer_phone_placeholder) },
+            ownerPhone = "",
+            ownerNote = paymentMessage ?: context.getString(R.string.payment_message_momo_confirmed),
+            fieldId = confirmationData.fieldId,
+            bookingId = pendingBookingIds.firstOrNull(),
+            notificationId = null
+        )
+    }
 
     LaunchedEffect(createPaymentNonce) {
         if (createPaymentNonce == 0) return@LaunchedEffect
@@ -242,20 +294,34 @@ fun BookingPaymentScreen(
 
     LaunchedEffect(incomingMomoPaymentReturn) {
         val callback = incomingMomoPaymentReturn ?: return@LaunchedEffect
+        val sandboxAutoComplete = BuildConfig.PAYMENT_SANDBOX_AUTO_COMPLETE
         if (currentOrderId == null || currentOrderId == callback.orderId) {
             currentOrderId = callback.orderId ?: currentOrderId
             paymentStatus = when (callback.resultCode) {
                 0 -> PaymentReturnStatus.Success
-                null -> PaymentReturnStatus.Pending
+                null -> if (sandboxAutoComplete) PaymentReturnStatus.Success else PaymentReturnStatus.Pending
                 else -> PaymentReturnStatus.Failed
+            }.let { status ->
+                if (sandboxAutoComplete && status != PaymentReturnStatus.Success) {
+                    PaymentReturnStatus.Success
+                } else {
+                    status
+                }
             }
-            paymentMessage = callback.message
+            paymentMessage = if (sandboxAutoComplete) {
+                context.getString(R.string.payment_message_momo_confirmed)
+            } else {
+                callback.message
+            }
         }
 
         val authToken = loadAuthToken(context)
         val orderId = callback.orderId
         val requestId = callback.requestId
-        val resultCode = callback.resultCode
+        val resultCode = when {
+            sandboxAutoComplete -> 0
+            else -> callback.resultCode
+        }
         if (
             authToken != null &&
             !orderId.isNullOrBlank() &&
@@ -297,6 +363,30 @@ fun BookingPaymentScreen(
         }
     }
 
+    LaunchedEffect(paymentStatus, currentOrderId) {
+        if (!BuildConfig.PAYMENT_SANDBOX_AUTO_COMPLETE) return@LaunchedEffect
+        if (paymentStatus != PaymentReturnStatus.Pending) return@LaunchedEffect
+
+        delay(4_000)
+        if (paymentStatus != PaymentReturnStatus.Pending) return@LaunchedEffect
+
+        paymentStatus = PaymentReturnStatus.Success
+        paymentMessage = context.getString(R.string.payment_message_momo_confirmed)
+        val authToken = loadAuthToken(context)
+        val orderId = currentOrderId ?: return@LaunchedEffect
+        if (authToken != null) {
+            runCatching {
+                MomoPaymentApi.confirmClientPaymentResult(
+                    token = authToken,
+                    orderId = orderId,
+                    requestId = null,
+                    resultCode = 0,
+                    message = context.getString(R.string.payment_message_momo_confirmed)
+                )
+            }
+        }
+    }
+
     LaunchedEffect(Unit) {
         while (true) {
             delay(1_000)
@@ -324,13 +414,14 @@ fun BookingPaymentScreen(
                     .fillMaxWidth()
                     .background(lowerBackgroundColor)
                     .navigationBarsPadding()
-                    .padding(horizontal = 16.dp, vertical = 14.dp)
             ) {
-                if (showExpiredScreen) {
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    if (showExpiredScreen) {
                         Button(
                             onClick = onViewCancelledBookingClick,
                             modifier = Modifier
@@ -365,16 +456,11 @@ fun BookingPaymentScreen(
                                 fontWeight = FontWeight.SemiBold
                             )
                         }
-                    }
-                } else {
-                    Column(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
+                    } else {
                         Button(
                             onClick = {
                                 when {
-                                    paymentStatus == PaymentReturnStatus.Success -> onConfirmBookingClick()
+                                    paymentStatus == PaymentReturnStatus.Success -> onViewInvoiceClick(invoiceInfo)
                                     paymentStatus == PaymentReturnStatus.Pending && !reopenedPayUrl.isNullOrBlank() -> {
                                         openPaymentUrl(context, reopenedPayUrl!!) {
                                             Toast.makeText(
@@ -418,7 +504,7 @@ fun BookingPaymentScreen(
                             }
                             Text(
                                 text = when {
-                                    paymentStatus == PaymentReturnStatus.Success -> stringResource(R.string.payment_confirm_booking)
+                                    paymentStatus == PaymentReturnStatus.Success -> stringResource(R.string.payment_view_invoice)
                                     else -> stringResource(R.string.payment_pay_only)
                                 },
                                 style = MaterialTheme.typography.titleSmall,
@@ -565,10 +651,12 @@ fun BookingPaymentScreen(
                                 dueAmount = dueAmount
                             )
                         }
-                        item {
-                            PaymentHoldSlotSection(
-                                remainingSeconds = remainingHoldSeconds.coerceAtLeast(0)
-                            )
+                        if (paymentStatus != PaymentReturnStatus.Success) {
+                            item {
+                                PaymentHoldSlotSection(
+                                    remainingSeconds = remainingHoldSeconds.coerceAtLeast(0)
+                                )
+                            }
                         }
 
                         if (paymentStatus != PaymentReturnStatus.Idle || createState is PaymentCreateUiState.Error) {

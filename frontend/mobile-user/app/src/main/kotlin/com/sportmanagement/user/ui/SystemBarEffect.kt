@@ -39,6 +39,35 @@ fun AppStatusBarEffect(
     }
 }
 
+@Composable
+fun AppNavigationBarEffect(
+    navigationBarColor: Color,
+    useDarkIcons: Boolean
+) {
+    val view = LocalView.current
+    if (view.isInEditMode) return
+
+    DisposableEffect(view, navigationBarColor, useDarkIcons) {
+        val activity = view.context.findActivity()
+        if (activity == null) {
+            onDispose { }
+        } else {
+            val window = activity.window
+            val insetsController = WindowCompat.getInsetsController(window, view)
+            val previousNavigationBarColor = window.navigationBarColor
+            val previousLightNavigationBar = insetsController.isAppearanceLightNavigationBars
+
+            window.navigationBarColor = navigationBarColor.toArgb()
+            insetsController.isAppearanceLightNavigationBars = useDarkIcons
+
+            onDispose {
+                window.navigationBarColor = previousNavigationBarColor
+                insetsController.isAppearanceLightNavigationBars = previousLightNavigationBar
+            }
+        }
+    }
+}
+
 private tailrec fun Context.findActivity(): Activity? {
     return when (this) {
         is Activity -> this

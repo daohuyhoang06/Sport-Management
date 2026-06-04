@@ -25,6 +25,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -38,6 +39,7 @@ import com.sportmanagement.user.domain.model.BookingTimeRange
 import com.sportmanagement.user.ui.components.booking.BookingBottomActionBar
 import com.sportmanagement.user.ui.components.booking.BookingHeaderSection
 import com.sportmanagement.user.ui.components.booking.BookingTimeGrid
+import com.sportmanagement.user.ui.AppNavigationBarEffect
 import com.sportmanagement.user.ui.theme.SportUserTheme
 import com.sportmanagement.user.ui.viewmodel.BookingScheduleViewModel
 import kotlinx.coroutines.launch
@@ -65,6 +67,12 @@ fun BookingScheduleScreen(
     val coroutineScope = rememberCoroutineScope()
     val selectSlotError = stringResource(R.string.booking_select_slot_error)
     val lowerBackgroundColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.36f)
+    val bottomBarColor = MaterialTheme.colorScheme.primary
+
+    AppNavigationBarEffect(
+        navigationBarColor = bottomBarColor,
+        useDarkIcons = bottomBarColor.luminance() > 0.5f
+    )
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -116,6 +124,7 @@ fun BookingScheduleScreen(
                         gridData = uiState.scheduleData!!.grid,
                         cellWidth = uiState.sliderValue.dp,
                         selectedSlots = uiState.selectedSlots,
+                        selectedDate = uiState.scheduleData!!.selectedDate,
                         onSlotClick = viewModel::onSlotClick
                     )
                 }

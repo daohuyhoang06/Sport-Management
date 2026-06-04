@@ -24,6 +24,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -40,6 +41,7 @@ import com.sportmanagement.user.ui.components.booking.ConfirmPhoneField
 import com.sportmanagement.user.ui.components.booking.ConfirmReadonlyField
 import com.sportmanagement.user.ui.components.booking.ConfirmationInfoCard
 import com.sportmanagement.user.ui.components.booking.InfoLine
+import com.sportmanagement.user.ui.AppNavigationBarEffect
 import com.sportmanagement.user.ui.components.booking.formatConfirmationCurrencyVnd
 import com.sportmanagement.user.ui.components.booking.formatConfirmationDurationCompact
 
@@ -57,6 +59,12 @@ fun BookingConfirmationScreen(
     var note by rememberSaveable { mutableStateOf("") }
     var editableUserName by rememberSaveable(userName) { mutableStateOf(userName) }
     var editableUserPhone by rememberSaveable(userPhone) { mutableStateOf(userPhone) }
+    val bottomBarColor = MaterialTheme.colorScheme.primary
+
+    AppNavigationBarEffect(
+        navigationBarColor = bottomBarColor,
+        useDarkIcons = bottomBarColor.luminance() > 0.5f
+    )
 
     Scaffold(
             modifier = modifier,

@@ -19,6 +19,10 @@ import chatRoutes from "./routes/chatRoutes.js";
 import aiRoutes from "./routes/aiRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
 import { searchFields } from "./controllers/user/fieldController.js";
+import {
+  getPublicBookingShare,
+  renderPublicBookingSharePage,
+} from "./controllers/public/bookingShareController.js";
 
 const app = express();
 app.use(cors());
@@ -40,6 +44,7 @@ app.get("/api/fields/search", searchFields);
 app.use("/api/chat", chatRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/payments", paymentRoutes);
+app.get("/api/public/bookings/:shareToken", getPublicBookingShare);
 
 app.get("/l/field/:fieldId", (req, res) => {
   const fieldId = Number.parseInt(req.params.fieldId, 10);
@@ -91,6 +96,8 @@ app.get("/l/field/:fieldId", (req, res) => {
   </body>
 </html>`);
 });
+
+app.get("/l/booking/:shareToken", renderPublicBookingSharePage);
 
 app.get("/", (_, res) =>
   res.json({
