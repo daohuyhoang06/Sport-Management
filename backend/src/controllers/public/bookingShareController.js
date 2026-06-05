@@ -30,6 +30,25 @@ const statusTone = (statusCode) => {
   };
 };
 
+const renderSlotLines = (payload) => {
+  const slotDetails = Array.isArray(payload.slotDetails) ? payload.slotDetails : [];
+
+  if (slotDetails.length === 0) {
+    return `<div class="item-value slot-lines">${escapeHtml(payload.timeRange || "Chưa cập nhật")}</div>`;
+  }
+
+  const slotLines = slotDetails
+    .map((slot) => {
+      const courtName = String(slot?.courtName || "").trim();
+      const timeRange = [slot?.startTime, slot?.endTime].filter(Boolean).join(" - ");
+      const label = courtName ? `${courtName}: ${timeRange}` : timeRange;
+      return `<div class="slot-line">${escapeHtml(label)}</div>`;
+    })
+    .join("");
+
+  return `<div class="item-value slot-lines">${slotLines}</div>`;
+};
+
 const renderSharePageHtml = (payload) => {
   const tone = statusTone(payload.statusCode);
   const statusStyle = `background:${tone.background};color:${tone.color};`;
@@ -128,6 +147,14 @@ const renderSharePageHtml = (payload) => {
         font-weight: 700;
         color: #0f172a;
       }
+      .slot-lines {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .slot-line {
+        line-height: 1.5;
+      }
       .status-chip {
         display: inline-flex;
         align-items: center;
@@ -213,7 +240,7 @@ const renderSharePageHtml = (payload) => {
               </div>
               <div class="item">
                 <div class="item-label">Khung giờ</div>
-                <div class="item-value">${escapeHtml(payload.timeRange)}</div>
+                ${renderSlotLines(payload)}
               </div>
               <div class="item">
                 <div class="item-label">Người đặt sân</div>

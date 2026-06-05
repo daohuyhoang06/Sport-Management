@@ -9,11 +9,17 @@ import java.util.Date
 import java.util.Locale
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.background
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -40,7 +46,6 @@ import com.sportmanagement.user.ui.screens.BookingPaymentScreen
 import com.sportmanagement.user.ui.screens.BookingScheduleScreen
 import com.sportmanagement.user.ui.screens.BookingDetailScreen
 import com.sportmanagement.user.ui.screens.ConversationScreen
-import com.sportmanagement.user.ui.screens.BookingInfo
 import com.sportmanagement.user.ui.screens.ConversationInfo
 import com.sportmanagement.user.ui.screens.NotificationDetailScreen
 import com.sportmanagement.user.ui.screens.NotificationDetailInfo
@@ -99,7 +104,6 @@ fun UserApp(
     var bookingNote by rememberSaveable { mutableStateOf("") }
     var bookingConfirmationData by remember { mutableStateOf<BookingConfirmationData?>(null) }
     var selectedBookingField by remember { mutableStateOf<UserField?>(null) }
-    var bookingDetailInfo by remember { mutableStateOf<BookingInfo?>(null) }
     var conversationInfo by remember { mutableStateOf<ConversationInfo?>(null) }
     var notificationDetailInfo by remember { mutableStateOf<NotificationDetailInfo?>(null) }
     var fieldToShare by remember { mutableStateOf<UserField?>(null) }
@@ -260,13 +264,6 @@ fun UserApp(
         }
     }
 
-    LaunchedEffect(inboxUiState.activeBookingDetail) {
-        inboxUiState.activeBookingDetail?.let { detail ->
-            bookingDetailInfo = detail
-            showBookingDetailScreen = true
-        }
-    }
-
     LaunchedEffect(inboxUiState.activeNotificationDetail) {
         inboxUiState.activeNotificationDetail?.let { detail ->
             notificationDetailInfo = detail
@@ -279,11 +276,22 @@ fun UserApp(
         }
     }
 
+    val inboxUnreadCount = inboxUiState.sections.sumOf { section ->
+        section.items.sumOf { item ->
+            when {
+                item.badgeCount > 0 -> item.badgeCount
+                item.unread -> 1
+                else -> 0
+            }
+        }
+    }
+
     Scaffold(
         bottomBar = {
             if (shouldShowBottomBar) {
                 UserBottomBar(
                     selectedTab = uiState.selectedTab,
+                    inboxUnreadCount = inboxUnreadCount,
                     onTabSelected = resolvedUserViewModel::onTabSelected
                 )
             }
@@ -355,11 +363,8 @@ fun UserApp(
                         showBookingConfirmationScreen = false
                         showBookingScreen = false
                         closeHomeOverlayFlows()
-                        resolvedUserViewModel.onTabSelected(UserTab.Inbox)
-                        bookingDetailInfo = invoiceInfo.takeIf { it.bookingId == null }
-                        showBookingDetailScreen = invoiceInfo.bookingId == null
                         invoiceInfo.bookingId?.let { bookingId ->
-                            inboxViewModel.clearActiveBookingDetail()
+                            showBookingDetailScreen = true
                             inboxViewModel.loadBookingDetail(bookingId, null)
                         }
                     },
@@ -403,19 +408,59 @@ fun UserApp(
                         showBookingPaymentScreen = true
                     }
                 )
-            } else if (showBookingDetailScreen && bookingDetailInfo != null) {
-                BookingDetailScreen(
-                    info = bookingDetailInfo!!,
-                    onBackClick = {
-                        showBookingDetailScreen = false
-                        inboxViewModel.clearActiveBookingDetail()
-                    },
-                    onOpenChat = { info ->
-                        conversationInfo = info
-                        showBookingDetailScreen = false
-                        showConversationScreen = true
+            } else if (showBookingDetailScreen) {
+                when {
+                    inboxUiState.activeBookingDetail != null -> {
+                        BookingDetailScreen(
+                            info = inboxUiState.activeBookingDetail!!,
+                            onBackClick = {
+                                showBookingDetailScreen = false
+                                inboxViewModel.clearActiveBookingDetail()
+                            },
+                            onOpenChat = { info ->
+                                conversationInfo = info
+                                showBookingDetailScreen = false
+                                showConversationScreen = true
+                            }
+                        )
                     }
-                )
+                    inboxUiState.isLoadingBookingDetail -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(MaterialTheme.colorScheme.background),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    }
+                    else -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(MaterialTheme.colorScheme.background),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.padding(padding)
+                            ) {
+                                Text(
+                                    text = inboxUiState.bookingDetailError ?: "Không tải được chi tiết đặt sân.",
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                TextButton(
+                                    onClick = {
+                                        showBookingDetailScreen = false
+                                        inboxViewModel.clearActiveBookingDetail()
+                                    }
+                                ) {
+                                    Text(text = "Quay lại")
+                                }
+                            }
+                        }
+                    }
+                }
             } else if (showConversationScreen && conversationInfo != null) {
                 LaunchedEffect(conversationInfo?.conversationId) {
                     conversationInfo?.let { inboxViewModel.loadConversation(it) }
@@ -637,12 +682,11 @@ fun UserApp(
                         onMarkAllRead = inboxViewModel::markAllRead,
                         onNotificationOpened = inboxViewModel::markNotificationRead,
                         onBookingSelected = { info ->
+                            showBookingDetailScreen = true
                             inboxViewModel.loadBookingDetail(
                                 bookingId = info.bookingId,
                                 notificationId = info.notificationId
                             )
-                            bookingDetailInfo = info
-                            showBookingDetailScreen = true
                         },
                         onMessageSelected = { info ->
                             inboxViewModel.loadConversation(info)

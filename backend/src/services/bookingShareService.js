@@ -1,5 +1,11 @@
 import crypto from "crypto";
 import sequelize from "../config/database.js";
+import {
+  buildBookingSlotSummary,
+  formatSlotDateLabel,
+  formatSlotTimeLabel,
+  listBookingSlotsByBookingIds,
+} from "./bookingSlotService.js";
 
 const CHECKIN_CODE_LENGTH = 8;
 const CHECKIN_CHARSET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -217,6 +223,18 @@ const fetchBookingShareRow = async ({
     return null;
   }
 
+  const slots = await listBookingSlotsByBookingIds([row.booking_id], { transaction });
+  const firstSlot = slots[0] || null;
+  const lastSlot = slots[slots.length - 1] || null;
+  const slotSummary = buildBookingSlotSummary(slots, {
+    fallback: [row.booking_start_time, row.booking_end_time].filter(Boolean).join(" - "),
+  });
+  const courtNames = [...new Set(
+    slots
+      .map((slot) => String(slot.court_name || "").trim())
+      .filter(Boolean),
+  )];
+
   if (shouldHaveShareAccess(row) && (!row.share_token || !row.checkin_code)) {
     const access = await ensureBookingShareAccess(row.booking_id, { transaction });
     row.share_token = access?.shareToken || row.share_token || "";
@@ -232,12 +250,10 @@ const fetchBookingShareRow = async ({
     fieldId: row.field_id,
     fieldName: row.field_name || "",
     fieldAddress: row.location || "",
-    date: row.booking_date_label || "",
-    startTime: row.booking_start_time || "",
-    endTime: row.booking_end_time || "",
-    timeRange: [row.booking_start_time, row.booking_end_time]
-      .filter(Boolean)
-      .join(" - "),
+    date: firstSlot?.start_time ? formatSlotDateLabel(firstSlot.start_time) : row.booking_date_label || "",
+    startTime: firstSlot?.start_time ? formatSlotTimeLabel(firstSlot.start_time) : row.booking_start_time || "",
+    endTime: lastSlot?.end_time ? formatSlotTimeLabel(lastSlot.end_time) : row.booking_end_time || "",
+    timeRange: slotSummary,
     bookingStatus: row.booking_status || "",
     statusCode,
     statusLabel: PUBLIC_STATUS_LABELS[statusCode] || PUBLIC_STATUS_LABELS.pending,
@@ -254,7 +270,16 @@ const fetchBookingShareRow = async ({
     fieldAvatar: null,
     ownerName: row.owner_name || "",
     ownerPhone: row.field_phone || row.owner_phone || "",
-    courtName: row.court_name || "",
+    courtName: courtNames.join(", ") || row.court_name || "",
+    slotDetails: slots.map((slot) => ({
+      bookingSlotId: slot.booking_slot_id,
+      courtId: slot.court_id,
+      courtName: slot.court_name || "",
+      startTime: formatSlotTimeLabel(slot.start_time),
+      endTime: formatSlotTimeLabel(slot.end_time),
+      date: formatSlotDateLabel(slot.start_time),
+      price: Number(slot.price || 0),
+    })),
     shareToken: row.share_token || "",
     checkInCode: row.checkin_code || "",
     checkedInAt: row.checked_in_at || null,
@@ -365,11 +390,13 @@ export const buildBookingShareResponse = (detail, baseUrl) => {
     timeRange: detail.timeRange,
     totalPrice: detail.totalPrice,
     paymentMethod: detail.paymentMethod,
+    paymentStatus: detail.paymentStatus,
     transactionId: detail.transactionId,
     orderId: detail.orderId,
     ownerNote: detail.ownerNote,
     checkInCode: detail.checkInCode,
     shareUrl: buildBookingShareUrl(baseUrl, detail.shareToken),
+    slotDetails: detail.slotDetails,
     user: {
       name: detail.userName,
       phone: detail.userPhone,

@@ -11,7 +11,23 @@ Cau truc moi gom 3 phan:
 1. Mo Android Studio.
 2. Chon **Open** va mo thu muc: `frontend/mobile-user`.
 3. Cho Gradle sync.
-4. Run tren emulator/device.
+4. Neu chay tren may that qua USB, mo terminal trong `frontend/mobile-user` va chay:
+
+```bash
+adb reverse tcp:5000 tcp:5000
+```
+
+5. Run tren emulator/device.
+
+Ghi chu:
+
+- App lay URL backend tu `BuildConfig.API_BASE_URL`.
+- Mac dinh app goi `http://127.0.0.1:5000`, phu hop khi da `adb reverse`.
+- Neu muon doi host/port khi build, dung:
+
+```bash
+./gradlew assembleDebug -PMOBILE_API_HOST=192.168.1.10 -PMOBILE_API_PORT=5000
+```
 
 ## 2) Mobile Manager App (Android Studio)
 

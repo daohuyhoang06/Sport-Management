@@ -117,24 +117,61 @@ class InboxViewModel(
     fun markNotificationRead(notificationId: Int?) {
         val token = token() ?: return
         val id = notificationId ?: return
+
+        clearNotificationUnreadState(id)
         viewModelScope.launch {
             runCatching { api.markNotificationRead(token, id) }
             refreshInbox()
         }
     }
 
+    private fun clearNotificationUnreadState(notificationId: Int?) {
+        if (notificationId == null) return
+
+        val clearedSections = _uiState.value.sections.map { section ->
+            section.copy(
+                items = section.items.map { item ->
+                    if (item.id == notificationId) {
+                        item.copy(unread = false, badgeCount = 0)
+                    } else {
+                        item
+                    }
+                }
+            )
+        }
+
+        _uiState.value = _uiState.value.copy(sections = clearedSections)
+    }
+
     fun loadBookingDetail(bookingId: Int?, notificationId: Int? = null) {
         val token = token() ?: return
+        _uiState.value = _uiState.value.copy(
+            isLoadingBookingDetail = true,
+            bookingDetailError = null,
+            activeBookingDetail = null
+        )
         viewModelScope.launch {
             runCatching {
-                val resolvedBookingId = bookingId ?: notificationId?.let { nid ->
-                    val detail = api.getNotificationDetail(token, nid)
-                    detail.bookingId ?: detail.targetId
+                val notificationDetail = notificationId?.let { nid ->
+                    api.getNotificationDetail(token, nid)
                 }
+                val resolvedBookingId =
+                    bookingId ?: notificationDetail?.bookingId ?: notificationDetail?.targetId
+                val resolvedNotificationId = notificationId ?: resolveBookingNotificationId(resolvedBookingId)
+                clearBookingUnreadState(resolvedBookingId)
+                resolvedNotificationId?.let { clearNotificationUnreadState(it) }
+                resolvedNotificationId?.let { runCatching { api.markNotificationRead(token, it) } }
+                resolvedBookingId?.let { runCatching { api.markBookingNotificationsRead(token, it) } }
                 resolvedBookingId?.let { api.getBookingDetail(token, it) }
             }
                 .onSuccess { booking ->
-                    if (booking == null) return@onSuccess
+                    if (booking == null) {
+                        _uiState.value = _uiState.value.copy(
+                            isLoadingBookingDetail = false,
+                            bookingDetailError = "Không tải được chi tiết đặt sân."
+                        )
+                        return@onSuccess
+                    }
                     val dateLabel = booking.date.ifBlank { "" }
                     val timeRange = booking.timeRange.ifBlank {
                         listOf(booking.startTime, booking.endTime)
@@ -143,6 +180,8 @@ class InboxViewModel(
                     }
 
                     _uiState.value = _uiState.value.copy(
+                        isLoadingBookingDetail = false,
+                        bookingDetailError = null,
                         activeBookingDetail = BookingInfo(
                             fieldName = booking.fieldName,
                             timeRange = timeRange,
@@ -167,11 +206,57 @@ class InboxViewModel(
                         )
                     )
                 }
+                .onFailure {
+                    _uiState.value = _uiState.value.copy(
+                        isLoadingBookingDetail = false,
+                        bookingDetailError = it.message ?: "Không tải được chi tiết đặt sân.",
+                        activeBookingDetail = null
+                    )
+                }
         }
     }
 
+    private fun resolveBookingNotificationId(bookingId: Int?): Int? {
+        if (bookingId == null) return null
+
+        return _uiState.value.sections
+            .asSequence()
+            .flatMap { section -> section.items.asSequence() }
+            .firstOrNull { item ->
+                item.category == InboxCategoryType.Booking &&
+                    (item.bookingId == bookingId ||
+                        item.bookingInfo?.bookingId == bookingId)
+            }
+            ?.id
+    }
+
+    private fun clearBookingUnreadState(bookingId: Int?) {
+        if (bookingId == null) return
+
+        val clearedSections = _uiState.value.sections.map { section ->
+            section.copy(
+                items = section.items.map { item ->
+                    if (
+                        item.category == InboxCategoryType.Booking &&
+                        (item.bookingId == bookingId || item.bookingInfo?.bookingId == bookingId)
+                    ) {
+                        item.copy(unread = false, badgeCount = 0)
+                    } else {
+                        item
+                    }
+                }
+            )
+        }
+
+        _uiState.value = _uiState.value.copy(sections = clearedSections)
+    }
+
     fun clearActiveBookingDetail() {
-        _uiState.value = _uiState.value.copy(activeBookingDetail = null)
+        _uiState.value = _uiState.value.copy(
+            activeBookingDetail = null,
+            isLoadingBookingDetail = false,
+            bookingDetailError = null
+        )
     }
 
     fun loadNotificationDetail(notificationId: Int?, fallback: NotificationDetailInfo?) {
@@ -255,6 +340,7 @@ class InboxViewModel(
                     bookingId = info.bookingId
                 ).conversationId
 
+                clearConversationUnreadState(resolvedConversationId)
                 runCatching { api.markConversationRead(token, resolvedConversationId) }
                 api.getConversationMessages(token, resolvedConversationId)
             }.onSuccess { thread ->
@@ -284,6 +370,24 @@ class InboxViewModel(
                 )
             }
         }
+    }
+
+    private fun clearConversationUnreadState(conversationId: Int?) {
+        if (conversationId == null) return
+
+        val clearedSections = _uiState.value.sections.map { section ->
+            section.copy(
+                items = section.items.map { item ->
+                    if (item.category == InboxCategoryType.Message && item.conversationId == conversationId) {
+                        item.copy(unread = false, badgeCount = 0)
+                    } else {
+                        item
+                    }
+                }
+            )
+        }
+
+        _uiState.value = _uiState.value.copy(sections = clearedSections)
     }
 
     fun onDraftChanged(value: String) {
@@ -348,6 +452,7 @@ class InboxViewModel(
         inboxItems.forEach { item ->
             if (item.section.equals("messages", true)) return@forEach
             val matched = notificationById[item.id]
+            val effectiveIsRead = matched?.isRead ?: item.isRead
             val mapped = mapInboxOrNotification(
                 id = item.id,
                 type = item.type.ifBlank { matched?.type.orEmpty() },
@@ -356,7 +461,7 @@ class InboxViewModel(
                 subtitle = item.subtitle.ifBlank { matched?.subtitle.orEmpty() },
                 content = item.detail.ifBlank { matched?.content.orEmpty() },
                 time = item.time,
-                isRead = item.isRead,
+                isRead = effectiveIsRead,
                 bookingId = item.bookingId ?: matched?.bookingId,
                 fieldId = item.fieldId ?: matched?.fieldId,
                 conversationId = item.conversationId,
@@ -576,6 +681,8 @@ data class InboxUiState(
     val isLoadingInbox: Boolean = false,
     val inboxError: String? = null,
     val sections: List<NotificationSectionData> = emptyList(),
+    val isLoadingBookingDetail: Boolean = false,
+    val bookingDetailError: String? = null,
     val activeBookingDetail: BookingInfo? = null,
     val activeNotificationDetail: NotificationDetailInfo? = null,
     val currentConversation: ConversationInfo? = null,

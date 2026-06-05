@@ -200,6 +200,16 @@ export const getNotificationDetail = async (req, res) => {
       });
     }
 
+    if (!notification.is_read) {
+      await sequelize.query(
+        `UPDATE notifications
+         SET is_read = 1, updated_at = CURRENT_TIMESTAMP
+         WHERE id = ? AND user_id = ?`,
+        { replacements: [id, userId] },
+      );
+      notification.is_read = 1;
+    }
+
     res.json({
       success: true,
       data: mapNotificationDetail(notification),
@@ -271,6 +281,52 @@ export const markNotificationRead = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Loi server khi cap nhat thong bao",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+};
+
+// PATCH /api/user/notifications/booking/:bookingId/read
+export const markBookingNotificationsRead = async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    const { bookingId } = req.params;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    if (!bookingId) {
+      return res.status(400).json({
+        success: false,
+        message: "Booking ID is required",
+      });
+    }
+
+    await sequelize.query(
+      `UPDATE notifications
+       SET is_read = 1, updated_at = CURRENT_TIMESTAMP
+       WHERE user_id = ?
+         AND booking_id = ?
+         AND is_read = 0`,
+      { replacements: [userId, bookingId] },
+    );
+
+    res.json({
+      success: true,
+      data: {
+        bookingId: Number(bookingId),
+        isRead: true,
+      },
+    });
+  } catch (error) {
+    console.error("markBookingNotificationsRead error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Loi server khi cap nhat thong bao dat san",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }

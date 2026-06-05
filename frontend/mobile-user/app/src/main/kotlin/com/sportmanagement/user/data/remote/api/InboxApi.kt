@@ -151,11 +151,15 @@ class InboxApi(
     }
 
     suspend fun markNotificationRead(token: String, id: Int) {
-        patchJson("$baseUrl/api/user/notifications/$id/read", token)
+        postJsonWithoutBody("$baseUrl/api/user/notifications/$id/read", token)
+    }
+
+    suspend fun markBookingNotificationsRead(token: String, bookingId: Int) {
+        postJsonWithoutBody("$baseUrl/api/user/notifications/booking/$bookingId/read", token)
     }
 
     suspend fun markAllNotificationsRead(token: String) {
-        patchJson("$baseUrl/api/user/notifications/read-all", token)
+        postJsonWithoutBody("$baseUrl/api/user/notifications/read-all", token)
     }
 
     suspend fun getBookingDetail(token: String, bookingId: Int): BookingDetailDto = withContext(Dispatchers.IO) {
@@ -270,7 +274,7 @@ class InboxApi(
     }
 
     suspend fun markConversationRead(token: String, conversationId: Int) {
-        patchJson("$baseUrl/api/user/conversations/$conversationId/read", token)
+        postJsonWithoutBody("$baseUrl/api/user/conversations/$conversationId/read", token)
     }
 
     private fun JSONObject.toNotificationDto(): NotificationDto {
@@ -321,6 +325,19 @@ class InboxApi(
 
     private fun patchJson(endpoint: String, token: String) {
         val connection = createConnection(endpoint, "PATCH", token)
+        try {
+            val responseCode = connection.responseCode
+            val responseText = readResponseBody(connection, responseCode)
+            if (responseCode !in 200..299) {
+                throw IOException(readApiErrorMessage(responseCode, responseText))
+            }
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+    private fun postJsonWithoutBody(endpoint: String, token: String) {
+        val connection = createConnection(endpoint, "POST", token)
         try {
             val responseCode = connection.responseCode
             val responseText = readResponseBody(connection, responseCode)

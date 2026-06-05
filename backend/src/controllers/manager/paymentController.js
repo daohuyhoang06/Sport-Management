@@ -58,6 +58,11 @@ const getBookingPaymentContext = async (bookingId) => {
         b.manager_id as booking_manager_id,
         b.price,
         b.status,
+        (
+          SELECT COUNT(*)
+          FROM booking_slots bs
+          WHERE bs.booking_id = b.booking_id
+        ) AS slot_count,
         f.manager_id as field_manager_id,
         f.field_name
       FROM bookings b
@@ -87,6 +92,11 @@ const getBookingPaymentContexts = async (bookingIds) => {
         b.price,
         b.status,
         b.pending_expires_at,
+        (
+          SELECT COUNT(*)
+          FROM booking_slots bs
+          WHERE bs.booking_id = b.booking_id
+        ) AS slot_count,
         f.manager_id as field_manager_id,
         f.field_name
       FROM bookings b
@@ -169,9 +179,13 @@ export const createMomoPayment = async (req, res) => {
       finalAmount = normalizeAmount(
         paymentContexts.reduce((sum, item) => sum + Number(item.price || 0), 0),
       );
+      const totalSlotCount = paymentContexts.reduce(
+        (sum, item) => sum + Math.max(1, Number(item.slot_count || 0)),
+        0,
+      );
       finalOrderInfo =
         orderInfo ||
-        `Thanh toan dat san ${paymentContexts.length} khung gio - ${firstContext.field_name || "Sport Management"}`;
+        `Thanh toan dat san ${totalSlotCount} khung gio - ${firstContext.field_name || "Sport Management"}`;
     } else if (!demo) {
       return res.status(400).json({
         message:

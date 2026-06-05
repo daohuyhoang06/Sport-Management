@@ -145,7 +145,7 @@ fun BookingPaymentScreen(
     var paymentMessage by rememberSaveable { mutableStateOf<String?>(null) }
     var reopenedPayUrl by rememberSaveable { mutableStateOf<String?>(null) }
     var currentOrderId by rememberSaveable { mutableStateOf<String?>(null) }
-    var pendingBookingIds by rememberSaveable { mutableStateOf(emptyList<Int>()) }
+    var pendingBookingId by rememberSaveable { mutableStateOf<Int?>(null) }
     var remainingHoldSeconds by rememberSaveable { mutableIntStateOf(6 * 60) }
     var isHoldExpired by rememberSaveable { mutableStateOf(false) }
 
@@ -164,7 +164,7 @@ fun BookingPaymentScreen(
         userName,
         userPhone,
         currentOrderId,
-        pendingBookingIds,
+        pendingBookingId,
         paymentMessage
     ) {
         val fieldName = confirmationData.fieldName.ifBlank {
@@ -177,7 +177,7 @@ fun BookingPaymentScreen(
         val timeRange = confirmationData.ranges.joinToString("\n") { range ->
             "${range.courtName}: ${range.startTimeLabel} - ${range.endTimeLabel}"
         }
-        val bookingCode = pendingBookingIds.firstOrNull()?.let { "#B$it" }
+        val bookingCode = pendingBookingId?.let { "#B$it" }
             ?: currentOrderId
             ?: context.getString(R.string.payment_order_code_pending)
 
@@ -200,7 +200,7 @@ fun BookingPaymentScreen(
             ownerPhone = "",
             ownerNote = paymentMessage ?: context.getString(R.string.payment_message_momo_confirmed),
             fieldId = confirmationData.fieldId,
-            bookingId = pendingBookingIds.firstOrNull(),
+            bookingId = pendingBookingId,
             notificationId = null
         )
     }
@@ -214,8 +214,8 @@ fun BookingPaymentScreen(
             val authToken = loadAuthToken(context)
                 ?: error(context.getString(R.string.payment_auth_required_error))
 
-            val bookingIds = if (pendingBookingIds.isNotEmpty()) {
-                pendingBookingIds
+            val bookingId = if (pendingBookingId != null && pendingBookingId!! > 0) {
+                pendingBookingId!!
             } else {
                 val fieldId = confirmationData.fieldId
                     ?: error(context.getString(R.string.payment_booking_missing_field_error))
@@ -245,20 +245,20 @@ fun BookingPaymentScreen(
                     customerName = userName,
                     customerPhone = userPhone
                 )
-                val createdIds = batchResult.bookings.map { it.bookingId }.filter { it > 0 }
-                if (createdIds.isEmpty() || createdIds.size != createRequests.size) {
+                val createdBookingId = batchResult.booking.bookingId
+                if (createdBookingId <= 0) {
                     error(context.getString(R.string.payment_booking_create_error))
                 }
-                pendingBookingIds = createdIds
+                pendingBookingId = createdBookingId
                 if (batchResult.pendingHoldSeconds > 0) {
                     remainingHoldSeconds = batchResult.pendingHoldSeconds
                 }
-                createdIds
+                createdBookingId
             }
 
             MomoPaymentApi.createPayment(
                 token = authToken,
-                bookingIds = bookingIds,
+                bookingId = bookingId,
                 orderInfo = orderInfo,
                 redirectUrl = FieldShareLink.momoReturnLink()
             )

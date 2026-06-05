@@ -100,7 +100,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
@@ -122,7 +124,10 @@ import java.io.File
 import java.io.FileOutputStream
 
 private val InboxSectionGap = AppFieldHorizontalPadding
+private val InboxMenuContentGap = 28.dp
 private val InboxListBottomPadding = 112.dp
+private val InboxHeaderHeight = 156.dp
+private val InboxQuickActionCardHeight = 96.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -147,6 +152,7 @@ fun InboxScreen(
         if (filteredItems.isEmpty()) null else section.copy(items = filteredItems)
     }
     val quickActions = inboxQuickActions(sections)
+    val hasVisibleContent = filteredSections.any { it.items.isNotEmpty() }
 
     LazyColumn(
         modifier = Modifier
@@ -160,10 +166,27 @@ fun InboxScreen(
         contentPadding = PaddingValues(bottom = InboxListBottomPadding)
     ) {
         item {
-            InboxHeader()
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(InboxHeaderHeight + (InboxQuickActionCardHeight / 2))
+            ) {
+                InboxHeader(modifier = Modifier.align(Alignment.TopStart))
+                InboxQuickActions(
+                    categories = quickActions,
+                    selectedCategory = selectedCategory,
+                    onCategorySelected = { category ->
+                        selectedCategory = if (selectedCategory == category) null else category
+                    },
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(horizontal = 16.dp)
+                        .offset(y = InboxHeaderHeight - (InboxQuickActionCardHeight / 2))
+                )
+            }
         }
 
-        if (isLoading) {
+        if (isLoading && !hasVisibleContent) {
             item {
                 Text(
                     text = "Đang tải hộp thư...",
@@ -192,17 +215,7 @@ fun InboxScreen(
         }
 
         item {
-            InboxQuickActions(
-                categories = quickActions,
-                selectedCategory = selectedCategory,
-                onCategorySelected = { category ->
-                    selectedCategory = if (selectedCategory == category) null else category
-                },
-                modifier = Modifier
-                    .offset(y = (-32).dp)
-                    .padding(horizontal = 16.dp)
-            )
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(InboxMenuContentGap))
         }
 
         filteredSections.forEach { section ->
@@ -213,7 +226,7 @@ fun InboxScreen(
                     onItemClick = { item ->
                         when {
                             item.category == InboxCategoryType.Booking && item.bookingInfo != null -> {
-                                onNotificationOpened(item.id)
+                                onNotificationOpened(item.bookingInfo.notificationId ?: item.id)
                                 onBookingSelected(item.bookingInfo)
                             }
                             item.category == InboxCategoryType.Message && item.conversationInfo != null -> {
@@ -287,19 +300,11 @@ fun InboxHeader(modifier: Modifier = Modifier) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = stringResource(R.string.inbox_title),
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleLarge.copy(fontFamily = FontFamily.Default),
+                        fontWeight = FontWeight.SemiBold,
                         color = Color.White
                     )
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        text = stringResource(R.string.inbox_subtitle),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.White.copy(alpha = 0.85f),
-                        lineHeight = 18.sp
-                    )
                 }
-
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     HeaderIconButton(icon = Icons.Outlined.Search)
                     HeaderIconButton(icon = Icons.Outlined.Tune)
@@ -343,7 +348,7 @@ fun InboxQuickActions(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 14.dp, horizontal = 8.dp),
+                .padding(vertical = 12.dp, horizontal = 8.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -483,6 +488,17 @@ fun NotificationCard(item: NotificationItem, onClick: () -> Unit) {
             }
 
             Column(modifier = Modifier.weight(1f)) {
+                val subtitleLooksSecondary = looksLikeBookingCodePreview(item.subtitle)
+                val isMessageItem = item.category == InboxCategoryType.Message
+                val subtitleStyle =
+                    if (subtitleLooksSecondary) MaterialTheme.typography.bodySmall
+                    else MaterialTheme.typography.bodyMedium
+                val subtitleWeight =
+                    if (subtitleLooksSecondary || isMessageItem) FontWeight.Normal else FontWeight.Medium
+                val subtitleColor =
+                    if (subtitleLooksSecondary) MaterialTheme.colorScheme.onSurfaceVariant
+                    else MaterialTheme.colorScheme.onSurface
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -511,9 +527,9 @@ fun NotificationCard(item: NotificationItem, onClick: () -> Unit) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = item.subtitle,
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.onSurface
+                            style = subtitleStyle,
+                            fontWeight = subtitleWeight,
+                            color = subtitleColor
                         )
                         if (item.detail.isNotBlank()) {
                             Spacer(Modifier.height(3.dp))
@@ -525,7 +541,10 @@ fun NotificationCard(item: NotificationItem, onClick: () -> Unit) {
                         }
                     }
 
-                    NotificationStatusIndicator(item = item)
+                    NotificationStatusIndicator(
+                        item = item,
+                        modifier = Modifier.width(18.dp)
+                    )
                 }
             }
         }
@@ -533,18 +552,26 @@ fun NotificationCard(item: NotificationItem, onClick: () -> Unit) {
 }
 
 @Composable
-private fun NotificationStatusIndicator(item: NotificationItem) {
-    when {
-        item.badgeCount > 0 -> {
-            NotificationBadge(value = item.badgeCount.toString())
-        }
+private fun NotificationStatusIndicator(
+    item: NotificationItem,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier,
+        contentAlignment = Alignment.TopEnd
+    ) {
+        when {
+            item.badgeCount > 0 -> {
+                NotificationBadge(value = item.badgeCount.toString())
+            }
 
-        item.unread -> {
-            Box(
-                modifier = Modifier
-                    .size(8.dp)
-                    .background(MaterialTheme.colorScheme.error, CircleShape)
-            )
+            item.unread -> {
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .background(MaterialTheme.colorScheme.error, CircleShape)
+                )
+            }
         }
     }
 }
@@ -564,6 +591,13 @@ private fun NotificationBadge(value: String, modifier: Modifier = Modifier) {
             fontSize = 10.sp
         )
     }
+}
+
+private fun looksLikeBookingCodePreview(text: String): Boolean {
+    val normalized = text.trim()
+    return normalized.contains("#B", ignoreCase = true) ||
+        normalized.contains("Mã đặt sân", ignoreCase = true) ||
+        normalized.contains("Booking #B", ignoreCase = true)
 }
 
 @Composable
@@ -2629,12 +2663,12 @@ private fun ConversationTopBar(
                 tint = MaterialTheme.colorScheme.onSurface
             )
         }
-        Box(modifier = Modifier.size(46.dp)) {
+        Box(modifier = Modifier.size(42.dp)) {
             Image(
                 painter = painterResource(id = info.avatarRes),
                 contentDescription = null,
                 modifier = Modifier
-                    .size(46.dp)
+                    .size(42.dp)
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape)
                     .border(1.dp, MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape),
@@ -2648,7 +2682,7 @@ private fun ConversationTopBar(
                     .align(Alignment.BottomEnd)
             )
         }
-        Spacer(Modifier.width(12.dp))
+        Spacer(Modifier.width(10.dp))
         Column(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(3.dp)
@@ -2657,25 +2691,22 @@ private fun ConversationTopBar(
                 text = info.fieldName,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
             Text(
                 text = info.statusLabel,
                 style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
         IconButton(onClick = onCallClick) {
             Icon(
                 imageVector = Icons.Outlined.Phone,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-        IconButton(onClick = { }) {
-            Icon(
-                imageVector = Icons.Outlined.MoreVert,
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -2740,7 +2771,7 @@ private fun ConversationInputBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = AppScreenHorizontalPadding, vertical = 8.dp),
+                .padding(horizontal = AppScreenHorizontalPadding, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
@@ -2749,7 +2780,7 @@ private fun ConversationInputBar(
                 color = MaterialTheme.colorScheme.surface
             ) {
                 Box(
-                    modifier = Modifier.size(40.dp),
+                    modifier = Modifier.size(36.dp),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -2765,7 +2796,7 @@ private fun ConversationInputBar(
                 onValueChange = onDraftChange,
                 modifier = Modifier
                     .weight(1f)
-                    .heightIn(min = 48.dp),
+                    .heightIn(min = 44.dp),
                 placeholder = { Text(stringResource(R.string.inbox_chat_placeholder)) },
                 singleLine = true,
                 shape = RoundedCornerShape(AppPillCornerRadius)
@@ -2776,7 +2807,7 @@ private fun ConversationInputBar(
             ) {
                 Box(
                     modifier = Modifier
-                        .size(40.dp)
+                        .size(36.dp)
                         .clickable(enabled = !isSending, onClick = onSend),
                     contentAlignment = Alignment.Center
                 ) {

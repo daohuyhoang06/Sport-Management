@@ -7,6 +7,7 @@ import FieldPolicy from './FieldPolicy.js';
 import FieldImage from './FieldImage.js';
 import FieldSchedule from './FieldSchedule.js';
 import Booking from './Booking.js';
+import BookingSlot from './BookingSlot.js';
 import Payment from './Payment.js';
 import Review from './Review.js';
 import FavoriteField from './FavoriteField.js';
@@ -38,6 +39,15 @@ Booking.belongsTo(User, { foreignKey: 'customer_id', as: 'customer' });
 
 Field.hasMany(Booking, { foreignKey: 'field_id', as: 'bookings' });
 Booking.belongsTo(Field, { foreignKey: 'field_id', as: 'field' });
+
+Booking.hasMany(BookingSlot, { foreignKey: 'booking_id', as: 'slots' });
+BookingSlot.belongsTo(Booking, { foreignKey: 'booking_id', as: 'booking' });
+
+Field.hasMany(BookingSlot, { foreignKey: 'field_id', as: 'bookingSlots' });
+BookingSlot.belongsTo(Field, { foreignKey: 'field_id', as: 'field' });
+
+FieldCourt.hasMany(BookingSlot, { foreignKey: 'court_id', as: 'bookingSlots' });
+BookingSlot.belongsTo(FieldCourt, { foreignKey: 'court_id', as: 'court' });
 
 User.hasMany(Booking, { foreignKey: 'manager_id', as: 'managedBookings' });
 Booking.belongsTo(User, { foreignKey: 'manager_id', as: 'manager' });
@@ -75,6 +85,7 @@ export {
   FieldImage,
   FieldSchedule,
   Booking,
+  BookingSlot,
   Payment,
   Review,
   FavoriteField

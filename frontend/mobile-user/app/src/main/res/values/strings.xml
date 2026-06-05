@@ -213,7 +213,7 @@
     <string name="payment_view_cancelled_booking">XEM LỊCH ĐÃ HỦY</string>
     <string name="payment_back_home">QUAY VỀ</string>
     <string name="payment_pay_only">THANH TOÁN</string>
-    <string name="payment_view_invoice">XEM THÔNG BÁO</string>
+    <string name="payment_view_invoice">Xem hóa đơn</string>
     <string name="payment_return_home">Về trang chủ</string>
     <string name="payment_message_waiting_for_momo">Đang chờ bạn hoàn tất giao dịch trên ứng dụng MoMo.</string>
     <string name="payment_message_momo_confirmed">Giao dịch MoMo đã được xác nhận.</string>

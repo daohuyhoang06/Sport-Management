@@ -1,16 +1,7 @@
 import sequelize from "../../config/database.js";
 import FieldSchedule from "../../models/FieldSchedule.js";
 import { Op } from "sequelize";
-
-const ACTIVE_BOOKING_STATUS_CONDITION = `
-  (
-    status = 'confirmed'
-    OR (
-      status = 'pending'
-      AND (pending_expires_at IS NULL OR pending_expires_at > NOW())
-    )
-  )
-`;
+import { ACTIVE_BOOKING_STATUS_CONDITION } from "../bookingSlotService.js";
 
 export const releaseExpiredPendingBookings = async (transaction = null) => {
   await sequelize.query(
@@ -68,10 +59,15 @@ export const getAvailableSlots = async (field_id, dateOrDates) => {
 
     // Get all bookings for this field and date range in a single query
     const bookings = await sequelize.query(
-      `SELECT booking_id, start_time, end_time, status 
-       FROM bookings 
-       WHERE field_id = ? 
-       AND start_time >= ? AND start_time < ?
+      `SELECT
+        bs.booking_id,
+        bs.court_id,
+        bs.start_time,
+        bs.end_time
+       FROM booking_slots bs
+       INNER JOIN bookings b ON b.booking_id = bs.booking_id
+       WHERE bs.field_id = ?
+       AND bs.start_time >= ? AND bs.start_time < ?
        AND ${ACTIVE_BOOKING_STATUS_CONDITION}`,
       {
         replacements: [field_id, startOfDay, endOfDay],
@@ -211,12 +207,17 @@ export const checkSlotAvailability = async (field_id, startTime, endTime) => {
 
     // Check bookings for conflicts
     const bookings = await sequelize.query(
-      `SELECT booking_id, start_time, end_time, status 
-       FROM bookings 
-       WHERE field_id = ? 
+      `SELECT
+        bs.booking_slot_id,
+        bs.booking_id,
+        bs.start_time,
+        bs.end_time
+       FROM booking_slots bs
+       INNER JOIN bookings b ON b.booking_id = bs.booking_id
+       WHERE bs.field_id = ?
        AND ${ACTIVE_BOOKING_STATUS_CONDITION}
-       AND start_time < ?
-       AND end_time > ?`,
+       AND bs.start_time < ?
+       AND bs.end_time > ?`,
       {
         replacements: [field_id, endTime, startTime],
         type: sequelize.QueryTypes.SELECT,

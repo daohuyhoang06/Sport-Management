@@ -33,6 +33,7 @@ import {
   listNotifications,
   getNotificationDetail,
   markNotificationRead,
+  markBookingNotificationsRead,
   markAllNotificationsRead,
 } from "../../controllers/user/notificationController.js";
 import { getInbox } from "../../controllers/user/inboxController.js";
@@ -78,8 +79,12 @@ r.get("/reviews/stats/:field_id", getReviewStats);
 
 r.get("/notifications", requireAuth, listNotifications);
 r.get("/notifications/:id", requireAuth, getNotificationDetail);
-r.patch("/notifications/:id/read", requireAuth, markNotificationRead);
 r.patch("/notifications/read-all", requireAuth, markAllNotificationsRead);
+r.post("/notifications/read-all", requireAuth, markAllNotificationsRead);
+r.patch("/notifications/booking/:bookingId/read", requireAuth, markBookingNotificationsRead);
+r.post("/notifications/booking/:bookingId/read", requireAuth, markBookingNotificationsRead);
+r.patch("/notifications/:id/read", requireAuth, markNotificationRead);
+r.post("/notifications/:id/read", requireAuth, markNotificationRead);
 
 r.get("/inbox", requireAuth, getInbox);
 
@@ -96,6 +101,11 @@ r.post(
   sendConversationMessage,
 );
 r.patch(
+  "/conversations/:conversationId/read",
+  requireAuth,
+  markConversationRead,
+);
+r.post(
   "/conversations/:conversationId/read",
   requireAuth,
   markConversationRead,

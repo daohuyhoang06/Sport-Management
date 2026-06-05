@@ -28,12 +28,11 @@ data class MomoPaymentStatusResponse(
 object MomoPaymentApi {
     suspend fun createPayment(
         token: String,
-        bookingIds: List<Int>,
+        bookingId: Int,
         orderInfo: String,
         redirectUrl: String? = null
     ): MomoPaymentResponse = withContext(Dispatchers.IO) {
-        val normalizedBookingIds = bookingIds.distinct().filter { it > 0 }
-        require(normalizedBookingIds.isNotEmpty()) { "bookingIds must not be empty" }
+        require(bookingId > 0) { "bookingId must be positive" }
 
         val url = URL("${ApiConfig.BASE_URL}/api/payments/momo/create")
         val connection = (url.openConnection() as HttpURLConnection).apply {
@@ -46,12 +45,8 @@ object MomoPaymentApi {
             setRequestProperty("Authorization", "Bearer $token")
         }
 
-        val bookingIdsArray = org.json.JSONArray()
-        normalizedBookingIds.forEach { bookingIdsArray.put(it) }
-
         val body = JSONObject()
-            .put("booking_id", normalizedBookingIds.first())
-            .put("booking_ids", bookingIdsArray)
+            .put("booking_id", bookingId)
             .put("orderInfo", orderInfo)
             .put("redirectUrl", redirectUrl)
             .toString()

@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -35,6 +36,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -49,7 +51,11 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun UserBottomBar(selectedTab: UserTab, onTabSelected: (UserTab) -> Unit) {
+fun UserBottomBar(
+    selectedTab: UserTab,
+    inboxUnreadCount: Int = 0,
+    onTabSelected: (UserTab) -> Unit
+) {
     val accentColor = AppHeaderGradientEnd
     val selectedTextColor = AppHeaderGradientStart
     val outlineColor = accentColor.copy(alpha = 0.38f)
@@ -104,6 +110,7 @@ fun UserBottomBar(selectedTab: UserTab, onTabSelected: (UserTab) -> Unit) {
                         animationSpec = tween(durationMillis = 120),
                         label = "bottom_tab_item_scale"
                     )
+                    val badgeCount = if (tab == UserTab.Inbox) inboxUnreadCount else 0
                     CompositionLocalProvider(LocalRippleConfiguration provides null) {
                         Box(
                             modifier = Modifier
@@ -131,32 +138,50 @@ fun UserBottomBar(selectedTab: UserTab, onTabSelected: (UserTab) -> Unit) {
                                         scaleY = itemScale
                                     }
                             ) {
-                                Icon(
-                                    imageVector = if (isSelected) tab.selectedIcon else tab.unselectedIcon,
-                                    contentDescription = tabTitle,
-                                    tint = if (isSelected) Color.White else inactiveColor,
-                                    modifier = Modifier
-                                        .size(22.dp)
-                                        .then(
-                                            if (isSelected) {
-                                                Modifier
-                                                    .graphicsLayer {
-                                                        compositingStrategy = CompositingStrategy.Offscreen
-                                                    }
-                                                    .drawWithCache {
-                                                        onDrawWithContent {
-                                                            drawContent()
-                                                            drawRect(
-                                                                brush = selectedIconBrush,
-                                                                blendMode = BlendMode.SrcIn
-                                                            )
+                                Box(modifier = Modifier.size(24.dp), contentAlignment = Alignment.TopEnd) {
+                                    Icon(
+                                        imageVector = if (isSelected) tab.selectedIcon else tab.unselectedIcon,
+                                        contentDescription = tabTitle,
+                                        tint = if (isSelected) Color.White else inactiveColor,
+                                        modifier = Modifier
+                                            .size(22.dp)
+                                            .then(
+                                                if (isSelected) {
+                                                    Modifier
+                                                        .graphicsLayer {
+                                                            compositingStrategy = CompositingStrategy.Offscreen
                                                         }
-                                                    }
-                                            } else {
-                                                Modifier
-                                            }
-                                        )
-                                )
+                                                        .drawWithCache {
+                                                            onDrawWithContent {
+                                                                drawContent()
+                                                                drawRect(
+                                                                    brush = selectedIconBrush,
+                                                                    blendMode = BlendMode.SrcIn
+                                                                )
+                                                            }
+                                                        }
+                                                } else {
+                                                    Modifier
+                                                }
+                                            )
+                                    )
+                                    if (badgeCount > 0) {
+                                        Box(
+                                            modifier = Modifier
+                                                .offset(x = 9.dp, y = (-4).dp)
+                                                .size(if (badgeCount > 9) 20.dp else 16.dp)
+                                                .background(Color(0xFFE53935), CircleShape),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(
+                                                text = if (badgeCount > 99) "99+" else badgeCount.toString(),
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = Color.White
+                                            )
+                                        }
+                                    }
+                                }
 
                                 Text(
                                     text = tabTitle,

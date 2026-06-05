@@ -35,7 +35,7 @@ data class CreateBookingResponse(
 )
 
 data class CreateBatchBookingResponse(
-    val bookings: List<CreateBookingResponse>,
+    val booking: CreateBookingResponse,
     val pendingHoldSeconds: Int
 )
 
@@ -291,18 +291,18 @@ class UserApi(
             }
 
             val root = JSONObject(responseText)
-            val bookingsArrayResponse = root.optJSONArray("bookings") ?: JSONArray()
-            val bookings = List(bookingsArrayResponse.length()) { index ->
-                val booking = bookingsArrayResponse.getJSONObject(index)
-                CreateBookingResponse(
-                    bookingId = booking.optInt("booking_id"),
-                    courtId = booking.optIntOrNull("court_id"),
-                    status = booking.optStringOrNull("status"),
-                    pendingHoldSeconds = root.optInt("pending_hold_seconds", 0)
-                )
-            }
+            val bookingObject = root.optJSONObject("booking")
+                ?: root.optJSONArray("bookings")
+                    ?.optJSONObject(0)
+                ?: JSONObject()
+            val booking = CreateBookingResponse(
+                bookingId = bookingObject.optInt("booking_id"),
+                courtId = bookingObject.optIntOrNull("court_id"),
+                status = bookingObject.optStringOrNull("status"),
+                pendingHoldSeconds = root.optInt("pending_hold_seconds", 0)
+            )
             CreateBatchBookingResponse(
-                bookings = bookings,
+                booking = booking,
                 pendingHoldSeconds = root.optInt("pending_hold_seconds", 0)
             )
         } finally {
