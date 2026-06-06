@@ -64,6 +64,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.sportmanagement.manager.R
+import com.sportmanagement.manager.data.AppContainer
 import com.sportmanagement.manager.domain.model.Pitch
 import com.sportmanagement.manager.ui.navigation.ManagerTab
 import com.sportmanagement.manager.ui.state.BookingsUiState
@@ -97,7 +98,8 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ManagerApp(dashboardViewModel: DashboardViewModel = viewModel()) {
-    var isLoggedIn by rememberSaveable { mutableStateOf(false) }
+    // Dùng session đã lưu nếu có, tránh đăng nhập lại mỗi lần mở app
+    var isLoggedIn by rememberSaveable { mutableStateOf(AppContainer.authRepository.isLoggedIn()) }
 
     if (!isLoggedIn) {
         LoginScreen(onLoginSuccess = { isLoggedIn = true })
@@ -119,7 +121,10 @@ fun ManagerApp(dashboardViewModel: DashboardViewModel = viewModel()) {
 
     when {
         selectedPitch != null -> {
-            PitchDetailScreen(onBackClick = { selectedPitch = null })
+            PitchDetailScreen(
+                fieldId = selectedPitch!!.id,
+                onBackClick = { selectedPitch = null }
+            )
             return
         }
         bookingsState.selectedBooking != null -> {

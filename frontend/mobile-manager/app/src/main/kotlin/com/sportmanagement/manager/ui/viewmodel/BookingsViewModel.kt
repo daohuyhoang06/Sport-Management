@@ -1,6 +1,11 @@
 package com.sportmanagement.manager.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.sportmanagement.manager.data.AppContainer
+import com.sportmanagement.manager.data.mapper.toBookingItem
+import com.sportmanagement.manager.data.mapper.toHistoryEvent
+import com.sportmanagement.manager.data.remote.dto.CreateBookingRequest
 import com.sportmanagement.manager.domain.model.BookingItem
 import com.sportmanagement.manager.domain.model.BookingStatus
 import com.sportmanagement.manager.ui.state.BookingsUiState
@@ -9,10 +14,32 @@ import com.sportmanagement.manager.ui.state.PitchFilterData
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
 class BookingsViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(BookingsUiState())
     val uiState: StateFlow<BookingsUiState> = _uiState.asStateFlow()
+
+    init {
+        loadBookings()
+    }
+
+    fun loadBookings(status: String? = null) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+            AppContainer.bookingRepository.getBookings(status = status).fold(
+                onSuccess = { dtos ->
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        bookings = dtos.map { it.toBookingItem() }
+                    )
+                },
+                onFailure = { e ->
+                    _uiState.value = _uiState.value.copy(isLoading = false, error = e.message)
+                }
+            )
+        }
+    }
 
     fun onDaySelected(index: Int) {
         _uiState.value = _uiState.value.copy(
@@ -32,14 +59,79 @@ class BookingsViewModel : ViewModel() {
 
     fun onBookingClick(booking: BookingItem) {
         _uiState.value = _uiState.value.copy(selectedBooking = booking)
+        loadBookingHistory(booking.id)
     }
 
     fun onBackFromDetail() {
         _uiState.value = _uiState.value.copy(selectedBooking = null)
     }
 
+    fun loadBookingHistory(bookingId: String) {
+        viewModelScope.launch {
+            AppContainer.bookingRepository.getBookingHistory(bookingId.toIntOrNull() ?: return@launch)
+                .onSuccess { dtos ->
+                    val updated = _uiState.value.bookingHistory.toMutableMap()
+                    updated[bookingId] = dtos.map { it.toHistoryEvent() }
+                    _uiState.value = _uiState.value.copy(bookingHistory = updated)
+                }
+        }
+    }
+
+    fun onSaveNewBooking() {
+        val s = _uiState.value
+        if (s.newBookingDate.isBlank() || s.newBookingStart.isBlank() || s.newBookingEnd.isBlank()) return
+
+        // Tìm field_id từ pitch filter đang chọn (nếu có), hoặc lấy field đầu tiên
+        val fieldIdStr = s.pitchFilters.firstOrNull { it.isSelected && it.label != "Tất cả" }?.label
+        // Nếu không có field cụ thể, lấy field đầu tiên từ danh sách booking
+        val firstFieldId = s.bookings.firstOrNull()?.let {
+            // Try to extract from booking
+            null
+        }
+
+        viewModelScope.launch {
+            // Cần field_id — lấy field đầu tiên của manager
+            AppContainer.fieldRepository.getFields().onSuccess { fields ->
+                val fieldId = fields.firstOrNull()?.fieldId ?: return@onSuccess
+                val dateParts = s.newBookingDate.split("/")
+                val startIso = if (dateParts.size == 3)
+                    "${dateParts[2]}-${dateParts[1]}-${dateParts[0]}T${s.newBookingStart}:00.000Z"
+                else return@onSuccess
+                val endIso = "${dateParts[2]}-${dateParts[1]}-${dateParts[0]}T${s.newBookingEnd}:00.000Z"
+
+                val request = CreateBookingRequest(
+                    fieldId = fieldId,
+                    customerPhone = s.newBookingCustomerPhone.ifBlank { null },
+                    startTime = startIso,
+                    endTime = endIso,
+                    note = s.newBookingNotes.ifBlank { null }
+                )
+                AppContainer.bookingRepository.createBooking(request).fold(
+                    onSuccess = { dto ->
+                        val newBooking = dto.toBookingItem()
+                        _uiState.value = _uiState.value.copy(
+                            showAddBooking = false,
+                            bookings = listOf(newBooking) + _uiState.value.bookings,
+                            newBookingCustomerName = "",
+                            newBookingCustomerPhone = "",
+                            newBookingDeposit = "",
+                            newBookingNotes = ""
+                        )
+                    },
+                    onFailure = { e ->
+                        _uiState.value = _uiState.value.copy(error = e.message)
+                    }
+                )
+            }
+        }
+    }
+
     fun onConfirmBooking(bookingId: String) {
         updateBookingStatus(bookingId, BookingStatus.CONFIRMED)
+        viewModelScope.launch {
+            AppContainer.bookingRepository.approveBooking(bookingId.toIntOrNull() ?: return@launch)
+                .onFailure { updateBookingStatus(bookingId, BookingStatus.PENDING) }
+        }
     }
 
     fun onRequestCancel(bookingId: String) {
@@ -72,6 +164,10 @@ class BookingsViewModel : ViewModel() {
             cancelTargetId = "",
             cancelReasonDraft = ""
         )
+        viewModelScope.launch {
+            AppContainer.bookingRepository.cancelBooking(id.toIntOrNull() ?: return@launch, reason.ifBlank { null })
+                .onFailure { loadBookings() }
+        }
     }
 
     fun onDismissCancelDialog() {
@@ -207,16 +303,6 @@ class BookingsViewModel : ViewModel() {
 
     fun onNewBookingNotesChanged(notes: String) {
         _uiState.value = _uiState.value.copy(newBookingNotes = notes)
-    }
-
-    fun onSaveNewBooking() {
-        _uiState.value = _uiState.value.copy(
-            showAddBooking = false,
-            newBookingCustomerName = "",
-            newBookingCustomerPhone = "",
-            newBookingDeposit = "",
-            newBookingNotes = ""
-        )
     }
 
     private fun updateBookingStatus(bookingId: String, newStatus: BookingStatus) {

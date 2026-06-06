@@ -1,6 +1,7 @@
 package com.sportmanagement.manager.ui.state
 
 import com.sportmanagement.manager.domain.model.BookingCustomer
+import com.sportmanagement.manager.domain.model.BookingHistoryEvent
 import com.sportmanagement.manager.domain.model.BookingItem
 import com.sportmanagement.manager.domain.model.BookingStatus
 
@@ -8,6 +9,8 @@ data class DayChipData(val dayLabel: String, val dayNumber: String, val isSelect
 data class PitchFilterData(val label: String, val isSelected: Boolean)
 
 data class BookingsUiState(
+    val isLoading: Boolean = false,
+    val error: String? = null,
     val dayChips: List<DayChipData> = listOf(
         DayChipData("T2", "23", true),
         DayChipData("T3", "24", false),
@@ -16,11 +19,9 @@ data class BookingsUiState(
         DayChipData("T6", "27", false)
     ),
     val pitchFilters: List<PitchFilterData> = listOf(
-        PitchFilterData("Sân 5 (A1)", true),
-        PitchFilterData("Sân 5 (A2)", false),
-        PitchFilterData("Sân 7 (B1)", false)
+        PitchFilterData("Tất cả", true)
     ),
-    val bookings: List<BookingItem> = demoBookings(),
+    val bookings: List<BookingItem> = emptyList(),
     val selectedBooking: BookingItem? = null,
     val showAddBooking: Boolean = false,
     val newBookingCourtCode: String = "A1",
@@ -51,9 +52,13 @@ data class BookingsUiState(
     val showPaymentDialog: Boolean = false,
     val paymentTargetId: String = "",
     val paymentMethodDraft: String = "Tiền mặt",
-    val paymentNoteDraft: String = ""
+    val paymentNoteDraft: String = "",
+
+    // Booking history (per booking id)
+    val bookingHistory: Map<String, List<BookingHistoryEvent>> = emptyMap()
 )
 
+// Demo data kept for @Preview only — không dùng làm default
 private val customerAn = BookingCustomer(
     id = "c1",
     name = "Nguyễn Văn An",

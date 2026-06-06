@@ -104,10 +104,15 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PitchDetailScreen(
+    fieldId: String,
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
     viewModel: PitchDetailViewModel = viewModel()
 ) {
+    // Load dữ liệu thật từ API mỗi khi mở một field khác
+    androidx.compose.runtime.LaunchedEffect(fieldId) {
+        viewModel.loadField(fieldId.toIntOrNull() ?: 0)
+    }
     val uiState by viewModel.uiState.collectAsState()
 
     Scaffold(
@@ -1608,6 +1613,6 @@ private fun formatVnd(amount: Long): String =
 @Composable
 private fun PitchDetailScreenPreview() {
     SportManagerTheme {
-        PitchDetailScreen(onBackClick = {})
+        PitchDetailScreen(fieldId = "", onBackClick = {})
     }
 }

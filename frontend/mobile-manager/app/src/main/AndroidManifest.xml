@@ -9,7 +9,8 @@
         android:label="Sport Manager"
         android:roundIcon="@android:drawable/sym_def_app_icon"
         android:supportsRtl="true"
-        android:theme="@style/Theme.SportManager">
+        android:theme="@style/Theme.SportManager"
+        android:networkSecurityConfig="@xml/network_security_config">
         <activity
             android:name=".MainActivity"
             android:exported="true">

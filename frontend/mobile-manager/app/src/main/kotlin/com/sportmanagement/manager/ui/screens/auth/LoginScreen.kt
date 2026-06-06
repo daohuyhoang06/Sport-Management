@@ -34,7 +34,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import com.sportmanagement.manager.data.AppContainer
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -65,6 +68,7 @@ fun LoginScreen(
     var passwordVisible by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
+    val scope = rememberCoroutineScope()
 
     val isLoginEnabled = username.isNotBlank() && password.isNotBlank() && !isLoading
 
@@ -201,10 +205,13 @@ fun LoginScreen(
 
                 Button(
                     onClick = {
-                        if (username == "admin" && password == "admin") {
-                            onLoginSuccess()
-                        } else {
-                            errorMessage = "Tên đăng nhập hoặc mật khẩu không đúng"
+                        scope.launch {
+                            isLoading = true
+                            errorMessage = ""
+                            AppContainer.authRepository.login(username, password).fold(
+                                onSuccess = { isLoading = false; onLoginSuccess() },
+                                onFailure = { e -> isLoading = false; errorMessage = e.message ?: "Lỗi đăng nhập" }
+                            )
                         }
                     },
                     enabled = isLoginEnabled,
