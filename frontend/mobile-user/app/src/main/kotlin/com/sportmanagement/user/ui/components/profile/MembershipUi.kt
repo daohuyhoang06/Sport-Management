@@ -17,7 +17,38 @@ data class MembershipUi(
     val textColor: Color
 )
 
-fun resolveMembershipUi(rawMembership: String): MembershipUi {
+fun resolveMembershipUi(
+    rawMembership: String,
+    bookingCount: String? = null
+): MembershipUi {
+    val bookingCountValue = bookingCount
+        ?.trim()
+        ?.toIntOrNull()
+
+    if (bookingCountValue != null) {
+        if (bookingCountValue > 200) {
+            return MembershipUi(
+                label = "Vàng",
+                icon = Icons.Filled.WorkspacePremium,
+                iconTint = Color(0xFFB88900),
+                chipBackground = Color(0xFFFFF4D6),
+                chipBorder = Color(0xFFE2C66D),
+                textColor = Color(0xFF9A6B00)
+            )
+        }
+
+        if (bookingCountValue > 50) {
+            return MembershipUi(
+                label = "Bạc",
+                icon = Icons.Filled.MilitaryTech,
+                iconTint = Color(0xFF5A6B7C),
+                chipBackground = Color(0xFFEAF0F7),
+                chipBorder = Color(0xFFB2C1D1),
+                textColor = Color(0xFF3D4B59)
+            )
+        }
+    }
+
     val normalized = rawMembership.trim().lowercase(Locale.ROOT)
     return when (normalized) {
         "bạc", "bac" -> MembershipUi(
@@ -46,4 +77,3 @@ fun resolveMembershipUi(rawMembership: String): MembershipUi {
         )
     }
 }
-

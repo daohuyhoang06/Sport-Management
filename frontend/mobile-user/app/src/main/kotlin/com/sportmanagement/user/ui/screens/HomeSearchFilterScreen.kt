@@ -8,6 +8,10 @@ import android.location.Geocoder
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -27,6 +31,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -61,6 +66,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -82,13 +89,19 @@ import com.sportmanagement.user.domain.model.HomeSearchProvinceOption
 import com.sportmanagement.user.domain.model.SportCategory
 import com.sportmanagement.user.domain.model.SportIconType
 import com.sportmanagement.user.ui.components.SportMarkerIcon
+import com.sportmanagement.user.ui.components.booking.bookingPageTitleStyle
+import com.sportmanagement.user.ui.components.booking.bookingSecondaryTextStyle
 import com.sportmanagement.user.ui.theme.AppCardCornerRadius
 import com.sportmanagement.user.ui.theme.AppCtaCornerRadius
 import com.sportmanagement.user.ui.theme.AppCtaWideHeight
 import com.sportmanagement.user.ui.theme.AppHeaderGradientEnd
 import com.sportmanagement.user.ui.theme.AppHeaderGradientStart
+import com.sportmanagement.user.ui.theme.AppMapCategoryChipHeight
+import com.sportmanagement.user.ui.theme.AppMapCategoryChipWidth
+import com.sportmanagement.user.ui.theme.AppPillCornerRadius
 import com.sportmanagement.user.ui.theme.AppSearchCornerRadius
 import com.sportmanagement.user.ui.theme.AppScreenHorizontalPadding
+import com.sportmanagement.user.ui.theme.responsiveSharedTitleStyle
 import org.maplibre.android.geometry.LatLng
 import java.util.Locale
 import kotlin.math.max
@@ -104,6 +117,7 @@ fun HomeSearchFilterScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val sectionTitleStyle = responsiveSharedTitleStyle(LocalConfiguration.current.screenWidthDp)
     var criteria by remember(initialCriteria) { mutableStateOf(initialCriteria) }
     var showAreaPicker by remember { mutableStateOf(false) }
     var provinceSearch by rememberSaveable { mutableStateOf("") }
@@ -206,7 +220,7 @@ fun HomeSearchFilterScreen(
                 ) {
                     Text(
                         text = stringResource(R.string.home_search_filter_search_button),
-                        style = MaterialTheme.typography.titleLarge
+                        style = bookingSecondaryTextStyle()
                     )
                 }
             }
@@ -237,7 +251,7 @@ fun HomeSearchFilterScreen(
                     ) {
                         Text(
                             text = stringResource(R.string.home_search_filter_sport_title),
-                            style = MaterialTheme.typography.headlineSmall,
+                            style = sectionTitleStyle,
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         AllSportsFilterChip(
@@ -253,6 +267,7 @@ fun HomeSearchFilterScreen(
                             }
                         )
                     }
+                    Spacer(modifier = Modifier.height(8.dp))
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
@@ -275,7 +290,7 @@ fun HomeSearchFilterScreen(
                     Spacer(modifier = Modifier.height(4.dp))
                     Text(
                         text = stringResource(R.string.home_search_filter_mode_title),
-                        style = MaterialTheme.typography.titleLarge,
+                        style = sectionTitleStyle,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Spacer(modifier = Modifier.height(2.dp))
@@ -283,6 +298,7 @@ fun HomeSearchFilterScreen(
                     LocationModeOption(
                         selected = criteria.mode == HomeSearchMode.AREA,
                         text = stringResource(R.string.home_search_filter_mode_area),
+                        textStyle = sectionTitleStyle,
                         onSelect = { criteria = criteria.copy(mode = HomeSearchMode.AREA) }
                     )
                     if (criteria.mode == HomeSearchMode.AREA) {
@@ -312,6 +328,7 @@ fun HomeSearchFilterScreen(
                         } else {
                             stringResource(R.string.home_search_filter_mode_distance)
                         },
+                        textStyle = sectionTitleStyle,
                         onSelect = { criteria = criteria.copy(mode = HomeSearchMode.DISTANCE) }
                     )
                     if (criteria.mode == HomeSearchMode.DISTANCE) {
@@ -419,7 +436,7 @@ private fun HomeSearchFilterHeader(
                 }
                 Text(
                     text = stringResource(R.string.home_search_filter_title),
-                    style = MaterialTheme.typography.titleLarge,
+                    style = bookingPageTitleStyle(),
                     modifier = Modifier
                         .fillMaxWidth()
                         .align(Alignment.Center),
@@ -469,6 +486,9 @@ private fun FilterContentCard(
 private fun LocationModeOption(
     selected: Boolean,
     text: String,
+    textStyle: androidx.compose.ui.text.TextStyle = MaterialTheme.typography.bodySmall.copy(
+        fontWeight = FontWeight.SemiBold
+    ),
     onSelect: () -> Unit
 ) {
     Row(
@@ -484,7 +504,7 @@ private fun LocationModeOption(
         Spacer(modifier = Modifier.size(8.dp))
         Text(
             text = text,
-            style = MaterialTheme.typography.titleLarge,
+            style = textStyle,
             color = MaterialTheme.colorScheme.onSurface
         )
     }
@@ -550,7 +570,9 @@ private fun FilterSelectionCompact(
     ) {
         Text(
             text = value,
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.bodySmall.copy(
+                fontWeight = FontWeight.Medium
+            ),
             color = MaterialTheme.colorScheme.onSurface,
             modifier = Modifier.weight(1f),
             maxLines = 1,
@@ -584,7 +606,7 @@ private fun DistanceModeSection(
         ) {
             Text(
                 text = currentLocationText,
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.weight(1f),
                 maxLines = 1,
@@ -620,14 +642,16 @@ private fun DistanceModeSection(
                     R.string.home_search_filter_distance_bound_format,
                     minDistanceKm.toInt()
                 ),
-                style = MaterialTheme.typography.bodyLarge
+                style = MaterialTheme.typography.bodySmall
             )
             Text(
                 text = stringResource(
                     R.string.home_search_filter_mode_distance_with_value,
                     distanceKm.toInt()
                 ),
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.bodySmall.copy(
+                    fontWeight = FontWeight.SemiBold
+                ),
                 color = MaterialTheme.colorScheme.onSurface
             )
             Text(
@@ -635,7 +659,7 @@ private fun DistanceModeSection(
                     R.string.home_search_filter_distance_bound_format,
                     maxDistanceKm.toInt()
                 ),
-                style = MaterialTheme.typography.bodyLarge
+                style = MaterialTheme.typography.bodySmall
             )
         }
         Slider(
@@ -768,7 +792,10 @@ private fun AreaPickerDialog(
                     horizontalArrangement = Arrangement.End
                 ) {
                     TextButton(onClick = onClear) {
-                        Text(text = stringResource(R.string.home_search_filter_picker_clear))
+                        Text(
+                            text = stringResource(R.string.home_search_filter_picker_clear),
+                            style = bookingSecondaryTextStyle()
+                        )
                     }
                     Spacer(modifier = Modifier.size(6.dp))
                     Button(
@@ -779,7 +806,10 @@ private fun AreaPickerDialog(
                             contentColor = MaterialTheme.colorScheme.onPrimary
                         )
                     ) {
-                        Text(text = stringResource(R.string.home_search_filter_picker_ok))
+                        Text(
+                            text = stringResource(R.string.home_search_filter_picker_ok),
+                            style = bookingSecondaryTextStyle()
+                        )
                     }
                 }
             }
@@ -804,7 +834,7 @@ private fun PickerSearchField(
             value = value,
             onValueChange = onValueChange,
             singleLine = true,
-            textStyle = MaterialTheme.typography.bodyMedium.copy(
+            textStyle = MaterialTheme.typography.bodySmall.copy(
                 color = MaterialTheme.colorScheme.onSurface,
                 textAlign = TextAlign.Center
             ),
@@ -846,7 +876,7 @@ private fun PickerOptionRow(
     ) {
         Text(
             text = text,
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurface,
             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
         )
@@ -860,43 +890,71 @@ private fun SportMarkerFilterChip(
     onClick: () -> Unit
 ) {
     val markerColor = sportMarkerColor(sport.iconType)
+    val containerColor by animateColorAsState(
+        targetValue = if (selected) markerColor.copy(alpha = 0.14f) else Color.White.copy(alpha = 0.97f),
+        animationSpec = tween(300),
+        label = "containerColor"
+    )
+    val textColor by animateColorAsState(
+        targetValue = if (selected) markerColor else Color(0xFF425266),
+        animationSpec = tween(300),
+        label = "textColor"
+    )
+    val shadow by animateDpAsState(
+        targetValue = if (selected) 8.dp else 3.dp,
+        animationSpec = tween(300),
+        label = "shadow"
+    )
+    val borderColor by animateColorAsState(
+        targetValue = if (selected) markerColor.copy(alpha = 0.85f) else Color(0xFFD9E4F2),
+        animationSpec = tween(300),
+        label = "borderColor"
+    )
+    val chipScale by animateFloatAsState(
+        targetValue = if (selected) 1.02f else 1f,
+        animationSpec = tween(220),
+        label = "chipScale"
+    )
+
     Surface(
         onClick = onClick,
-        shape = RoundedCornerShape(AppSearchCornerRadius),
-        color = if (selected) {
-            markerColor.copy(alpha = 0.14f)
-        } else {
-            MaterialTheme.colorScheme.surfaceContainerLow
-        },
+        modifier = Modifier
+            .width(AppMapCategoryChipWidth)
+            .height(AppMapCategoryChipHeight)
+            .graphicsLayer {
+                scaleX = chipScale
+                scaleY = chipScale
+            },
+        shape = RoundedCornerShape(AppPillCornerRadius),
+        shadowElevation = shadow,
+        color = containerColor,
         border = androidx.compose.foundation.BorderStroke(
-            width = 1.dp,
-            color = if (selected) {
-                markerColor
-            } else {
-                MaterialTheme.colorScheme.outlineVariant
-            }
+            width = if (selected) 1.8.dp else 1.dp,
+            color = borderColor
         )
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             SportMarkerIcon(
                 iconType = sport.iconType,
                 contentDescription = null,
-                markerSize = 22.dp,
-                iconSize = 10.dp,
+                markerSize = 28.dp,
+                iconSize = 14.dp,
                 iconOffsetY = (-1).dp
             )
-            Spacer(modifier = Modifier.size(8.dp))
+            Spacer(modifier = Modifier.width(6.dp))
             Text(
-                text = sport.name,
-                style = MaterialTheme.typography.bodyMedium,
-                color = if (selected) {
-                    markerColor
-                } else {
-                    MaterialTheme.colorScheme.onSurface
-                }
+                text = sport.name.replaceFirstChar { ch ->
+                    if (ch.isLowerCase()) ch.titlecase() else ch.toString()
+                },
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = textColor,
+                maxLines = 1,
+                softWrap = false,
+                overflow = TextOverflow.Clip
             )
         }
     }
@@ -907,46 +965,79 @@ private fun AllSportsFilterChip(
     selected: Boolean,
     onClick: () -> Unit
 ) {
+    val accentColor = MaterialTheme.colorScheme.primary
+    val containerColor by animateColorAsState(
+        targetValue = if (selected) accentColor.copy(alpha = 0.14f) else Color.White.copy(alpha = 0.97f),
+        animationSpec = tween(300),
+        label = "allContainerColor"
+    )
+    val textColor by animateColorAsState(
+        targetValue = if (selected) accentColor else Color(0xFF425266),
+        animationSpec = tween(300),
+        label = "allTextColor"
+    )
+    val shadow by animateDpAsState(
+        targetValue = if (selected) 8.dp else 3.dp,
+        animationSpec = tween(300),
+        label = "allShadow"
+    )
+    val borderColor by animateColorAsState(
+        targetValue = if (selected) accentColor.copy(alpha = 0.85f) else Color(0xFFD9E4F2),
+        animationSpec = tween(300),
+        label = "allBorderColor"
+    )
+    val chipScale by animateFloatAsState(
+        targetValue = if (selected) 1.02f else 1f,
+        animationSpec = tween(220),
+        label = "allChipScale"
+    )
+
     Surface(
         onClick = onClick,
-        shape = RoundedCornerShape(AppSearchCornerRadius),
-        color = if (selected) {
-            MaterialTheme.colorScheme.primaryContainer
-        } else {
-            MaterialTheme.colorScheme.surfaceContainerLow
-        },
+        modifier = Modifier
+            .width(AppMapCategoryChipWidth)
+            .height(AppMapCategoryChipHeight)
+            .graphicsLayer {
+                scaleX = chipScale
+                scaleY = chipScale
+            },
+        shape = RoundedCornerShape(AppPillCornerRadius),
+        shadowElevation = shadow,
+        color = containerColor,
         border = androidx.compose.foundation.BorderStroke(
-            width = 1.dp,
-            color = if (selected) {
-                MaterialTheme.colorScheme.primary.copy(alpha = 0.45f)
-            } else {
-                MaterialTheme.colorScheme.outlineVariant
-            }
+            width = if (selected) 1.8.dp else 1.dp,
+            color = borderColor
         )
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                imageVector = Icons.Default.Add,
-                contentDescription = null,
-                modifier = Modifier.size(16.dp),
-                tint = if (selected) {
-                    MaterialTheme.colorScheme.onPrimaryContainer
-                } else {
-                    MaterialTheme.colorScheme.onSurface
-                }
-            )
-            Spacer(modifier = Modifier.width(4.dp))
+            Box(
+                modifier = Modifier
+                    .size(28.dp)
+                    .background(
+                        color = if (selected) accentColor.copy(alpha = 0.16f) else Color(0xFFF1F6FD),
+                        shape = RoundedCornerShape(999.dp)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = textColor
+                )
+            }
+            Spacer(modifier = Modifier.width(6.dp))
             Text(
                 text = stringResource(R.string.home_search_filter_all_button),
-                style = MaterialTheme.typography.bodyMedium,
-                color = if (selected) {
-                    MaterialTheme.colorScheme.onPrimaryContainer
-                } else {
-                    MaterialTheme.colorScheme.onSurface
-                }
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = textColor,
+                maxLines = 1,
+                softWrap = false,
+                overflow = TextOverflow.Clip
             )
         }
     }

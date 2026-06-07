@@ -20,6 +20,8 @@ data class AuthUserDto(
     val address: String?,
     val membership: String?,
     val avatarUrl: String?,
+    val bookingCount: String?,
+    val rating: String?,
     val favoriteSportIds: List<Int>,
     val favoriteSportKeys: Set<String>
 )
@@ -156,6 +158,38 @@ class AuthApi(
             }
         }
 
+    suspend fun changePassword(
+        token: String,
+        currentPassword: String,
+        newPassword: String
+    ) = withContext(Dispatchers.IO) {
+        val connection = createJsonConnection(
+            endpoint = "$baseUrl/api/auth/change-password",
+            method = "POST",
+            token = token
+        ).apply {
+            doOutput = true
+        }
+
+        try {
+            val body = JSONObject()
+                .put("currentPassword", currentPassword)
+                .put("newPassword", newPassword)
+
+            connection.outputStream.bufferedWriter().use { writer ->
+                writer.write(body.toString())
+            }
+
+            val responseCode = connection.responseCode
+            val responseText = readResponseBody(connection, responseCode)
+            if (responseCode !in 200..299) {
+                throw IOException(readApiErrorMessage(responseCode, responseText))
+            }
+        } finally {
+            connection.disconnect()
+        }
+    }
+
     suspend fun uploadAvatar(
         token: String,
         imageBytes: ByteArray,
@@ -260,6 +294,8 @@ class AuthApi(
                 ?: user.optSanitizedStringOrNull("membership_level"),
             avatarUrl = user.optSanitizedStringOrNull("avatarUrl")
                 ?: user.optSanitizedStringOrNull("avatar_url"),
+            bookingCount = user.optSanitizedStringOrNull("bookingCount"),
+            rating = user.optSanitizedStringOrNull("rating"),
             favoriteSportIds = user.optIntList("favoriteSportIds"),
             favoriteSportKeys = user.optStringSet("favoriteSportKeys")
         )

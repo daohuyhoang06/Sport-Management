@@ -28,11 +28,6 @@ import com.sportmanagement.user.ui.components.profile.LogoutButton
 import com.sportmanagement.user.ui.components.profile.MenuCard
 import com.sportmanagement.user.ui.components.profile.ProfileHeaderSection
 
-
-// =========================
-// Main Screen
-// =========================
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun UserProfileScreen(
@@ -42,11 +37,14 @@ fun UserProfileScreen(
     onLoginClick: () -> Unit,
     onRegisterClick: () -> Unit,
     onLogoutClick: () -> Unit,
+    onBookingHistoryClick: () -> Unit = {},
+    onFavoriteClick: () -> Unit = {},
+    onSupportClick: () -> Unit = {},
+    onSettingsClick: () -> Unit = {},
     onProfileUpdate: (UserProfile) -> Unit = {}
 ) {
     val layoutDirection = LocalLayoutDirection.current
 
-    // State mở bottomsheet chỉnh sửa
     var showEditSheet by rememberSaveable {
         mutableStateOf(false)
     }
@@ -68,13 +66,7 @@ fun UserProfileScreen(
                 ),
             contentPadding = PaddingValues(bottom = 20.dp)
         ) {
-
-            // =========================
-            // Profile Header Section
-            // =========================
-
             item {
-
                 ProfileHeaderSection(
                     profile = profile,
                     onEditClick = {
@@ -88,18 +80,15 @@ fun UserProfileScreen(
                 Spacer(modifier = Modifier.height(4.dp))
             }
 
-            // =========================
-            // Menu Card
-            // =========================
-
             item {
-                MenuCard()
+                MenuCard(
+                    onBookingHistoryClick = onBookingHistoryClick,
+                    onFavoriteClick = onFavoriteClick,
+                    onSupportClick = onSupportClick,
+                    onSettingsClick = onSettingsClick
+                )
                 Spacer(modifier = Modifier.height(16.dp))
             }
-
-            // =========================
-            // Logout Button
-            // =========================
 
             if (isLoggedIn) {
                 item {
@@ -108,23 +97,14 @@ fun UserProfileScreen(
             }
         }
 
-        // =========================
-        // Bottom Sheet Edit Profile
-        // =========================
-
         if (showEditSheet && isLoggedIn) {
-
             EditProfileBottomSheet(
                 profile = profile,
-
                 onDismiss = {
                     showEditSheet = false
                 },
-
                 onSave = { updatedProfile ->
-
                     onProfileUpdate(updatedProfile)
-
                     showEditSheet = false
                 },
                 sheetState = sheetState

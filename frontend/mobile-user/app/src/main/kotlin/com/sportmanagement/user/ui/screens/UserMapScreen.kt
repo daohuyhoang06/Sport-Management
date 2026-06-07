@@ -1,4 +1,4 @@
-package com.sportmanagement.user.ui.screens
+﻿package com.sportmanagement.user.ui.screens
 
 import android.Manifest
 import android.content.Intent
@@ -12,7 +12,10 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -20,6 +23,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
@@ -40,6 +44,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -49,7 +54,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
@@ -66,8 +73,11 @@ import com.sportmanagement.user.ui.components.sportIconDrawableRes
 import com.sportmanagement.user.ui.components.sportMarkerBaseDrawableRes
 import com.sportmanagement.user.ui.components.field.FieldDetailBottomSheet
 import com.sportmanagement.user.ui.theme.AppCardCornerRadius
-import com.sportmanagement.user.ui.theme.AppPillCornerRadius
+import com.sportmanagement.user.ui.theme.AppMapCategoryChipHeight
+import com.sportmanagement.user.ui.theme.AppMapCategoryChipWidth
 import com.sportmanagement.user.ui.theme.AppSearchCornerRadius
+import com.sportmanagement.user.ui.theme.AppMapSearchBarHeight
+import com.sportmanagement.user.ui.theme.AppPillCornerRadius
 import org.maplibre.android.MapLibre
 import org.maplibre.android.annotations.IconFactory
 import org.maplibre.android.WellKnownTileServer
@@ -321,6 +331,12 @@ fun UserMapScreen(
             mapLibreMap?.animateCamera(CameraUpdateFactory.newLatLngZoom(point, 16.8))
         }
     }
+    val collapseSearch: () -> Unit = {
+        searchQuery = ""
+        showSearchPopup = false
+        focusManager.clearFocus()
+        onClearSearch()
+    }
 
     Box(
         modifier = Modifier
@@ -339,176 +355,233 @@ fun UserMapScreen(
                 .padding(start = 16.dp, end = 16.dp, top = topInsetPadding + 12.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = {
-                    searchQuery = it
-                    showSearchPopup = true
-                },
+            Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(48.dp)
-                    .onFocusChanged { focusState ->
-                        if (focusState.isFocused) {
-                            showSearchPopup = true
-                            onSearchOpened()
-                        }
-                    },
-                singleLine = true,
-                textStyle = MaterialTheme.typography.bodyMedium,
-                placeholder = {
-                    Text(
-                        text = stringResource(R.string.map_search_placeholder_fields),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                },
-                leadingIcon = {
-                    Icon(
-                        imageVector = Icons.Default.Search,
-                        contentDescription = null,
-                        modifier = Modifier.size(22.dp)
-                    )
-                },
-                trailingIcon = {
-                    if (searchQuery.isNotBlank()) {
-                        IconButton(
-                            onClick = {
-                                searchQuery = ""
-                                onClearSearch()
-                            }
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = stringResource(R.string.map_clear_search_content_description),
-                                modifier = Modifier.size(22.dp)
-                            )
-                        }
-                    }
-                },
-                keyboardOptions = KeyboardOptions(
-                    capitalization = KeyboardCapitalization.None,
-                    keyboardType = KeyboardType.Text,
-                    imeAction = ImeAction.Search
-                ),
-                keyboardActions = KeyboardActions(
-                    onSearch = {
-                        focusManager.clearFocus()
-                    }
-                ),
-                shape = RoundedCornerShape(AppSearchCornerRadius),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = Color.White,
-                    unfocusedContainerColor = Color.White
-                )
-            )
-
-            if (showSearchPopup) {
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(14.dp),
-                    color = Color.White,
-                    shadowElevation = 8.dp
-                ) {
-                    LazyColumn(
+                    .animateContentSize(
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessLow
+                        )
+                    ),
+                shape = RoundedCornerShape(if (showSearchPopup) 16.dp else AppSearchCornerRadius),
+                color = Color.White,
+                border = if (showSearchPopup) null else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                shadowElevation = if (showSearchPopup) 2.dp else 4.dp
+            ) {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .heightIn(max = 260.dp),
-                        contentPadding = PaddingValues(vertical = 6.dp)
+                            .height(AppMapSearchBarHeight)
                     ) {
-                        if (searchQuery.trim().isBlank()) {
-                            items(recentSearches.take(8), key = { "recent_$it" }) { item ->
+                        BasicTextField(
+                            value = searchQuery,
+                            onValueChange = {
+                                searchQuery = it
+                                showSearchPopup = true
+                            },
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .onFocusChanged { focusState ->
+                                    if (focusState.isFocused) {
+                                        showSearchPopup = true
+                                        onSearchOpened()
+                                    }
+                                },
+                            singleLine = true,
+                            textStyle = MaterialTheme.typography.bodySmall.copy(
+                                color = MaterialTheme.colorScheme.onSurface,
+                                lineHeight = 18.sp
+                            ),
+                            cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                            keyboardOptions = KeyboardOptions(
+                                capitalization = KeyboardCapitalization.None,
+                                keyboardType = KeyboardType.Text,
+                                imeAction = ImeAction.Search
+                            ),
+                            keyboardActions = KeyboardActions(
+                                onSearch = {
+                                    focusManager.clearFocus()
+                                }
+                            ),
+                            decorationBox = { innerTextField ->
                                 Row(
                                     modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable {
-                                            searchQuery = item
-                                            onRememberSearch(item)
-                                            showSearchPopup = true
-                                        }
-                                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                                        .fillMaxSize()
+                                        .padding(horizontal = 12.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(
-                                        imageVector = Icons.Default.History,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.size(18.dp)
-                                    )
-                                    Spacer(Modifier.width(10.dp))
-                                    Text(
-                                        text = item,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-                                }
-                            }
-                            if (recentSearches.isEmpty()) {
-                                item {
-                                    Text(
-                                        text = "Chua co lich su tim kiem",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)
-                                    )
-                                }
-                            }
-                        } else {
-                            if (isSearchLoading && typedSuggestions.isEmpty()) {
-                                item {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(horizontal = 14.dp, vertical = 12.dp),
-                                        horizontalArrangement = Arrangement.Center
-                                    ) {
-                                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                                    }
-                                }
-                            } else if (typedSuggestions.isEmpty()) {
-                                item {
-                                    Text(
-                                        text = stringResource(R.string.map_no_results),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)
-                                    )
-                                }
-                            } else {
-                                items(typedSuggestions, key = { it.fieldId }) { field ->
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .clickable {
-                                                selectedFieldName = field.name
-                                                selectedFieldForDetail = field
-                                                searchQuery = field.name
-                                                showSearchPopup = false
-                                                onRememberSearch(field.name)
-                                                jumpToField(field)
-                                                focusManager.clearFocus()
-                                            }
-                                            .padding(horizontal = 14.dp, vertical = 10.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
+                                    if (showSearchPopup) {
+                                        IconButton(onClick = collapseSearch) {
+                                            Icon(
+                                                imageVector = Icons.Default.ArrowBack,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        }
+                                    } else {
                                         Icon(
-                                            imageVector = Icons.Default.LocationOn,
+                                            imageVector = Icons.Default.Search,
                                             contentDescription = null,
-                                            tint = Color(0xFF1A4B8E),
+                                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                             modifier = Modifier.size(18.dp)
                                         )
-                                        Spacer(Modifier.width(10.dp))
-                                        Column {
+                                    }
+                                    Spacer(Modifier.width(8.dp))
+                                    Box(modifier = Modifier.weight(1f)) {
+                                        if (searchQuery.isBlank()) {
                                             Text(
-                                                text = field.name,
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                color = MaterialTheme.colorScheme.onSurface,
-                                                fontWeight = FontWeight.SemiBold
-                                            )
-                                            Text(
-                                                text = field.location,
+                                                text = stringResource(R.string.map_search_placeholder_fields),
                                                 style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
                                             )
+                                        }
+                                        innerTextField()
+                                    }
+                                    if (searchQuery.isNotBlank()) {
+                                        IconButton(
+                                            onClick = {
+                                                searchQuery = ""
+                                                onClearSearch()
+                                            }
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.Close,
+                                                contentDescription = stringResource(R.string.map_clear_search_content_description),
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        )
+                    }
+
+                    AnimatedVisibility(
+                        visible = showSearchPopup,
+                        enter = androidx.compose.animation.fadeIn(tween(90)) +
+                            androidx.compose.animation.expandVertically(
+                                animationSpec = spring(
+                                    dampingRatio = Spring.DampingRatioNoBouncy,
+                                    stiffness = Spring.StiffnessMediumLow
+                                )
+                            ),
+                        exit = androidx.compose.animation.fadeOut(tween(70)) +
+                            androidx.compose.animation.shrinkVertically(
+                                animationSpec = spring(
+                                    dampingRatio = Spring.DampingRatioNoBouncy,
+                                    stiffness = Spring.StiffnessMediumLow
+                                )
+                            )
+                    ) {
+                        Column {
+                            LazyColumn(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(max = 260.dp),
+                                contentPadding = PaddingValues(vertical = 6.dp)
+                            ) {
+                                if (searchQuery.trim().isBlank()) {
+                                    items(recentSearches.take(8), key = { "recent_$it" }) { item ->
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clickable {
+                                                    searchQuery = item
+                                                    onRememberSearch(item)
+                                                    showSearchPopup = true
+                                                }
+                                                .padding(horizontal = 14.dp, vertical = 10.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.History,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.size(18.dp)
+                                            )
+                                            Spacer(Modifier.width(10.dp))
+                                            Text(
+                                                text = item,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                        }
+                                    }
+                                    if (recentSearches.isEmpty()) {
+                                        item {
+                                            Text(
+                                                text = "Chưa có lịch sử tìm kiếm",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)
+                                            )
+                                        }
+                                    }
+                                } else {
+                                    if (isSearchLoading && typedSuggestions.isEmpty()) {
+                                        item {
+                                            Row(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                                                horizontalArrangement = Arrangement.Center
+                                            ) {
+                                                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                                            }
+                                        }
+                                    } else if (typedSuggestions.isEmpty()) {
+                                        item {
+                                            Text(
+                                                text = stringResource(R.string.map_no_results),
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp)
+                                            )
+                                        }
+                                    } else {
+                                        items(typedSuggestions, key = { it.fieldId }) { field ->
+                                            Row(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .clickable {
+                                                        selectedFieldName = field.name
+                                                        selectedFieldForDetail = field
+                                                        searchQuery = field.name
+                                                        showSearchPopup = false
+                                                        onRememberSearch(field.name)
+                                                        jumpToField(field)
+                                                        focusManager.clearFocus()
+                                                    }
+                                                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.LocationOn,
+                                                    contentDescription = null,
+                                                    tint = Color(0xFF1A4B8E),
+                                                    modifier = Modifier.size(18.dp)
+                                                )
+                                                Spacer(Modifier.width(10.dp))
+                                                Column {
+                                                    Text(
+                                                        text = field.name,
+                                                        style = MaterialTheme.typography.bodySmall,
+                                                        color = MaterialTheme.colorScheme.onSurface,
+                                                        fontWeight = FontWeight.SemiBold
+                                                    )
+                                                    Text(
+                                                        text = field.location,
+                                                        style = MaterialTheme.typography.bodySmall,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                    )
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -518,13 +591,15 @@ fun UserMapScreen(
                 }
             }
 
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                itemsIndexed(sportCategories) { index, category ->
-                    MapSportCategoryItem(
-                        category = category,
-                        isSelected = selectedCategoryIndex == index,
-                        onClick = { selectedCategoryIndex = if (selectedCategoryIndex == index) -1 else index }
-                    )
+            if (!showSearchPopup) {
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    itemsIndexed(sportCategories) { index, category ->
+                        MapSportCategoryItem(
+                            category = category,
+                            isSelected = selectedCategoryIndex == index,
+                            onClick = { selectedCategoryIndex = if (selectedCategoryIndex == index) -1 else index }
+                        )
+                    }
                 }
             }
         }
@@ -655,7 +730,8 @@ private fun MapSportCategoryItem(category: SportCategory, isSelected: Boolean, o
 
     Surface(
         modifier = Modifier
-            .height(44.dp)
+            .widthIn(min = AppMapCategoryChipWidth)
+            .height(AppMapCategoryChipHeight)
             .clickable(onClick = onClick),
         shape = RoundedCornerShape(AppPillCornerRadius),
         shadowElevation = shadow,
@@ -673,7 +749,7 @@ private fun MapSportCategoryItem(category: SportCategory, isSelected: Boolean, o
             SportMarkerIcon(
                 iconType = category.iconType,
                 contentDescription = stringResource(R.string.map_category_field_format, category.name),
-                markerSize = 30.dp,
+                markerSize = 28.dp,
                 iconSize = 14.dp
             )
             Spacer(Modifier.width(6.dp))
@@ -684,6 +760,10 @@ private fun MapSportCategoryItem(category: SportCategory, isSelected: Boolean, o
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = textColor
+                ,
+                maxLines = 1,
+                softWrap = false,
+                overflow = TextOverflow.Clip
             )
         }
     }

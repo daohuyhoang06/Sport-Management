@@ -42,6 +42,8 @@ import com.sportmanagement.user.ui.components.booking.ConfirmReadonlyField
 import com.sportmanagement.user.ui.components.booking.ConfirmationInfoCard
 import com.sportmanagement.user.ui.components.booking.InfoLine
 import com.sportmanagement.user.ui.AppNavigationBarEffect
+import com.sportmanagement.user.ui.components.booking.bookingInfoLabelStyle
+import com.sportmanagement.user.ui.components.booking.bookingInfoValueStyle
 import com.sportmanagement.user.ui.components.booking.formatConfirmationCurrencyVnd
 import com.sportmanagement.user.ui.components.booking.formatConfirmationDurationCompact
 
@@ -129,45 +131,80 @@ fun BookingConfirmationScreen(
                     title = stringResource(R.string.booking_confirm_booking_info_title),
                     icon = Icons.Default.ReceiptLong
                 ) {
-                    Text(
-                        text = "${stringResource(R.string.booking_confirm_date)} ${confirmationData.selectedDate}",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onPrimary
-                    )
+                    Row(verticalAlignment = androidx.compose.ui.Alignment.Top) {
+                        Text(
+                            text = stringResource(R.string.booking_confirm_date),
+                            style = bookingInfoLabelStyle(),
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = confirmationData.selectedDate,
+                            style = bookingInfoValueStyle(),
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                    }
                     Spacer(modifier = Modifier.height(8.dp))
                     confirmationData.ranges.forEach { range ->
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
+                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = "- ${range.courtName}: ${range.startTimeLabel} - ${range.endTimeLabel}",
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onPrimary,
-                                modifier = Modifier.weight(1f)
-                            )
+                            Row(
+                                modifier = Modifier.weight(1f),
+                                verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "- ${range.courtName}:",
+                                    style = bookingInfoValueStyle().copy(
+                                        fontWeight = FontWeight.Bold
+                                    ),
+                                    color = MaterialTheme.colorScheme.onPrimary
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "${range.startTimeLabel} - ${range.endTimeLabel}",
+                                    style = bookingInfoValueStyle(),
+                                    color = MaterialTheme.colorScheme.onPrimary
+                                )
+                            }
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = formatConfirmationCurrencyVnd(range.price),
-                                style = MaterialTheme.typography.titleMedium,
+                                style = bookingInfoValueStyle(),
                                 color = MaterialTheme.colorScheme.secondary,
                                 textDecoration = TextDecoration.Underline
                             )
                         }
                         Spacer(modifier = Modifier.height(8.dp))
                     }
-                    Text(
-                        text = "${stringResource(R.string.booking_confirm_total_hours)} ${formatConfirmationDurationCompact(confirmationData.totalMinutes)}",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = MaterialTheme.colorScheme.onPrimary
-                    )
+                    Row(verticalAlignment = androidx.compose.ui.Alignment.Top) {
+                        Text(
+                            text = stringResource(R.string.booking_confirm_total_hours),
+                            style = bookingInfoLabelStyle(),
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = formatConfirmationDurationCompact(confirmationData.totalMinutes),
+                            style = bookingInfoValueStyle(),
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                    }
                     Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        text = "${stringResource(R.string.booking_confirm_total_price)} ${formatConfirmationCurrencyVnd(confirmationData.totalPrice)}",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onPrimary
-                    )
+                    Row(verticalAlignment = androidx.compose.ui.Alignment.Top) {
+                        Text(
+                            text = stringResource(R.string.booking_confirm_total_price),
+                            style = bookingInfoLabelStyle(),
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = formatConfirmationCurrencyVnd(confirmationData.totalPrice),
+                            style = bookingInfoValueStyle(),
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                    }
                 }
             }
 

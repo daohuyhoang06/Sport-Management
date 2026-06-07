@@ -297,6 +297,16 @@ class UserViewModel(
         }
     }
 
+    suspend fun changePassword(
+        currentPassword: String,
+        newPassword: String
+    ) {
+        repository.changePassword(
+            currentPassword = currentPassword,
+            newPassword = newPassword
+        )
+    }
+
     fun onApplyHomeSearchCriteria(criteria: HomeSearchCriteria) {
         _uiState.update { current ->
             current.copy(

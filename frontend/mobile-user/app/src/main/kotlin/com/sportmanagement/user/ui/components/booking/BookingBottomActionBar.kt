@@ -31,7 +31,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.sportmanagement.user.R
 import com.sportmanagement.user.domain.model.BookingSelectionSummary
@@ -129,7 +128,7 @@ fun BookingBottomActionBar(
                                     R.string.booking_show_selected_range
                                 }
                             ),
-                            style = MaterialTheme.typography.titleSmall,
+                            style = bookingSecondaryTextStyle(),
                             color = MaterialTheme.colorScheme.onPrimary
                         )
                     }
@@ -147,9 +146,8 @@ fun BookingBottomActionBar(
                                         selectedRange.startTimeLabel,
                                         selectedRange.endTimeLabel
                                     ),
-                                    style = MaterialTheme.typography.titleMedium,
+                                    style = bookingInfoValueStyle(),
                                     color = MaterialTheme.colorScheme.onPrimary,
-                                    fontWeight = FontWeight.SemiBold
                                 )
                             }
                         }
@@ -168,18 +166,16 @@ fun BookingBottomActionBar(
                                 R.string.booking_total_hours_format,
                                 formatBookingDurationCompact(summary.totalMinutes)
                             ),
-                            style = MaterialTheme.typography.titleMedium,
+                            style = bookingInfoValueStyle(),
                             color = MaterialTheme.colorScheme.onPrimary,
-                            fontWeight = FontWeight.SemiBold
                         )
                         Text(
                             text = stringResource(
                                 R.string.booking_total_price_format,
                                 formatBookingCurrencyVnd(summary.totalPrice)
                             ),
-                            style = MaterialTheme.typography.titleMedium,
+                            style = bookingInfoValueStyle(),
                             color = MaterialTheme.colorScheme.onPrimary,
-                            fontWeight = FontWeight.SemiBold
                         )
                     }
 
@@ -233,8 +229,7 @@ private fun BookingNextButton(
     ) {
         Text(
             text = stringResource(R.string.booking_next),
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.SemiBold
+            style = bookingSecondaryTextStyle()
         )
     }
 }

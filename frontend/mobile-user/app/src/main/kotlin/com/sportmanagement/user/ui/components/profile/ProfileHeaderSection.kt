@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
@@ -35,13 +34,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.sportmanagement.user.R
 import com.sportmanagement.user.domain.model.UserProfile
 import com.sportmanagement.user.ui.theme.AppHomeVenueCornerRadius
+import com.sportmanagement.user.ui.theme.responsiveSharedTitleStyle
 
 @Composable
 fun ProfileHeaderSection(
@@ -103,13 +106,45 @@ private fun LoggedInProfileContent(
     profile: UserProfile,
     onEditClick: () -> Unit
 ) {
+    val screenWidthDp = LocalConfiguration.current.screenWidthDp
+    val compactScreen = screenWidthDp < 360
+    val mediumScreen = screenWidthDp in 360 until 400
+    val avatarSize = when {
+        compactScreen -> 58.dp
+        mediumScreen -> 62.dp
+        else -> 66.dp
+    }
+    val avatarIconSize = when {
+        compactScreen -> 26.dp
+        mediumScreen -> 28.dp
+        else -> 30.dp
+    }
+    val headerSpacing = when {
+        compactScreen -> 8.dp
+        mediumScreen -> 10.dp
+        else -> 12.dp
+    }
+    val headerNameStyle = MaterialTheme.typography.titleLarge.copy(
+        fontSize = when {
+            compactScreen -> 18.sp
+            mediumScreen -> 19.sp
+            else -> 20.sp
+        },
+        lineHeight = when {
+            compactScreen -> 21.sp
+            mediumScreen -> 22.sp
+            else -> 23.sp
+        }
+    )
+    val profileInfoStyle = responsiveSharedTitleStyle(screenWidthDp)
+
     Box(modifier = Modifier.fillMaxWidth()) {
         Surface(
             onClick = onEditClick,
             modifier = Modifier
                 .align(Alignment.TopEnd)
-                .size(32.dp),
-            shape = RoundedCornerShape(8.dp),
+                .size(28.dp),
+            shape = RoundedCornerShape(7.dp),
             color = Color.Transparent,
             border = null
         ) {
@@ -118,8 +153,8 @@ private fun LoggedInProfileContent(
                 contentDescription = "Chỉnh sửa",
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier
-                    .size(24.dp)
-                    .padding(4.dp)
+                    .size(18.dp)
+                    .padding(2.dp)
             )
         }
 
@@ -127,11 +162,11 @@ private fun LoggedInProfileContent(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(end = 46.dp),
-            verticalAlignment = Alignment.CenterVertically
+            verticalAlignment = Alignment.Top
         ) {
             Box(
                 modifier = Modifier
-                    .size(72.dp)
+                    .size(avatarSize)
                     .background(MaterialTheme.colorScheme.primary, CircleShape)
                     .border(
                         width = 2.dp,
@@ -145,7 +180,7 @@ private fun LoggedInProfileContent(
                         model = profile.avatarUrl,
                         contentDescription = "Ảnh đại diện",
                         modifier = Modifier
-                            .size(72.dp)
+                            .size(avatarSize)
                             .clip(CircleShape)
                             .background(MaterialTheme.colorScheme.surface, CircleShape),
                         contentScale = ContentScale.Crop
@@ -155,21 +190,32 @@ private fun LoggedInProfileContent(
                         imageVector = Icons.Outlined.Person,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier.size(avatarIconSize)
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(headerSpacing))
 
-            Column {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(top = 2.dp)
+            ) {
                 Text(
-                    text = profile.name,
-                    style = MaterialTheme.typography.headlineSmall,
-                    color = MaterialTheme.colorScheme.onSurface
+                    text = profile.name.ifBlank { "Người dùng" },
+                    style = headerNameStyle,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    maxLines = 2,
+                    softWrap = true,
+                    overflow = TextOverflow.Clip
                 )
                 Spacer(modifier = Modifier.height(4.dp))
-                MembershipBadge(profile.membership)
+                MembershipBadge(
+                    membership = profile.membership,
+                    bookingCount = profile.bookingCount
+                )
             }
         }
     }
@@ -178,12 +224,14 @@ private fun LoggedInProfileContent(
 
     ProfileInfoRow(
         icon = Icons.Outlined.Email,
-        text = profile.email
+        text = profile.email,
+        textStyle = profileInfoStyle
     )
     Spacer(modifier = Modifier.height(10.dp))
     ProfileInfoRow(
         icon = Icons.Outlined.Phone,
-        text = profile.phone
+        text = profile.phone,
+        textStyle = profileInfoStyle
     )
 
     Spacer(modifier = Modifier.height(18.dp))
@@ -195,13 +243,15 @@ private fun LoggedInProfileContent(
         StatCard(
             modifier = Modifier.weight(1f),
             icon = Icons.Outlined.CalendarMonth,
-            value = profile.bookingCount.ifBlank { "12" },
+            value = profile.bookingCount.ifBlank { "0" },
+            valueTextStyle = profileInfoStyle,
             label = "Lần đặt"
         )
         StatCard(
             modifier = Modifier.weight(1f),
             icon = Icons.Outlined.Star,
-            value = profile.rating.ifBlank { "4.8" },
+            value = profile.rating.ifBlank { "0.0" },
+            valueTextStyle = profileInfoStyle,
             label = "Đánh giá"
         )
     }
@@ -210,7 +260,8 @@ private fun LoggedInProfileContent(
 @Composable
 private fun ProfileInfoRow(
     icon: ImageVector,
-    text: String
+    text: String,
+    textStyle: androidx.compose.ui.text.TextStyle
 ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Icon(
@@ -224,8 +275,12 @@ private fun ProfileInfoRow(
 
         Text(
             text = text,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurface
+            style = textStyle,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 2,
+            softWrap = true,
+            overflow = TextOverflow.Clip
         )
     }
 }
@@ -235,6 +290,7 @@ private fun StatCard(
     modifier: Modifier,
     icon: ImageVector,
     value: String,
+    valueTextStyle: androidx.compose.ui.text.TextStyle,
     label: String
 ) {
     Surface(
@@ -257,13 +313,13 @@ private fun StatCard(
             Column {
                 Text(
                     text = value,
-                    style = MaterialTheme.typography.titleLarge,
+                    style = valueTextStyle,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
                     text = label,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -272,8 +328,14 @@ private fun StatCard(
 }
 
 @Composable
-private fun MembershipBadge(membership: String) {
-    val membershipUi = resolveMembershipUi(membership)
+private fun MembershipBadge(
+    membership: String,
+    bookingCount: String
+) {
+    val membershipUi = resolveMembershipUi(
+        rawMembership = membership,
+        bookingCount = bookingCount
+    )
     Surface(
         shape = RoundedCornerShape(999.dp),
         color = membershipUi.chipBackground,
@@ -292,7 +354,10 @@ private fun MembershipBadge(membership: String) {
             )
             Text(
                 text = membershipUi.label,
-                style = MaterialTheme.typography.labelSmall,
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontSize = 10.sp,
+                    lineHeight = 14.sp
+                ),
                 color = membershipUi.textColor,
                 fontWeight = FontWeight.Bold
             )

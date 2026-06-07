@@ -55,6 +55,21 @@ export const deleteFirebaseUser = async (uid) => {
   await auth.deleteUser(uid);
 };
 
+export const updateFirebaseUserPassword = async (uid, password) => {
+  if (!uid) {
+    return;
+  }
+
+  const auth = getFirebaseAuth();
+  if (!auth) {
+    return;
+  }
+
+  await auth.updateUser(uid, {
+    password,
+  });
+};
+
 export const verifyFirebaseIdToken = async (idToken) => {
   const auth = getFirebaseAuth();
   if (!auth) {

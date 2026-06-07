@@ -100,7 +100,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -117,6 +116,7 @@ import com.sportmanagement.user.ui.theme.AppInputCornerRadius
 import com.sportmanagement.user.ui.theme.AppPillCornerRadius
 import com.sportmanagement.user.ui.theme.AppScreenHorizontalPadding
 import com.sportmanagement.user.ui.theme.AppSheetTopCornerRadius
+import com.sportmanagement.user.ui.theme.responsiveSharedTitleStyle
 import com.google.zxing.BarcodeFormat
 import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
@@ -265,16 +265,6 @@ fun InboxHeader(modifier: Modifier = Modifier) {
             .fillMaxWidth()
             .height(156.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        listOf(AppHeaderGradientStart, AppHeaderGradientEnd)
-                    )
-                )
-        )
-
         Image(
             painter = painterResource(id = R.drawable.banner_app),
             contentDescription = null,
@@ -282,7 +272,20 @@ fun InboxHeader(modifier: Modifier = Modifier) {
                 .fillMaxSize()
                 .background(Color.Transparent),
             contentScale = ContentScale.Crop,
-            alpha = 0.28f
+            alpha = 1f
+        )
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            Color.Black.copy(alpha = 0.18f),
+                            Color.Black.copy(alpha = 0.08f)
+                        )
+                    )
+                )
         )
 
         Column(
@@ -297,14 +300,7 @@ fun InboxHeader(modifier: Modifier = Modifier) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.Top
             ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = stringResource(R.string.inbox_title),
-                        style = MaterialTheme.typography.titleLarge.copy(fontFamily = FontFamily.Default),
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color.White
-                    )
-                }
+                Spacer(modifier = Modifier.weight(1f))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     HeaderIconButton(icon = Icons.Outlined.Search)
                     HeaderIconButton(icon = Icons.Outlined.Tune)
@@ -425,6 +421,7 @@ fun NotificationSection(
     onItemClick: (NotificationItem) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val sharedTitleStyle = responsiveSharedTitleStyle(LocalConfiguration.current.screenWidthDp)
     Column(modifier = modifier) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -433,7 +430,7 @@ fun NotificationSection(
         ) {
             Text(
                 text = section.title,
-                style = MaterialTheme.typography.titleMedium,
+                style = sharedTitleStyle,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface
             )
@@ -458,6 +455,7 @@ fun NotificationSection(
 
 @Composable
 fun NotificationCard(item: NotificationItem, onClick: () -> Unit) {
+    val sharedTitleStyle = responsiveSharedTitleStyle(LocalConfiguration.current.screenWidthDp)
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -506,10 +504,13 @@ fun NotificationCard(item: NotificationItem, onClick: () -> Unit) {
                 ) {
                     Text(
                         text = item.title,
-                        style = MaterialTheme.typography.titleSmall,
+                        style = sharedTitleStyle,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier.weight(1f),
+                        maxLines = 2,
+                        softWrap = true,
+                        overflow = TextOverflow.Clip
                     )
                     Text(
                         text = item.timeLabel,
@@ -603,6 +604,7 @@ private fun looksLikeBookingCodePreview(text: String): Boolean {
 @Composable
 private fun NotificationDetailSheet(item: NotificationItem, modifier: Modifier = Modifier) {
     val scrollState = rememberScrollState()
+    val sharedTitleStyle = responsiveSharedTitleStyle(LocalConfiguration.current.screenWidthDp)
 
     Column(
         modifier = modifier
@@ -631,9 +633,12 @@ private fun NotificationDetailSheet(item: NotificationItem, modifier: Modifier =
                 Column {
                     Text(
                         text = item.title,
-                        style = MaterialTheme.typography.titleLarge,
+                        style = sharedTitleStyle,
                         fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 2,
+                        softWrap = true,
+                        overflow = TextOverflow.Clip
                     )
                     Spacer(Modifier.height(2.dp))
                     Text(

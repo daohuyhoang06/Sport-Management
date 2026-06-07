@@ -28,16 +28,20 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.sportmanagement.user.ui.theme.AppCtaCornerRadius
 import com.sportmanagement.user.ui.theme.AppCtaWideHeight
+import com.sportmanagement.user.ui.theme.responsiveSharedTitleStyle
 
 @Composable
 internal fun ProfileGuestSection(
     onLoginClick: () -> Unit,
     onRegisterClick: () -> Unit
 ) {
+    val sharedTextStyle = responsiveSharedTitleStyle(LocalConfiguration.current.screenWidthDp)
+
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -48,8 +52,8 @@ internal fun ProfileGuestSection(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "Chưa đăng nhập",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
+                    style = sharedTextStyle,
+                    fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
 
@@ -57,7 +61,7 @@ internal fun ProfileGuestSection(
 
                 Text(
                     text = "Đăng nhập để đặt sân và lưu thông tin cá nhân",
-                    style = MaterialTheme.typography.bodyLarge,
+                    style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -99,8 +103,8 @@ internal fun ProfileGuestSection(
             ) {
                 Text(
                     text = "Đăng nhập",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    style = sharedTextStyle,
+                    fontWeight = FontWeight.SemiBold
                 )
             }
 
@@ -118,8 +122,8 @@ internal fun ProfileGuestSection(
             ) {
                 Text(
                     text = "Đăng ký",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    style = sharedTextStyle,
+                    fontWeight = FontWeight.SemiBold
                 )
             }
         }
@@ -148,6 +152,8 @@ private fun GuestFeatureRow(
     icon: ImageVector,
     text: String
 ) {
+    val sharedTextStyle = responsiveSharedTitleStyle(LocalConfiguration.current.screenWidthDp)
+
     Row(verticalAlignment = Alignment.CenterVertically) {
         Icon(
             imageVector = icon,
@@ -158,8 +164,8 @@ private fun GuestFeatureRow(
         Spacer(modifier = Modifier.width(12.dp))
         Text(
             text = text,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Normal,
+            style = sharedTextStyle,
+            fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onSurface
         )
     }

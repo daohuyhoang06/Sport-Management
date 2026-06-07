@@ -11,6 +11,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.sportmanagement.user.R
 import com.sportmanagement.user.data.remote.api.ConversationListItemDto
+import com.sportmanagement.user.data.remote.api.BookingDetailDto
 import com.sportmanagement.user.data.remote.api.InboxApi
 import com.sportmanagement.user.data.remote.api.InboxItemDto
 import com.sportmanagement.user.data.remote.api.NotificationDto
@@ -26,6 +27,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
+import java.time.LocalDate
 import java.time.OffsetDateTime
 import java.time.ZoneId
 import java.time.ZoneOffset
@@ -64,10 +66,11 @@ class InboxViewModel(
             val conversations = runCatching { api.getConversations(token) }.getOrDefault(emptyList())
 
             val sections = buildSections(inboxItems, notifications, conversations)
+            val enrichedSections = runCatching { enrichBookingSections(token, sections) }.getOrDefault(sections)
             _uiState.value = _uiState.value.copy(
                 isLoadingInbox = false,
-                sections = sections,
-                inboxError = if (sections.all { it.items.isEmpty() }) "Hộp thư chưa có dữ liệu." else null
+                sections = enrichedSections,
+                inboxError = if (enrichedSections.all { it.items.isEmpty() }) "Hộp thư chưa có dữ liệu." else null
             )
         }
     }
@@ -530,6 +533,46 @@ class InboxViewModel(
         )
     }
 
+    private suspend fun enrichBookingSections(
+        token: String,
+        sections: List<NotificationSectionData>
+    ): List<NotificationSectionData> {
+        val bookingIds = sections
+            .asSequence()
+            .flatMap { it.items.asSequence() }
+            .mapNotNull { item -> item.bookingId ?: item.bookingInfo?.bookingId }
+            .distinct()
+            .toList()
+
+        if (bookingIds.isEmpty()) return sections
+
+        val bookingDetails = mutableMapOf<Int, BookingDetailDto>()
+        bookingIds.forEach { bookingId ->
+            runCatching { api.getBookingDetail(token, bookingId) }
+                .onSuccess { bookingDetails[bookingId] = it }
+        }
+
+        if (bookingDetails.isEmpty()) return sections
+
+        return sections.map { section ->
+            section.copy(
+                items = section.items.map { item ->
+                    val bookingId = item.bookingId ?: item.bookingInfo?.bookingId
+                    val detail = bookingId?.let(bookingDetails::get)
+                    if (detail == null || item.category != InboxCategoryType.Booking) {
+                        item
+                    } else {
+                        item.copy(
+                            bookingInfo = detail.toBookingInfo(
+                                notificationId = item.bookingInfo?.notificationId ?: item.id
+                            )
+                        )
+                    }
+                }
+            )
+        }
+    }
+
     private fun mapInboxOrNotification(
         id: Int,
         type: String,
@@ -673,6 +716,52 @@ class InboxViewModel(
         }.recoverCatching {
             val ldt = LocalDateTime.parse(raw, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
             ldt.atZone(ZoneOffset.UTC).withZoneSameInstant(zone).format(timePattern)
+        }.getOrDefault(raw)
+    }
+
+    private fun BookingDetailDto.toBookingInfo(notificationId: Int?): BookingInfo {
+        val resolvedTimeRange = timeRange.ifBlank {
+            listOf(startTime, endTime)
+                .filter { it.isNotBlank() }
+                .joinToString(" - ")
+        }
+
+        return BookingInfo(
+            fieldName = fieldName,
+            timeRange = resolvedTimeRange,
+            dateLabel = formatBookingDate(date),
+            bookingCode = bookingCode,
+            statusLabel = status,
+            statusCode = statusCode,
+            address = fieldAddress,
+            paymentMethod = paymentMethod,
+            totalAmount = totalPrice,
+            transactionId = transactionId,
+            orderId = orderId,
+            checkInCode = checkInCode,
+            shareUrl = shareUrl,
+            customerName = userName,
+            customerPhone = userPhone,
+            ownerPhone = ownerPhone,
+            ownerNote = ownerNote,
+            fieldId = fieldId,
+            bookingId = bookingId,
+            notificationId = notificationId
+        )
+    }
+
+    private fun formatBookingDate(raw: String): String {
+        val output = DateTimeFormatter.ofPattern("dd/MM/yyyy")
+        return runCatching {
+            LocalDate.parse(raw).format(output)
+        }.recoverCatching {
+            LocalDate.parse(raw, DateTimeFormatter.ofPattern("yyyy-MM-dd")).format(output)
+        }.recoverCatching {
+            LocalDateTime.parse(raw).toLocalDate().format(output)
+        }.recoverCatching {
+            OffsetDateTime.parse(raw).toLocalDate().format(output)
+        }.recoverCatching {
+            LocalDateTime.parse(raw, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")).toLocalDate().format(output)
         }.getOrDefault(raw)
     }
 }

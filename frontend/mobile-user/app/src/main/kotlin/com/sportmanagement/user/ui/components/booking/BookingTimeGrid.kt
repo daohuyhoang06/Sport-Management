@@ -25,7 +25,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.sportmanagement.user.domain.model.BookingSubCourt
@@ -150,9 +149,8 @@ private fun BookingTimeGridHeader(
                     ) {
                         Text(
                             text = timeLabel,
-                            style = MaterialTheme.typography.labelSmall,
+                            style = bookingHelperTextStyle(),
                             color = MaterialTheme.colorScheme.onPrimaryContainer,
-                            fontWeight = FontWeight.Medium
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Box(
@@ -200,7 +198,7 @@ private fun BookingTimeGridRow(
         ) {
             Text(
                 text = court.name,
-                style = MaterialTheme.typography.titleMedium,
+                style = bookingInfoValueStyle(),
                 color = MaterialTheme.colorScheme.onSurface
             )
         }

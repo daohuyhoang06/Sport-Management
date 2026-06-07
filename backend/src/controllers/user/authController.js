@@ -9,6 +9,7 @@ import {
   isFirebaseAuthFlowEnabled,
   signInWithFirebaseIdp,
   signInWithFirebasePassword,
+  updateFirebaseUserPassword,
   verifyFirebaseIdToken,
 } from "../../services/firebaseAuthService.js";
 
@@ -137,15 +138,58 @@ const resolvePublicAssetUrl = (req, assetPath) => {
   return `${req.protocol}://${req.get("host")}${normalizedPath}`;
 };
 
+const resolveUserProfileStats = async (personId) => {
+  if (!personId) {
+    return {
+      bookingCount: "0",
+      rating: "0.0",
+    };
+  }
+
+  const [[bookingRow], [reviewRow]] = await Promise.all([
+    Person.sequelize.query(
+      `SELECT COUNT(*) AS booking_count
+       FROM bookings
+       WHERE customer_id = ?
+         AND status IN ('confirmed', 'approved', 'completed')`,
+      {
+        replacements: [personId],
+        type: QueryTypes.SELECT,
+      },
+    ),
+    Person.sequelize.query(
+      `SELECT ROUND(AVG(rating), 1) AS average_rating
+       FROM reviews
+       WHERE customer_id = ?`,
+      {
+        replacements: [personId],
+        type: QueryTypes.SELECT,
+      },
+    ),
+  ]);
+
+  const bookingCount = Number.parseInt(bookingRow?.booking_count, 10);
+  const averageRating = Number(reviewRow?.average_rating);
+
+  return {
+    bookingCount: Number.isFinite(bookingCount) ? String(bookingCount) : "0",
+    rating: Number.isFinite(averageRating) ? averageRating.toFixed(1) : "0.0",
+  };
+};
+
 const serializeUser = async (user, req) => {
   const raw = user.toJSON();
   const membership = raw.membership_level || DEFAULT_MEMBERSHIP_LEVEL;
   const avatarUrl = resolvePublicAssetUrl(req, raw.avatar_url);
-  const favoriteSportsData = await resolveFavoriteSports(raw.favorite_sport_ids);
+  const [favoriteSportsData, profileStats] = await Promise.all([
+    resolveFavoriteSports(raw.favorite_sport_ids),
+    resolveUserProfileStats(raw.person_id),
+  ]);
   return {
     ...raw,
     membership,
     avatarUrl,
+    ...profileStats,
     ...favoriteSportsData,
   };
 };
@@ -874,6 +918,78 @@ export const updateMe = async (req, res) => {
     return res.status(500).json({
       success: false,
       message: "Loi server khi cap nhat thong tin ca nhan",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+};
+
+// @desc    Change current user's password
+// @route   POST /api/auth/change-password
+// @access  Private
+export const changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body || {};
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({
+        success: false,
+        message: "Vui long nhap day du mat khau hien tai va mat khau moi.",
+      });
+    }
+
+    if (`${newPassword}`.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: "Mat khau moi phai co it nhat 6 ky tu.",
+      });
+    }
+
+    const user = await Person.findByPk(req.user.id);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "Khong tim thay nguoi dung",
+      });
+    }
+
+    const isPasswordValid = await user.comparePassword(currentPassword);
+    if (!isPasswordValid) {
+      return res.status(401).json({
+        success: false,
+        message: "Mat khau hien tai khong chinh xac.",
+      });
+    }
+
+    const firebaseUid = user.firebase_uid;
+    user.password = newPassword;
+    await user.save();
+
+    let firebaseSynced = false;
+    if (firebaseUid && isFirebaseAuthFlowEnabled()) {
+      try {
+        await updateFirebaseUserPassword(firebaseUid, newPassword);
+        firebaseSynced = true;
+      } catch (firebaseError) {
+        console.warn("Firebase password sync skipped:", {
+          personId: user.person_id,
+          uid: firebaseUid,
+          error: firebaseError?.message || firebaseError,
+        });
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Cap nhat mat khau thanh cong",
+      data: {
+        firebaseSynced,
+      },
+    });
+  } catch (error) {
+    console.error("Change password error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Loi server khi cap nhat mat khau",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }

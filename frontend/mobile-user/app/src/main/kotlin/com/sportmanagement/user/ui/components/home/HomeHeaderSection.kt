@@ -20,10 +20,10 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Tune
@@ -38,14 +38,25 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.sportmanagement.user.R
 import com.sportmanagement.user.ui.theme.AppInputCornerRadius
+import com.sportmanagement.user.ui.theme.AppStickyHeaderHeight
+import com.sportmanagement.user.ui.theme.AppTopActionButtonSize
+import com.sportmanagement.user.ui.theme.AppTopFavoriteIconSize
+import com.sportmanagement.user.ui.theme.AppTopHeaderSearchOffset
+import com.sportmanagement.user.ui.theme.AppTopSearchBarHeight
+import com.sportmanagement.user.ui.theme.AppTopSearchBarShadow
+import com.sportmanagement.user.ui.theme.AppTopSearchIconSize
+import com.sportmanagement.user.ui.theme.AppTopSearchTrailingIconSize
+import com.sportmanagement.user.ui.theme.responsiveSharedTitleStyle
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -65,11 +76,12 @@ fun HomeHeaderSection(
 ) {
     val todayLabel = remember { formatCurrentDateLabel() }
     val displayName = userName
+    val headerNameStyle = responsiveSharedTitleStyle(LocalConfiguration.current.screenWidthDp)
 
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(156.dp)
+            .height(152.dp)
     ) {
         Image(
             painter = painterResource(id = R.drawable.banner_app),
@@ -86,34 +98,46 @@ fun HomeHeaderSection(
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .size(46.dp)
-                            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.92f), CircleShape)
-                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        if (userAvatarUrl.isNotBlank()) {
-                            AsyncImage(
-                                model = userAvatarUrl,
-                                contentDescription = stringResource(R.string.home_avatar_content_description),
-                                modifier = Modifier
-                                    .size(46.dp)
-                                    .clip(CircleShape)
-                                    .background(MaterialTheme.colorScheme.surface, CircleShape),
-                                contentScale = ContentScale.Crop
-                            )
-                        } else {
-                            Icon(
-                                imageVector = Icons.Default.Person,
-                                contentDescription = stringResource(R.string.home_avatar_content_description),
-                                tint = MaterialTheme.colorScheme.onSurface,
-                                modifier = Modifier.size(24.dp)
-                            )
+                    BoxWithConstraints {
+                        val avatarSize = when {
+                            maxWidth < 360.dp -> 58.dp
+                            maxWidth < 400.dp -> 62.dp
+                            else -> 66.dp
+                        }
+                        val avatarIconSize = when {
+                            maxWidth < 360.dp -> 26.dp
+                            maxWidth < 400.dp -> 28.dp
+                            else -> 30.dp
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .size(avatarSize)
+                                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.92f), CircleShape)
+                                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (userAvatarUrl.isNotBlank()) {
+                                AsyncImage(
+                                    model = userAvatarUrl,
+                                    contentDescription = stringResource(R.string.home_avatar_content_description),
+                                    modifier = Modifier
+                                        .size(avatarSize)
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.surface, CircleShape),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Default.Person,
+                                    contentDescription = stringResource(R.string.home_avatar_content_description),
+                                    tint = MaterialTheme.colorScheme.onSurface,
+                                    modifier = Modifier.size(avatarIconSize)
+                                )
+                            }
                         }
                     }
 
@@ -129,9 +153,12 @@ fun HomeHeaderSection(
                             Spacer(Modifier.height(2.dp))
                             Text(
                                 text = displayName,
-                                style = MaterialTheme.typography.titleMedium,
+                                style = headerNameStyle,
                                 fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.secondary
+                                color = MaterialTheme.colorScheme.secondary,
+                                maxLines = 2,
+                                softWrap = true,
+                                overflow = TextOverflow.Clip
                             )
                         } else {
                             HomeGuestSection(
@@ -139,20 +166,6 @@ fun HomeHeaderSection(
                                 onRegisterClick = onRegisterClick
                             )
                         }
-                    }
-                }
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier.size(40.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Notifications,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.onPrimary,
-                            modifier = Modifier.size(24.dp)
-                        )
                     }
                 }
             }
@@ -165,7 +178,7 @@ fun HomeHeaderSection(
             onFavoriteClick = onFavoriteClick,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .offset(y = 24.dp)
+                .offset(y = AppTopHeaderSearchOffset)
                 .fillMaxWidth()
                 .padding(horizontal = 12.dp)
         )
@@ -185,7 +198,7 @@ fun HomeStickyHeaderSection(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(102.dp)
+            .height(AppStickyHeaderHeight)
     ) {
         Image(
             painter = painterResource(id = R.drawable.banner_app),
@@ -211,7 +224,6 @@ fun HomeStickyHeaderSection(
                 modifier = Modifier
                     .fillMaxWidth()
                     .offset(y = (-4).dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
@@ -219,18 +231,6 @@ fun HomeStickyHeaderSection(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onPrimary
                 )
-
-                Box(
-                    modifier = Modifier.size(38.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Notifications,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onPrimary,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
             }
 
         }
@@ -242,7 +242,7 @@ fun HomeStickyHeaderSection(
             onFavoriteClick = onFavoriteClick,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .offset(y = 24.dp)
+                .offset(y = AppTopHeaderSearchOffset)
                 .fillMaxWidth()
                 .padding(horizontal = 12.dp)
         )
@@ -265,8 +265,8 @@ private fun HomeSearchActionRow(
         Surface(
             modifier = Modifier
                 .weight(1f)
-                .height(48.dp),
-            shadowElevation = 6.dp,
+                .height(AppTopSearchBarHeight),
+            shadowElevation = AppTopSearchBarShadow,
             shape = RoundedCornerShape(AppInputCornerRadius),
             color = MaterialTheme.colorScheme.surface
         ) {
@@ -292,7 +292,7 @@ private fun HomeSearchActionRow(
                             if (searchQuery.isBlank()) {
                                 Text(
                                     text = stringResource(R.string.home_search_placeholder),
-                                    style = MaterialTheme.typography.bodyMedium.copy(lineHeight = 20.sp),
+                                    style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
@@ -304,7 +304,7 @@ private fun HomeSearchActionRow(
                             contentDescription = stringResource(R.string.home_filter_content_description),
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier
-                                .size(20.dp)
+                                .size(AppTopSearchIconSize)
                                 .clickable(onClick = onFilterClick)
                         )
                         Spacer(Modifier.width(6.dp))
@@ -312,7 +312,7 @@ private fun HomeSearchActionRow(
                             Icons.Default.Search,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(22.dp)
+                            modifier = Modifier.size(AppTopSearchTrailingIconSize)
                         )
                     }
                 }
@@ -321,9 +321,9 @@ private fun HomeSearchActionRow(
 
         Surface(
             modifier = Modifier
-                .size(48.dp)
+                .size(AppTopActionButtonSize)
                 .clickable(onClick = onFavoriteClick),
-            shadowElevation = 6.dp,
+            shadowElevation = AppTopSearchBarShadow,
             shape = RoundedCornerShape(AppInputCornerRadius),
             color = MaterialTheme.colorScheme.surface
         ) {
@@ -332,7 +332,7 @@ private fun HomeSearchActionRow(
                     Icons.Default.FavoriteBorder,
                     contentDescription = stringResource(R.string.home_favorite_content_description),
                     tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(AppTopFavoriteIconSize)
                 )
             }
         }

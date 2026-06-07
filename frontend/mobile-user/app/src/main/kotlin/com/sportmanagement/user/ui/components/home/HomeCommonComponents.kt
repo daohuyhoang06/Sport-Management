@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -43,6 +44,7 @@ import com.sportmanagement.user.ui.theme.AppCtaCompactVerticalPadding
 import com.sportmanagement.user.ui.theme.AppCtaCornerRadius
 import com.sportmanagement.user.ui.theme.AppOnCtaAmber
 import com.sportmanagement.user.ui.theme.AppPillCornerRadius
+import com.sportmanagement.user.ui.theme.responsiveSharedTitleStyle
 
 @Composable
 internal fun HomeBookButton(
@@ -88,29 +90,14 @@ internal fun HomeVenueTitleText(
     text: String,
     modifier: Modifier = Modifier
 ) {
+    val titleStyle = responsiveSharedTitleStyle(LocalConfiguration.current.screenWidthDp)
     BoxWithConstraints(modifier = modifier) {
-        val fontSize = when {
-            maxWidth < 240.dp -> 14.sp
-            maxWidth < 280.dp -> 14.sp
-            maxWidth < 320.dp -> 15.sp
-            maxWidth < 360.dp -> 16.sp
-            maxWidth < 400.dp -> 16.sp
-            else -> 17.sp
-        }
-        val lineHeight = when {
-            fontSize <= 14.sp -> 15.sp
-            fontSize <= 15.sp -> 16.sp
-            else -> 17.sp
-        }
-
         Text(
             text = text,
-            style = MaterialTheme.typography.titleMedium.copy(
-                fontSize = fontSize,
-                lineHeight = lineHeight
-            ),
-            fontWeight = FontWeight.ExtraBold,
+            style = titleStyle,
+            fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 2,
             softWrap = true,
             overflow = TextOverflow.Clip
         )

@@ -41,6 +41,7 @@ import com.sportmanagement.user.ui.components.chatbot.ChatbotOverlay
 import com.sportmanagement.user.ui.components.share.FieldShareSheet
 import com.sportmanagement.user.ui.navigation.UserTab
 import com.sportmanagement.user.ui.screens.BookingConfirmationScreen
+import com.sportmanagement.user.ui.screens.BookingHistoryScreen
 import com.sportmanagement.user.ui.screens.HomeSearchFilterScreen
 import com.sportmanagement.user.ui.screens.BookingPaymentScreen
 import com.sportmanagement.user.ui.screens.BookingScheduleScreen
@@ -56,6 +57,8 @@ import com.sportmanagement.user.ui.screens.HomeSearchResultsScreen
 import com.sportmanagement.user.ui.screens.UserHomeScreen
 import com.sportmanagement.user.ui.screens.UserMapScreen
 import com.sportmanagement.user.ui.screens.UserProfileScreen
+import com.sportmanagement.user.ui.screens.SettingsScreen
+import com.sportmanagement.user.ui.screens.SupportFaqScreen
 import com.sportmanagement.user.ui.share.FieldShareLink
 import com.sportmanagement.user.ui.share.FieldShareLink.MomoPaymentReturn
 import com.sportmanagement.user.ui.viewmodel.ChatbotViewModel
@@ -96,6 +99,9 @@ fun UserApp(
     var showHomeSearchFilterScreen by rememberSaveable { mutableStateOf(false) }
     var showHomeSearchResultsScreen by rememberSaveable { mutableStateOf(false) }
     var showFavoriteFieldsScreen by rememberSaveable { mutableStateOf(false) }
+    var showBookingHistoryScreen by rememberSaveable { mutableStateOf(false) }
+    var showSupportFaqScreen by rememberSaveable { mutableStateOf(false) }
+    var showSettingsScreen by rememberSaveable { mutableStateOf(false) }
     var showBookingDetailScreen by rememberSaveable { mutableStateOf(false) }
     var showConversationScreen by rememberSaveable { mutableStateOf(false) }
     var showNotificationDetailScreen by rememberSaveable { mutableStateOf(false) }
@@ -116,6 +122,20 @@ fun UserApp(
     val closeFavoriteFieldsFlow = {
         showFavoriteFieldsScreen = false
     }
+    val closeAccountFlows = {
+        showHomeSearchFilterScreen = false
+        showHomeSearchResultsScreen = false
+        showFavoriteFieldsScreen = false
+        showBookingHistoryScreen = false
+        showSupportFaqScreen = false
+        showSettingsScreen = false
+        showBookingScreen = false
+        showBookingConfirmationScreen = false
+        showBookingPaymentScreen = false
+        showBookingDetailScreen = false
+        showConversationScreen = false
+        showNotificationDetailScreen = false
+    }
     val closeHomeOverlayFlows = {
         closeHomeSearchResultsFlow()
         closeFavoriteFieldsFlow()
@@ -124,6 +144,12 @@ fun UserApp(
         resolvedUserViewModel.clearAuthError()
         showRegister = false
         showAuthScreen = true
+    }
+    val changePasswordAction: suspend (String, String) -> Unit = { currentPassword, newPassword ->
+        resolvedUserViewModel.changePassword(
+            currentPassword = currentPassword,
+            newPassword = newPassword
+        )
     }
     val startBookingFlow: (UserField) -> Unit = { field ->
         selectedBookingField = field
@@ -202,6 +228,9 @@ fun UserApp(
         showHomeSearchFilterScreen = false
         showHomeSearchResultsScreen = false
         showFavoriteFieldsScreen = false
+        showBookingHistoryScreen = false
+        showSupportFaqScreen = false
+        showSettingsScreen = false
         showBookingDetailScreen = false
         showConversationScreen = false
         showNotificationDetailScreen = false
@@ -219,22 +248,30 @@ fun UserApp(
         showHomeSearchFilterScreen -> Color.Transparent
         showHomeSearchResultsScreen -> Color.Transparent
         showFavoriteFieldsScreen -> Color.Transparent
+        showBookingHistoryScreen -> Color.Transparent
+        showSupportFaqScreen -> Color.Transparent
+        showSettingsScreen -> Color.Transparent
         showBookingScreen || showBookingPaymentScreen || showBookingConfirmationScreen -> Color.Transparent
         showBookingDetailScreen || showConversationScreen || showNotificationDetailScreen -> MaterialTheme.colorScheme.surface
-        uiState.selectedTab == UserTab.Home || uiState.selectedTab == UserTab.Inbox || uiState.selectedTab == UserTab.Profile -> Color.Transparent
+        uiState.selectedTab == UserTab.Home || uiState.selectedTab == UserTab.Map || uiState.selectedTab == UserTab.Inbox || uiState.selectedTab == UserTab.Profile -> Color.Transparent
         else -> MaterialTheme.colorScheme.surface
     }
     val useDarkStatusBarIcons = !showAuthScreen &&
         !showHomeSearchFilterScreen &&
         !showHomeSearchResultsScreen &&
         !showFavoriteFieldsScreen &&
+        !showBookingHistoryScreen &&
+        !showSupportFaqScreen &&
+        !showSettingsScreen &&
         !showBookingScreen &&
         !showBookingConfirmationScreen &&
         !showBookingPaymentScreen &&
         !showBookingDetailScreen &&
         !showConversationScreen &&
         !showNotificationDetailScreen &&
+        !showBookingHistoryScreen &&
         uiState.selectedTab != UserTab.Home &&
+        uiState.selectedTab != UserTab.Map &&
         uiState.selectedTab != UserTab.Inbox &&
         uiState.selectedTab != UserTab.Profile
     val shouldShowBottomBar = !showBookingScreen &&
@@ -243,6 +280,9 @@ fun UserApp(
         !showBookingDetailScreen &&
         !showConversationScreen &&
         !showNotificationDetailScreen &&
+        !showBookingHistoryScreen &&
+        !showSupportFaqScreen &&
+        !showSettingsScreen &&
         !showAuthScreen &&
         !showHomeSearchFilterScreen &&
         !showHomeSearchResultsScreen &&
@@ -461,6 +501,53 @@ fun UserApp(
                         }
                     }
                 }
+            } else if (showBookingHistoryScreen) {
+                BookingHistoryScreen(
+                    padding = padding,
+                    sections = inboxUiState.sections,
+                    isLoading = inboxUiState.isLoadingInbox,
+                    errorMessage = inboxUiState.inboxError,
+                    onBackClick = {
+                        showBookingHistoryScreen = false
+                    },
+                    onRefresh = inboxViewModel::refreshInbox,
+                    onBookingSelected = { bookingId, notificationId ->
+                        showBookingHistoryScreen = false
+                        showBookingDetailScreen = true
+                        inboxViewModel.loadBookingDetail(bookingId, notificationId)
+                    }
+                )
+            } else if (showSupportFaqScreen) {
+                SupportFaqScreen(
+                    padding = padding,
+                    onBackClick = {
+                        showSupportFaqScreen = false
+                    }
+                )
+            } else if (showSettingsScreen) {
+                SettingsScreen(
+                    padding = padding,
+                    onBackClick = {
+                        showSettingsScreen = false
+                    },
+                    onChangePassword = changePasswordAction
+                )
+            } else if (showFavoriteFieldsScreen) {
+                HomeSearchResultsScreen(
+                    padding = padding,
+                    fields = uiState.favoriteFields,
+                    favoriteFields = uiState.favoriteFields,
+                    isLoading = false,
+                    title = appContext.getString(R.string.favorite_title),
+                    emptyTitle = "Chua co san yeu thich",
+                    emptyBody = "Nhan tim o the san de luu san vao danh sach nay.",
+                    onBackClick = closeFavoriteFieldsFlow,
+                    onFilterClick = {},
+                    onBookFieldClick = startBookingFlow,
+                    onFavoriteFieldClick = toggleFavoriteField,
+                    onShareFieldClick = shareField,
+                    showFilterButton = false
+                )
             } else if (showConversationScreen && conversationInfo != null) {
                 LaunchedEffect(conversationInfo?.conversationId) {
                     conversationInfo?.let { inboxViewModel.loadConversation(it) }
@@ -717,6 +804,30 @@ fun UserApp(
                             resolvedUserViewModel.logout()
                             showRegister = false
                             showAuthScreen = false
+                        },
+                        onBookingHistoryClick = {
+                            closeAccountFlows()
+                            if (uiState.isAuthenticated) {
+                                showBookingHistoryScreen = true
+                            } else {
+                                openAuthFlow()
+                            }
+                        },
+                        onFavoriteClick = {
+                            closeAccountFlows()
+                            if (uiState.isAuthenticated) {
+                                showFavoriteFieldsScreen = true
+                            } else {
+                                openAuthFlow()
+                            }
+                        },
+                        onSupportClick = {
+                            closeAccountFlows()
+                            showSupportFaqScreen = true
+                        },
+                        onSettingsClick = {
+                            closeAccountFlows()
+                            showSettingsScreen = true
                         },
                         onProfileUpdate = { updatedProfile ->
                             resolvedUserViewModel.updateProfile(updatedProfile)

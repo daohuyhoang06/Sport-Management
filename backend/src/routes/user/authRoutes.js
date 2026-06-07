@@ -6,6 +6,7 @@ import {
   getMe,
   getSportTypes,
   updateMe,
+  changePassword,
   updateMyAvatar,
   refreshToken,
   logout
@@ -40,6 +41,7 @@ router.post('/resend-otp', resendOTP);
 router.get('/me', protect, getMe);
 router.get('/sport-types', protect, getSportTypes);
 router.put('/me', protect, updateMe);
+router.post('/change-password', protect, changePassword);
 router.post('/me/avatar', protect, uploadAvatarImage, handleUploadErrors, updateMyAvatar);
 router.post('/logout', protect, logout);
 

@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -39,8 +40,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.unit.dp
@@ -53,7 +52,6 @@ import com.sportmanagement.user.ui.theme.AppCtaWideHeight
 import com.sportmanagement.user.ui.theme.AppBadgeCornerRadius
 import com.sportmanagement.user.ui.theme.AppCardCornerRadius
 import com.sportmanagement.user.ui.theme.AppFieldHorizontalPadding
-import com.sportmanagement.user.ui.theme.AppFieldVerticalPadding
 import com.sportmanagement.user.ui.theme.AppOnCtaAmber
 import com.sportmanagement.user.ui.theme.AppScreenHorizontalPadding
 import java.text.NumberFormat
@@ -85,8 +83,7 @@ fun BookingConfirmationBottomBar(onConfirmPaymentClick: () -> Unit) {
             ) {
                 Text(
                     text = stringResource(R.string.booking_confirm_and_pay),
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold
+                    style = bookingSecondaryTextStyle()
                 )
             }
         }
@@ -116,9 +113,8 @@ fun BookingConfirmationHeader(onBackClick: () -> Unit) {
                 }
                 Text(
                     text = stringResource(R.string.booking_title),
-                    style = MaterialTheme.typography.titleLarge.copy(fontFamily = FontFamily.Default),
+                    style = bookingPageTitleStyle(),
                     color = MaterialTheme.colorScheme.onPrimary,
-                    fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.align(Alignment.Center)
                 )
             }
@@ -149,9 +145,8 @@ fun ConfirmationInfoCard(
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = bookingCardTitleStyle(),
                     color = MaterialTheme.colorScheme.secondary,
-                    fontWeight = FontWeight.SemiBold
                 )
             }
             Spacer(modifier = Modifier.height(10.dp))
@@ -162,11 +157,20 @@ fun ConfirmationInfoCard(
 
 @Composable
 fun InfoLine(label: String, value: String) {
-    Text(
-        text = "$label $value",
-        style = MaterialTheme.typography.titleMedium,
-        color = MaterialTheme.colorScheme.onPrimary
-    )
+    Row(verticalAlignment = Alignment.Top) {
+        Text(
+            text = label,
+            style = bookingInfoLabelStyle(),
+            color = MaterialTheme.colorScheme.onPrimary
+        )
+        Spacer(modifier = Modifier.width(6.dp))
+        Text(
+            text = value,
+            style = bookingInfoValueStyle(),
+            color = MaterialTheme.colorScheme.onPrimary,
+            modifier = Modifier.weight(1f)
+        )
+    }
 }
 
 @Composable
@@ -188,13 +192,13 @@ fun BookingOfferSummaryCard(totalPrice: Int) {
             ) {
                 Text(
                     text = stringResource(R.string.booking_confirm_offer),
-                    style = MaterialTheme.typography.titleMedium,
+                    style = bookingCardTitleStyle(),
                     color = MaterialTheme.colorScheme.secondary
                 )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = stringResource(R.string.booking_confirm_choose_offer),
-                        style = MaterialTheme.typography.titleMedium,
+                        style = bookingCardTitleStyle(),
                         color = MaterialTheme.colorScheme.secondary,
                         textDecoration = TextDecoration.Underline
                     )
@@ -223,12 +227,12 @@ fun BookingOfferSummaryCard(totalPrice: Int) {
             ) {
                 Text(
                     text = stringResource(R.string.booking_confirm_amount_due),
-                    style = MaterialTheme.typography.titleMedium,
+                    style = bookingInfoLabelStyle(),
                     color = MaterialTheme.colorScheme.onPrimary
                 )
                 Text(
                     text = formatConfirmationCurrencyVnd(totalPrice),
-                    style = MaterialTheme.typography.titleMedium,
+                    style = bookingInfoValueStyle(),
                     color = MaterialTheme.colorScheme.onPrimary,
                     textDecoration = TextDecoration.Underline
                 )
@@ -241,9 +245,8 @@ fun BookingOfferSummaryCard(totalPrice: Int) {
 fun ConfirmFieldLabel(text: String) {
     Text(
         text = text,
-        style = MaterialTheme.typography.titleMedium,
+        style = bookingCompactFieldLabelStyle(),
         color = MaterialTheme.colorScheme.onPrimary,
-        fontWeight = FontWeight.SemiBold,
         modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
     )
 }
@@ -268,12 +271,13 @@ fun ConfirmReadonlyField(
             onValueChange = onValueChange,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = AppFieldHorizontalPadding, vertical = 2.dp),
-            textStyle = MaterialTheme.typography.titleMedium,
+                .heightIn(min = 44.dp)
+                .padding(horizontal = AppFieldHorizontalPadding, vertical = 0.dp),
+            textStyle = bookingInfoValueStyle(),
             placeholder = {
                 Text(
                     text = placeholder,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = bookingInfoValueStyle(),
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             },
@@ -320,12 +324,13 @@ fun ConfirmPhoneField(
             onValueChange = onValueChange,
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = AppFieldHorizontalPadding, vertical = 2.dp),
-            textStyle = MaterialTheme.typography.titleMedium,
+                .heightIn(min = 44.dp)
+                .padding(horizontal = AppFieldHorizontalPadding, vertical = 0.dp),
+            textStyle = bookingInfoValueStyle(),
             placeholder = {
                 Text(
                     text = placeholder,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = bookingInfoValueStyle(),
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             },
@@ -386,7 +391,7 @@ fun BookingNoticeCard() {
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
                         text = stringResource(R.string.booking_confirm_notice_title),
-                        style = MaterialTheme.typography.titleMedium,
+                        style = bookingCardTitleStyle(),
                         color = MaterialTheme.colorScheme.primary
                     )
                 }
@@ -396,7 +401,7 @@ fun BookingNoticeCard() {
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = stringResource(R.string.booking_confirm_notice_terms),
-                style = MaterialTheme.typography.bodySmall,
+                style = bookingHelperTextStyle(),
                 color = MaterialTheme.colorScheme.onPrimary
             )
         }
@@ -423,12 +428,12 @@ fun ConfirmNoteField(
             onValueChange = onValueChange,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(92.dp),
-            textStyle = MaterialTheme.typography.bodyMedium,
+                .height(84.dp),
+            textStyle = bookingInfoValueStyle(),
             placeholder = {
                 Text(
                     text = placeholder,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = bookingInfoValueStyle(),
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             },
@@ -448,7 +453,7 @@ fun ConfirmNoteField(
 private fun ConfirmNoticeText(text: String) {
     Text(
         text = "\u2022 $text",
-        style = MaterialTheme.typography.bodySmall,
+        style = bookingHelperTextStyle(),
         color = MaterialTheme.colorScheme.onPrimary,
         modifier = Modifier.padding(vertical = 2.dp)
     )

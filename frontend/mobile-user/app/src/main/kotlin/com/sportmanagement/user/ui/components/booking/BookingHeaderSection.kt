@@ -26,8 +26,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.sportmanagement.user.R
@@ -70,10 +68,9 @@ fun BookingHeaderSection(
                 }
                 Text(
                     text = stringResource(R.string.booking_title),
-                    style = MaterialTheme.typography.titleLarge.copy(fontFamily = FontFamily.Default),
+                    style = bookingPageTitleStyle(),
                     modifier = Modifier.align(Alignment.Center),
                     color = MaterialTheme.colorScheme.onPrimary,
-                    fontWeight = FontWeight.SemiBold
                 )
             }
 
@@ -94,7 +91,7 @@ fun BookingHeaderSection(
                     ) {
                         Text(
                             text = selectedDateText,
-                            style = MaterialTheme.typography.titleSmall,
+                            style = bookingInfoValueStyle(),
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                         Spacer(modifier = Modifier.width(10.dp))
@@ -122,10 +119,9 @@ fun BookingHeaderSection(
             Text(
                 text = stringResource(R.string.booking_view_field_and_price),
                 modifier = Modifier.padding(top = 10.dp),
-                style = MaterialTheme.typography.bodyMedium,
+                style = bookingHelperTextStyle(),
                 textDecoration = TextDecoration.Underline,
                 color = MaterialTheme.colorScheme.secondary,
-                fontWeight = FontWeight.Medium
             )
         }
     }
@@ -143,7 +139,7 @@ private fun BookingLegendItem(status: SlotStatus, label: String) {
         Spacer(modifier = Modifier.width(8.dp))
         Text(
             text = label,
-            style = MaterialTheme.typography.bodyMedium,
+            style = bookingInfoLabelStyle(),
             color = MaterialTheme.colorScheme.onPrimary
         )
     }

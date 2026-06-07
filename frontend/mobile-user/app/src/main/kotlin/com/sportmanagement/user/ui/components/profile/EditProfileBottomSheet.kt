@@ -328,7 +328,7 @@ fun EditProfileBottomSheet(
 
             Text(
                 text = "Môn thể thao yêu thích",
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.SemiBold
             )
@@ -438,7 +438,7 @@ private fun CustomTextField(
     ) {
         Text(
             text = label,
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.primary,
             fontWeight = FontWeight.SemiBold
         )
@@ -491,7 +491,7 @@ private fun CustomTextField(
                     if (value.isBlank()) {
                         Text(
                             text = label,
-                            style = MaterialTheme.typography.bodyMedium,
+                            style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
@@ -502,7 +502,7 @@ private fun CustomTextField(
                         readOnly = readOnly,
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
-                        textStyle = MaterialTheme.typography.bodyMedium.copy(
+                        textStyle = MaterialTheme.typography.bodySmall.copy(
                             color = MaterialTheme.colorScheme.onSurface
                         ),
                         modifier = Modifier.fillMaxWidth()
@@ -554,7 +554,7 @@ private fun DropdownPanel(
                         .clickable { onOptionClick(option) }
                         .padding(horizontal = 14.dp, vertical = 12.dp),
                     color = MaterialTheme.colorScheme.onSurface,
-                    style = MaterialTheme.typography.bodyMedium
+                    style = MaterialTheme.typography.bodySmall
                 )
                 if (index < options.lastIndex) {
                     HorizontalDivider(
@@ -597,7 +597,7 @@ private fun SportPreferenceSummaryCard(
                 if (selected.isEmpty()) {
                     Text(
                         text = "Chọn môn thể thao yêu thích",
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 } else {
@@ -795,7 +795,7 @@ private fun SportPreferencePickerSheet(
                         if (searchQuery.isBlank()) {
                             Text(
                                 text = "Tìm kiếm môn thể thao",
-                                style = MaterialTheme.typography.bodyMedium,
+                                style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
@@ -803,7 +803,7 @@ private fun SportPreferencePickerSheet(
                             value = searchQuery,
                             onValueChange = onSearchQueryChange,
                             singleLine = true,
-                            textStyle = MaterialTheme.typography.bodyMedium.copy(
+                            textStyle = MaterialTheme.typography.bodySmall.copy(
                                 color = MaterialTheme.colorScheme.onSurface
                             ),
                             modifier = Modifier.fillMaxWidth()
@@ -816,7 +816,7 @@ private fun SportPreferencePickerSheet(
 
             Text(
                 text = "Tất cả môn thể thao",
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary,
                 fontWeight = FontWeight.SemiBold
             )

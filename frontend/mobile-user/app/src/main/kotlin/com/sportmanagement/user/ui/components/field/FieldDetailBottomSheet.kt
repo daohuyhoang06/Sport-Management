@@ -87,12 +87,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.window.Dialog
 import com.sportmanagement.user.R
 import com.sportmanagement.user.domain.model.SportIconType
 import com.sportmanagement.user.domain.model.UserField
+import com.sportmanagement.user.ui.components.booking.bookingCardTitleStyle
 import com.sportmanagement.user.ui.components.SportCircleAvatar
 import com.sportmanagement.user.ui.components.SportMarkerIcon
 import com.sportmanagement.user.ui.components.home.HomeVenueTitleText
@@ -147,6 +147,26 @@ fun FieldDetailBottomSheet(
     var ratingBadgeHeightPx by remember { mutableIntStateOf(0) }
     val bookingLink = remember(field.fieldId, field.name) { bookingLinkFor(field) }
     val hotline = remember(field.name) { context.getString(R.string.field_detail_default_hotline) }
+    val sampleReviews = listOf(
+        SampleReviewEntry(
+            author = stringResource(R.string.field_detail_review_user_1_name),
+            comment = stringResource(R.string.field_detail_review_user_1_comment),
+            rating = 5,
+            imageResIds = listOf(R.drawable.field_football)
+        ),
+        SampleReviewEntry(
+            author = stringResource(R.string.field_detail_review_user_2_name),
+            comment = stringResource(R.string.field_detail_review_user_2_comment),
+            rating = 5,
+            imageResIds = listOf(R.drawable.field_football, R.drawable.field_football)
+        ),
+        SampleReviewEntry(
+            author = stringResource(R.string.field_detail_review_user_3_name),
+            comment = stringResource(R.string.field_detail_review_user_3_comment),
+            rating = 5,
+            imageResIds = listOf(R.drawable.field_football)
+        )
+    )
     val headerImageHeight = 232.dp
     val infoCardOverlap = 28.dp
     val ratingBadgeOffsetY = remember(ratingBadgeHeightPx, density) {
@@ -270,12 +290,9 @@ fun FieldDetailBottomSheet(
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(
                                             text = field.name,
-                                            style = MaterialTheme.typography.titleLarge.copy(
-                                                fontSize = 18.sp,
-                                                lineHeight = 20.sp
-                                            ),
+                                            style = bookingCardTitleStyle(),
                                             color = colors.onSurface,
-                                            fontWeight = FontWeight.ExtraBold,
+                                            fontWeight = FontWeight.SemiBold,
                                             maxLines = 2,
                                             softWrap = true,
                                             overflow = TextOverflow.Ellipsis
@@ -336,7 +353,7 @@ fun FieldDetailBottomSheet(
                                 )
                                 Spacer(Modifier.width(6.dp))
                                 Text(
-                                    text = ratingLabel(context, field.rating),
+                                    text = ratingLabel(field.rating, sampleReviews.size),
                                     style = MaterialTheme.typography.labelLarge,
                                     color = colors.onPrimary,
                                     fontWeight = FontWeight.SemiBold
@@ -409,7 +426,10 @@ fun FieldDetailBottomSheet(
                         1 -> ServiceTabContent()
                         2 -> GalleryTabContent(onPreview = { previewImage = it })
                         3 -> PolicyTabContent()
-                        else -> ReviewTabContent(fieldSportType = field.sportIconType)
+                        else -> ReviewTabContent(
+                            fieldSportType = field.sportIconType,
+                            sampleReviews = sampleReviews
+                        )
                     }
                 }
             }
@@ -515,13 +535,13 @@ private fun InfoLine(
         Text(
             text = title,
             style = MaterialTheme.typography.bodyMedium,
-            color = colors.onSurfaceVariant,
+            color = colors.onSurface,
             modifier = Modifier.weight(1f)
         )
         if (trailingText != null && onTrailingClick != null) {
             Text(
                 text = trailingText,
-                style = MaterialTheme.typography.labelLarge,
+                style = MaterialTheme.typography.bodyMedium,
                 color = colors.primary,
                 modifier = Modifier.clickable(onClick = onTrailingClick)
             )
@@ -600,7 +620,7 @@ private fun ServiceTabContent() {
                     Spacer(Modifier.width(8.dp))
                     Text(
                         text = name,
-                        style = MaterialTheme.typography.bodyLarge,
+                        style = MaterialTheme.typography.bodyMedium,
                         color = colors.onSurface
                     )
                 }
@@ -664,29 +684,10 @@ private fun PolicyTabContent() {
 
 @Composable
 private fun ReviewTabContent(
-    fieldSportType: SportIconType
+    fieldSportType: SportIconType,
+    sampleReviews: List<SampleReviewEntry>
 ) {
     val colors = MaterialTheme.colorScheme
-    val sampleReviews = listOf(
-        SampleReviewEntry(
-            author = stringResource(R.string.field_detail_review_user_1_name),
-            comment = stringResource(R.string.field_detail_review_user_1_comment),
-            rating = 5,
-            imageResIds = listOf(R.drawable.field_football)
-        ),
-        SampleReviewEntry(
-            author = stringResource(R.string.field_detail_review_user_2_name),
-            comment = stringResource(R.string.field_detail_review_user_2_comment),
-            rating = 5,
-            imageResIds = listOf(R.drawable.field_football, R.drawable.field_football)
-        ),
-        SampleReviewEntry(
-            author = stringResource(R.string.field_detail_review_user_3_name),
-            comment = stringResource(R.string.field_detail_review_user_3_comment),
-            rating = 5,
-            imageResIds = listOf(R.drawable.field_football)
-        )
-    )
     Card(
         shape = RoundedCornerShape(AppCardCornerRadius),
         colors = CardDefaults.cardColors(containerColor = colors.surfaceContainerLowest)
@@ -798,11 +799,11 @@ private fun ReviewItemWithDrawableImages(
 
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = stringResource(R.string.field_detail_rating_value, rating),
-                style = MaterialTheme.typography.labelMedium,
-                color = Color(0xFFE59C00),
-                fontWeight = FontWeight.SemiBold
-            )
+                                    text = stringResource(R.string.field_detail_rating_value, rating),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = Color(0xFFE59C00),
+                                    fontWeight = FontWeight.SemiBold
+                                )
             Spacer(Modifier.width(4.dp))
             StarRating(rating = rating, iconSize = 13.dp)
         }
@@ -871,11 +872,14 @@ private fun sportAccentOnColor(type: SportIconType): Color {
     return if (accent.luminance() > 0.55f) Color(0xFF1A1A1A) else Color.White
 }
 
-private fun ratingLabel(context: Context, rating: String): String {
-    return if (rating.isBlank() || rating == "0" || rating == "0.0") {
-        context.getString(R.string.field_detail_rating_unavailable)
+private fun ratingLabel(
+    rating: String,
+    reviewCount: Int
+): String {
+    return if (rating.isBlank() || rating == "0" || rating == "0.0" || reviewCount <= 0) {
+        "Chưa có đánh giá"
     } else {
-        context.getString(R.string.field_detail_rating_good_format, rating)
+        "$rating ($reviewCount đánh giá)"
     }
 }
 

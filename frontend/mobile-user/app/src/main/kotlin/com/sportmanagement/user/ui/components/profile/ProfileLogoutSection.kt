@@ -19,12 +19,16 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.sportmanagement.user.ui.theme.AppCardCornerRadius
+import com.sportmanagement.user.ui.theme.responsiveSharedTitleStyle
 
 @Composable
 fun LogoutButton(onLogoutClick: () -> Unit) {
+    val sharedTextStyle = responsiveSharedTitleStyle(LocalConfiguration.current.screenWidthDp)
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -50,7 +54,7 @@ fun LogoutButton(onLogoutClick: () -> Unit) {
             Text(
                 text = "Đăng xuất",
                 color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.titleMedium,
+                style = sharedTextStyle,
                 fontWeight = FontWeight.SemiBold
             )
         }

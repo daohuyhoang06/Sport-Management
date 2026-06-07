@@ -105,6 +105,11 @@ interface UserRepository {
         return profile
     }
 
+    suspend fun changePassword(
+        currentPassword: String,
+        newPassword: String
+    ) = Unit
+
     fun logout() = Unit
 
     suspend fun searchFieldsPage(

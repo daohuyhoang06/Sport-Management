@@ -10,6 +10,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -74,7 +75,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
@@ -94,6 +94,12 @@ import com.sportmanagement.user.ui.AppNavigationBarEffect
 import com.sportmanagement.user.ui.components.booking.formatConfirmationCurrencyVnd
 import com.sportmanagement.user.ui.share.FieldShareLink
 import com.sportmanagement.user.ui.share.FieldShareLink.MomoPaymentReturn
+import com.sportmanagement.user.ui.components.booking.bookingCardTitleStyle
+import com.sportmanagement.user.ui.components.booking.bookingHelperTextStyle
+import com.sportmanagement.user.ui.components.booking.bookingInfoLabelStyle
+import com.sportmanagement.user.ui.components.booking.bookingInfoValueStyle
+import com.sportmanagement.user.ui.components.booking.bookingPageTitleStyle
+import com.sportmanagement.user.ui.components.booking.bookingSecondaryTextStyle
 import com.sportmanagement.user.ui.theme.AppBadgeCornerRadius
 import com.sportmanagement.user.ui.theme.AppCardCornerRadius
 import com.sportmanagement.user.ui.theme.AppCtaAmber
@@ -441,8 +447,7 @@ fun BookingPaymentScreen(
                         ) {
                             Text(
                                 text = stringResource(R.string.payment_view_cancelled_booking),
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.SemiBold
+                                style = bookingSecondaryTextStyle()
                             )
                         }
                         Button(
@@ -458,8 +463,7 @@ fun BookingPaymentScreen(
                         ) {
                             Text(
                                 text = stringResource(R.string.payment_back_home),
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.SemiBold
+                                style = bookingSecondaryTextStyle()
                             )
                         }
                     } else {
@@ -513,8 +517,7 @@ fun BookingPaymentScreen(
                                     paymentStatus == PaymentReturnStatus.Success -> stringResource(R.string.payment_view_invoice)
                                     else -> stringResource(R.string.payment_pay_only)
                                 },
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.SemiBold
+                                style = bookingSecondaryTextStyle()
                             )
                         }
 
@@ -561,7 +564,7 @@ fun BookingPaymentScreen(
                                     .padding(horizontal = 12.dp)
                                     .animateContentSize(),
                                 shape = RoundedCornerShape(AppCardCornerRadius),
-                                color = MaterialTheme.colorScheme.surfaceContainerLow,
+                                color = Color.White,
                                 border = BorderStroke(
                                     width = 1.dp,
                                     color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f)
@@ -577,9 +580,8 @@ fun BookingPaymentScreen(
                                     ) {
                                         Text(
                                             text = stringResource(R.string.payment_booking_info_title),
-                                            style = MaterialTheme.typography.titleSmall,
+                                            style = bookingCardTitleStyle(),
                                             color = MaterialTheme.colorScheme.onSurface,
-                                            fontWeight = FontWeight.SemiBold
                                         )
                                         IconButton(onClick = { bookingInfoExpanded = !bookingInfoExpanded }) {
                                             Icon(
@@ -695,14 +697,13 @@ private fun PaymentHoldSlotSection(
     ) {
         Text(
             text = stringResource(R.string.payment_pending_instruction_line_2),
-            style = MaterialTheme.typography.bodySmall,
+            style = bookingHelperTextStyle(),
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(modifier = Modifier.height(2.dp))
         Text(
             text = stringResource(R.string.payment_pending_time_format, minutes, seconds),
-            style = MaterialTheme.typography.titleSmall,
-            fontWeight = FontWeight.SemiBold,
+            style = bookingSecondaryTextStyle(),
             color = MaterialTheme.colorScheme.onSurface
         )
     }
@@ -763,9 +764,8 @@ private fun PaymentExpiredSection(
         Spacer(modifier = Modifier.height(28.dp))
         Text(
             text = message,
-            style = MaterialTheme.typography.bodyLarge,
+            style = bookingInfoValueStyle(),
             color = Color.White,
-            fontWeight = FontWeight.Medium
         )
     }
 }
@@ -797,7 +797,7 @@ private fun PaymentHeader(onBackClick: () -> Unit) {
             Text(
                 text = stringResource(R.string.payment_title),
                 modifier = Modifier.align(Alignment.Center),
-                style = MaterialTheme.typography.titleLarge.copy(fontFamily = FontFamily.Default),
+                style = bookingPageTitleStyle(),
                 color = MaterialTheme.colorScheme.onPrimary
             )
         }
@@ -838,13 +838,12 @@ private fun PaymentInfoItem(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = label,
-                style = MaterialTheme.typography.bodySmall,
+                style = bookingInfoLabelStyle(),
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Text(
                 text = value,
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
+                style = bookingInfoValueStyle(),
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = if (allowMultiline) 5 else 1,
                 overflow = TextOverflow.Ellipsis
@@ -869,7 +868,7 @@ private fun PaymentMethodSummarySection(
     ) {
         Surface(
             shape = RoundedCornerShape(AppCardCornerRadius),
-            color = MaterialTheme.colorScheme.surfaceContainerLow,
+            color = Color.White,
             border = BorderStroke(
                 width = 1.dp,
                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f)
@@ -883,9 +882,8 @@ private fun PaymentMethodSummarySection(
             ) {
                 Text(
                     text = stringResource(R.string.payment_method_title),
-                    style = MaterialTheme.typography.titleSmall,
+                    style = bookingCardTitleStyle(),
                     color = MaterialTheme.colorScheme.onSurface,
-                    fontWeight = FontWeight.SemiBold
                 )
 
                 PaymentMethodRow(
@@ -893,7 +891,7 @@ private fun PaymentMethodSummarySection(
                     description = stringResource(R.string.payment_method_momo_desc),
                     selected = selectedMethod == "momo",
                     customSvgRes = R.raw.momo_logo_app,
-                    iconContainerSize = 42.dp,
+                    iconContainerSize = 38.dp,
                     iconPadding = 2.dp,
                     showIconBorder = false,
                     onClick = { selectedMethod = "momo" }
@@ -905,8 +903,7 @@ private fun PaymentMethodSummarySection(
                     accentColor = Color(0xFF0068FF),
                     badgeText = "ZP",
                     customSvgRes = R.raw.zalopay_logo,
-                    emphasizeTitle = true,
-                    iconContainerSize = 42.dp,
+                    iconContainerSize = 38.dp,
                     iconPadding = 1.dp,
                     showIconBorder = false,
                     onClick = { selectedMethod = "zalopay" }
@@ -919,7 +916,7 @@ private fun PaymentMethodSummarySection(
                     badgeText = "NH",
                     customDrawableRes = R.drawable.bank,
                     customLogoTint = Color(0xFF143D8F),
-                    iconContainerSize = 42.dp,
+                    iconContainerSize = 38.dp,
                     iconPadding = 5.dp,
                     showIconBorder = true,
                     iconBorderWidth = 1.dp,
@@ -931,7 +928,7 @@ private fun PaymentMethodSummarySection(
 
         Surface(
             shape = RoundedCornerShape(AppCardCornerRadius),
-            color = MaterialTheme.colorScheme.surfaceContainerLow,
+            color = Color.White,
             border = BorderStroke(
                 width = 1.dp,
                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f)
@@ -941,19 +938,17 @@ private fun PaymentMethodSummarySection(
         ) {
             Column(
                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Text(
                     text = stringResource(R.string.payment_summary_title),
-                    style = MaterialTheme.typography.titleSmall,
+                    style = bookingCardTitleStyle(),
                     color = MaterialTheme.colorScheme.onSurface,
-                    fontWeight = FontWeight.SemiBold
                 )
 
                 PaymentAmountRow(
                     label = stringResource(R.string.payment_total_price_label),
-                    value = formatConfirmationCurrencyVnd(totalAmount),
-                    compactValue = true
+                    value = formatConfirmationCurrencyVnd(totalAmount)
                 )
                 PaymentAmountRow(
                     label = stringResource(R.string.payment_paid_amount_label),
@@ -980,8 +975,7 @@ private fun PaymentMethodRow(
     customSvgRes: Int? = null,
     customDrawableRes: Int? = null,
     customLogoTint: Color? = null,
-    emphasizeTitle: Boolean = false,
-    iconContainerSize: Dp = 36.dp,
+    iconContainerSize: Dp = 38.dp,
     iconPadding: Dp = 4.dp,
     showIconBorder: Boolean = true,
     iconBorderWidth: Dp = 1.dp,
@@ -1003,7 +997,7 @@ private fun PaymentMethodRow(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 9.dp),
+                .padding(horizontal = 12.dp, vertical = 7.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Surface(
@@ -1048,28 +1042,38 @@ private fun PaymentMethodRow(
                         Text(
                             text = badgeText,
                             color = Color.White,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.ExtraBold
+                            style = bookingSecondaryTextStyle()
                         )
                     }
                 }
             }
             Spacer(modifier = Modifier.size(12.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleSmall.copy(
-                        fontSize = if (emphasizeTitle) 17.sp else 16.sp
-                    ),
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                BoxWithConstraints {
+                    val descriptionFontSize = when {
+                        maxWidth < 260.dp -> 9.sp
+                        maxWidth < 300.dp -> 9.5.sp
+                        maxWidth < 340.dp -> 10.sp
+                        else -> 10.5.sp
+                    }
+
+                    Column {
+                        Text(
+                            text = title,
+                            style = bookingSecondaryTextStyle(),
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Text(
+                            text = description,
+                            style = bookingHelperTextStyle().copy(fontSize = descriptionFontSize),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            softWrap = false,
+                            overflow = TextOverflow.Clip
+                        )
+                    }
+                }
             }
 
             if (selected) {
@@ -1119,8 +1123,7 @@ private fun DashedAmountSeparator() {
 private fun PaymentAmountRow(
     label: String,
     value: String,
-    emphasize: Boolean = false,
-    compactValue: Boolean = false
+    emphasize: Boolean = false
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -1129,21 +1132,15 @@ private fun PaymentAmountRow(
     ) {
         Text(
             text = label,
-            style = MaterialTheme.typography.bodyMedium,
+            style = bookingInfoLabelStyle(),
             color = if (emphasize) Color(0xFFA50064) else MaterialTheme.colorScheme.onSurfaceVariant,
             fontWeight = if (emphasize) FontWeight.SemiBold else FontWeight.Normal
         )
         Text(
             text = value,
-            style = if (emphasize) {
-                MaterialTheme.typography.headlineSmall
-            } else if (compactValue) {
-                MaterialTheme.typography.bodyLarge
-            } else {
-                MaterialTheme.typography.titleSmall
-            },
+            style = bookingInfoValueStyle(),
             color = if (emphasize) Color(0xFFA50064) else MaterialTheme.colorScheme.onSurface,
-            fontWeight = if (emphasize) FontWeight.ExtraBold else FontWeight.SemiBold
+            fontWeight = if (emphasize) FontWeight.SemiBold else FontWeight.Medium
         )
     }
 }
@@ -1178,7 +1175,7 @@ private fun PaymentStatusSection(
             .fillMaxWidth()
             .padding(horizontal = 12.dp),
         shape = RoundedCornerShape(AppCardCornerRadius),
-        color = MaterialTheme.colorScheme.surfaceContainerLow,
+        color = Color.White,
         border = BorderStroke(1.dp, tint.copy(alpha = 0.25f)),
         tonalElevation = 2.dp
     ) {
@@ -1212,15 +1209,14 @@ private fun PaymentStatusSection(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = statusLabel,
-                    style = MaterialTheme.typography.titleSmall,
+                    style = bookingCardTitleStyle(),
                     color = MaterialTheme.colorScheme.onSurface,
-                    fontWeight = FontWeight.SemiBold
                 )
                 if (!paymentMessage.isNullOrBlank()) {
                     Spacer(modifier = Modifier.height(2.dp))
                     Text(
                         text = paymentMessage,
-                        style = MaterialTheme.typography.bodySmall,
+                        style = bookingHelperTextStyle(),
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }

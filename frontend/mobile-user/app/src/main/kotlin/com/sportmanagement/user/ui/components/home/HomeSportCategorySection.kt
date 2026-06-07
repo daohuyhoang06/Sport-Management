@@ -31,6 +31,9 @@ import androidx.compose.ui.unit.dp
 import com.sportmanagement.user.domain.model.SportCategory
 import com.sportmanagement.user.ui.components.SportMarkerIcon
 import com.sportmanagement.user.ui.theme.AppInputCornerRadius
+import com.sportmanagement.user.ui.theme.AppCategoryChipLabelGap
+import com.sportmanagement.user.ui.theme.AppCategoryChipSize
+import com.sportmanagement.user.ui.theme.AppCategoryChipWidth
 
 @Composable
 fun HomeSportCategorySection(
@@ -77,7 +80,7 @@ private fun SportCategoryItem(
     )
 
     Column(
-        modifier = Modifier.width(72.dp),
+        modifier = Modifier.width(AppCategoryChipWidth),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Top
     ) {
@@ -87,7 +90,7 @@ private fun SportCategoryItem(
         ) {
             Surface(
                 modifier = Modifier
-                    .size(54.dp)
+                    .size(AppCategoryChipSize)
                     .graphicsLayer {
                         scaleX = chipScale
                         scaleY = chipScale
@@ -118,11 +121,13 @@ private fun SportCategoryItem(
                 }
             }
         }
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(AppCategoryChipLabelGap))
         Text(
-            category.name,
+            text = category.name.replaceFirstChar { ch ->
+                if (ch.isLowerCase()) ch.titlecase() else ch.toString()
+            },
             style = MaterialTheme.typography.labelSmall,
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+            fontWeight = FontWeight.Medium,
             color = textColor,
             maxLines = 1
         )

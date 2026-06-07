@@ -258,6 +258,20 @@ class UserRepositoryImpl(
         return updatedProfile
     }
 
+    override suspend fun changePassword(
+        currentPassword: String,
+        newPassword: String
+    ) {
+        val authToken = getAuthToken()
+            ?: throw IllegalStateException("Phiên đăng nhập đã hết hạn")
+
+        authApi.changePassword(
+            token = authToken,
+            currentPassword = currentPassword.trim(),
+            newPassword = newPassword
+        )
+    }
+
     override fun logout() {
         prefs?.edit()
             ?.remove(AUTH_TOKEN_KEY)
@@ -700,7 +714,9 @@ private fun com.sportmanagement.user.data.remote.api.AuthUserDto.toUserProfile()
         birthday = formatBirthdayForUi(birthday),
         gender = gender.orEmpty(),
         location = address.orEmpty(),
-        preferredSportTypeKeys = favoriteSportKeys
+        preferredSportTypeKeys = favoriteSportKeys,
+        bookingCount = bookingCount.orEmpty().ifBlank { "0" },
+        rating = rating.orEmpty().ifBlank { "0.0" }
     )
 
 private fun com.sportmanagement.user.data.remote.api.AuthUserDto.toJson(): JSONObject =
@@ -716,6 +732,8 @@ private fun com.sportmanagement.user.data.remote.api.AuthUserDto.toJson(): JSONO
         .put("location", address)
         .put("membership", normalizeMembership(membership))
         .put("avatarUrl", avatarUrl)
+        .put("bookingCount", bookingCount)
+        .put("rating", rating)
         .put("favoriteSportKeys", JSONArray(favoriteSportKeys.toList()))
 
 private fun UserProfile.toJson(): JSONObject =
@@ -729,6 +747,8 @@ private fun UserProfile.toJson(): JSONObject =
         .put("birthday", birthday)
         .put("gender", gender)
         .put("location", location)
+        .put("bookingCount", bookingCount)
+        .put("rating", rating)
         .put("favoriteSportKeys", JSONArray(preferredSportTypeKeys.toList()))
 
 private fun JSONObject.toUserProfile(): UserProfile =
@@ -742,7 +762,9 @@ private fun JSONObject.toUserProfile(): UserProfile =
         birthday = optSanitizedString("birthday"),
         gender = optSanitizedString("gender"),
         location = optSanitizedString("location"),
-        preferredSportTypeKeys = optStringSet("favoriteSportKeys")
+        preferredSportTypeKeys = optStringSet("favoriteSportKeys"),
+        bookingCount = optSanitizedString("bookingCount").ifBlank { "0" },
+        rating = optSanitizedString("rating").ifBlank { "0.0" }
     )
 
 private fun normalizeMembership(raw: String?): String {
