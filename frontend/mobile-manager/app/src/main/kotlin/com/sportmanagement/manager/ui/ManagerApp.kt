@@ -1,5 +1,9 @@
 package com.sportmanagement.manager.ui
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -9,9 +13,15 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.AlertDialog
@@ -29,26 +39,32 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import com.sportmanagement.manager.R
+import com.sportmanagement.manager.data.AppContainer
 import com.sportmanagement.manager.domain.model.Pitch
 import com.sportmanagement.manager.ui.navigation.ManagerTab
 import com.sportmanagement.manager.ui.state.BookingsUiState
@@ -63,15 +79,27 @@ import com.sportmanagement.manager.ui.screens.pitches.PitchDetailScreen
 import com.sportmanagement.manager.ui.screens.pitches.PitchesScreen
 import com.sportmanagement.manager.ui.screens.services.ServiceDetailScreen
 import com.sportmanagement.manager.ui.screens.services.ServicesScreen
+import com.sportmanagement.manager.ui.theme.AppAccentCitrus
+import com.sportmanagement.manager.ui.theme.AppControlCornerRadius
+import com.sportmanagement.manager.ui.theme.AppHeaderGradientEnd
+import com.sportmanagement.manager.ui.theme.AppHeaderGradientStart
+import com.sportmanagement.manager.ui.theme.AppNavIconGradientEnd
+import com.sportmanagement.manager.ui.theme.AppNavIconGradientStart
 import com.sportmanagement.manager.ui.viewmodel.BookingsViewModel
 import com.sportmanagement.manager.ui.viewmodel.DashboardViewModel
 import com.sportmanagement.manager.ui.viewmodel.MessagesViewModel
 import com.sportmanagement.manager.ui.viewmodel.ServicesViewModel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ManagerApp(dashboardViewModel: DashboardViewModel = viewModel()) {
-    var isLoggedIn by rememberSaveable { mutableStateOf(false) }
+    // Dùng session đã lưu nếu có, tránh đăng nhập lại mỗi lần mở app
+    var isLoggedIn by rememberSaveable { mutableStateOf(AppContainer.authRepository.isLoggedIn()) }
 
     if (!isLoggedIn) {
         LoginScreen(onLoginSuccess = { isLoggedIn = true })
@@ -93,7 +121,10 @@ fun ManagerApp(dashboardViewModel: DashboardViewModel = viewModel()) {
 
     when {
         selectedPitch != null -> {
-            PitchDetailScreen(onBackClick = { selectedPitch = null })
+            PitchDetailScreen(
+                fieldId = selectedPitch!!.id,
+                onBackClick = { selectedPitch = null }
+            )
             return
         }
         bookingsState.selectedBooking != null -> {
@@ -117,7 +148,6 @@ fun ManagerApp(dashboardViewModel: DashboardViewModel = viewModel()) {
                     }
                 }
             )
-            // Show cancel/edit/payment dialogs on top of the detail screen
             if (bookingsState.showCancelDialog) {
                 CancelBookingDialogRoot(
                     reason = bookingsState.cancelReasonDraft,
@@ -206,14 +236,8 @@ fun ManagerApp(dashboardViewModel: DashboardViewModel = viewModel()) {
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         when (selectedTab) {
-            ManagerTab.Dashboard -> DashboardScreen(
-                padding = padding,
-                viewModel = dashboardViewModel
-            )
-            ManagerTab.Pitches -> PitchesScreen(
-                padding = padding,
-                onPitchClick = { selectedPitch = it }
-            )
+            ManagerTab.Dashboard -> DashboardScreen(padding = padding, viewModel = dashboardViewModel)
+            ManagerTab.Pitches -> PitchesScreen(padding = padding, onPitchClick = { selectedPitch = it })
             ManagerTab.Bookings -> BookingsScreen(
                 padding = padding,
                 onBookingClick = { bookingsViewModel.onBookingClick(it) },
@@ -234,16 +258,17 @@ fun ManagerApp(dashboardViewModel: DashboardViewModel = viewModel()) {
     }
 }
 
+// ─── Top App Bar ──────────────────────────────────────────────────────────────
+
 @Composable
 private fun ManagerAvatar(managerName: String, avatarUrl: String?) {
     val initial = managerName.trim().firstOrNull()?.uppercaseChar()?.toString() ?: "M"
 
     Box(
         modifier = Modifier
-            .size(40.dp)
-            .clip(CircleShape)
-            .border(2.dp, MaterialTheme.colorScheme.primaryContainer, CircleShape)
-            .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.18f)),
+            .size(46.dp)
+            .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.92f), CircleShape)
+            .border(1.5.dp, Color.White.copy(alpha = 0.7f), CircleShape),
         contentAlignment = Alignment.Center
     ) {
         if (!avatarUrl.isNullOrBlank()) {
@@ -251,109 +276,236 @@ private fun ManagerAvatar(managerName: String, avatarUrl: String?) {
                 model = avatarUrl,
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier
+                    .size(46.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surface, CircleShape)
             )
         } else {
             Text(
                 text = initial,
                 fontWeight = FontWeight.Bold,
-                fontSize = 16.sp,
+                fontSize = 18.sp,
                 color = MaterialTheme.colorScheme.primary
             )
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ManagerTopAppBar(managerName: String, managerAvatarUrl: String?) {
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .shadow(elevation = 4.dp),
-        color = Color.White
-    ) {
-        TopAppBar(
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = Color.White,
-                titleContentColor = MaterialTheme.colorScheme.onBackground
-            ),
-            title = {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    ManagerAvatar(managerName = managerName, avatarUrl = managerAvatarUrl)
-                    Spacer(Modifier.width(12.dp))
-                    Column {
-                        Text(
-                            text = "CHÀO BUỔI SÁNG",
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            letterSpacing = 0.8.sp,
-                            color = MaterialTheme.colorScheme.outline,
-                            lineHeight = 12.sp
+    val todayLabel = remember { formatCurrentDateLabel() }
+
+    Box(modifier = Modifier.fillMaxWidth()) {
+        // Banner image — same as user app
+        Image(
+            painter = painterResource(id = R.drawable.banner_app),
+            contentDescription = null,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(136.dp),
+            contentScale = ContentScale.Crop
+        )
+
+        // Dark gradient scrim for readability
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(136.dp)
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Black.copy(alpha = 0.58f),
+                            Color.Black.copy(alpha = 0.28f)
                         )
-                        Text(
-                            text = managerName,
-                            style = MaterialTheme.typography.headlineSmall,
-                            color = MaterialTheme.colorScheme.onBackground,
-                            lineHeight = 22.sp
-                        )
-                    }
-                }
-            },
-            actions = {
-                IconButton(onClick = { }) {
-                    Icon(
-                        imageVector = Icons.Filled.Notifications,
-                        contentDescription = "Thông báo",
-                        tint = MaterialTheme.colorScheme.onBackground
+                    )
+                )
+        )
+
+        // Header content
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                ManagerAvatar(managerName = managerName, avatarUrl = managerAvatarUrl)
+                Spacer(Modifier.width(10.dp))
+                Column {
+                    Text(
+                        text = todayLabel,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White.copy(alpha = 0.80f)
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    Text(
+                        text = managerName,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = AppAccentCitrus
+                    )
+                    Text(
+                        text = "QUẢN LÝ",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        letterSpacing = 1.sp,
+                        color = Color.White.copy(alpha = 0.60f),
+                        lineHeight = 13.sp
                     )
                 }
             }
-        )
+
+            Box(
+                modifier = Modifier.size(36.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Notifications,
+                    contentDescription = "Thông báo",
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
     }
 }
+
+// ─── Bottom Bar ───────────────────────────────────────────────────────────────
 
 @Composable
 private fun ManagerBottomBar(
     selectedTab: ManagerTab,
     onTabSelected: (ManagerTab) -> Unit
 ) {
-    NavigationBar(
-        containerColor = Color.White,
-        tonalElevation = 0.dp,
-        modifier = Modifier.shadow(elevation = 8.dp)
+    val accentColor = AppHeaderGradientEnd
+    val outlineColor = accentColor.copy(alpha = 0.38f)
+    val containerShape = RoundedCornerShape(topStart = AppControlCornerRadius, topEnd = AppControlCornerRadius)
+    val glowBrush = Brush.horizontalGradient(
+        listOf(Color.Transparent, accentColor.copy(alpha = 0.28f), Color.Transparent)
+    )
+    val selectedIconBrush = Brush.horizontalGradient(
+        colors = listOf(AppNavIconGradientStart, AppNavIconGradientEnd)
+    )
+    val scope = rememberCoroutineScope()
+    var animatingTab by remember { mutableStateOf<ManagerTab?>(null) }
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = containerShape,
+        color = Color.White.copy(alpha = 0.94f),
+        border = BorderStroke(1.dp, outlineColor),
+        shadowElevation = 10.dp,
+        tonalElevation = 0.dp
     ) {
-        ManagerTab.entries.forEach { tab ->
-            val isSelected = tab == selectedTab
-            NavigationBarItem(
-                selected = isSelected,
-                onClick = { onTabSelected(tab) },
-                icon = {
-                    Icon(
-                        imageVector = if (isSelected) tab.filledIcon else tab.outlinedIcon,
-                        contentDescription = tab.label,
-                        modifier = Modifier.size(24.dp)
-                    )
-                },
-                label = {
-                    Text(
-                        text = tab.label.uppercase(),
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        letterSpacing = 0.5.sp
-                    )
-                },
-                colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = MaterialTheme.colorScheme.primary,
-                    selectedTextColor = MaterialTheme.colorScheme.primary,
-                    indicatorColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f),
-                    unselectedIconColor = Color(0xFF94A3B8),
-                    unselectedTextColor = Color(0xFF94A3B8)
-                )
+        Column(
+            modifier = Modifier
+                .navigationBarsPadding()
+                .offset(y = (-4).dp)
+                .padding(top = 2.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(4.dp)
+                    .background(glowBrush)
             )
+
+            NavigationBar(
+                modifier = Modifier.fillMaxWidth(),
+                containerColor = Color.Transparent,
+                tonalElevation = 0.dp
+            ) {
+                ManagerTab.entries.forEach { tab ->
+                    val isSelected = tab == selectedTab
+                    val iconScale by animateFloatAsState(
+                        targetValue = if (animatingTab == tab) 1.2f else 1f,
+                        animationSpec = tween(durationMillis = 140),
+                        label = "tab_scale"
+                    )
+
+                    NavigationBarItem(
+                        selected = isSelected,
+                        onClick = {
+                            animatingTab = tab
+                            onTabSelected(tab)
+                            scope.launch {
+                                delay(170)
+                                if (animatingTab == tab) animatingTab = null
+                            }
+                        },
+                        icon = {
+                            Box(
+                                modifier = Modifier
+                                    .size(28.dp)
+                                    .graphicsLayer {
+                                        scaleX = iconScale
+                                        scaleY = iconScale
+                                    },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = if (isSelected) tab.filledIcon else tab.outlinedIcon,
+                                    contentDescription = tab.label,
+                                    modifier = Modifier
+                                        .size(25.dp)
+                                        .then(
+                                            if (isSelected) {
+                                                Modifier
+                                                    .graphicsLayer {
+                                                        compositingStrategy = CompositingStrategy.Offscreen
+                                                    }
+                                                    .drawWithCache {
+                                                        onDrawWithContent {
+                                                            drawContent()
+                                                            drawRect(
+                                                                brush = selectedIconBrush,
+                                                                blendMode = BlendMode.SrcIn
+                                                            )
+                                                        }
+                                                    }
+                                            } else Modifier
+                                        ),
+                                    tint = if (isSelected) Color.White else Color(0xFF7A8A9A)
+                                )
+                            }
+                        },
+                        label = {
+                            Text(
+                                text = tab.label.uppercase(),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
+                                letterSpacing = 0.3.sp
+                            )
+                        },
+                        colors = NavigationBarItemDefaults.colors(
+                            selectedIconColor = Color.White,
+                            selectedTextColor = AppHeaderGradientStart,
+                            unselectedIconColor = Color(0xFF7A8A9A),
+                            unselectedTextColor = Color(0xFF7A8A9A),
+                            indicatorColor = Color.Transparent
+                        )
+                    )
+                }
+            }
         }
     }
 }
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+private fun formatCurrentDateLabel(): String {
+    val locale = Locale("vi", "VN")
+    val formatter = SimpleDateFormat("EEEE, dd/MM/yyyy", locale)
+    val formatted = formatter.format(Date())
+    return formatted.replaceFirstChar { char ->
+        if (char.isLowerCase()) char.titlecase(locale) else char.toString()
+    }
+}
+
+// ─── Dialogs ──────────────────────────────────────────────────────────────────
 
 @Composable
 fun CancelBookingDialogRoot(
@@ -370,7 +522,7 @@ fun CancelBookingDialogRoot(
                 Text(
                     "Vui lòng ghi nhận lý do hủy để thông báo cho khách hàng.",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.secondary
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 OutlinedTextField(
                     value = reason,
@@ -418,7 +570,7 @@ fun EditBookingDialogRoot(
                 OutlinedTextField(
                     value = "${state.editStart} - ${state.editEnd}",
                     onValueChange = {},
-                    label = { Text("Khung giờ (bắt đầu - kết thúc)") },
+                    label = { Text("Khung giờ") },
                     enabled = false,
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth()
@@ -468,7 +620,7 @@ fun PaymentConfirmDialogRoot(
         confirmButton = {
             Button(
                 onClick = onConfirm,
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF15803D))
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
             ) { Text("Xác nhận đã thanh toán") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Hủy") } }

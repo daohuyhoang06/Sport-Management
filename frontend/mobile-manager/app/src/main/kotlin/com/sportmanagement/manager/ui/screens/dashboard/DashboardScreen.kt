@@ -118,8 +118,8 @@ private fun MetricsSection(stats: DashboardStats) {
                 label = "SỐ LƯỢT ĐẶT",
                 value = stats.bookingCount.toString(),
                 icon = Icons.Filled.EventAvailable,
-                iconBgColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f),
-                iconTint = MaterialTheme.colorScheme.primaryContainer,
+                iconBgColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                iconTint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.weight(1f)
             )
             StatCard(
@@ -197,7 +197,7 @@ private fun TopPitchCard(pitchName: String, revenue: Long) {
 
 @Composable
 private fun RevenueCard(stats: DashboardStats) {
-    val primaryContainer = MaterialTheme.colorScheme.primaryContainer
+    val accentColor = MaterialTheme.colorScheme.primary
 
     Row(
         modifier = Modifier
@@ -206,12 +206,11 @@ private fun RevenueCard(stats: DashboardStats) {
             .clip(RoundedCornerShape(16.dp))
             .background(Color.White)
     ) {
-        // Left accent border
         Box(
             modifier = Modifier
                 .width(4.dp)
                 .height(104.dp)
-                .background(primaryContainer)
+                .background(accentColor)
         )
 
         Column(
@@ -233,7 +232,7 @@ private fun RevenueCard(stats: DashboardStats) {
                 Icon(
                     imageVector = Icons.Filled.Payments,
                     contentDescription = null,
-                    tint = primaryContainer,
+                    tint = accentColor,
                     modifier = Modifier.size(22.dp)
                 )
             }
@@ -477,7 +476,7 @@ private fun RevenueLineChart(
     points: List<WeeklyRevenuePoint>,
     modifier: Modifier = Modifier
 ) {
-    val lineColor = MaterialTheme.colorScheme.primaryContainer
+    val lineColor = MaterialTheme.colorScheme.primary
     val gradientTop = lineColor.copy(alpha = 0.22f)
     val gradientBottom = lineColor.copy(alpha = 0f)
 
@@ -567,12 +566,12 @@ private fun QuickActionButton(
     icon: ImageVector,
     isPrimary: Boolean
 ) {
-    val bgColor = if (isPrimary) MaterialTheme.colorScheme.primaryContainer else Color.White
+    val bgColor = if (isPrimary) MaterialTheme.colorScheme.primary else Color.White
     val textColor = if (isPrimary) Color.White else MaterialTheme.colorScheme.onBackground
     val subtitleColor = if (isPrimary) Color.White.copy(alpha = 0.8f) else MaterialTheme.colorScheme.outline
     val categoryColor = if (isPrimary) Color.White.copy(alpha = 0.7f) else MaterialTheme.colorScheme.outline
-    val iconBgColor = if (isPrimary) Color.White.copy(alpha = 0.2f) else MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.35f)
-    val iconTint = if (isPrimary) Color.White else MaterialTheme.colorScheme.secondary
+    val iconBgColor = if (isPrimary) Color.White.copy(alpha = 0.2f) else MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+    val iconTint = if (isPrimary) Color.White else MaterialTheme.colorScheme.primary
 
     val rowModifier = if (isPrimary) {
         Modifier

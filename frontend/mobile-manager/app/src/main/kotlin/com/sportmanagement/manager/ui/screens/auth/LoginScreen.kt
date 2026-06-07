@@ -34,7 +34,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import com.sportmanagement.manager.data.AppContainer
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -48,6 +51,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.sportmanagement.manager.ui.theme.AppCardCornerRadius
+import com.sportmanagement.manager.ui.theme.AppCtaWideHeight
+import com.sportmanagement.manager.ui.theme.AppHeaderGradientEnd
+import com.sportmanagement.manager.ui.theme.AppHeaderGradientStart
+import com.sportmanagement.manager.ui.theme.AppInputCornerRadius
+import com.sportmanagement.manager.ui.theme.AppPanelCornerRadius
 import com.sportmanagement.manager.ui.theme.SportManagerTheme
 
 @Composable
@@ -59,6 +68,7 @@ fun LoginScreen(
     var passwordVisible by remember { mutableStateOf(false) }
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf("") }
+    val scope = rememberCoroutineScope()
 
     val isLoginEnabled = username.isNotBlank() && password.isNotBlank() && !isLoading
 
@@ -68,9 +78,9 @@ fun LoginScreen(
             .background(
                 brush = Brush.verticalGradient(
                     colors = listOf(
-                        Color(0xFF1565C0),
-                        Color(0xFF1976D2),
-                        Color(0xFFE3F2FD)
+                        AppHeaderGradientStart,
+                        AppHeaderGradientEnd,
+                        Color(0xFFE8F0FB)
                     )
                 )
             )
@@ -87,7 +97,7 @@ fun LoginScreen(
             Box(
                 modifier = Modifier
                     .size(80.dp)
-                    .clip(RoundedCornerShape(24.dp))
+                    .clip(RoundedCornerShape(AppCardCornerRadius * 2))
                     .background(Color.White.copy(alpha = 0.2f)),
                 contentAlignment = Alignment.Center
             ) {
@@ -108,7 +118,7 @@ fun LoginScreen(
                 color = Color.White
             )
             Text(
-                text = "Hệ thống quản lý sân bóng",
+                text = "Hệ thống quản lý sân thể thao",
                 fontSize = 14.sp,
                 color = Color.White.copy(alpha = 0.8f)
             )
@@ -118,7 +128,7 @@ fun LoginScreen(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(24.dp))
+                    .clip(RoundedCornerShape(AppPanelCornerRadius))
                     .background(Color.White)
                     .padding(24.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -132,7 +142,7 @@ fun LoginScreen(
                 Text(
                     text = "Nhập thông tin tài khoản quản lý của bạn",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.secondary
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
                 Spacer(Modifier.height(4.dp))
@@ -145,7 +155,7 @@ fun LoginScreen(
                         Icon(Icons.Filled.Person, null, tint = MaterialTheme.colorScheme.outline)
                     },
                     singleLine = true,
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(AppInputCornerRadius),
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -168,7 +178,7 @@ fun LoginScreen(
                     visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                     singleLine = true,
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(AppInputCornerRadius),
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -195,17 +205,20 @@ fun LoginScreen(
 
                 Button(
                     onClick = {
-                        if (username == "admin" && password == "admin") {
-                            onLoginSuccess()
-                        } else {
-                            errorMessage = "Tên đăng nhập hoặc mật khẩu không đúng"
+                        scope.launch {
+                            isLoading = true
+                            errorMessage = ""
+                            AppContainer.authRepository.login(username, password).fold(
+                                onSuccess = { isLoading = false; onLoginSuccess() },
+                                onFailure = { e -> isLoading = false; errorMessage = e.message ?: "Lỗi đăng nhập" }
+                            )
                         }
                     },
                     enabled = isLoginEnabled,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(52.dp),
-                    shape = RoundedCornerShape(12.dp),
+                        .height(AppCtaWideHeight),
+                    shape = RoundedCornerShape(AppInputCornerRadius),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary
                     )

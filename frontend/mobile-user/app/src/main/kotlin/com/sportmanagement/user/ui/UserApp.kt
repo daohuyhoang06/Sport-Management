@@ -35,7 +35,12 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sportmanagement.user.R
 import com.sportmanagement.user.domain.model.BookingConfirmationData
+<<<<<<< HEAD
+import com.sportmanagement.user.domain.model.FieldDetail
+import com.sportmanagement.user.domain.model.mockFieldDetail
+=======
 import com.sportmanagement.user.domain.model.UserField
+>>>>>>> develop
 import com.sportmanagement.user.ui.components.UserBottomBar
 import com.sportmanagement.user.ui.components.chatbot.ChatbotOverlay
 import com.sportmanagement.user.ui.components.share.FieldShareSheet
@@ -241,6 +246,22 @@ fun UserApp(
         bookingConfirmationData = null
         selectedBookingField = null
         resolvedUserViewModel.onTabSelected(UserTab.Home)
+    }
+
+    if (selectedFieldDetail != null) {
+        AppStatusBarEffect(statusBarColor = Color.Transparent, useDarkIcons = false)
+        FieldDetailScreen(
+            fieldDetail = selectedFieldDetail!!,
+            onBackClick = { selectedFieldDetail = null },
+            onBookNowClick = { detail ->
+                selectedCourtName = detail.name
+                selectedFieldDetail = null
+                showBookingConfirmationScreen = false
+                bookingConfirmationData = null
+                showBookingScreen = true
+            }
+        )
+        return
     }
 
     val statusBarColor = when {
