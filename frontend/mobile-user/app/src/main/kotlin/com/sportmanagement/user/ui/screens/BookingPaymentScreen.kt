@@ -58,8 +58,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -152,7 +155,9 @@ fun BookingPaymentScreen(
     var reopenedPayUrl by rememberSaveable { mutableStateOf<String?>(null) }
     var currentOrderId by rememberSaveable { mutableStateOf<String?>(null) }
     var pendingBookingId by rememberSaveable { mutableStateOf<Int?>(null) }
-    var remainingHoldSeconds by rememberSaveable { mutableIntStateOf(6 * 60) }
+    var holdExpiryTimeMillis by rememberSaveable {
+        mutableLongStateOf(System.currentTimeMillis() + (6 * 60 * 1_000L))
+    }
     var isHoldExpired by rememberSaveable { mutableStateOf(false) }
 
     val totalAmount = remember(confirmationData.totalPrice) {
@@ -257,7 +262,8 @@ fun BookingPaymentScreen(
                 }
                 pendingBookingId = createdBookingId
                 if (batchResult.pendingHoldSeconds > 0) {
-                    remainingHoldSeconds = batchResult.pendingHoldSeconds
+                    holdExpiryTimeMillis = computeHoldExpiryTimeMillis(batchResult.pendingHoldSeconds)
+                    isHoldExpired = false
                 }
                 createdBookingId
             }
@@ -395,21 +401,6 @@ fun BookingPaymentScreen(
                 )
             }.onSuccess {
                 onPaymentConfirmed()
-            }
-        }
-    }
-
-    LaunchedEffect(Unit) {
-        while (true) {
-            delay(1_000)
-            if (isHoldExpired || paymentStatus == PaymentReturnStatus.Success) continue
-            if (remainingHoldSeconds > 0) {
-                remainingHoldSeconds -= 1
-            }
-            if (remainingHoldSeconds <= 0 && paymentStatus != PaymentReturnStatus.Success) {
-                isHoldExpired = true
-                paymentStatus = PaymentReturnStatus.Failed
-                paymentMessage = context.getString(R.string.payment_pending_expired_message)
             }
         }
     }
@@ -662,7 +653,14 @@ fun BookingPaymentScreen(
                         if (paymentStatus != PaymentReturnStatus.Success) {
                             item {
                                 PaymentHoldSlotSection(
-                                    remainingSeconds = remainingHoldSeconds.coerceAtLeast(0)
+                                    holdExpiryTimeMillis = holdExpiryTimeMillis,
+                                    onExpired = {
+                                        if (!isHoldExpired && paymentStatus != PaymentReturnStatus.Success) {
+                                            isHoldExpired = true
+                                            paymentStatus = PaymentReturnStatus.Failed
+                                            paymentMessage = context.getString(R.string.payment_pending_expired_message)
+                                        }
+                                    }
                                 )
                             }
                         }
@@ -685,8 +683,24 @@ fun BookingPaymentScreen(
 
 @Composable
 private fun PaymentHoldSlotSection(
-    remainingSeconds: Int
+    holdExpiryTimeMillis: Long,
+    onExpired: () -> Unit
 ) {
+    val latestOnExpired by rememberUpdatedState(onExpired)
+    val remainingSeconds by produceState(
+        initialValue = computeRemainingHoldSeconds(holdExpiryTimeMillis),
+        holdExpiryTimeMillis
+    ) {
+        while (true) {
+            val nextRemainingSeconds = computeRemainingHoldSeconds(holdExpiryTimeMillis)
+            value = nextRemainingSeconds
+            if (nextRemainingSeconds <= 0) {
+                latestOnExpired()
+                break
+            }
+            delay(1_000)
+        }
+    }
     val minutes = (remainingSeconds / 60).coerceAtLeast(0)
     val seconds = (remainingSeconds % 60).coerceAtLeast(0)
     Column(
@@ -768,6 +782,16 @@ private fun PaymentExpiredSection(
             color = Color.White,
         )
     }
+}
+
+private fun computeHoldExpiryTimeMillis(remainingSeconds: Int): Long {
+    return System.currentTimeMillis() + (remainingSeconds.coerceAtLeast(0) * 1_000L)
+}
+
+private fun computeRemainingHoldSeconds(holdExpiryTimeMillis: Long): Int {
+    return ((holdExpiryTimeMillis - System.currentTimeMillis() + 999L) / 1_000L)
+        .coerceAtLeast(0L)
+        .toInt()
 }
 
 @Composable

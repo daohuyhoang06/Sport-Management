@@ -25,11 +25,18 @@ class ChatbotViewModel(
     val uiState: StateFlow<ChatbotUiState> = _uiState
 
     fun setWidgetEnabled(enabled: Boolean) {
-        _uiState.update { current ->
-            current.copy(
+        val current = _uiState.value
+        if (
+            current.isWidgetEnabled == enabled &&
+            (enabled || (!current.isWindowOpen && current.errorMessage == null))
+        ) {
+            return
+        }
+        _uiState.update { state ->
+            state.copy(
                 isWidgetEnabled = enabled,
-                isWindowOpen = if (enabled) current.isWindowOpen else false,
-                errorMessage = if (enabled) current.errorMessage else null
+                isWindowOpen = if (enabled) state.isWindowOpen else false,
+                errorMessage = if (enabled) state.errorMessage else null
             )
         }
     }
@@ -60,10 +67,16 @@ class ChatbotViewModel(
     }
 
     fun onButtonAnchorChanged(x: Float, y: Float) {
+        val nextX = x.coerceIn(0f, 1f)
+        val nextY = y.coerceIn(0f, 1f)
+        val current = _uiState.value
+        if (current.buttonAnchorX == nextX && current.buttonAnchorY == nextY) {
+            return
+        }
         _uiState.update {
             it.copy(
-                buttonAnchorX = x.coerceIn(0f, 1f),
-                buttonAnchorY = y.coerceIn(0f, 1f)
+                buttonAnchorX = nextX,
+                buttonAnchorY = nextY
             )
         }
     }

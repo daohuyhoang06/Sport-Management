@@ -22,10 +22,13 @@ import com.sportmanagement.user.ui.screens.InboxCategoryType
 import com.sportmanagement.user.ui.screens.NotificationDetailInfo
 import com.sportmanagement.user.ui.screens.NotificationItem
 import com.sportmanagement.user.ui.screens.NotificationSectionData
+import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.supervisorScope
 import java.time.LocalDateTime
 import java.time.LocalDate
 import java.time.OffsetDateTime
@@ -42,12 +45,16 @@ class InboxViewModel(
     val uiState: StateFlow<InboxUiState> = _uiState.asStateFlow()
 
     private val prefs = appContext.getSharedPreferences("user_repository_cache", Context.MODE_PRIVATE)
+    private var inboxRefreshGeneration = 0L
 
     init {
         refreshInbox()
     }
 
-    fun refreshInbox() {
+    fun refreshInbox(
+        silent: Boolean = false,
+        withBookingFollowUp: Boolean = false
+    ) {
         val token = token()
         if (token == null) {
             _uiState.value = _uiState.value.copy(
@@ -58,20 +65,46 @@ class InboxViewModel(
             return
         }
 
+        val generation = ++inboxRefreshGeneration
         viewModelScope.launch {
-            _uiState.value = _uiState.value.copy(isLoadingInbox = true, inboxError = null)
+            val shouldShowLoading = !silent || _uiState.value.sections.all { it.items.isEmpty() }
+            _uiState.value = if (shouldShowLoading) {
+                _uiState.value.copy(isLoadingInbox = true, inboxError = null)
+            } else {
+                _uiState.value.copy(inboxError = null)
+            }
 
-            val inboxItems = runCatching { api.getInbox(token) }.getOrDefault(emptyList())
-            val notifications = runCatching { api.getNotifications(token) }.getOrDefault(emptyList())
-            val conversations = runCatching { api.getConversations(token) }.getOrDefault(emptyList())
+            val (inboxItems, notifications, conversations) = supervisorScope {
+                val inboxDeferred = async { runCatching { api.getInbox(token) }.getOrDefault(emptyList()) }
+                val notificationsDeferred = async { runCatching { api.getNotifications(token) }.getOrDefault(emptyList()) }
+                val conversationsDeferred = async { runCatching { api.getConversations(token) }.getOrDefault(emptyList()) }
+                Triple(
+                    inboxDeferred.await(),
+                    notificationsDeferred.await(),
+                    conversationsDeferred.await()
+                )
+            }
 
             val sections = buildSections(inboxItems, notifications, conversations)
-            val enrichedSections = runCatching { enrichBookingSections(token, sections) }.getOrDefault(sections)
+            if (generation != inboxRefreshGeneration) return@launch
             _uiState.value = _uiState.value.copy(
                 isLoadingInbox = false,
-                sections = enrichedSections,
-                inboxError = if (enrichedSections.all { it.items.isEmpty() }) "Hộp thư chưa có dữ liệu." else null
+                sections = sections,
+                inboxError = if (sections.all { it.items.isEmpty() }) "Hộp thư chưa có dữ liệu." else null
             )
+
+            val enrichedSections = runCatching { enrichBookingSections(token, sections) }.getOrDefault(sections)
+            if (generation != inboxRefreshGeneration) return@launch
+            if (enrichedSections != sections) {
+                _uiState.value = _uiState.value.copy(sections = enrichedSections)
+            }
+
+            if (withBookingFollowUp && generation == inboxRefreshGeneration) {
+                delay(2_500)
+                if (generation == inboxRefreshGeneration) {
+                    refreshInbox()
+                }
+            }
         }
     }
 
@@ -124,6 +157,7 @@ class InboxViewModel(
         clearNotificationUnreadState(id)
         viewModelScope.launch {
             runCatching { api.markNotificationRead(token, id) }
+            delay(1_200)
             refreshInbox()
         }
     }
@@ -134,7 +168,7 @@ class InboxViewModel(
         val clearedSections = _uiState.value.sections.map { section ->
             section.copy(
                 items = section.items.map { item ->
-                    if (item.id == notificationId) {
+                    if (item.matchesNotificationId(notificationId)) {
                         item.copy(unread = false, badgeCount = 0)
                     } else {
                         item
@@ -764,6 +798,19 @@ class InboxViewModel(
             LocalDateTime.parse(raw, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")).toLocalDate().format(output)
         }.getOrDefault(raw)
     }
+}
+
+private fun NotificationItem.matchesNotificationId(notificationId: Int): Boolean {
+    val detailNotificationId = when (val detail = detailInfo) {
+        is NotificationDetailInfo.UpcomingMatch -> detail.notificationId
+        is NotificationDetailInfo.Promotion -> detail.notificationId
+        is NotificationDetailInfo.SystemNotice -> detail.notificationId
+        null -> null
+    }
+
+    return id == notificationId ||
+        bookingInfo?.notificationId == notificationId ||
+        detailNotificationId == notificationId
 }
 
 data class InboxUiState(

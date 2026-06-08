@@ -75,15 +75,24 @@ fun HomeSearchResultsScreen(
     var searchQuery by rememberSaveable { mutableStateOf("") }
     var selectedFieldForDetail by remember { mutableStateOf<UserField?>(null) }
     val favoriteFieldIds = remember(favoriteFields) { favoriteFields.map { it.fieldId }.toSet() }
+    val fieldSearchIndex = remember(fields) {
+        fields.map { field ->
+            SearchableResultsField(
+                field = field,
+                normalizedName = normalizeResultsSearch(field.name),
+                normalizedLocation = normalizeResultsSearch(field.location)
+            )
+        }
+    }
     val normalizedQuery = remember(searchQuery) { normalizeResultsSearch(searchQuery) }
-    val visibleFields = remember(fields, normalizedQuery) {
+    val visibleFields = remember(fieldSearchIndex, normalizedQuery) {
         if (normalizedQuery.isBlank()) {
-            fields
+            fieldSearchIndex.map(SearchableResultsField::field)
         } else {
-            fields.filter { field ->
-                normalizeResultsSearch(field.name).contains(normalizedQuery) ||
-                    normalizeResultsSearch(field.location).contains(normalizedQuery)
-            }
+            fieldSearchIndex.filter { entry ->
+                entry.normalizedName.contains(normalizedQuery) ||
+                    entry.normalizedLocation.contains(normalizedQuery)
+            }.map(SearchableResultsField::field)
         }
     }
     Box(
@@ -119,7 +128,7 @@ fun HomeSearchResultsScreen(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(top = contentTopPadding, bottom = 20.dp)
             ) {
-                items(visibleFields) { field ->
+                items(visibleFields, key = { "field_${it.fieldId}_${it.name}" }) { field ->
                     HomeVenueCard(
                         field = field,
                         isFavorite = field.fieldId in favoriteFieldIds,
@@ -275,6 +284,12 @@ fun HomeSearchResultsScreen(
         }
     }
 }
+
+private data class SearchableResultsField(
+    val field: UserField,
+    val normalizedName: String,
+    val normalizedLocation: String
+)
 
 @Composable
 private fun SearchResultsEmptyState(
