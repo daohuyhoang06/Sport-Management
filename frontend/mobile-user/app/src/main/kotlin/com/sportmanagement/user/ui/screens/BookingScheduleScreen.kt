@@ -40,6 +40,7 @@ import com.sportmanagement.user.ui.components.booking.BookingBottomActionBar
 import com.sportmanagement.user.ui.components.booking.BookingHeaderSection
 import com.sportmanagement.user.ui.components.booking.BookingTimeGrid
 import com.sportmanagement.user.ui.AppNavigationBarEffect
+import com.sportmanagement.user.ui.components.AppRotatingLoadingIndicator
 import com.sportmanagement.user.ui.theme.SportUserTheme
 import com.sportmanagement.user.ui.viewmodel.BookingScheduleViewModel
 import kotlinx.coroutines.launch
@@ -117,7 +118,9 @@ fun BookingScheduleScreen(
                         modifier = Modifier.fillMaxSize().padding(32.dp),
                         contentAlignment = androidx.compose.ui.Alignment.Center
                     ) {
-                        androidx.compose.material3.CircularProgressIndicator()
+                        AppRotatingLoadingIndicator(
+                            label = "Dang tai lich dat san..."
+                        )
                     }
                 } else if (uiState.scheduleData != null) {
                     BookingTimeGrid(

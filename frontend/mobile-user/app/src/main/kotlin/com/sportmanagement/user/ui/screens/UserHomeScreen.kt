@@ -92,9 +92,9 @@ fun UserHomeScreen(
 ) {
     val context = LocalContext.current
     val layoutDirection = LocalLayoutDirection.current
-    var searchQuery by remember { mutableStateOf("") }
-    var lastRequestedSearchQuery by remember { mutableStateOf("") }
-    var selectedCategoryIndex by remember { mutableIntStateOf(-1) }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    var lastRequestedSearchQuery by rememberSaveable { mutableStateOf("") }
+    var selectedCategoryIndex by rememberSaveable { mutableIntStateOf(-1) }
     var selectedFieldForDetail by remember { mutableStateOf<UserField?>(null) }
     var hasRequestedHomeLocation by rememberSaveable { mutableStateOf(false) }
     val listState = rememberLazyListState()
@@ -149,24 +149,42 @@ fun UserHomeScreen(
     val selectedSportType = remember(selectedCategoryIndex, sportCategories) {
         sportCategories.getOrNull(selectedCategoryIndex)?.iconType
     }
-    val normalizedQuery = remember(searchQuery) { normalizeForSearch(searchQuery) }
-    val isSearching = normalizedQuery.isNotBlank()
-    val filteredHomeFields = remember(fields, selectedSportType, normalizedQuery) {
-        fields.filter { field ->
-            val byCategory = selectedSportType == null || field.sportIconType == selectedSportType
-            val bySearch = normalizedQuery.isBlank() ||
-                normalizeForSearch(field.name).contains(normalizedQuery) ||
-                normalizeForSearch(field.location).contains(normalizedQuery)
-            byCategory && bySearch
+    val homeFieldSearchIndex = remember(fields) {
+        fields.map { field ->
+            SearchableUserField(
+                field = field,
+                normalizedName = normalizeForSearch(field.name),
+                normalizedLocation = normalizeForSearch(field.location)
+            )
         }
     }
-    val filteredSearchResults = remember(searchResults, selectedSportType, normalizedQuery) {
-        searchResults.filter { field ->
-            val byCategory = selectedSportType == null || field.sportIconType == selectedSportType
-            val bySearch = normalizeForSearch(field.name).contains(normalizedQuery) ||
-                normalizeForSearch(field.location).contains(normalizedQuery)
-            byCategory && bySearch
+    val searchResultIndex = remember(searchResults) {
+        searchResults.map { field ->
+            SearchableUserField(
+                field = field,
+                normalizedName = normalizeForSearch(field.name),
+                normalizedLocation = normalizeForSearch(field.location)
+            )
         }
+    }
+    val normalizedQuery = remember(searchQuery) { normalizeForSearch(searchQuery) }
+    val isSearching = normalizedQuery.isNotBlank()
+    val filteredHomeFields = remember(homeFieldSearchIndex, selectedSportType, normalizedQuery) {
+        homeFieldSearchIndex.filter { entry ->
+            val byCategory = selectedSportType == null || entry.field.sportIconType == selectedSportType
+            val bySearch = normalizedQuery.isBlank() ||
+                entry.normalizedName.contains(normalizedQuery) ||
+                entry.normalizedLocation.contains(normalizedQuery)
+            byCategory && bySearch
+        }.map(SearchableUserField::field)
+    }
+    val filteredSearchResults = remember(searchResultIndex, selectedSportType, normalizedQuery) {
+        searchResultIndex.filter { entry ->
+            val byCategory = selectedSportType == null || entry.field.sportIconType == selectedSportType
+            val bySearch = entry.normalizedName.contains(normalizedQuery) ||
+                entry.normalizedLocation.contains(normalizedQuery)
+            byCategory && bySearch
+        }.map(SearchableUserField::field)
     }
     val visibleFields = if (isSearching) filteredSearchResults else filteredHomeFields
     val favoriteFieldIds = remember(favoriteFields) { favoriteFields.map { it.fieldId }.toSet() }
@@ -228,7 +246,7 @@ fun UserHomeScreen(
             }
             val totalItems = listState.layoutInfo.totalItemsCount
             val lastVisibleIndex = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-            lastVisibleIndex >= totalItems - 4
+            lastVisibleIndex >= totalItems - 7
         }
     }
 
@@ -286,7 +304,7 @@ fun UserHomeScreen(
                     Spacer(Modifier.height(12.dp))
                 }
             } else {
-                items(visibleFields) { field ->
+                items(visibleFields, key = { "field_${it.fieldId}_${it.name}" }) { field ->
                     HomeVenueCard(
                         field = field,
                         isFavorite = field.fieldId in favoriteFieldIds,
@@ -355,6 +373,12 @@ private fun normalizeForSearch(text: String): String {
     return normalized.replace("đ", "d").replace("\\p{M}+".toRegex(), "")
 }
 
+
+private data class SearchableUserField(
+    val field: UserField,
+    val normalizedName: String,
+    val normalizedLocation: String
+)
 
 @Composable
 fun HomeVenueSkeletonCard() {

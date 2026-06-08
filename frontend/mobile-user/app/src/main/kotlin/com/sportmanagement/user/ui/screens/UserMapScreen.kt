@@ -35,6 +35,7 @@ import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -127,42 +128,67 @@ fun UserMapScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
     val layoutDirection = LocalLayoutDirection.current
     val topInsetPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    val latLngSaver = remember {
+        listSaver<LatLng?, Double>(
+            save = { location ->
+                location?.let { listOf(it.latitude, it.longitude) }.orEmpty()
+            },
+            restore = { saved ->
+                saved?.takeIf { it.size == 2 }?.let { LatLng(it[0], it[1]) }
+            }
+        )
+    }
 
-    var selectedCategoryIndex by remember { mutableIntStateOf(-1) }
+    var selectedCategoryIndex by rememberSaveable { mutableIntStateOf(-1) }
     var showHighlights by rememberSaveable { mutableStateOf(false) }
     var searchQuery by rememberSaveable { mutableStateOf("") }
     var showSearchPopup by rememberSaveable { mutableStateOf(false) }
     var selectedFieldName by rememberSaveable { mutableStateOf<String?>(null) }
     var isLocationPermissionGranted by remember { mutableStateOf(checkLocationPermission(context)) }
-    var currentLocation by remember { mutableStateOf<LatLng?>(null) }
+    var currentLocation by rememberSaveable(stateSaver = latLngSaver) { mutableStateOf<LatLng?>(null) }
     var showFieldList by rememberSaveable { mutableStateOf(false) }
     var selectedFieldForDetail by remember { mutableStateOf<UserField?>(null) }
     val favoriteFieldIds = remember(favoriteFields) { favoriteFields.map { it.fieldId }.toSet() }
 
     var mapLibreMap by remember { mutableStateOf<MapLibreMap?>(null) }
-    val hanoiFields = remember(nearby) {
-        nearby.filter {
-            it.latitude != null &&
-                it.longitude != null &&
-                normalizeForSearch(it.location).contains(HANOI_KEYWORD)
+    val nearbyFieldSearchIndex = remember(nearby) {
+        nearby.map { field ->
+            MapSearchableField(
+                field = field,
+                normalizedName = normalizeForSearch(field.name),
+                normalizedLocation = normalizeForSearch(field.location)
+            )
+        }
+    }
+    val hanoiFieldSearchIndex = remember(nearbyFieldSearchIndex) {
+        nearbyFieldSearchIndex.filter { entry ->
+            entry.field.latitude != null &&
+                entry.field.longitude != null &&
+                entry.normalizedLocation.contains(HANOI_KEYWORD)
         }
     }
     val selectedSportType = remember(selectedCategoryIndex, sportCategories) {
         sportCategories.getOrNull(selectedCategoryIndex)?.iconType
     }
-    val visibleFields = remember(hanoiFields, selectedSportType) {
-        if (selectedSportType == null) hanoiFields
-        else hanoiFields.filter { it.sportIconType == selectedSportType }
+    val visibleFieldSearchIndex = remember(hanoiFieldSearchIndex, selectedSportType) {
+        if (selectedSportType == null) {
+            hanoiFieldSearchIndex
+        } else {
+            hanoiFieldSearchIndex.filter { it.field.sportIconType == selectedSportType }
+        }
+    }
+    val visibleFields = remember(visibleFieldSearchIndex) {
+        visibleFieldSearchIndex.map(MapSearchableField::field)
     }
     val normalizedQuery = remember(searchQuery) { normalizeForSearch(searchQuery) }
-    val localSuggestions = remember(visibleFields, normalizedQuery) {
+    val localSuggestions = remember(visibleFieldSearchIndex, normalizedQuery) {
         if (normalizedQuery.isBlank()) {
             emptyList()
         } else {
-            visibleFields.filter {
-                normalizeForSearch(it.name).contains(normalizedQuery) ||
-                    normalizeForSearch(it.location).contains(normalizedQuery)
-            }.take(8)
+            visibleFieldSearchIndex.filter {
+                it.normalizedName.contains(normalizedQuery) ||
+                    it.normalizedLocation.contains(normalizedQuery)
+            }.map(MapSearchableField::field).take(8)
         }
     }
     val typedSuggestions = remember(searchQuery, searchResults, localSuggestions) {
@@ -277,9 +303,10 @@ fun UserMapScreen(
         }
     }
 
-    LaunchedEffect(visibleFields, currentLocation, selectedFieldName, mapLibreMap) {
+    LaunchedEffect(visibleFields, currentLocation, mapLibreMap) {
         val map = mapLibreMap ?: return@LaunchedEffect
         val iconFactory = IconFactory.getInstance(context)
+        val markerIcons = mutableMapOf<SportIconType, org.maplibre.android.annotations.Icon>()
         map.clear()
         currentLocation?.let {
             map.addMarker(
@@ -296,7 +323,8 @@ fun UserMapScreen(
                     .title(field.name)
                     .snippet(field.location)
                     .icon(
-                        iconFactory.fromBitmap(
+                        markerIcons.getOrPut(field.sportIconType) {
+                            iconFactory.fromBitmap(
                                 createSportMarkerBitmap(
                                     context = context,
                                     sportIconType = field.sportIconType,
@@ -306,7 +334,8 @@ fun UserMapScreen(
                                     iconSizeDp = 21f
                                 )
                             )
-                        )
+                        }
+                    )
             )
         }
     }
@@ -788,7 +817,7 @@ private fun MapFieldListSheet(
                 .heightIn(max = 520.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            items(fields, key = { it.name }) { field ->
+            items(fields, key = { "field_${it.fieldId}_${it.name}" }) { field ->
                 MapFieldListItem(
                     field = field,
                     currentLocation = currentLocation,
@@ -870,6 +899,12 @@ private fun normalizeForSearch(text: String): String {
     val normalized = Normalizer.normalize(text.trim().lowercase(), Normalizer.Form.NFD)
     return normalized.replace("đ", "d").replace("\\p{M}+".toRegex(), "")
 }
+
+private data class MapSearchableField(
+    val field: UserField,
+    val normalizedName: String,
+    val normalizedLocation: String
+)
 
 private fun formatDistanceLabel(context: Context, currentLocation: LatLng?, field: UserField): String {
     val lat = field.latitude ?: return context.getString(R.string.map_distance_na)

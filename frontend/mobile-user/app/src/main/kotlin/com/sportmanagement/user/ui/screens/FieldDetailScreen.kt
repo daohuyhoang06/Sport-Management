@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -298,10 +300,16 @@ private fun FieldHeroSection(
                             .clip(RoundedCornerShape(8.dp))
                             .background(MaterialTheme.colorScheme.surfaceVariant)
                             .let {
-                                if (idx == selectedGalleryIndex)
+                                if (idx == selectedGalleryIndex) {
                                     it.shadow(4.dp, RoundedCornerShape(8.dp))
-                                else it
+                                } else {
+                                    it
+                                }
                             }
+                            .clickable(
+                                indication = null,
+                                interactionSource = remember { MutableInteractionSource() }
+                            ) { onGalleryIndexChange(idx) }
                     ) {
                         AsyncImage(
                             model = url,
@@ -324,11 +332,6 @@ private fun FieldHeroSection(
                                     .background(MaterialTheme.colorScheme.primary.copy(0.25f))
                             )
                         }
-                        androidx.compose.foundation.clickable(
-                            indication = null,
-                            interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-                        ) { onGalleryIndexChange(idx) }
-                            .let { }
                     }
                 }
             }

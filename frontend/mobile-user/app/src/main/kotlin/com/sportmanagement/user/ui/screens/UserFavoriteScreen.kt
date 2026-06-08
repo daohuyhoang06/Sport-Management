@@ -106,6 +106,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.FileProvider
 import com.sportmanagement.user.R
+import com.sportmanagement.user.ui.components.AppRotatingLoadingIndicator
 import com.sportmanagement.user.ui.theme.AppCardCornerRadius
 import com.sportmanagement.user.ui.theme.AppCtaCornerRadius
 import com.sportmanagement.user.ui.theme.AppCtaWideHeight
@@ -188,10 +189,21 @@ fun InboxScreen(
 
         if (isLoading && !hasVisibleContent) {
             item {
-                Text(
-                    text = "Đang tải hộp thư...",
-                    modifier = Modifier.padding(horizontal = AppScreenHorizontalPadding),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = AppScreenHorizontalPadding, vertical = 12.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    AppRotatingLoadingIndicator(
+                        label = null,
+                        iconSize = 28.dp
+                    )
+                }
+            }
+            item {
+                Spacer(
+                    modifier = Modifier.height(8.dp)
                 )
             }
         }
