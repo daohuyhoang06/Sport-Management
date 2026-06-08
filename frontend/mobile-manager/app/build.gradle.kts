@@ -28,8 +28,8 @@ android {
             useSupportLibrary = true
         }
 
-        // URL backend: lấy từ local.properties, fallback về emulator address
-        val serverUrl = localProps.getProperty("dev.server.url", "http://10.0.2.2:5000/")
+        // URL backend: lấy từ local.properties; fallback mặc định cho máy thật qua adb reverse/LAN
+        val serverUrl = localProps.getProperty("dev.server.url", "http://127.0.0.1:5000/")
         buildConfigField("String", "DEV_SERVER_URL", "\"$serverUrl\"")
     }
 
