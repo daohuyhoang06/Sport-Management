@@ -200,7 +200,31 @@ const fetchBookingShareRow = async ({
         pay.transaction_id,
         pay.order_id,
         pay.request_id,
-        pay.amount AS payment_amount
+        pay.amount AS payment_amount,
+        (
+          SELECT r.review_id
+          FROM reviews r
+          WHERE r.booking_id = b.booking_id
+            AND r.customer_id = b.customer_id
+          ORDER BY r.review_id DESC
+          LIMIT 1
+        ) AS review_id,
+        (
+          SELECT r.rating
+          FROM reviews r
+          WHERE r.booking_id = b.booking_id
+            AND r.customer_id = b.customer_id
+          ORDER BY r.review_id DESC
+          LIMIT 1
+        ) AS review_rating,
+        (
+          SELECT r.comment
+          FROM reviews r
+          WHERE r.booking_id = b.booking_id
+            AND r.customer_id = b.customer_id
+          ORDER BY r.review_id DESC
+          LIMIT 1
+        ) AS review_comment
       FROM bookings b
       LEFT JOIN person p ON b.customer_id = p.person_id
       LEFT JOIN fields f ON b.field_id = f.field_id
@@ -243,7 +267,24 @@ const fetchBookingShareRow = async ({
   }
 
   const statusCode = derivePublicBookingStatusCode(row);
+  const reviewId = Number.parseInt(row.review_id, 10);
+  const effectiveEndTime = lastSlot?.end_time || row.end_time || null;
+  const hasReview = Number.isInteger(reviewId) && reviewId > 0;
+  const hasEnded =
+    effectiveEndTime != null &&
+    Number.isFinite(new Date(effectiveEndTime).getTime()) &&
+    new Date(effectiveEndTime).getTime() < Date.now();
+  const canReview =
+    hasEnded &&
+    !hasReview &&
+    ["confirmed", "approved", "completed"].includes(
+      String(row.booking_status || "").toLowerCase(),
+    );
+
   const matchContext = await getBookingMatchContext(row.booking_id, {
+    viewerUserId: row.customer_id,
+    transaction,
+  });
 
   return {
     bookingId: row.booking_id,
@@ -285,6 +326,11 @@ const fetchBookingShareRow = async ({
     shareToken: row.share_token || "",
     checkInCode: row.checkin_code || "",
     checkedInAt: row.checked_in_at || null,
+    canReview,
+    reviewSubmitted: hasReview,
+    reviewId: hasReview ? reviewId : null,
+    reviewRating: hasReview ? Number(row.review_rating || 0) : null,
+    reviewComment: hasReview ? row.review_comment || "" : "",
     matchPost: matchContext?.matchPost || null,
     matchRequests: matchContext?.matchRequests || [],
   };
@@ -400,6 +446,11 @@ export const buildBookingShareResponse = (detail, baseUrl) => {
     ownerNote: detail.ownerNote,
     checkInCode: detail.checkInCode,
     shareUrl: buildBookingShareUrl(baseUrl, detail.shareToken),
+    canReview: Boolean(detail.canReview),
+    reviewSubmitted: Boolean(detail.reviewSubmitted),
+    reviewId: detail.reviewId,
+    reviewRating: detail.reviewRating,
+    reviewComment: detail.reviewComment,
     matchPost: detail.matchPost,
     matchRequests: detail.matchRequests,
     slotDetails: detail.slotDetails,

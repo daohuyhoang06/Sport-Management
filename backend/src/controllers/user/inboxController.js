@@ -1,4 +1,5 @@
 import sequelize from "../../config/database.js";
+import { ensureReviewReminderNotifications } from "../../services/user/bookingNotificationService.js";
 
 const clampNumber = (value, fallback, min, max) => {
   const parsed = Number.parseInt(value, 10);
@@ -25,6 +26,7 @@ const resolveNotificationSection = (row) => {
   if (
     row.type === "booking_success" ||
     row.type === "upcoming_match" ||
+    row.type === "review_reminder"
   ) {
     return "priority";
   }
@@ -130,6 +132,8 @@ export const getInbox = async (req, res) => {
       });
     }
 
+    await ensureReviewReminderNotifications(userId);
+
     const safePage = clampNumber(page, 1, 1, 1000000);
     const safeLimit = clampNumber(limit, 50, 1, 100);
     const offset = (safePage - 1) * safeLimit;
@@ -162,6 +166,23 @@ export const getInbox = async (req, res) => {
             AND b.booking_id IS NOT NULL
             AND b.customer_id = n.user_id
             AND b.status IN ('confirmed', 'completed')
+          )
+        )
+        AND (
+          n.type <> 'review_reminder'
+          OR (
+            n.booking_id IS NOT NULL
+            AND b.booking_id IS NOT NULL
+            AND b.customer_id = n.user_id
+            AND b.status IN ('confirmed', 'approved', 'completed')
+            AND b.end_time IS NOT NULL
+            AND b.end_time < NOW()
+            AND NOT EXISTS (
+              SELECT 1
+              FROM reviews r
+              WHERE r.booking_id = n.booking_id
+                AND r.customer_id = n.user_id
+            )
           )
         )
       ORDER BY n.created_at DESC

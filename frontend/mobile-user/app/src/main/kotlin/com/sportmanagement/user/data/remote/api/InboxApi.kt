@@ -96,10 +96,19 @@ data class BookingDetailDto(
     val fieldAvatar: String?,
     val ownerName: String,
     val ownerPhone: String,
+    val canReview: Boolean,
+    val reviewSubmitted: Boolean,
+    val reviewId: Int?,
+    val reviewRating: Int?,
+    val reviewComment: String,
     val matchPost: BookingMatchPostDto?,
     val matchRequests: List<BookingMatchRequestDto>
 )
 
+data class ReviewSubmissionDto(
+    val reviewId: Int,
+    val rating: Int,
+    val comment: String
 )
 
 data class BookingMatchPostDto(
@@ -205,7 +214,6 @@ class InboxApi(
             paymentStatus = data.optString("paymentStatus"),
             transactionId = data.optString("transactionId"),
             orderId = data.optString("orderId"),
-
             ownerNote = data.optString("ownerNote"),
             checkInCode = data.optString("checkInCode"),
             shareUrl = data.optString("shareUrl"),
@@ -217,6 +225,11 @@ class InboxApi(
             fieldAvatar = field.optString("avatar").takeIf { it.isNotBlank() },
             ownerName = field.optString("ownerName"),
             ownerPhone = field.optString("ownerPhone"),
+            canReview = data.optBoolean("canReview", false),
+            reviewSubmitted = data.optBoolean("reviewSubmitted", false),
+            reviewId = data.optIntOrNull("reviewId"),
+            reviewRating = data.optIntOrNull("reviewRating"),
+            reviewComment = data.optString("reviewComment"),
             matchPost = data.optJSONObject("matchPost")?.let { row ->
                 BookingMatchPostDto(
                     matchPostId = row.optInt("matchPostId"),
@@ -244,13 +257,25 @@ class InboxApi(
         )
     }
 
+    suspend fun submitBookingReview(
         token: String,
         bookingId: Int,
         fieldId: Int,
+        rating: Int,
+        comment: String
+    ): ReviewSubmissionDto = withContext(Dispatchers.IO) {
         val body = JSONObject()
             .put("booking_id", bookingId)
             .put("field_id", fieldId)
+            .put("rating", rating)
+            .put("comment", comment)
 
+        val root = postJsonWithResponse("$baseUrl/api/user/reviews", token, body)
+        val review = root.optJSONObject("review") ?: root.optJSONObject("data") ?: JSONObject()
+        ReviewSubmissionDto(
+            reviewId = review.optInt("review_id"),
+            rating = review.optInt("rating", rating),
+            comment = review.optString("comment", comment)
         )
     }
 

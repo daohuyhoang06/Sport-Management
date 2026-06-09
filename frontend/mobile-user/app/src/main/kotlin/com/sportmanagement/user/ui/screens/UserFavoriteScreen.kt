@@ -1,4 +1,4 @@
-﻿package com.sportmanagement.user.ui.screens
+package com.sportmanagement.user.ui.screens
 
 import android.content.Intent
 import android.graphics.Bitmap
@@ -1022,9 +1022,12 @@ data class BookingInfo(
     val customerPhone: String,
     val ownerPhone: String = "",
     val ownerNote: String,
-    val fieldId: Int? = null,
-    val bookingId: Int? = null,
     val notificationId: Int? = null,
+    val canReview: Boolean = false,
+    val reviewSubmitted: Boolean = false,
+    val reviewId: Int? = null,
+    val reviewRating: Int? = null,
+    val reviewComment: String = "",
     val matchPost: BookingMatchPostInfo? = null,
     val matchRequests: List<BookingMatchRequestInfo> = emptyList()
 )
@@ -1364,12 +1367,16 @@ private fun inboxSections(): List<NotificationSectionData> {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BookingDetailScreen(
-    info: BookingInfo,
+    isSubmittingReview: Boolean = false,
+    reviewSubmissionError: String? = null,
+    reviewSubmissionSuccessMessage: String? = null,
     processingMatchRequestId: Int? = null,
     matchRequestActionError: String? = null,
     matchRequestActionSuccessMessage: String? = null,
+    autoOpenReviewSheet: Boolean = false,
     onBackClick: () -> Unit,
+    onSubmitReview: (Int, String) -> Unit = { _, _ -> },
+    onReviewFeedbackConsumed: () -> Unit = {},
     onAcceptMatchRequest: (Int) -> Unit = {},
     onRejectMatchRequest: (Int) -> Unit = {},
     onMatchRequestFeedbackConsumed: () -> Unit = {},
@@ -1377,7 +1384,11 @@ fun BookingDetailScreen(
 ) {
     val context = LocalContext.current
     var showContactSheet by remember { mutableStateOf(false) }
+    var showReviewSheet by remember { mutableStateOf(false) }
+    var reviewRating by rememberSaveable(info.bookingId) { mutableStateOf(info.reviewRating ?: 5) }
+    var reviewComment by rememberSaveable(info.bookingId) { mutableStateOf(info.reviewComment) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val reviewSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val screenBackground = MaterialTheme.colorScheme.background
     val qrBitmap = rememberQrBitmap(info.shareUrl)
     val shareText = remember(info) {
@@ -1410,6 +1421,17 @@ fun BookingDetailScreen(
         }
     }
 
+    LaunchedEffect(reviewSubmissionSuccessMessage) {
+        if (!reviewSubmissionSuccessMessage.isNullOrBlank()) {
+            showReviewSheet = false
+            Toast.makeText(context, reviewSubmissionSuccessMessage, Toast.LENGTH_SHORT).show()
+            onReviewFeedbackConsumed()
+        }
+    }
+
+    LaunchedEffect(autoOpenReviewSheet, info.bookingId) {
+        if (autoOpenReviewSheet && info.canReview && !info.reviewSubmitted) {
+            showReviewSheet = true
         }
     }
 
@@ -1426,10 +1448,6 @@ fun BookingDetailScreen(
             onMatchRequestFeedbackConsumed()
         }
     }
-
-        }
-    }
-
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -1463,6 +1481,12 @@ fun BookingDetailScreen(
             )
         BookingDetailContent(
             info = info,
+            onReviewClick = {
+                reviewRating = info.reviewRating ?: reviewRating.coerceIn(1, 5)
+                reviewComment = info.reviewComment
+                showReviewSheet = true
+                onReviewFeedbackConsumed()
+            },
             onShareQr = {
                 if (qrBitmap == null || info.shareUrl.isBlank()) {
                     Toast.makeText(
@@ -1562,6 +1586,35 @@ fun BookingDetailScreen(
                 )
             }
         }
+
+        if (showReviewSheet) {
+            ModalBottomSheet(
+                onDismissRequest = {
+                    showReviewSheet = false
+                    onReviewFeedbackConsumed()
+                },
+                sheetState = reviewSheetState,
+                dragHandle = { BottomSheetDefaults.DragHandle() },
+                shape = RoundedCornerShape(topStart = AppSheetTopCornerRadius, topEnd = AppSheetTopCornerRadius)
+            ) {
+                ReviewBookingSheet(
+                    rating = reviewRating,
+                    comment = reviewComment,
+                    isSubmitting = isSubmittingReview,
+                    errorMessage = reviewSubmissionError,
+                    hasSubmitted = info.reviewSubmitted,
+                    onRatingSelected = { reviewRating = it },
+                    onCommentChanged = { reviewComment = it },
+                    onCloseClick = {
+                        showReviewSheet = false
+                        onReviewFeedbackConsumed()
+                    },
+                    onSubmitClick = {
+                        onSubmitReview(reviewRating, reviewComment)
+                    }
+                )
+            }
+        }
     }
 }
 
@@ -1604,6 +1657,7 @@ private fun BookingDetailTopBar(
 @Composable
 private fun BookingDetailContent(
     info: BookingInfo,
+    onReviewClick: () -> Unit,
     onShareQr: () -> Unit,
     onDownloadQr: () -> Unit,
     processingMatchRequestId: Int?,
@@ -1621,6 +1675,13 @@ private fun BookingDetailContent(
         BookerInfoCard(info)
         Spacer(Modifier.height(12.dp))
         BookingOwnerNoteCard(note = info.ownerNote)
+        if (info.canReview || info.reviewSubmitted) {
+            Spacer(Modifier.height(12.dp))
+            ReviewBookingCard(
+                info = info,
+                onReviewClick = onReviewClick
+            )
+        }
         if (info.matchPost != null) {
             Spacer(Modifier.height(12.dp))
             MatchPostInfoCard(post = info.matchPost)
@@ -1632,10 +1693,6 @@ private fun BookingDetailContent(
                 processingMatchRequestId = processingMatchRequestId,
                 onAcceptMatchRequest = onAcceptMatchRequest,
                 onRejectMatchRequest = onRejectMatchRequest
-            )
-        }
-            Spacer(Modifier.height(12.dp))
-                info = info,
             )
         }
         Spacer(Modifier.height(16.dp))
@@ -1953,6 +2010,284 @@ private fun MatchRequestItem(
             BookingDetailRow(label = "Số lượng", value = "${request.playerCount} người")
                     contentDescription = null,
                 contentDescription = null,
+@Composable
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(AppCardCornerRadius),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            SectionHeader(
+                title = "Bài tìm đối thủ",
+                icon = Icons.Outlined.Search
+            )
+            Spacer(Modifier.height(10.dp))
+            BookingDetailRow(label = "Trạng thái", value = post.status)
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(AppCardCornerRadius),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            SectionHeader(
+                title = "Yêu cầu ghép trận",
+                icon = Icons.Outlined.Notifications
+            )
+            Spacer(Modifier.height(10.dp))
+            requests.forEachIndexed { index, request ->
+                    request = request,
+                )
+                if (index != requests.lastIndex) {
+                    Spacer(Modifier.height(12.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+    isProcessing: Boolean,
+    onAccept: () -> Unit,
+    onReject: () -> Unit
+) {
+    Surface(
+        shape = RoundedCornerShape(AppCtaCornerRadius),
+        color = MaterialTheme.colorScheme.surfaceContainerLow
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            BookingDetailRow(label = "Trạng thái", value = request.status)
+            if (request.message.isNotBlank()) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = request.message,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            if (request.status.equals("PENDING", ignoreCase = true)) {
+                Spacer(Modifier.height(10.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = onReject,
+                        modifier = Modifier.weight(1f),
+                        enabled = !isProcessing,
+                        shape = RoundedCornerShape(AppCtaCornerRadius)
+                    ) {
+                        Text(if (isProcessing) "Đang xử lý..." else "Từ chối")
+                    }
+                    Button(
+                        onClick = onAccept,
+                        modifier = Modifier.weight(1f),
+                        enabled = !isProcessing,
+                        shape = RoundedCornerShape(AppCtaCornerRadius)
+                    ) {
+                        Text(if (isProcessing) "Đang xử lý..." else "Chấp nhận")
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReviewBookingCard(
+    info: BookingInfo,
+    onReviewClick: () -> Unit
+) {
+    val hasSubmitted = info.reviewSubmitted
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(AppCardCornerRadius),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            SectionHeader(
+                title = if (hasSubmitted) "Đánh giá của bạn" else "Đánh giá sân",
+                icon = Icons.Default.Star
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = if (hasSubmitted) {
+                    "Cảm ơn bạn đã để lại đánh giá cho booking ${info.bookingCode}."
+                } else {
+                    "Booking ${info.bookingCode} đã kết thúc. Hãy chia sẻ trải nghiệm sân để giúp người dùng khác."
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            if (hasSubmitted && info.reviewRating != null) {
+                Spacer(Modifier.height(12.dp))
+                ReviewStars(
+                    rating = info.reviewRating,
+                    onRatingSelected = null
+                )
+            }
+            if (hasSubmitted && info.reviewComment.isNotBlank()) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = info.reviewComment,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+            if (info.canReview) {
+                Spacer(Modifier.height(12.dp))
+                Button(
+                    onClick = onReviewClick,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(AppCtaCornerRadius),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                ) {
+                    Text(
+                        text = "Đánh giá ngay",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReviewBookingSheet(
+    rating: Int,
+    comment: String,
+    isSubmitting: Boolean,
+    errorMessage: String?,
+    hasSubmitted: Boolean,
+    onRatingSelected: (Int) -> Unit,
+    onCommentChanged: (String) -> Unit,
+    onCloseClick: () -> Unit,
+    onSubmitClick: () -> Unit
+) {
+    val canSubmit = !hasSubmitted && rating in 1..5 && comment.trim().isNotBlank() && !isSubmitting
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .imePadding()
+            .padding(horizontal = AppScreenHorizontalPadding, vertical = 12.dp)
+    ) {
+        Box(modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = "Đánh giá sân",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.align(Alignment.Center)
+            )
+            IconButton(
+                onClick = onCloseClick,
+                modifier = Modifier.align(Alignment.CenterEnd)
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Close,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+        Text(
+            text = "Chất lượng sân của bạn thế nào?",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Spacer(Modifier.height(10.dp))
+        ReviewStars(
+            rating = rating,
+            onRatingSelected = onRatingSelected
+        )
+        Spacer(Modifier.height(12.dp))
+        TextField(
+            value = comment,
+            onValueChange = onCommentChanged,
+            enabled = !hasSubmitted && !isSubmitting,
+            minLines = 4,
+            maxLines = 5,
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = {
+                Text(
+                    text = "Viết cảm nhận của bạn về mặt sân, dịch vụ, ánh sáng...",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+        )
+        if (!errorMessage.isNullOrBlank()) {
+            Spacer(Modifier.height(10.dp))
+            Text(
+                text = errorMessage,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error
+            )
+        }
+        Spacer(Modifier.height(14.dp))
+        Button(
+            onClick = onSubmitClick,
+            enabled = canSubmit,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(AppCtaCornerRadius),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            )
+        ) {
+            Text(
+                text = if (isSubmitting) "Đang gửi..." else "Gửi đánh giá",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+    }
+}
+
+@Composable
+private fun ReviewStars(
+    rating: Int,
+    onRatingSelected: ((Int) -> Unit)?
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        repeat(5) { index ->
+            val filled = index < rating
+            Icon(
+                imageVector = Icons.Default.Star,
+                tint = if (filled) Color(0xFFE59C00) else Color(0xFFD6DCE5),
+                modifier = Modifier
+                    .size(28.dp)
+                    .then(
+                        if (onRatingSelected != null) {
+                            Modifier.clickable { onRatingSelected(index + 1) }
+                        } else {
+                            Modifier
+                        }
+                    )
+            )
+        }
+    }
+}
+
 @Composable
 private fun BookingDetailBottomActions(
     onDirectionsClick: () -> Unit,

@@ -187,7 +187,10 @@ class InboxViewModel(
         _uiState.value = _uiState.value.copy(
             isLoadingBookingDetail = true,
             bookingDetailError = null,
-            activeBookingDetail = null
+            activeBookingDetail = null,
+            isSubmittingReview = false,
+            reviewSubmissionError = null,
+            reviewSubmissionSuccessMessage = null,
             processingMatchRequestId = null,
             matchRequestActionError = null,
             matchRequestActionSuccessMessage = null
@@ -245,6 +248,11 @@ class InboxViewModel(
                             fieldId = booking.fieldId,
                             bookingId = booking.bookingId,
                             notificationId = null,
+                            canReview = booking.canReview,
+                            reviewSubmitted = booking.reviewSubmitted,
+                            reviewId = booking.reviewId,
+                            reviewRating = booking.reviewRating,
+                            reviewComment = booking.reviewComment,
                             matchPost = booking.matchPost?.let {
                                 BookingMatchPostInfo(
                                     matchPostId = it.matchPostId,
@@ -319,42 +327,71 @@ class InboxViewModel(
             activeBookingDetail = null,
             isLoadingBookingDetail = false,
             bookingDetailError = null,
+            isSubmittingReview = false,
+            reviewSubmissionError = null,
+            reviewSubmissionSuccessMessage = null,
             processingMatchRequestId = null,
             matchRequestActionError = null,
             matchRequestActionSuccessMessage = null
         )
     }
 
+    fun submitReview(rating: Int, comment: String) {
+        val activeBooking = _uiState.value.activeBookingDetail ?: return
         val token = token() ?: return
         val bookingId = activeBooking.bookingId ?: return
         val fieldId = activeBooking.fieldId ?: return
 
         _uiState.value = _uiState.value.copy(
+            isSubmittingReview = true,
+            reviewSubmissionError = null,
+            reviewSubmissionSuccessMessage = null
         )
 
         viewModelScope.launch {
             runCatching {
+                api.submitBookingReview(
                     token = token,
                     bookingId = bookingId,
                     fieldId = fieldId,
+                    rating = rating,
+                    comment = comment.trim()
                 )
+            }.onSuccess { review ->
                 _uiState.value = _uiState.value.copy(
+                    isSubmittingReview = false,
+                    reviewSubmissionError = null,
+                    reviewSubmissionSuccessMessage = "Đã gửi đánh giá của bạn.",
+                    activeBookingDetail = _uiState.value.activeBookingDetail?.copy(
+                        canReview = false,
+                        reviewSubmitted = true,
+                        reviewId = review.reviewId,
+                        reviewRating = review.rating,
+                        reviewComment = review.comment
                     )
                 )
                 refreshInbox(silent = true)
             }.onFailure {
                 _uiState.value = _uiState.value.copy(
+                    isSubmittingReview = false,
+                    reviewSubmissionError = it.message ?: "Không thể gửi đánh giá lúc này."
                 )
             }
         }
     }
 
+    fun clearReviewSubmissionFeedback() {
         _uiState.value = _uiState.value.copy(
+            reviewSubmissionError = null,
+            reviewSubmissionSuccessMessage = null
         )
     }
 
     fun respondToMatchRequest(matchRequestId: Int, accept: Boolean) {
         val token = token() ?: return
+        val activeBooking = _uiState.value.activeBookingDetail ?: return
+        val bookingId = activeBooking.bookingId ?: return
+        val notificationId = activeBooking.notificationId
 
         _uiState.value = _uiState.value.copy(
             processingMatchRequestId = matchRequestId,
@@ -382,10 +419,11 @@ class InboxViewModel(
                     } else {
                         "Đã từ chối yêu cầu ghép trận."
                     },
-                    ) ?: _uiState.value.activeBookingDetail?.applyMatchRequestUpdate(
-                        matchRequestId = matchRequestId,
-                        accept = accept
-                    )
+                    activeBookingDetail = refreshedBooking?.toBookingInfo(notificationId = notificationId)
+                        ?: _uiState.value.activeBookingDetail?.applyMatchRequestUpdate(
+                            matchRequestId = matchRequestId,
+                            accept = accept
+                        )
                 )
                 refreshInbox(silent = true)
             }.onFailure {
@@ -965,6 +1003,11 @@ class InboxViewModel(
             fieldId = fieldId,
             bookingId = bookingId,
             notificationId = notificationId,
+            canReview = canReview,
+            reviewSubmitted = reviewSubmitted,
+            reviewId = reviewId,
+            reviewRating = reviewRating,
+            reviewComment = reviewComment,
             matchPost = matchPost?.let {
                 BookingMatchPostInfo(
                     matchPostId = it.matchPostId,
@@ -1113,7 +1156,10 @@ data class InboxUiState(
     val isSendingMessage: Boolean = false,
     val processingMatchRequestId: Int? = null,
     val matchRequestActionError: String? = null,
-    val matchRequestActionSuccessMessage: String? = null
+    val matchRequestActionSuccessMessage: String? = null,
+    val isSubmittingReview: Boolean = false,
+    val reviewSubmissionError: String? = null,
+    val reviewSubmissionSuccessMessage: String? = null,
 )
 
 class InboxViewModelFactory(

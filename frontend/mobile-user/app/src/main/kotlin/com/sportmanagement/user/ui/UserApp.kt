@@ -83,7 +83,8 @@ fun UserApp(
     incomingDeepLinkFieldId: Int? = null,
     onDeepLinkConsumed: () -> Unit = {},
     incomingMomoPaymentReturn: MomoPaymentReturn? = null,
-    onMomoPaymentReturnConsumed: () -> Unit = {}
+    onMomoPaymentReturnConsumed: () -> Unit = {},
+    showReviewDemoUi: Boolean = false
 ) {
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
@@ -183,6 +184,33 @@ fun UserApp(
     }
     val shareField: (UserField) -> Unit = { field ->
         fieldToShare = field
+    }
+
+    val demoReviewBooking = remember {
+        com.sportmanagement.user.ui.screens.BookingInfo(
+            fieldName = "Sân bóng Bắc Từ Liêm Arena",
+            timeRange = "18:00 - 20:00",
+            dateLabel = "09/06/2026",
+            bookingCode = "#B20260609",
+            statusLabel = "Đã hoàn thành",
+            statusCode = "expired",
+            address = "Cầu Diễn, Bắc Từ Liêm, Hà Nội",
+            paymentMethod = "MoMo",
+            totalAmount = "600.000 VND",
+            transactionId = "MOMO20260609001",
+            orderId = "ORDER20260609001",
+            checkInCode = "Q7K2M9A1",
+            shareUrl = "https://sport-management.vn/l/booking/demo",
+            customerName = "Hoàng Nguyễn Văn",
+            customerPhone = "0901234567",
+            ownerPhone = "0987654321",
+            ownerNote = "Vui lòng đến trước 10 phút để check-in.",
+            fieldId = 101,
+            bookingId = 20260609,
+            notificationId = 998,
+            canReview = true,
+            reviewSubmitted = false
+        )
     }
 
     val selectedFieldShareUrl = remember(fieldToShare) {
@@ -498,24 +526,42 @@ fun UserApp(
                         showBookingPaymentScreen = true
                     }
                 )
+            } else if (showReviewDemoUi) {
+                BookingDetailScreen(
+                    info = demoReviewBooking,
+                    isSubmittingReview = false,
+                    reviewSubmissionError = null,
+                    reviewSubmissionSuccessMessage = null,
                     processingMatchRequestId = null,
                     matchRequestActionError = null,
                     matchRequestActionSuccessMessage = null,
+                    onBackClick = {},
+                    onSubmitReview = { _, _ -> },
+                    onReviewFeedbackConsumed = {},
                     onAcceptMatchRequest = {},
                     onRejectMatchRequest = {},
                     onMatchRequestFeedbackConsumed = {},
+                    onOpenChat = {},
+                    autoOpenReviewSheet = true
+                )
             } else if (showBookingDetailScreen) {
                 when {
                     inboxUiState.activeBookingDetail != null -> {
                         BookingDetailScreen(
                             info = inboxUiState.activeBookingDetail!!,
+                            isSubmittingReview = inboxUiState.isSubmittingReview,
+                            reviewSubmissionError = inboxUiState.reviewSubmissionError,
+                            reviewSubmissionSuccessMessage = inboxUiState.reviewSubmissionSuccessMessage,
                             processingMatchRequestId = inboxUiState.processingMatchRequestId,
                             matchRequestActionError = inboxUiState.matchRequestActionError,
                             matchRequestActionSuccessMessage = inboxUiState.matchRequestActionSuccessMessage,
+                            autoOpenReviewSheet = false,
                             onBackClick = {
                                 showBookingDetailScreen = false
                                 inboxViewModel.clearActiveBookingDetail()
                             },
+                            onSubmitReview = inboxViewModel::submitReview,
+                            onReviewFeedbackConsumed = inboxViewModel::clearReviewSubmissionFeedback,
                             onAcceptMatchRequest = { inboxViewModel.respondToMatchRequest(it, accept = true) },
                             onRejectMatchRequest = { inboxViewModel.respondToMatchRequest(it, accept = false) },
                             onMatchRequestFeedbackConsumed = inboxViewModel::clearMatchRequestActionFeedback,

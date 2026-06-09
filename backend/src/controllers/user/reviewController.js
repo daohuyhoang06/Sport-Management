@@ -76,40 +76,69 @@ export const getReviews = async (req, res) => {
 // POST /api/user/reviews
 export const createReview = async (req, res) => {
   try {
-    const { field_id, customer_id, rating, comment, images } = req.body;
+    const userId = req.user?.id;
+    const { field_id, booking_id, rating, comment, images } = req.body;
+    const normalizedRating = Number.parseInt(rating, 10);
+    const normalizedComment = String(comment || "").trim();
+
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
 
     // Validate
-    if (!field_id || !customer_id || !rating || !comment) {
+    if (!booking_id || !normalizedRating || !normalizedComment) {
       return res.status(400).json({
         message:
-          "Missing required fields: field_id, customer_id, rating, comment",
+          "Missing required fields: booking_id, rating, comment",
       });
     }
 
-    if (rating < 1 || rating > 5) {
+    if (normalizedRating < 1 || normalizedRating > 5) {
       return res
         .status(400)
         .json({ message: "Rating must be between 1 and 5" });
     }
 
-    // Check if field exists
-    const [fieldCheck] = await sequelize.query(
-      "SELECT field_id FROM fields WHERE field_id = ? LIMIT 1",
-      { replacements: [field_id] },
+    const [bookingRows] = await sequelize.query(
+      `SELECT booking_id, field_id, customer_id, status, end_time
+       FROM bookings
+       WHERE booking_id = ?
+       LIMIT 1`,
+      { replacements: [booking_id] },
     );
+    const booking = bookingRows?.[0];
 
-    if (!fieldCheck || fieldCheck.length === 0) {
-      return res.status(400).json({ message: "Field not found" });
+    if (!booking) {
+      return res.status(404).json({ message: "Booking not found" });
     }
 
-    // Check if customer exists
-    const [customerCheck] = await sequelize.query(
-      "SELECT person_id FROM person WHERE person_id = ? LIMIT 1",
-      { replacements: [customer_id] },
+    if (Number(booking.customer_id) !== Number(userId)) {
+      return res.status(403).json({ message: "You cannot review this booking" });
+    }
+
+    if (field_id && Number(field_id) !== Number(booking.field_id)) {
+      return res.status(400).json({ message: "field_id does not match booking" });
+    }
+
+    if (!["confirmed", "approved", "completed"].includes(String(booking.status || "").toLowerCase())) {
+      return res.status(400).json({ message: "Booking is not eligible for review" });
+    }
+
+    const bookingEndTime = new Date(booking.end_time).getTime();
+    if (!Number.isFinite(bookingEndTime) || bookingEndTime >= Date.now()) {
+      return res.status(400).json({ message: "You can only review after the booking has ended" });
+    }
+
+    const [existingReviewRows] = await sequelize.query(
+      `SELECT review_id
+       FROM reviews
+       WHERE booking_id = ? AND customer_id = ?
+       LIMIT 1`,
+      { replacements: [booking_id, userId] },
     );
 
-    if (!customerCheck || customerCheck.length === 0) {
-      return res.status(400).json({ message: "Customer not found" });
+    if (existingReviewRows?.[0]) {
+      return res.status(409).json({ message: "You have already reviewed this booking" });
     }
 
     // Insert review
@@ -117,9 +146,18 @@ export const createReview = async (req, res) => {
       images && images.length > 0 ? JSON.stringify(images) : null;
 
     await sequelize.query(
-      `INSERT INTO reviews (field_id, customer_id, rating, comment, images)
-       VALUES (?, ?, ?, ?, ?)`,
-      { replacements: [field_id, customer_id, rating, comment, imagesJson] },
+      `INSERT INTO reviews (field_id, customer_id, booking_id, rating, comment, images)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      {
+        replacements: [
+          booking.field_id,
+          userId,
+          booking_id,
+          normalizedRating,
+          normalizedComment,
+          imagesJson,
+        ],
+      },
     );
 
     const [[{ review_id: reviewId }]] = await sequelize.query(
@@ -132,6 +170,7 @@ export const createReview = async (req, res) => {
         r.review_id,
         r.field_id,
         r.customer_id,
+        r.booking_id,
         r.rating,
         r.comment,
         r.images,

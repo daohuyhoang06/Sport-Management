@@ -1,4 +1,5 @@
 import sequelize from "../../config/database.js";
+import { ensureReviewReminderNotifications } from "../../services/user/bookingNotificationService.js";
 
 const clampNumber = (value, fallback, min, max) => {
   const parsed = Number.parseInt(value, 10);
@@ -105,6 +106,8 @@ export const listNotifications = async (req, res) => {
       });
     }
 
+    await ensureReviewReminderNotifications(userId);
+
     const safePage = clampNumber(page, 1, 1, 1000000);
     const safeLimit = clampNumber(limit, 20, 1, 100);
     const offset = (safePage - 1) * safeLimit;
@@ -129,15 +132,32 @@ export const listNotifications = async (req, res) => {
        FROM notifications n
        LEFT JOIN bookings b ON n.booking_id = b.booking_id
        WHERE ${whereSql}
-        AND (
-          n.type <> 'booking_success'
-          OR (
-            n.booking_id IS NOT NULL
-            AND b.booking_id IS NOT NULL
-            AND b.customer_id = n.user_id
-            AND b.status IN ('confirmed', 'completed')
-          )
-        )`,
+         AND (
+           n.type <> 'booking_success'
+           OR (
+             n.booking_id IS NOT NULL
+             AND b.booking_id IS NOT NULL
+             AND b.customer_id = n.user_id
+             AND b.status IN ('confirmed', 'completed')
+           )
+         )
+         AND (
+           n.type <> 'review_reminder'
+           OR (
+             n.booking_id IS NOT NULL
+             AND b.booking_id IS NOT NULL
+             AND b.customer_id = n.user_id
+             AND b.status IN ('confirmed', 'approved', 'completed')
+             AND b.end_time IS NOT NULL
+             AND b.end_time < NOW()
+             AND NOT EXISTS (
+               SELECT 1
+               FROM reviews r
+               WHERE r.booking_id = n.booking_id
+                 AND r.customer_id = n.user_id
+             )
+           )
+         )`,
       { replacements },
     );
     const total = Number(countRows?.[0]?.total || 0);
@@ -170,6 +190,23 @@ export const listNotifications = async (req, res) => {
             AND b.status IN ('confirmed', 'completed')
           )
         )
+        AND (
+          n.type <> 'review_reminder'
+          OR (
+            n.booking_id IS NOT NULL
+            AND b.booking_id IS NOT NULL
+            AND b.customer_id = n.user_id
+            AND b.status IN ('confirmed', 'approved', 'completed')
+            AND b.end_time IS NOT NULL
+            AND b.end_time < NOW()
+            AND NOT EXISTS (
+              SELECT 1
+              FROM reviews r
+              WHERE r.booking_id = n.booking_id
+                AND r.customer_id = n.user_id
+            )
+          )
+        )
       ORDER BY n.created_at DESC
       LIMIT ? OFFSET ?`,
       { replacements: [...replacements, safeLimit, offset] },
@@ -179,7 +216,7 @@ export const listNotifications = async (req, res) => {
     res.json({
       success: true,
       data: {
-        items: rows.map(mapNotificationRow),
+        items: hydratedRows.map(mapNotificationRow),
         page: safePage,
         limit: safeLimit,
         total,
@@ -215,6 +252,8 @@ export const getNotificationDetail = async (req, res) => {
       });
     }
 
+    await ensureReviewReminderNotifications(userId);
+
     const [rows] = await sequelize.query(
       `SELECT
         n.id,
@@ -243,11 +282,28 @@ export const getNotificationDetail = async (req, res) => {
             AND b.status IN ('confirmed', 'completed')
           )
         )
+        AND (
+          n.type <> 'review_reminder'
+          OR (
+            n.booking_id IS NOT NULL
+            AND b.booking_id IS NOT NULL
+            AND b.customer_id = n.user_id
+            AND b.status IN ('confirmed', 'approved', 'completed')
+            AND b.end_time IS NOT NULL
+            AND b.end_time < NOW()
+            AND NOT EXISTS (
+              SELECT 1
+              FROM reviews r
+              WHERE r.booking_id = n.booking_id
+                AND r.customer_id = n.user_id
+            )
+          )
+        )
       LIMIT 1`,
       { replacements: [id, userId] },
     );
 
-    const notification = rows?.[0];
+    let notification = rows?.[0];
     if (!notification) {
       return res.status(404).json({
         success: false,
