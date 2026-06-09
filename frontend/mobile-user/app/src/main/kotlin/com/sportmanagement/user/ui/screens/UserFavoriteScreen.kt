@@ -97,6 +97,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -1023,7 +1024,8 @@ data class BookingInfo(
     val ownerNote: String,
     val fieldId: Int? = null,
     val bookingId: Int? = null,
-    val notificationId: Int? = null
+    val notificationId: Int? = null,
+    val focusVenueInfo: Boolean = false
 )
 
 @Immutable
@@ -1328,6 +1330,8 @@ fun BookingDetailScreen(
     var showContactSheet by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val screenBackground = MaterialTheme.colorScheme.background
+    val contentScrollState = rememberScrollState()
+    val reminderFocusOffset = with(LocalDensity.current) { 92.dp.roundToPx() }
     val qrBitmap = rememberQrBitmap(info.shareUrl)
     val shareText = remember(info) {
         buildString {
@@ -1356,6 +1360,12 @@ fun BookingDetailScreen(
                 append('\n')
                 append(info.shareUrl)
             }
+        }
+    }
+
+    LaunchedEffect(info.bookingId, info.focusVenueInfo) {
+        if (info.focusVenueInfo) {
+            contentScrollState.animateScrollTo(reminderFocusOffset)
         }
     }
 
@@ -1437,7 +1447,7 @@ fun BookingDetailScreen(
             },
             modifier = Modifier
                 .weight(1f)
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(contentScrollState)
                     .padding(horizontal = AppScreenHorizontalPadding, vertical = 12.dp)
             )
         }
@@ -2573,14 +2583,15 @@ fun ConversationScreen(
     val screenBackground = MaterialTheme.colorScheme.background
     val listState = rememberLazyListState()
     val sortedMessages = remember(messages) { messages.sortedBy { it.id } }
-    val imeBottom = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
     val bottomAnchorIndex =
         1 + sortedMessages.size +
             (if (isLoading) 1 else 0) +
             (if (!errorMessage.isNullOrBlank()) 1 else 0)
 
-    LaunchedEffect(bottomAnchorIndex, imeBottom) {
-        listState.animateScrollToItem(bottomAnchorIndex)
+    LaunchedEffect(bottomAnchorIndex) {
+        if (bottomAnchorIndex > 0) {
+            listState.animateScrollToItem(bottomAnchorIndex)
+        }
     }
 
     Column(

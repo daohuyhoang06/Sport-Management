@@ -32,6 +32,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -47,26 +48,7 @@ fun PaymentMethodsScreen(
     padding: PaddingValues,
     onBackClick: () -> Unit
 ) {
-    val methods = listOf(
-        PaymentMethodUi(
-            initial = "M",
-            name = "MoMo",
-            description = "Thanh toán qua ví điện tử MoMo",
-            accent = Color(0xFFD82D8B)
-        ),
-        PaymentMethodUi(
-            initial = "Z",
-            name = "ZaloPay",
-            description = "Thanh toán nhanh bằng ZaloPay",
-            accent = Color(0xFF0EA5E9)
-        ),
-        PaymentMethodUi(
-            initial = "NH",
-            name = "Ngân hàng",
-            description = "Chuyển khoản từ tài khoản ngân hàng",
-            accent = Color(0xFF2563EB)
-        )
-    )
+    val methods = rememberPaymentMethods()
 
     Box(
         modifier = Modifier
@@ -114,7 +96,7 @@ fun PaymentMethodsScreen(
                     }
                 }
 
-                items(methods) { method ->
+                items(methods, key = { it.name }) { method ->
                     PaymentMethodCard(method = method)
                 }
 
@@ -239,3 +221,27 @@ private data class PaymentMethodUi(
     val description: String,
     val accent: Color
 )
+
+@Composable
+private fun rememberPaymentMethods(): List<PaymentMethodUi> = remember {
+    listOf(
+        PaymentMethodUi(
+            initial = "M",
+            name = "MoMo",
+            description = "Thanh toán qua ví điện tử MoMo",
+            accent = Color(0xFFD82D8B)
+        ),
+        PaymentMethodUi(
+            initial = "Z",
+            name = "ZaloPay",
+            description = "Thanh toán nhanh bằng ZaloPay",
+            accent = Color(0xFF0EA5E9)
+        ),
+        PaymentMethodUi(
+            initial = "NH",
+            name = "Ngân hàng",
+            description = "Chuyển khoản từ tài khoản ngân hàng",
+            accent = Color(0xFF2563EB)
+        )
+    )
+}

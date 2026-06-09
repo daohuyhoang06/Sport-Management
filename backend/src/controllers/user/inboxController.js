@@ -22,7 +22,12 @@ const normalizeSection = (value) => {
 const resolveNotificationSection = (row) => {
   const explicit = normalizeSection(row.section);
   if (explicit) return explicit;
-  if (row.type === "booking_success" || row.type === "upcoming_match") {
+  if (
+    row.type === "booking_success" ||
+    row.type === "upcoming_match" ||
+    row.type === "booking_reminder" ||
+    row.type === "booking_reminder_urgent"
+  ) {
     return "priority";
   }
   return "activity";
@@ -106,12 +111,12 @@ export const getInbox = async (req, res) => {
       LEFT JOIN bookings b ON n.booking_id = b.booking_id
       WHERE n.user_id = ?
         AND (
-          n.type <> 'booking_success'
+          n.type NOT IN ('booking_success', 'upcoming_match', 'booking_reminder', 'booking_reminder_urgent')
           OR (
             n.booking_id IS NOT NULL
             AND b.booking_id IS NOT NULL
             AND b.customer_id = n.user_id
-            AND b.status IN ('confirmed', 'completed')
+            AND b.status IN ('confirmed', 'approved', 'completed', 'paid')
           )
         )
       ORDER BY n.created_at DESC
@@ -203,6 +208,66 @@ export const getInbox = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Loi server khi lay hop thu",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
+  }
+};
+
+// POST /api/user/inbox/read-all
+export const markInboxReadAll = async (req, res) => {
+  const transaction = await sequelize.transaction();
+
+  try {
+    const userId = req.user?.id;
+
+    if (!userId) {
+      await transaction.rollback();
+      return res.status(401).json({
+        success: false,
+        message: "Unauthorized",
+      });
+    }
+
+    const [notificationResult] = await sequelize.query(
+      `UPDATE notifications
+       SET is_read = 1, updated_at = CURRENT_TIMESTAMP
+       WHERE user_id = ? AND is_read = 0`,
+      { replacements: [userId], transaction },
+    );
+
+    const [messageResult] = await sequelize.query(
+      `UPDATE messages m
+       INNER JOIN chats c ON c.chat_id = m.chat_id
+       SET m.is_read = 1, m.updated_at = CURRENT_TIMESTAMP
+       WHERE c.user_id = ?
+         AND m.sender_id != ?
+         AND m.is_read = 0`,
+      { replacements: [userId, userId], transaction },
+    );
+
+    await sequelize.query(
+      `UPDATE chats
+       SET user_unread_count = 0, updated_at = CURRENT_TIMESTAMP
+       WHERE user_id = ? AND user_unread_count <> 0`,
+      { replacements: [userId], transaction },
+    );
+
+    await transaction.commit();
+
+    res.json({
+      success: true,
+      data: {
+        notificationsRead: Number(notificationResult?.affectedRows || 0),
+        messagesRead: Number(messageResult?.affectedRows || 0),
+        isRead: true,
+      },
+    });
+  } catch (error) {
+    await transaction.rollback();
+    console.error("markInboxReadAll error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Loi server khi danh dau hop thu da doc",
       error: process.env.NODE_ENV === "development" ? error.message : undefined,
     });
   }
