@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import okhttp3.MultipartBody
 
 class PitchesViewModel : ViewModel() {
 
@@ -72,10 +73,36 @@ class PitchesViewModel : ViewModel() {
         closeTime: String?,
         slotPrice: Double?,
         slotMinutes: Int?,
-        status: String
+        status: String,
+        latitude: Double?,
+        longitude: Double?,
+        avatarImagePart: MultipartBody.Part?,
+        cardImagePart: MultipartBody.Part?
     ) {
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true, saveError = null) }
+
+            var avatarUrl: String? = null
+            var cardUrl: String? = null
+
+            if (avatarImagePart != null) {
+                AppContainer.fieldRepository.uploadFieldImage(avatarImagePart)
+                    .onSuccess { avatarUrl = it }
+                    .onFailure { e ->
+                        _uiState.update { s -> s.copy(isSaving = false, saveError = "Upload ảnh đại diện thất bại: ${e.message}") }
+                        return@launch
+                    }
+            }
+
+            if (cardImagePart != null) {
+                AppContainer.fieldRepository.uploadFieldImage(cardImagePart)
+                    .onSuccess { cardUrl = it }
+                    .onFailure { e ->
+                        _uiState.update { s -> s.copy(isSaving = false, saveError = "Upload ảnh bìa thất bại: ${e.message}") }
+                        return@launch
+                    }
+            }
+
             val request = CreateFieldRequest(
                 fieldName = fieldName,
                 location = location,
@@ -85,7 +112,11 @@ class PitchesViewModel : ViewModel() {
                 closeTime = closeTime?.takeIf { it.isNotBlank() },
                 slotPrice = slotPrice,
                 slotMinutes = slotMinutes,
-                status = status
+                status = status,
+                latitude = latitude,
+                longitude = longitude,
+                avatarImageUrl = avatarUrl,
+                cardImageUrl = cardUrl
             )
             AppContainer.fieldRepository.createField(request)
                 .onSuccess { dto ->

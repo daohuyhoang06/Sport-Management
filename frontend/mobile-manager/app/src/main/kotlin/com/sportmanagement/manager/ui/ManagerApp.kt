@@ -241,9 +241,11 @@ fun ManagerApp(dashboardViewModel: DashboardViewModel = viewModel()) {
                 messages = messagesState.chatMessages[conv.id] ?: emptyList(),
                 draftMessage = messagesState.draftMessage,
                 isLoading = messagesState.loadingChatId == conv.id,
+                isSendingMessage = messagesState.isSendingMessage,
                 onBackClick = { messagesViewModel.onBackFromThread() },
                 onDraftChanged = messagesViewModel::onDraftMessageChanged,
-                onSend = { messagesViewModel.onSendMessage() }
+                onSend = { messagesViewModel.onSendMessage() },
+                onRetryMessage = { tempId -> messagesViewModel.onRetryMessage(tempId) }
             )
             return
         }

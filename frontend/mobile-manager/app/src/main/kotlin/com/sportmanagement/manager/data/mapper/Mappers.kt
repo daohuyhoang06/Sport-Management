@@ -17,6 +17,7 @@ import com.sportmanagement.manager.domain.model.BookingItem
 import com.sportmanagement.manager.domain.model.BookingStatus
 import com.sportmanagement.manager.domain.model.ChatMessage
 import com.sportmanagement.manager.domain.model.ConversationItem
+import com.sportmanagement.manager.domain.model.MessageStatus
 import com.sportmanagement.manager.domain.model.Court
 import com.sportmanagement.manager.domain.model.CourtStatus
 import com.sportmanagement.manager.domain.model.FieldPolicy
@@ -144,7 +145,9 @@ fun ChatMessageDto.toChatMessage(currentUserId: Int): ChatMessage = ChatMessage(
     content = content ?: "",
     isFromManager = senderId == currentUserId,
     timestamp = formatChatTime(sentAt),
-    isRead = isRead ?: true
+    rawTimestamp = sentAt,
+    isRead = isRead ?: true,
+    status = MessageStatus.SENT
 )
 
 private fun formatChatTime(raw: String?): String {

@@ -8,6 +8,7 @@ data class MessagesUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
     val loadingChatId: String? = null,
+    val isSendingMessage: Boolean = false,
     val searchQuery: String = "",
     val conversations: List<ConversationItem> = emptyList(),
     val reviews: List<ReviewItem> = emptyList(),

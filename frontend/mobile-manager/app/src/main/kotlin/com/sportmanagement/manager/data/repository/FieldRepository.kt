@@ -8,8 +8,20 @@ import com.sportmanagement.manager.data.remote.dto.FieldDto
 import com.sportmanagement.manager.data.remote.dto.FieldPolicyDto
 import com.sportmanagement.manager.data.remote.dto.FieldServiceDto
 import com.sportmanagement.manager.data.remote.dto.UpdateFieldStatusRequest
+import okhttp3.MultipartBody
 
 class FieldRepository(private val api: FieldApiService) {
+
+    suspend fun uploadFieldImage(imagePart: MultipartBody.Part): Result<String> = safeCall {
+        val response = api.uploadFieldImage(imagePart)
+        if (response.isSuccessful) {
+            val url = response.body()?.url
+                ?: return@safeCall Result.failure(Exception("Upload ảnh thất bại: không nhận được URL"))
+            Result.success(url)
+        } else {
+            Result.failure(Exception("Upload ảnh thất bại (${response.code()})"))
+        }
+    }
 
     suspend fun createField(request: com.sportmanagement.manager.data.remote.dto.CreateFieldRequest): Result<FieldDto> = safeCall {
         val response = api.createField(request)

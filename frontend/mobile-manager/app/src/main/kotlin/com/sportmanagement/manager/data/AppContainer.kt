@@ -1,7 +1,9 @@
 package com.sportmanagement.manager.data
 
 import android.content.Context
+import androidx.room.Room
 import com.sportmanagement.manager.data.local.SessionManager
+import com.sportmanagement.manager.data.local.db.ChatDatabase
 import com.sportmanagement.manager.data.remote.NetworkClient
 import com.sportmanagement.manager.data.remote.api.AuthApiService
 import com.sportmanagement.manager.data.remote.api.BookingApiService
@@ -50,11 +52,17 @@ object AppContainer {
         val chatApiService = NetworkClient.createService(ChatApiService::class.java, okHttpClient)
         val profileApiService = NetworkClient.createService(ProfileApiService::class.java, okHttpClient)
 
+        val chatDatabase = Room.databaseBuilder(
+            context.applicationContext,
+            ChatDatabase::class.java,
+            ChatDatabase.DATABASE_NAME
+        ).fallbackToDestructiveMigration().build()
+
         authRepository = AuthRepository(authApiService, sessionManager)
         dashboardRepository = DashboardRepository(dashboardApiService)
         fieldRepository = FieldRepository(fieldApiService)
         bookingRepository = BookingRepository(bookingApiService)
-        chatRepository = ChatRepository(chatApiService)
+        chatRepository = ChatRepository(chatApiService, chatDatabase)
         profileRepository = ProfileRepository(profileApiService)
     }
 }

@@ -16,7 +16,9 @@ data class FieldDto(
     @SerializedName("avatar_image_url") val avatarImageUrl: String?,
     @SerializedName("card_image_url") val cardImageUrl: String?,
     @SerializedName("sport_id") val sportId: Int?,
-    @SerializedName("sport_name") val sportName: String?
+    @SerializedName("sport_name") val sportName: String?,
+    val latitude: Double?,
+    val longitude: Double?
 )
 
 // GET /api/manager/fields → {success, data: [...]}
@@ -41,10 +43,20 @@ data class CreateFieldRequest(
     @SerializedName("close_time") val closeTime: String? = null,
     @SerializedName("slot_price") val slotPrice: Double? = null,
     @SerializedName("slot_minutes") val slotMinutes: Int? = null,
-    val status: String = "active"
+    val status: String = "active",
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    @SerializedName("avatar_image_url") val avatarImageUrl: String? = null,
+    @SerializedName("card_image_url") val cardImageUrl: String? = null
 )
 
 data class UpdateFieldStatusRequest(val status: String)
+
+// POST /api/manager/upload/field-image → {success, url}
+data class UploadImageResponse(
+    val success: Boolean,
+    val url: String?
+)
 
 // Courts
 data class FieldCourtDto(

@@ -1,5 +1,10 @@
 package com.sportmanagement.manager.ui.screens.pitches
 
+import android.Manifest
+import android.annotation.SuppressLint
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -22,15 +27,20 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.MyLocation
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -51,13 +61,20 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import com.google.android.gms.location.LocationServices
 import com.sportmanagement.manager.ui.viewmodel.PitchesViewModel
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
+import okhttp3.RequestBody.Companion.toRequestBody
 
-// Sport type options (aligned with backend sport_id)
 private val SPORT_TYPES = listOf(
     1 to "Bóng đá",
     2 to "Bóng rổ",
@@ -75,6 +92,7 @@ private val STATUS_OPTIONS = listOf(
 
 private val SLOT_MINUTES_OPTIONS = listOf(30, 60, 90, 120)
 
+@SuppressLint("MissingPermission")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddFieldScreen(
@@ -83,6 +101,7 @@ fun AddFieldScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
 
     var fieldName by rememberSaveable { mutableStateOf("") }
     var location by rememberSaveable { mutableStateOf("") }
@@ -93,14 +112,64 @@ fun AddFieldScreen(
     var slotPriceText by rememberSaveable { mutableStateOf("") }
     var selectedSlotMinutes by rememberSaveable { mutableStateOf(60) }
     var selectedStatus by rememberSaveable { mutableStateOf("active") }
+    var latitudeText by rememberSaveable { mutableStateOf("") }
+    var longitudeText by rememberSaveable { mutableStateOf("") }
+    var avatarImageUri by remember { mutableStateOf<Uri?>(null) }
+    var cardImageUri by remember { mutableStateOf<Uri?>(null) }
+    var isGettingLocation by remember { mutableStateOf(false) }
 
     // Validation errors
     var fieldNameError by remember { mutableStateOf<String?>(null) }
     var locationError by remember { mutableStateOf<String?>(null) }
     var priceError by remember { mutableStateOf<String?>(null) }
+    var latError by remember { mutableStateOf<String?>(null) }
+    var lngError by remember { mutableStateOf<String?>(null) }
+
+    // Image pickers
+    val avatarPickerLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri -> uri?.let { avatarImageUri = it } }
+
+    val cardPickerLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri -> uri?.let { cardImageUri = it } }
+
+    // Location permission launcher
+    val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            isGettingLocation = true
+            fusedLocationClient.lastLocation.addOnSuccessListener { loc ->
+                isGettingLocation = false
+                if (loc != null) {
+                    latitudeText = "%.6f".format(loc.latitude)
+                    longitudeText = "%.6f".format(loc.longitude)
+                }
+            }.addOnFailureListener {
+                isGettingLocation = false
+            }
+        }
+    }
 
     LaunchedEffect(uiState.saveError) {
         uiState.saveError?.let { snackbarHostState.showSnackbar(it) }
+    }
+
+    fun uriToMultipart(uri: Uri, name: String): MultipartBody.Part? {
+        return try {
+            val stream = context.contentResolver.openInputStream(uri) ?: return null
+            val bytes = stream.use { it.readBytes() }
+            val mimeType = context.contentResolver.getType(uri) ?: "image/jpeg"
+            val ext = when {
+                mimeType.contains("png") -> "png"
+                mimeType.contains("webp") -> "webp"
+                else -> "jpg"
+            }
+            val requestBody = bytes.toRequestBody(mimeType.toMediaTypeOrNull())
+            MultipartBody.Part.createFormData("image", "$name.$ext", requestBody)
+        } catch (e: Exception) { null }
     }
 
     fun validate(): Boolean {
@@ -108,7 +177,12 @@ fun AddFieldScreen(
         locationError = if (location.isBlank()) "Vui lòng nhập địa chỉ" else null
         priceError = if (slotPriceText.isNotBlank() && slotPriceText.toDoubleOrNull() == null)
             "Giá không hợp lệ" else null
+        latError = if (latitudeText.isNotBlank() && latitudeText.toDoubleOrNull() == null)
+            "Vĩ độ không hợp lệ" else null
+        lngError = if (longitudeText.isNotBlank() && longitudeText.toDoubleOrNull() == null)
+            "Kinh độ không hợp lệ" else null
         return fieldNameError == null && locationError == null && priceError == null
+            && latError == null && lngError == null
     }
 
     Scaffold(
@@ -143,7 +217,7 @@ fun AddFieldScreen(
                 .padding(horizontal = 16.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Section: Thông tin cơ bản
+            // ── Thông tin cơ bản ──────────────────────────────────
             SectionHeader("Thông tin cơ bản")
 
             OutlinedTextField(
@@ -179,7 +253,93 @@ fun AddFieldScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // Section: Loại sân
+            // ── Vị trí GPS ────────────────────────────────────────
+            SectionHeader("Vị trí trên bản đồ")
+            Text(
+                text = "Tọa độ giúp người dùng tìm sân gần vị trí của họ.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.Top
+            ) {
+                OutlinedTextField(
+                    value = latitudeText,
+                    onValueChange = { latitudeText = it; latError = null },
+                    label = { Text("Vĩ độ (Lat)") },
+                    placeholder = { Text("VD: 10.7769") },
+                    isError = latError != null,
+                    supportingText = latError?.let { { Text(it, color = MaterialTheme.colorScheme.error) } },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true,
+                    modifier = Modifier.weight(1f)
+                )
+                OutlinedTextField(
+                    value = longitudeText,
+                    onValueChange = { longitudeText = it; lngError = null },
+                    label = { Text("Kinh độ (Lng)") },
+                    placeholder = { Text("VD: 106.7009") },
+                    isError = lngError != null,
+                    supportingText = lngError?.let { { Text(it, color = MaterialTheme.colorScheme.error) } },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    singleLine = true,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            OutlinedButton(
+                onClick = {
+                    locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
+                },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !isGettingLocation
+            ) {
+                if (isGettingLocation) {
+                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                    Spacer(Modifier.size(8.dp))
+                    Text("Đang lấy vị trí...")
+                } else {
+                    Icon(
+                        imageVector = Icons.Filled.MyLocation,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.size(8.dp))
+                    Text("Lấy vị trí GPS hiện tại")
+                }
+            }
+
+            // ── Hình ảnh sân ──────────────────────────────────────
+            SectionHeader("Hình ảnh sân")
+
+            Text(
+                text = "Ảnh đại diện",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium
+            )
+            ImagePickerCard(
+                uri = avatarImageUri,
+                hint = "Ảnh avatar hiển thị trên danh sách sân",
+                onPick = { avatarPickerLauncher.launch("image/*") },
+                onRemove = { avatarImageUri = null }
+            )
+
+            Text(
+                text = "Ảnh bìa",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium
+            )
+            ImagePickerCard(
+                uri = cardImageUri,
+                hint = "Ảnh banner lớn hiển thị trong trang chi tiết",
+                onPick = { cardPickerLauncher.launch("image/*") },
+                onRemove = { cardImageUri = null }
+            )
+
+            // ── Loại sân ─────────────────────────────────────────
             SectionHeader("Loại sân")
             OptionSelector(
                 options = SPORT_TYPES.map { it.second },
@@ -187,7 +347,7 @@ fun AddFieldScreen(
                 onSelect = { selectedSportId = SPORT_TYPES[it].first }
             )
 
-            // Section: Giá & Thời lượng
+            // ── Giá & Thời lượng ─────────────────────────────────
             SectionHeader("Giá & thời lượng slot")
 
             OutlinedTextField(
@@ -216,7 +376,7 @@ fun AddFieldScreen(
                 )
             }
 
-            // Section: Giờ hoạt động
+            // ── Giờ hoạt động ─────────────────────────────────────
             SectionHeader("Khung giờ hoạt động")
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -236,7 +396,7 @@ fun AddFieldScreen(
                 )
             }
 
-            // Section: Trạng thái
+            // ── Trạng thái ───────────────────────────────────────
             SectionHeader("Trạng thái ban đầu")
             OptionSelector(
                 options = STATUS_OPTIONS.map { it.second },
@@ -246,7 +406,6 @@ fun AddFieldScreen(
 
             Spacer(Modifier.height(8.dp))
 
-            // Save button
             Button(
                 onClick = {
                     if (validate()) {
@@ -259,7 +418,11 @@ fun AddFieldScreen(
                             closeTime = closeTime.trim(),
                             slotPrice = slotPriceText.toDoubleOrNull(),
                             slotMinutes = selectedSlotMinutes,
-                            status = selectedStatus
+                            status = selectedStatus,
+                            latitude = latitudeText.toDoubleOrNull(),
+                            longitude = longitudeText.toDoubleOrNull(),
+                            avatarImagePart = avatarImageUri?.let { uriToMultipart(it, "avatar") },
+                            cardImagePart = cardImageUri?.let { uriToMultipart(it, "card") }
                         )
                     }
                 },
@@ -291,6 +454,99 @@ fun AddFieldScreen(
             }
 
             Spacer(Modifier.height(16.dp))
+        }
+    }
+}
+
+@Composable
+private fun ImagePickerCard(
+    uri: Uri?,
+    hint: String,
+    onPick: () -> Unit,
+    onRemove: () -> Unit
+) {
+    if (uri != null) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(160.dp)
+                .clip(RoundedCornerShape(12.dp))
+        ) {
+            AsyncImage(
+                model = uri,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize()
+            )
+            IconButton(
+                onClick = onRemove,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(4.dp)
+                    .size(32.dp)
+                    .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Close,
+                    contentDescription = "Xóa ảnh",
+                    tint = Color.White,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(8.dp)
+            ) {
+                OutlinedButton(
+                    onClick = onPick,
+                    modifier = Modifier.height(32.dp),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 0.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(containerColor = Color.White.copy(alpha = 0.9f))
+                ) {
+                    Text("Đổi ảnh", fontSize = 12.sp)
+                }
+            }
+        }
+    } else {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(120.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainerLowest)
+                .border(
+                    width = 1.5.dp,
+                    color = MaterialTheme.colorScheme.outlineVariant,
+                    shape = RoundedCornerShape(12.dp)
+                )
+                .clickable { onPick() },
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.AddPhotoAlternate,
+                    contentDescription = null,
+                    modifier = Modifier.size(36.dp),
+                    tint = MaterialTheme.colorScheme.outline
+                )
+                Text(
+                    text = "Chọn ảnh",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = hint,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+            }
         }
     }
 }

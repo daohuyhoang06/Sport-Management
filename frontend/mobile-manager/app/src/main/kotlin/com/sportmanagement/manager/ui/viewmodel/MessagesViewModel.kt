@@ -7,18 +7,38 @@ import com.sportmanagement.manager.data.mapper.toChatMessage
 import com.sportmanagement.manager.data.mapper.toConversationItem
 import com.sportmanagement.manager.domain.model.ChatMessage
 import com.sportmanagement.manager.domain.model.ConversationItem
+import com.sportmanagement.manager.domain.model.MessageStatus
 import com.sportmanagement.manager.ui.state.MessagesUiState
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 class MessagesViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(MessagesUiState())
     val uiState: StateFlow<MessagesUiState> = _uiState.asStateFlow()
 
+    private var pollingJob: Job? = null
+
     init {
-        loadConversations()
+        viewModelScope.launch {
+            loadConversationsFromCache()
+            loadConversations()
+        }
+    }
+
+    // ── Conversations ─────────────────────────────────────────────────────────
+
+    private suspend fun loadConversationsFromCache() {
+        val cached = AppContainer.chatRepository.getCachedConversations()
+        if (cached.isNotEmpty()) {
+            _uiState.value = _uiState.value.copy(
+                conversations = cached.map { it.toConversationItem() }
+            )
+        }
     }
 
     fun loadConversations() {
@@ -51,21 +71,75 @@ class MessagesViewModel : ViewModel() {
             conversations = markRead,
             loadingChatId = conversation.id
         )
-        loadMessages(conversation.id.toIntOrNull() ?: return)
+        val chatId = conversation.id.toIntOrNull() ?: return
+        viewModelScope.launch {
+            AppContainer.chatRepository.markConversationAsRead(chatId)
+        }
+        loadMessages(chatId, showCacheFirst = true)
+        startPolling(chatId)
     }
 
-    private fun loadMessages(chatId: Int) {
+    // ── Polling ───────────────────────────────────────────────────────────────
+
+    private fun startPolling(chatId: Int) {
+        pollingJob?.cancel()
+        pollingJob = viewModelScope.launch {
+            while (isActive) {
+                delay(5_000)
+                silentRefreshMessages(chatId)
+            }
+        }
+    }
+
+    private fun stopPolling() {
+        pollingJob?.cancel()
+        pollingJob = null
+    }
+
+    private suspend fun silentRefreshMessages(chatId: Int) {
+        val currentUserId = AppContainer.authRepository.getUserId()
+        AppContainer.chatRepository.getMessages(chatId).onSuccess { dtos ->
+            val freshMsgs = dtos.map { it.toChatMessage(currentUserId) }
+            val chatKey = chatId.toString()
+            val existing = _uiState.value.chatMessages[chatKey].orEmpty()
+            // Keep SENDING and FAILED temp messages; replace confirmed messages with server data
+            val tempMsgs = existing.filter { it.id.startsWith("temp_") }
+            val merged = freshMsgs + tempMsgs
+            val map = _uiState.value.chatMessages.toMutableMap()
+            map[chatKey] = merged
+            _uiState.value = _uiState.value.copy(chatMessages = map)
+        }
+    }
+
+    // ── Messages ──────────────────────────────────────────────────────────────
+
+    private fun loadMessages(chatId: Int, showCacheFirst: Boolean = false) {
         viewModelScope.launch {
             val currentUserId = AppContainer.authRepository.getUserId()
             val chatKey = chatId.toString()
+
+            if (showCacheFirst) {
+                val cached = AppContainer.chatRepository.getCachedMessages(chatId)
+                if (cached.isNotEmpty()) {
+                    val cachedMsgs = cached.map { it.toChatMessage(currentUserId) }
+                    val map = _uiState.value.chatMessages.toMutableMap()
+                    map[chatKey] = cachedMsgs
+                    _uiState.value = _uiState.value.copy(
+                        chatMessages = map,
+                        loadingChatId = null
+                    )
+                }
+            }
+
             AppContainer.chatRepository.getMessages(chatId).onSuccess { dtos ->
-                val freshMessages = dtos.map { it.toChatMessage(currentUserId) }
-                val existingMessages = _uiState.value.chatMessages[chatKey].orEmpty()
-                val mergedMessages = mergeMessages(existingMessages, freshMessages)
-                val updatedMap = _uiState.value.chatMessages.toMutableMap()
-                updatedMap[chatKey] = mergedMessages
+                val freshMsgs = dtos.map { it.toChatMessage(currentUserId) }
+                val existing = _uiState.value.chatMessages[chatKey].orEmpty()
+                val failedMsgs = existing.filter { it.id.startsWith("temp_") && it.status == MessageStatus.FAILED }
+                val merged = freshMsgs + failedMsgs
+                val map = _uiState.value.chatMessages.toMutableMap()
+                map[chatKey] = merged
                 _uiState.value = _uiState.value.copy(
-                    chatMessages = updatedMap,
+                    chatMessages = map,
                     loadingChatId = null
                 )
             }.onFailure {
@@ -75,7 +149,12 @@ class MessagesViewModel : ViewModel() {
     }
 
     fun onBackFromThread() {
-        _uiState.value = _uiState.value.copy(selectedConversation = null, draftMessage = "")
+        stopPolling()
+        _uiState.value = _uiState.value.copy(
+            selectedConversation = null,
+            draftMessage = "",
+            isSendingMessage = false
+        )
     }
 
     fun onDraftMessageChanged(text: String) {
@@ -85,35 +164,96 @@ class MessagesViewModel : ViewModel() {
     fun onSendMessage() {
         val conv = _uiState.value.selectedConversation ?: return
         val draft = _uiState.value.draftMessage.trim()
-        if (draft.isBlank()) return
+        if (draft.isBlank() || _uiState.value.isSendingMessage) return
         val chatId = conv.id.toIntOrNull() ?: return
+        val chatKey = conv.id
 
-        // Optimistic update
+        val tempId = "temp_${System.currentTimeMillis()}"
         val tempMsg = ChatMessage(
-            id = "temp_${System.currentTimeMillis()}",
+            id = tempId,
             content = draft,
             isFromManager = true,
             timestamp = "Vừa xong",
-            isRead = false
+            rawTimestamp = null,
+            isRead = false,
+            status = MessageStatus.SENDING
         )
-        val currentMessages = _uiState.value.chatMessages[conv.id] ?: emptyList()
-        val updatedMap = _uiState.value.chatMessages.toMutableMap()
-        updatedMap[conv.id] = currentMessages + tempMsg
+        val currentMessages = _uiState.value.chatMessages[chatKey] ?: emptyList()
+        val updatedMessages = _uiState.value.chatMessages.toMutableMap()
+        updatedMessages[chatKey] = currentMessages + tempMsg
 
         val updatedConversations = buildList {
             add(conv.copy(lastMessage = draft, lastMessageTime = "Vừa xong"))
             addAll(_uiState.value.conversations.filter { it.id != conv.id })
         }
-        _uiState.value = _uiState.value.copy(chatMessages = updatedMap, conversations = updatedConversations, draftMessage = "")
+        _uiState.value = _uiState.value.copy(
+            chatMessages = updatedMessages,
+            conversations = updatedConversations,
+            draftMessage = "",
+            isSendingMessage = true
+        )
 
         viewModelScope.launch {
-            AppContainer.chatRepository.sendMessage(chatId, draft).onFailure {
-                loadMessages(chatId)
-                return@launch
-            }
-            loadMessages(chatId)
+            AppContainer.chatRepository.sendMessage(chatId, draft).fold(
+                onSuccess = {
+                    _uiState.value = _uiState.value.copy(isSendingMessage = false)
+                    loadMessages(chatId)
+                },
+                onFailure = {
+                    val currentMsgs = _uiState.value.chatMessages[chatKey].orEmpty()
+                    val updatedMap = _uiState.value.chatMessages.toMutableMap()
+                    updatedMap[chatKey] = currentMsgs.map { msg ->
+                        if (msg.id == tempId) msg.copy(status = MessageStatus.FAILED) else msg
+                    }
+                    _uiState.value = _uiState.value.copy(
+                        chatMessages = updatedMap,
+                        isSendingMessage = false
+                    )
+                }
+            )
         }
     }
+
+    fun onRetryMessage(tempId: String) {
+        val conv = _uiState.value.selectedConversation ?: return
+        val chatId = conv.id.toIntOrNull() ?: return
+        val chatKey = conv.id
+        val messages = _uiState.value.chatMessages[chatKey] ?: return
+        val failedMsg = messages.find { it.id == tempId } ?: return
+        val content = failedMsg.content
+
+        val newTempId = "temp_${System.currentTimeMillis()}"
+        val retryMsg = failedMsg.copy(id = newTempId, status = MessageStatus.SENDING)
+        val updatedMessages = _uiState.value.chatMessages.toMutableMap()
+        updatedMessages[chatKey] = messages.filter { it.id != tempId } + retryMsg
+
+        _uiState.value = _uiState.value.copy(
+            chatMessages = updatedMessages,
+            isSendingMessage = true
+        )
+
+        viewModelScope.launch {
+            AppContainer.chatRepository.sendMessage(chatId, content).fold(
+                onSuccess = {
+                    _uiState.value = _uiState.value.copy(isSendingMessage = false)
+                    loadMessages(chatId)
+                },
+                onFailure = {
+                    val currentMsgs = _uiState.value.chatMessages[chatKey].orEmpty()
+                    val updatedMap = _uiState.value.chatMessages.toMutableMap()
+                    updatedMap[chatKey] = currentMsgs.map { msg ->
+                        if (msg.id == newTempId) msg.copy(status = MessageStatus.FAILED) else msg
+                    }
+                    _uiState.value = _uiState.value.copy(
+                        chatMessages = updatedMap,
+                        isSendingMessage = false
+                    )
+                }
+            )
+        }
+    }
+
+    // ── Reviews ───────────────────────────────────────────────────────────────
 
     fun onReplyDraftChanged(reviewId: String, text: String) {
         val updated = _uiState.value.replyDrafts.toMutableMap()
@@ -129,18 +269,5 @@ class MessagesViewModel : ViewModel() {
         }
         val updatedDrafts = _uiState.value.replyDrafts.toMutableMap().also { it.remove(reviewId) }
         _uiState.value = _uiState.value.copy(reviews = updatedReviews, replyDrafts = updatedDrafts)
-    }
-
-    private fun mergeMessages(
-        existingMessages: List<ChatMessage>,
-        freshMessages: List<ChatMessage>
-    ): List<ChatMessage> {
-        if (existingMessages.isEmpty()) return freshMessages
-        if (freshMessages.isEmpty()) return existingMessages
-
-        val merged = LinkedHashMap<String, ChatMessage>()
-        existingMessages.forEach { merged[it.id] = it }
-        freshMessages.forEach { merged[it.id] = it }
-        return merged.values.toList()
     }
 }
