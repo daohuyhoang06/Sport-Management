@@ -58,8 +58,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -110,6 +113,7 @@ import com.sportmanagement.user.ui.theme.AppHeaderGradientStart
 import com.sportmanagement.user.ui.theme.AppOnCtaAmber
 import kotlinx.coroutines.delay
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Locale
 import java.util.TimeZone
 
@@ -152,7 +156,9 @@ fun BookingPaymentScreen(
     var reopenedPayUrl by rememberSaveable { mutableStateOf<String?>(null) }
     var currentOrderId by rememberSaveable { mutableStateOf<String?>(null) }
     var pendingBookingId by rememberSaveable { mutableStateOf<Int?>(null) }
-    var remainingHoldSeconds by rememberSaveable { mutableIntStateOf(6 * 60) }
+    var holdExpiryTimeMillis by rememberSaveable {
+        mutableLongStateOf(System.currentTimeMillis() + (6 * 60 * 1_000L))
+    }
     var isHoldExpired by rememberSaveable { mutableStateOf(false) }
 
     val totalAmount = remember(confirmationData.totalPrice) {
@@ -229,13 +235,17 @@ fun BookingPaymentScreen(
                     CreateBookingRequest(
                         fieldId = fieldId,
                         courtId = range.courtId.toIntOrNull(),
-                        startTime = buildBookingDateTimeIsoUtc(
+                        startTime = buildBookingDateTimeLocal(
                             dateText = confirmationData.selectedDate,
                             timeText = range.startTimeLabel
                         ),
-                        endTime = buildBookingDateTimeIsoUtc(
+                        endTime = buildBookingDateTimeLocal(
                             dateText = confirmationData.selectedDate,
-                            timeText = range.endTimeLabel
+                            timeText = range.endTimeLabel,
+                            rollToNextDay = isEndTimeOnNextDay(
+                                startTimeText = range.startTimeLabel,
+                                endTimeText = range.endTimeLabel
+                            )
                         ),
                         price = range.price,
                         note = null,
@@ -257,7 +267,8 @@ fun BookingPaymentScreen(
                 }
                 pendingBookingId = createdBookingId
                 if (batchResult.pendingHoldSeconds > 0) {
-                    remainingHoldSeconds = batchResult.pendingHoldSeconds
+                    holdExpiryTimeMillis = computeHoldExpiryTimeMillis(batchResult.pendingHoldSeconds)
+                    isHoldExpired = false
                 }
                 createdBookingId
             }
@@ -395,21 +406,6 @@ fun BookingPaymentScreen(
                 )
             }.onSuccess {
                 onPaymentConfirmed()
-            }
-        }
-    }
-
-    LaunchedEffect(Unit) {
-        while (true) {
-            delay(1_000)
-            if (isHoldExpired || paymentStatus == PaymentReturnStatus.Success) continue
-            if (remainingHoldSeconds > 0) {
-                remainingHoldSeconds -= 1
-            }
-            if (remainingHoldSeconds <= 0 && paymentStatus != PaymentReturnStatus.Success) {
-                isHoldExpired = true
-                paymentStatus = PaymentReturnStatus.Failed
-                paymentMessage = context.getString(R.string.payment_pending_expired_message)
             }
         }
     }
@@ -662,7 +658,14 @@ fun BookingPaymentScreen(
                         if (paymentStatus != PaymentReturnStatus.Success) {
                             item {
                                 PaymentHoldSlotSection(
-                                    remainingSeconds = remainingHoldSeconds.coerceAtLeast(0)
+                                    holdExpiryTimeMillis = holdExpiryTimeMillis,
+                                    onExpired = {
+                                        if (!isHoldExpired && paymentStatus != PaymentReturnStatus.Success) {
+                                            isHoldExpired = true
+                                            paymentStatus = PaymentReturnStatus.Failed
+                                            paymentMessage = context.getString(R.string.payment_pending_expired_message)
+                                        }
+                                    }
                                 )
                             }
                         }
@@ -685,8 +688,24 @@ fun BookingPaymentScreen(
 
 @Composable
 private fun PaymentHoldSlotSection(
-    remainingSeconds: Int
+    holdExpiryTimeMillis: Long,
+    onExpired: () -> Unit
 ) {
+    val latestOnExpired by rememberUpdatedState(onExpired)
+    val remainingSeconds by produceState(
+        initialValue = computeRemainingHoldSeconds(holdExpiryTimeMillis),
+        holdExpiryTimeMillis
+    ) {
+        while (true) {
+            val nextRemainingSeconds = computeRemainingHoldSeconds(holdExpiryTimeMillis)
+            value = nextRemainingSeconds
+            if (nextRemainingSeconds <= 0) {
+                latestOnExpired()
+                break
+            }
+            delay(1_000)
+        }
+    }
     val minutes = (remainingSeconds / 60).coerceAtLeast(0)
     val seconds = (remainingSeconds % 60).coerceAtLeast(0)
     Column(
@@ -768,6 +787,16 @@ private fun PaymentExpiredSection(
             color = Color.White,
         )
     }
+}
+
+private fun computeHoldExpiryTimeMillis(remainingSeconds: Int): Long {
+    return System.currentTimeMillis() + (remainingSeconds.coerceAtLeast(0) * 1_000L)
+}
+
+private fun computeRemainingHoldSeconds(holdExpiryTimeMillis: Long): Int {
+    return ((holdExpiryTimeMillis - System.currentTimeMillis() + 999L) / 1_000L)
+        .coerceAtLeast(0L)
+        .toInt()
 }
 
 @Composable
@@ -1233,27 +1262,50 @@ private fun loadAuthToken(context: android.content.Context): String? {
         ?.takeIf { it.isNotBlank() }
 }
 
-private fun buildBookingDateTimeIsoUtc(
+private fun buildBookingDateTimeLocal(
     dateText: String,
-    timeText: String
+    timeText: String,
+    rollToNextDay: Boolean = false
 ): String {
     val patterns = listOf("yyyy-MM-dd HH:mm", "dd/MM/yyyy HH:mm")
-    val sourceTimeZone = TimeZone.getTimeZone("Asia/Ho_Chi_Minh")
+    val bookingTimeZone = TimeZone.getTimeZone("Asia/Ho_Chi_Minh")
 
     for (pattern in patterns) {
         val parser = SimpleDateFormat(pattern, Locale.getDefault()).apply {
             isLenient = false
-            timeZone = sourceTimeZone
+            timeZone = bookingTimeZone
         }
         val parsed = runCatching { parser.parse("$dateText $timeText") }.getOrNull()
         if (parsed != null) {
-            return SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
-                timeZone = TimeZone.getTimeZone("UTC")
-            }.format(parsed)
+            val calendar = Calendar.getInstance(bookingTimeZone).apply {
+                time = parsed
+                if (rollToNextDay) add(Calendar.DATE, 1)
+            }
+            return SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).apply {
+                timeZone = bookingTimeZone
+            }.format(calendar.time)
         }
     }
 
     error("Invalid booking datetime: $dateText $timeText")
+}
+
+private fun isEndTimeOnNextDay(
+    startTimeText: String,
+    endTimeText: String
+): Boolean {
+    val startMinutes = parseTimeToMinutesOrNull(startTimeText) ?: return false
+    val endMinutes = parseTimeToMinutesOrNull(endTimeText) ?: return false
+    return endMinutes <= startMinutes
+}
+
+private fun parseTimeToMinutesOrNull(value: String): Int? {
+    val parts = value.split(":")
+    if (parts.size < 2) return null
+    val hours = parts[0].toIntOrNull() ?: return null
+    val minutes = parts[1].toIntOrNull() ?: return null
+    if (hours !in 0..23 || minutes !in 0..59) return null
+    return hours * 60 + minutes
 }
 
 private fun openPaymentUrl(

@@ -8,8 +8,15 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.background
@@ -17,7 +24,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -35,12 +41,8 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sportmanagement.user.R
 import com.sportmanagement.user.domain.model.BookingConfirmationData
-<<<<<<< HEAD
-import com.sportmanagement.user.domain.model.FieldDetail
-import com.sportmanagement.user.domain.model.mockFieldDetail
-=======
 import com.sportmanagement.user.domain.model.UserField
->>>>>>> develop
+import com.sportmanagement.user.ui.components.AppRotatingLoadingIndicator
 import com.sportmanagement.user.ui.components.UserBottomBar
 import com.sportmanagement.user.ui.components.chatbot.ChatbotOverlay
 import com.sportmanagement.user.ui.components.share.FieldShareSheet
@@ -93,7 +95,6 @@ fun UserApp(
     )
     val uiState by resolvedUserViewModel.uiState.collectAsState()
     val inboxUiState by inboxViewModel.uiState.collectAsState()
-    val chatbotUiState by chatbotViewModel.uiState.collectAsState()
     var showAuthScreen by rememberSaveable { mutableStateOf(false) }
     var showRegister by rememberSaveable { mutableStateOf(false) }
     var selectedFieldId by rememberSaveable { mutableStateOf<Int?>(null) }
@@ -119,6 +120,8 @@ fun UserApp(
     var notificationDetailInfo by remember { mutableStateOf<NotificationDetailInfo?>(null) }
     var fieldToShare by remember { mutableStateOf<UserField?>(null) }
     var pendingDeepLinkFieldId by rememberSaveable { mutableStateOf<Int?>(null) }
+    var skipNextInboxTabRefresh by remember { mutableStateOf(false) }
+    var hasPrefetchedInboxThisSession by rememberSaveable { mutableStateOf(false) }
 
     val closeHomeSearchResultsFlow = {
         showHomeSearchResultsScreen = false
@@ -248,22 +251,6 @@ fun UserApp(
         resolvedUserViewModel.onTabSelected(UserTab.Home)
     }
 
-    if (selectedFieldDetail != null) {
-        AppStatusBarEffect(statusBarColor = Color.Transparent, useDarkIcons = false)
-        FieldDetailScreen(
-            fieldDetail = selectedFieldDetail!!,
-            onBackClick = { selectedFieldDetail = null },
-            onBookNowClick = { detail ->
-                selectedCourtName = detail.name
-                selectedFieldDetail = null
-                showBookingConfirmationScreen = false
-                bookingConfirmationData = null
-                showBookingScreen = true
-            }
-        )
-        return
-    }
-
     val statusBarColor = when {
         showAuthScreen -> Color.Transparent
         showHomeSearchFilterScreen -> Color.Transparent
@@ -333,7 +320,41 @@ fun UserApp(
 
     LaunchedEffect(uiState.isAuthenticated, uiState.selectedTab) {
         if (uiState.isAuthenticated && uiState.selectedTab == UserTab.Inbox) {
-            inboxViewModel.refreshInbox()
+            if (skipNextInboxTabRefresh) {
+                skipNextInboxTabRefresh = false
+            } else {
+                inboxViewModel.refreshInbox(
+                    silent = inboxUiState.sections.isNotEmpty()
+                )
+            }
+        } else {
+            skipNextInboxTabRefresh = false
+        }
+    }
+
+    LaunchedEffect(uiState.isAuthenticated, uiState.isHomeLoading, shouldShowBottomBar) {
+        if (!uiState.isAuthenticated) {
+            hasPrefetchedInboxThisSession = false
+            return@LaunchedEffect
+        }
+        if (!shouldShowBottomBar || uiState.isHomeLoading || hasPrefetchedInboxThisSession) {
+            return@LaunchedEffect
+        }
+        hasPrefetchedInboxThisSession = true
+        inboxViewModel.refreshInbox(silent = true)
+    }
+
+    val handleTabSelected: (UserTab) -> Unit = { tab ->
+        if (tab == uiState.selectedTab) {
+            Unit
+        } else {
+            if (uiState.isAuthenticated && tab == UserTab.Inbox) {
+                skipNextInboxTabRefresh = true
+                inboxViewModel.refreshInbox(
+                    silent = inboxUiState.sections.isNotEmpty()
+                )
+            }
+            resolvedUserViewModel.onTabSelected(tab)
         }
     }
 
@@ -353,7 +374,7 @@ fun UserApp(
                 UserBottomBar(
                     selectedTab = uiState.selectedTab,
                     inboxUnreadCount = inboxUnreadCount,
-                    onTabSelected = resolvedUserViewModel::onTabSelected
+                    onTabSelected = handleTabSelected
                 )
             }
         }
@@ -448,7 +469,7 @@ fun UserApp(
                         resolvedUserViewModel.onTabSelected(UserTab.Home)
                     },
                     onPaymentConfirmed = {
-                        inboxViewModel.refreshInbox()
+                        inboxViewModel.refreshInbox(withBookingFollowUp = true)
                     }
                 )
             } else if (showBookingConfirmationScreen && bookingConfirmationData != null) {
@@ -492,7 +513,9 @@ fun UserApp(
                                 .background(MaterialTheme.colorScheme.background),
                             contentAlignment = Alignment.Center
                         ) {
-                            CircularProgressIndicator()
+                            AppRotatingLoadingIndicator(
+                                label = null
+                            )
                         }
                     }
                     else -> {
@@ -640,233 +663,253 @@ fun UserApp(
                     }
                 )
             } else {
-                when (uiState.selectedTab) {
-                    UserTab.Home -> if (showHomeSearchResultsScreen) {
-                        HomeSearchResultsScreen(
-                            padding = padding,
-                            fields = uiState.homeFields,
-                            favoriteFields = uiState.favoriteFields,
-                            isLoading = uiState.isHomeLoading,
-                            title = appContext.getString(R.string.home_search_results_title),
-                            emptyTitle = appContext.getString(R.string.home_search_results_empty_title),
-                            emptyBody = appContext.getString(R.string.home_search_results_empty_body),
-                            onBackClick = closeHomeSearchResultsFlow,
-                            onFilterClick = {
-                                showHomeSearchFilterScreen = true
-                            },
-                            onBookFieldClick = startBookingFlow,
-                            onFavoriteFieldClick = toggleFavoriteField,
-                            onShareFieldClick = shareField
+                AnimatedContent(
+                    targetState = uiState.selectedTab,
+                    transitionSpec = {
+                        val isForward = targetState.ordinal > initialState.ordinal
+                        val enterOffset: (Int) -> Int = { fullWidth ->
+                            if (isForward) fullWidth else -fullWidth
+                        }
+                        val exitOffset: (Int) -> Int = { fullWidth ->
+                            if (isForward) -fullWidth / 4 else fullWidth / 4
+                        }
+                        (slideInHorizontally(
+                            initialOffsetX = enterOffset,
+                            animationSpec = androidx.compose.animation.core.tween(durationMillis = 320)
+                        ) + fadeIn(
+                            animationSpec = androidx.compose.animation.core.tween(durationMillis = 220)
+                        )).togetherWith(
+                            slideOutHorizontally(
+                                targetOffsetX = exitOffset,
+                                animationSpec = androidx.compose.animation.core.tween(durationMillis = 280)
+                            ) + fadeOut(
+                                animationSpec = androidx.compose.animation.core.tween(durationMillis = 180)
+                            )
                         )
-                    } else if (showFavoriteFieldsScreen) {
-                        HomeSearchResultsScreen(
-                            padding = padding,
-                            fields = uiState.favoriteFields,
-                            favoriteFields = uiState.favoriteFields,
-                            isLoading = false,
-                            title = appContext.getString(R.string.favorite_title),
-                            emptyTitle = "Chua co san yeu thich",
-                            emptyBody = "Nhan tim o the san de luu san vao danh sach nay.",
-                            onBackClick = closeFavoriteFieldsFlow,
-                            onFilterClick = {},
-                            onBookFieldClick = startBookingFlow,
-                            onFavoriteFieldClick = toggleFavoriteField,
-                            onShareFieldClick = shareField,
-                            showFilterButton = false
-                        )
-                    } else {
-                        UserHomeScreen(
-                            padding = padding,
-                            fields = uiState.homeFields,
-                            favoriteFields = uiState.favoriteFields,
-                            sportCategories = uiState.sportCategories,
-                            userName = uiState.profile.name,
-                            userAvatarUrl = uiState.profile.avatarUrl,
-                            isLoggedIn = uiState.isAuthenticated,
-                            isInitialLoading = uiState.isHomeLoading,
-                            isLoadingMore = uiState.isHomeLoadingMore,
-                            hasMoreData = uiState.hasMoreHomeFields,
-                            searchResults = uiState.fieldSearchResults,
-                            recentSearches = uiState.recentFieldSearches,
-                            isSearchLoading = uiState.isFieldSearchLoading,
-                            isSearchLoadingMore = uiState.isFieldSearchLoadingMore,
-                            hasMoreSearchResults = uiState.hasMoreFieldSearchResults,
-                            onLoginClick = openAuthFlow,
-                            onRegisterClick = {
-                                resolvedUserViewModel.clearAuthError()
-                                showRegister = true
-                                showAuthScreen = true
-                            },
-                            onFavoriteHeaderClick = {
-                                if (uiState.isAuthenticated) {
-                                    showFavoriteFieldsScreen = true
-                                } else {
-                                    openAuthFlow()
-                                }
-                            },
-                            onFilterClick = {
-                                showHomeSearchFilterScreen = true
-                            },
-                            onSearchOpened = {
-                                resolvedUserViewModel.onFieldSearchOpened()
-                            },
-                            onSearchRequest = { keyword, address, sportType ->
-                                resolvedUserViewModel.searchFields(
-                                    keyword = keyword,
-                                    address = address,
-                                    sportType = sportType
+                    },
+                    label = "user_tab_transition"
+                ) { selectedTab ->
+                    when (selectedTab) {
+                            UserTab.Home -> if (showHomeSearchResultsScreen) {
+                                HomeSearchResultsScreen(
+                                    padding = padding,
+                                    fields = uiState.homeFields,
+                                    favoriteFields = uiState.favoriteFields,
+                                    isLoading = uiState.isHomeLoading,
+                                    title = appContext.getString(R.string.home_search_results_title),
+                                    emptyTitle = appContext.getString(R.string.home_search_results_empty_title),
+                                    emptyBody = appContext.getString(R.string.home_search_results_empty_body),
+                                    onBackClick = closeHomeSearchResultsFlow,
+                                    onFilterClick = {
+                                        showHomeSearchFilterScreen = true
+                                    },
+                                    onBookFieldClick = startBookingFlow,
+                                    onFavoriteFieldClick = toggleFavoriteField,
+                                    onShareFieldClick = shareField
                                 )
-                            },
-                            onClearSearch = {
-                                resolvedUserViewModel.clearFieldSearchResults()
-                            },
-                            onLoadMoreSearchResults = {
-                                resolvedUserViewModel.loadMoreFieldSearchResults()
-                            },
-                            onRememberSearch = { query ->
-                                resolvedUserViewModel.rememberFieldSearch(query)
-                            },
-                            onCurrentLocationDetected = { latitude, longitude ->
-                                resolvedUserViewModel.onHomeLocationUpdated(latitude, longitude)
-                            },
-                            onLocationUnavailable = {
-                                resolvedUserViewModel.onHomeLocationUnavailable()
-                            },
-                            onLoadMore = {
-                                resolvedUserViewModel.loadMoreHomeFields()
-                            },
-                            onBookFieldClick = startBookingFlow,
-                            onFavoriteFieldClick = toggleFavoriteField,
-                            onShareFieldClick = shareField,
-                            deepLinkFieldIdToOpen = pendingDeepLinkFieldId,
-                            onDeepLinkFieldConsumed = {
-                                pendingDeepLinkFieldId = null
-                                onDeepLinkConsumed()
-                            }
-                        )
-                    }
-                    UserTab.Map -> UserMapScreen(
-                        padding = padding,
-                        sportCategories = uiState.sportCategories,
-                        nearby = uiState.nearbyFields,
-                        favoriteFields = uiState.favoriteFields,
-                        searchResults = uiState.fieldSearchResults,
-                        recentSearches = uiState.recentFieldSearches,
-                        isSearchLoading = uiState.isFieldSearchLoading,
-                        isSearchLoadingMore = uiState.isFieldSearchLoadingMore,
-                        hasMoreSearchResults = uiState.hasMoreFieldSearchResults,
-                        onSearchOpened = {
-                            resolvedUserViewModel.onFieldSearchOpened()
-                        },
-                        onSearchRequest = { keyword, address, sportType ->
-                            resolvedUserViewModel.searchFields(
-                                keyword = keyword,
-                                address = address,
-                                sportType = sportType
-                            )
-                        },
-                        onClearSearch = {
-                            resolvedUserViewModel.clearFieldSearchResults()
-                        },
-                        onLoadMoreSearchResults = {
-                            resolvedUserViewModel.loadMoreFieldSearchResults()
-                        },
-                        onRememberSearch = { query ->
-                            resolvedUserViewModel.rememberFieldSearch(query)
-                        },
-                        onCurrentLocationDetected = { latitude, longitude ->
-                            resolvedUserViewModel.onHomeLocationUpdated(latitude, longitude)
-                        },
-                        onBookFieldClick = startBookingFlow,
-                        onFavoriteFieldClick = toggleFavoriteField,
-                        onShareFieldClick = shareField
-                    )
-                    UserTab.Inbox -> InboxScreen(
-                        padding = padding,
-                        sections = inboxUiState.sections,
-                        isLoading = inboxUiState.isLoadingInbox,
-                        errorMessage = inboxUiState.inboxError,
-                        onRefresh = inboxViewModel::refreshInbox,
-                        onMarkAllRead = inboxViewModel::markAllRead,
-                        onNotificationOpened = inboxViewModel::markNotificationRead,
-                        onBookingSelected = { info ->
-                            showBookingDetailScreen = true
-                            inboxViewModel.loadBookingDetail(
-                                bookingId = info.bookingId,
-                                notificationId = info.notificationId
-                            )
-                        },
-                        onMessageSelected = { info ->
-                            inboxViewModel.loadConversation(info)
-                            conversationInfo = info
-                            showConversationScreen = true
-                        },
-                        onNotificationSelected = { item ->
-                            inboxViewModel.loadNotificationDetail(item.id, item.detailInfo)
-                            notificationDetailInfo = item.detailInfo
-                            showNotificationDetailScreen = true
-                        }
-                    )
-                    UserTab.Profile -> UserProfileScreen(
-                        padding = padding,
-                        profile = uiState.profile,
-                        isLoggedIn = uiState.isAuthenticated,
-                        onLoginClick = {
-                            resolvedUserViewModel.clearAuthError()
-                            showRegister = false
-                            showAuthScreen = true
-                        },
-                        onRegisterClick = {
-                            resolvedUserViewModel.clearAuthError()
-                            showRegister = true
-                            showAuthScreen = true
-                        },
-                        onLogoutClick = {
-                            resolvedUserViewModel.logout()
-                            showRegister = false
-                            showAuthScreen = false
-                        },
-                        onBookingHistoryClick = {
-                            closeAccountFlows()
-                            if (uiState.isAuthenticated) {
-                                showBookingHistoryScreen = true
+                            } else if (showFavoriteFieldsScreen) {
+                                HomeSearchResultsScreen(
+                                    padding = padding,
+                                    fields = uiState.favoriteFields,
+                                    favoriteFields = uiState.favoriteFields,
+                                    isLoading = false,
+                                    title = appContext.getString(R.string.favorite_title),
+                                    emptyTitle = "Chua co san yeu thich",
+                                    emptyBody = "Nhan tim o the san de luu san vao danh sach nay.",
+                                    onBackClick = closeFavoriteFieldsFlow,
+                                    onFilterClick = {},
+                                    onBookFieldClick = startBookingFlow,
+                                    onFavoriteFieldClick = toggleFavoriteField,
+                                    onShareFieldClick = shareField,
+                                    showFilterButton = false
+                                )
                             } else {
-                                openAuthFlow()
+                                UserHomeScreen(
+                                    padding = padding,
+                                    fields = uiState.homeFields,
+                                    favoriteFields = uiState.favoriteFields,
+                                    sportCategories = uiState.sportCategories,
+                                    userName = uiState.profile.name,
+                                    userAvatarUrl = uiState.profile.avatarUrl,
+                                    isLoggedIn = uiState.isAuthenticated,
+                                    isInitialLoading = uiState.isHomeLoading,
+                                    isLoadingMore = uiState.isHomeLoadingMore,
+                                    hasMoreData = uiState.hasMoreHomeFields,
+                                    searchResults = uiState.fieldSearchResults,
+                                    recentSearches = uiState.recentFieldSearches,
+                                    isSearchLoading = uiState.isFieldSearchLoading,
+                                    isSearchLoadingMore = uiState.isFieldSearchLoadingMore,
+                                    hasMoreSearchResults = uiState.hasMoreFieldSearchResults,
+                                    onLoginClick = openAuthFlow,
+                                    onRegisterClick = {
+                                        resolvedUserViewModel.clearAuthError()
+                                        showRegister = true
+                                        showAuthScreen = true
+                                    },
+                                    onFavoriteHeaderClick = {
+                                        if (uiState.isAuthenticated) {
+                                            showFavoriteFieldsScreen = true
+                                        } else {
+                                            openAuthFlow()
+                                        }
+                                    },
+                                    onFilterClick = {
+                                        showHomeSearchFilterScreen = true
+                                    },
+                                    onSearchOpened = {
+                                        resolvedUserViewModel.onFieldSearchOpened()
+                                    },
+                                    onSearchRequest = { keyword, address, sportType ->
+                                        resolvedUserViewModel.searchFields(
+                                            keyword = keyword,
+                                            address = address,
+                                            sportType = sportType
+                                        )
+                                    },
+                                    onClearSearch = {
+                                        resolvedUserViewModel.clearFieldSearchResults()
+                                    },
+                                    onLoadMoreSearchResults = {
+                                        resolvedUserViewModel.loadMoreFieldSearchResults()
+                                    },
+                                    onRememberSearch = { query ->
+                                        resolvedUserViewModel.rememberFieldSearch(query)
+                                    },
+                                    onCurrentLocationDetected = { latitude, longitude ->
+                                        resolvedUserViewModel.onHomeLocationUpdated(latitude, longitude)
+                                    },
+                                    onLocationUnavailable = {
+                                        resolvedUserViewModel.onHomeLocationUnavailable()
+                                    },
+                                    onLoadMore = {
+                                        resolvedUserViewModel.loadMoreHomeFields()
+                                    },
+                                    onBookFieldClick = startBookingFlow,
+                                    onFavoriteFieldClick = toggleFavoriteField,
+                                    onShareFieldClick = shareField,
+                                    deepLinkFieldIdToOpen = pendingDeepLinkFieldId,
+                                    onDeepLinkFieldConsumed = {
+                                        pendingDeepLinkFieldId = null
+                                        onDeepLinkConsumed()
+                                    }
+                                )
                             }
-                        },
-                        onFavoriteClick = {
-                            closeAccountFlows()
-                            if (uiState.isAuthenticated) {
-                                showFavoriteFieldsScreen = true
-                            } else {
-                                openAuthFlow()
+                            UserTab.Map -> UserMapScreen(
+                                padding = padding,
+                                sportCategories = uiState.sportCategories,
+                                nearby = uiState.nearbyFields,
+                                favoriteFields = uiState.favoriteFields,
+                                searchResults = uiState.fieldSearchResults,
+                                recentSearches = uiState.recentFieldSearches,
+                                isSearchLoading = uiState.isFieldSearchLoading,
+                                isSearchLoadingMore = uiState.isFieldSearchLoadingMore,
+                                hasMoreSearchResults = uiState.hasMoreFieldSearchResults,
+                                onSearchOpened = {
+                                    resolvedUserViewModel.onFieldSearchOpened()
+                                },
+                                onSearchRequest = { keyword, address, sportType ->
+                                    resolvedUserViewModel.searchFields(
+                                        keyword = keyword,
+                                        address = address,
+                                        sportType = sportType
+                                    )
+                                },
+                                onClearSearch = {
+                                    resolvedUserViewModel.clearFieldSearchResults()
+                                },
+                                onLoadMoreSearchResults = {
+                                    resolvedUserViewModel.loadMoreFieldSearchResults()
+                                },
+                                onRememberSearch = { query ->
+                                    resolvedUserViewModel.rememberFieldSearch(query)
+                                },
+                                onCurrentLocationDetected = { latitude, longitude ->
+                                    resolvedUserViewModel.onHomeLocationUpdated(latitude, longitude)
+                                },
+                                onBookFieldClick = startBookingFlow,
+                                onFavoriteFieldClick = toggleFavoriteField,
+                                onShareFieldClick = shareField
+                            )
+                            UserTab.Inbox -> InboxScreen(
+                                padding = padding,
+                                sections = inboxUiState.sections,
+                                isLoading = inboxUiState.isLoadingInbox,
+                                errorMessage = inboxUiState.inboxError,
+                                onRefresh = { inboxViewModel.refreshInbox() },
+                                onMarkAllRead = inboxViewModel::markAllRead,
+                                onNotificationOpened = inboxViewModel::markNotificationRead,
+                                onBookingSelected = { info ->
+                                    showBookingDetailScreen = true
+                                    inboxViewModel.loadBookingDetail(
+                                        bookingId = info.bookingId,
+                                        notificationId = info.notificationId
+                                    )
+                                },
+                                onMessageSelected = { info ->
+                                    inboxViewModel.loadConversation(info)
+                                    conversationInfo = info
+                                    showConversationScreen = true
+                                },
+                                onNotificationSelected = { item ->
+                                    inboxViewModel.loadNotificationDetail(item.id, item.detailInfo)
+                                    notificationDetailInfo = item.detailInfo
+                                    showNotificationDetailScreen = true
+                                }
+                            )
+                            UserTab.Profile -> UserProfileScreen(
+                                padding = padding,
+                                profile = uiState.profile,
+                                isLoggedIn = uiState.isAuthenticated,
+                                onLoginClick = {
+                                    resolvedUserViewModel.clearAuthError()
+                                    showRegister = false
+                                    showAuthScreen = true
+                                },
+                                onRegisterClick = {
+                                    resolvedUserViewModel.clearAuthError()
+                                    showRegister = true
+                                    showAuthScreen = true
+                                },
+                                onLogoutClick = {
+                                    resolvedUserViewModel.logout()
+                                    showRegister = false
+                                    showAuthScreen = false
+                                },
+                                onBookingHistoryClick = {
+                                    closeAccountFlows()
+                                    if (uiState.isAuthenticated) {
+                                        showBookingHistoryScreen = true
+                                    } else {
+                                        openAuthFlow()
+                                    }
+                                },
+                                onFavoriteClick = {
+                                    closeAccountFlows()
+                                    if (uiState.isAuthenticated) {
+                                        showFavoriteFieldsScreen = true
+                                    } else {
+                                        openAuthFlow()
+                                    }
+                                },
+                                onSupportClick = {
+                                    closeAccountFlows()
+                                    showSupportFaqScreen = true
+                                },
+                                onSettingsClick = {
+                                    closeAccountFlows()
+                                    showSettingsScreen = true
+                                },
+                                onProfileUpdate = { updatedProfile ->
+                                    resolvedUserViewModel.updateProfile(updatedProfile)
+                                }
+                            )
                             }
-                        },
-                        onSupportClick = {
-                            closeAccountFlows()
-                            showSupportFaqScreen = true
-                        },
-                        onSettingsClick = {
-                            closeAccountFlows()
-                            showSettingsScreen = true
-                        },
-                        onProfileUpdate = { updatedProfile ->
-                            resolvedUserViewModel.updateProfile(updatedProfile)
-                        }
-                    )
                 }
             }
 
-            ChatbotOverlay(
-                uiState = chatbotUiState,
-                contentPadding = padding,
-                onToggleWindow = chatbotViewModel::toggleWindow,
-                onCloseWindow = chatbotViewModel::closeWindow,
-                onDraftChanged = chatbotViewModel::onDraftMessageChange,
-                onSendMessage = chatbotViewModel::sendDraftMessage,
-                onRetryMessage = chatbotViewModel::retryMessage,
-                onDismissError = chatbotViewModel::dismissError,
-                onButtonAnchorChanged = chatbotViewModel::onButtonAnchorChanged
+            ChatbotOverlayHost(
+                chatbotViewModel = chatbotViewModel,
+                contentPadding = padding
             )
 
             if (fieldToShare != null) {
@@ -900,6 +943,126 @@ fun UserApp(
             }
         }
     }
+}
+
+private sealed interface UserSurfaceScreen {
+    val order: Int
+    val stateKey: String
+
+    data object Home : UserSurfaceScreen {
+        override val order: Int = 0
+        override val stateKey: String = "home"
+    }
+
+    data object Map : UserSurfaceScreen {
+        override val order: Int = 1
+        override val stateKey: String = "map"
+    }
+
+    data object Inbox : UserSurfaceScreen {
+        override val order: Int = 2
+        override val stateKey: String = "inbox"
+    }
+
+    data object Profile : UserSurfaceScreen {
+        override val order: Int = 3
+        override val stateKey: String = "profile"
+    }
+
+    data object HomeSearchResults : UserSurfaceScreen {
+        override val order: Int = 4
+        override val stateKey: String = "home_search_results"
+    }
+
+    data object FavoriteFields : UserSurfaceScreen {
+        override val order: Int = 5
+        override val stateKey: String = "favorite_fields"
+    }
+
+    data object HomeSearchFilter : UserSurfaceScreen {
+        override val order: Int = 6
+        override val stateKey: String = "home_search_filter"
+    }
+
+    data object BookingSchedule : UserSurfaceScreen {
+        override val order: Int = 7
+        override val stateKey: String = "booking_schedule"
+    }
+
+    data object BookingConfirmation : UserSurfaceScreen {
+        override val order: Int = 8
+        override val stateKey: String = "booking_confirmation"
+    }
+
+    data object BookingPayment : UserSurfaceScreen {
+        override val order: Int = 9
+        override val stateKey: String = "booking_payment"
+    }
+
+    data object BookingHistory : UserSurfaceScreen {
+        override val order: Int = 10
+        override val stateKey: String = "booking_history"
+    }
+
+    data object SupportFaq : UserSurfaceScreen {
+        override val order: Int = 11
+        override val stateKey: String = "support_faq"
+    }
+
+    data object Settings : UserSurfaceScreen {
+        override val order: Int = 12
+        override val stateKey: String = "settings"
+    }
+
+    data object BookingDetailLoading : UserSurfaceScreen {
+        override val order: Int = 13
+        override val stateKey: String = "booking_detail_loading"
+    }
+
+    data object BookingDetail : UserSurfaceScreen {
+        override val order: Int = 14
+        override val stateKey: String = "booking_detail"
+    }
+
+    data object Conversation : UserSurfaceScreen {
+        override val order: Int = 15
+        override val stateKey: String = "conversation"
+    }
+
+    data object NotificationDetail : UserSurfaceScreen {
+        override val order: Int = 16
+        override val stateKey: String = "notification_detail"
+    }
+
+    data object AuthLogin : UserSurfaceScreen {
+        override val order: Int = 17
+        override val stateKey: String = "auth_login"
+    }
+
+    data object AuthRegister : UserSurfaceScreen {
+        override val order: Int = 18
+        override val stateKey: String = "auth_register"
+    }
+}
+
+@Composable
+private fun ChatbotOverlayHost(
+    chatbotViewModel: ChatbotViewModel,
+    contentPadding: PaddingValues
+) {
+    val chatbotUiState by chatbotViewModel.uiState.collectAsState()
+
+    ChatbotOverlay(
+        uiState = chatbotUiState,
+        contentPadding = contentPadding,
+        onToggleWindow = chatbotViewModel::toggleWindow,
+        onCloseWindow = chatbotViewModel::closeWindow,
+        onDraftChanged = chatbotViewModel::onDraftMessageChange,
+        onSendMessage = chatbotViewModel::sendDraftMessage,
+        onRetryMessage = chatbotViewModel::retryMessage,
+        onDismissError = chatbotViewModel::dismissError,
+        onButtonAnchorChanged = chatbotViewModel::onButtonAnchorChanged
+    )
 }
 
 

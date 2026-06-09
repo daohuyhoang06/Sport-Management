@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -741,7 +742,10 @@ private fun AreaPickerDialog(
                                     .weight(1f)
                                     .fillMaxHeight()
                             ) {
-                                itemsIndexed(provinces) { index, province ->
+                                itemsIndexed(
+                                    items = provinces,
+                                    key = { _, province -> province.provinceName }
+                                ) { index, province ->
                                     PickerOptionRow(
                                         text = province.provinceName,
                                         selected = selectedProvince == province.provinceName,
@@ -761,7 +765,10 @@ private fun AreaPickerDialog(
                                     .weight(1f)
                                     .fillMaxHeight()
                             ) {
-                                itemsIndexed(districts) { index, district ->
+                                itemsIndexed(
+                                    items = districts,
+                                    key = { _, district -> district }
+                                ) { index, district ->
                                     PickerOptionRow(
                                         text = district,
                                         selected = selectedDistrict == district,
@@ -919,8 +926,8 @@ private fun SportMarkerFilterChip(
     Surface(
         onClick = onClick,
         modifier = Modifier
-            .width(AppMapCategoryChipWidth)
-            .height(AppMapCategoryChipHeight)
+            .widthIn(min = AppMapCategoryChipWidth)
+            .heightIn(min = AppMapCategoryChipHeight)
             .graphicsLayer {
                 scaleX = chipScale
                 scaleY = chipScale
@@ -944,7 +951,7 @@ private fun SportMarkerFilterChip(
                 iconSize = 14.dp,
                 iconOffsetY = (-1).dp
             )
-            Spacer(modifier = Modifier.width(6.dp))
+            Spacer(modifier = Modifier.width(3.dp))
             Text(
                 text = sport.name.replaceFirstChar { ch ->
                     if (ch.isLowerCase()) ch.titlecase() else ch.toString()
@@ -952,9 +959,9 @@ private fun SportMarkerFilterChip(
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = textColor,
-                maxLines = 1,
-                softWrap = false,
-                overflow = TextOverflow.Clip
+                maxLines = 2,
+                softWrap = true,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }
@@ -995,8 +1002,8 @@ private fun AllSportsFilterChip(
     Surface(
         onClick = onClick,
         modifier = Modifier
-            .width(AppMapCategoryChipWidth)
-            .height(AppMapCategoryChipHeight)
+            .widthIn(min = AppMapCategoryChipWidth)
+            .heightIn(min = AppMapCategoryChipHeight)
             .graphicsLayer {
                 scaleX = chipScale
                 scaleY = chipScale
@@ -1029,15 +1036,15 @@ private fun AllSportsFilterChip(
                     tint = textColor
                 )
             }
-            Spacer(modifier = Modifier.width(6.dp))
+            Spacer(modifier = Modifier.width(3.dp))
             Text(
                 text = stringResource(R.string.home_search_filter_all_button),
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = textColor,
-                maxLines = 1,
-                softWrap = false,
-                overflow = TextOverflow.Clip
+                maxLines = 2,
+                softWrap = true,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }

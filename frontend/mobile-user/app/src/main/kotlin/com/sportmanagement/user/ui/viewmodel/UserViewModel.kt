@@ -3,19 +3,24 @@ package com.sportmanagement.user.ui.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sportmanagement.user.data.repository.UserRepositoryImpl
+import com.sportmanagement.user.domain.model.BookingScheduleData
 import com.sportmanagement.user.domain.model.HomeSearchCriteria
 import com.sportmanagement.user.domain.model.HomeSearchFilterOptions
 import com.sportmanagement.user.domain.model.SportCategory
 import com.sportmanagement.user.domain.model.SportIconType
 import com.sportmanagement.user.domain.model.UserField
+import com.sportmanagement.user.domain.model.UserProfile
+import com.sportmanagement.user.domain.model.UserStat
 import com.sportmanagement.user.domain.repository.UserRepository
 import com.sportmanagement.user.domain.usecase.FilterHomeFieldsUseCase
 import com.sportmanagement.user.ui.navigation.UserTab
 import com.sportmanagement.user.ui.state.UserUiState
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.supervisorScope
 
 class UserViewModel(
     private val repository: UserRepository = UserRepositoryImpl(),
@@ -442,7 +447,7 @@ class UserViewModel(
 
             val pageItems = repository.getNearbyFieldsPage(
                 page = nextPage,
-                limit = PAGE_SIZE,
+                limit = HOME_LOAD_MORE_PAGE_SIZE,
                 latitude = latitude,
                 longitude = longitude
             )
@@ -452,7 +457,7 @@ class UserViewModel(
                 currentPage = nextPage
             }
 
-            hasMorePages = pageItems.size >= PAGE_SIZE
+            hasMorePages = pageItems.size >= HOME_LOAD_MORE_PAGE_SIZE
             val updatedHome = applyHomeSearchCriteria(_uiState.value.activeHomeSearchCriteria)
 
             _uiState.update {
@@ -504,7 +509,7 @@ class UserViewModel(
 
             val firstPage = repository.getNearbyFieldsPage(
                 page = 1,
-                limit = PAGE_SIZE,
+                limit = HOME_INITIAL_PAGE_SIZE,
                 latitude = latitude,
                 longitude = longitude
             )
@@ -512,42 +517,50 @@ class UserViewModel(
             if (firstPage.isNotEmpty()) {
                 allHomeFields = firstPage
                 currentPage = 1
-                hasMorePages = firstPage.size >= PAGE_SIZE
+                hasMorePages = firstPage.size >= HOME_INITIAL_PAGE_SIZE
             } else if (!hasCache) {
                 hasMorePages = false
             }
 
-            val fullNearby = repository.getNearbyFields(
-                latitude = latitude,
-                longitude = longitude
-            )
+            _uiState.update { current ->
+                current.copy(
+                    homeFields = applyHomeSearchCriteria(current.activeHomeSearchCriteria),
+                    nearbyFields = filterFieldsByPreferredSports(allNearbyFields),
+                    isHomeLoading = false,
+                    isHomeLoadingMore = false,
+                    hasMoreHomeFields = hasMorePages
+                )
+            }
+
+            val supportDeferred = async { loadSupportingDataBundle() }
+            val nearbyDeferred = async {
+                repository.getNearbyFields(
+                    latitude = latitude,
+                    longitude = longitude
+                )
+            }
+
+            val fullNearby = nearbyDeferred.await()
             if (fullNearby.isNotEmpty()) {
                 allNearbyFields = fullNearby
             } else if (!hasCache) {
                 allNearbyFields = emptyList()
             }
 
+            val supportData = supportDeferred.await()
             homeSearchFilterOptions = repository.getHomeSearchFilterOptions()
-
-            val loadedSports = repository.getSportCategories()
-            val filteredSports = filterSportCategoriesByPreferred(loadedSports)
-            val loadedFavorites = repository.getFavoriteFields()
-            val loadedBookingSchedule = repository.getBookingSchedule()
-            val loadedProfile = repository.getProfile()
-            val loadedStats = repository.getStats()
-            applyPreferredSports(loadedProfile.preferredSportTypeKeys)
 
             _uiState.update { current ->
                 current.copy(
                     homeFields = applyHomeSearchCriteria(current.activeHomeSearchCriteria),
-                    sportCategories = filteredSports,
-                    mapCategories = filteredSports.map { it.name },
+                    sportCategories = supportData.sportCategories,
+                    mapCategories = supportData.sportCategories.map { it.name },
                     nearbyFields = filterFieldsByPreferredSports(allNearbyFields),
-                    favoriteFields = loadedFavorites,
+                    favoriteFields = supportData.favoriteFields,
                     homeSearchFilterOptions = filterHomeSearchFilterOptions(homeSearchFilterOptions),
-                    bookingSchedule = loadedBookingSchedule,
-                    profile = loadedProfile,
-                    stats = loadedStats,
+                    bookingSchedule = supportData.bookingSchedule,
+                    profile = supportData.profile,
+                    stats = supportData.stats,
                     isHomeLoading = false,
                     isHomeLoadingMore = false,
                     hasMoreHomeFields = hasMorePages
@@ -558,25 +571,19 @@ class UserViewModel(
 
     private fun loadSupportingData() {
         viewModelScope.launch {
+            val supportData = loadSupportingDataBundle()
             homeSearchFilterOptions = repository.getHomeSearchFilterOptions()
-            val loadedSports = repository.getSportCategories()
-            val filteredSports = filterSportCategoriesByPreferred(loadedSports)
-            val loadedFavorites = repository.getFavoriteFields()
-            val loadedBookingSchedule = repository.getBookingSchedule()
-            val loadedProfile = repository.getProfile()
-            val loadedStats = repository.getStats()
-            applyPreferredSports(loadedProfile.preferredSportTypeKeys)
 
             _uiState.update { current ->
                 current.copy(
-                    sportCategories = filteredSports,
-                    mapCategories = filteredSports.map { it.name },
+                    sportCategories = supportData.sportCategories,
+                    mapCategories = supportData.sportCategories.map { it.name },
                     nearbyFields = filterFieldsByPreferredSports(allNearbyFields),
-                    favoriteFields = loadedFavorites,
+                    favoriteFields = supportData.favoriteFields,
                     homeSearchFilterOptions = filterHomeSearchFilterOptions(homeSearchFilterOptions),
-                    bookingSchedule = loadedBookingSchedule,
-                    profile = loadedProfile,
-                    stats = loadedStats
+                    bookingSchedule = supportData.bookingSchedule,
+                    profile = supportData.profile,
+                    stats = supportData.stats
                 )
             }
         }
@@ -670,6 +677,25 @@ class UserViewModel(
         return filterFieldsByPreferredSports(source)
     }
 
+    private suspend fun loadSupportingDataBundle(): SupportingDataBundle = supervisorScope {
+        val sportsDeferred = async { repository.getSportCategories() }
+        val favoritesDeferred = async { repository.getFavoriteFields() }
+        val bookingScheduleDeferred = async { repository.getBookingSchedule() }
+        val profileDeferred = async { repository.getProfile() }
+        val statsDeferred = async { repository.getStats() }
+
+        val loadedProfile = profileDeferred.await()
+        applyPreferredSports(loadedProfile.preferredSportTypeKeys)
+
+        SupportingDataBundle(
+            sportCategories = filterSportCategoriesByPreferred(sportsDeferred.await()),
+            favoriteFields = favoritesDeferred.await(),
+            bookingSchedule = bookingScheduleDeferred.await(),
+            profile = loadedProfile,
+            stats = statsDeferred.await()
+        )
+    }
+
     private fun applyPreferredSports(preferredSportTypeKeys: Set<String>) {
         repository.savePreferredSportTypeKeys(preferredSportTypeKeys)
         preferredSportTypes = decodePreferredSportTypes(preferredSportTypeKeys)
@@ -707,8 +733,17 @@ class UserViewModel(
         }
     }
 
+    private data class SupportingDataBundle(
+        val sportCategories: List<SportCategory>,
+        val favoriteFields: List<UserField>,
+        val bookingSchedule: BookingScheduleData,
+        val profile: UserProfile,
+        val stats: List<UserStat>
+    )
+
     companion object {
-        private const val PAGE_SIZE = 5
+        private const val HOME_INITIAL_PAGE_SIZE = 5
+        private const val HOME_LOAD_MORE_PAGE_SIZE = 10
         private const val SEARCH_PAGE_SIZE = 10
     }
 }

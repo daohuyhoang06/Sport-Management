@@ -85,16 +85,47 @@ const getVnTimeMinutes = (date = new Date()) => {
   return hours * 60 + minutes;
 };
 
-const formatBookingDatetime = (isoString) => {
-  const date = new Date(isoString);
-  const vnTime = new Date(date.getTime() + 7 * 60 * 60 * 1000);
-  const year = vnTime.getUTCFullYear();
-  const month = String(vnTime.getUTCMonth() + 1).padStart(2, "0");
-  const day = String(vnTime.getUTCDate()).padStart(2, "0");
-  const hours = String(vnTime.getUTCHours()).padStart(2, "0");
-  const minutes = String(vnTime.getUTCMinutes()).padStart(2, "0");
-  const seconds = String(vnTime.getUTCSeconds()).padStart(2, "0");
-  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+const formatBookingDatetime = (value) => {
+  const raw = String(value || "").trim();
+  const localMatch = raw.match(
+    /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?$/,
+  );
+  if (localMatch) {
+    return `${localMatch[1]}-${localMatch[2]}-${localMatch[3]} ${localMatch[4]}:${localMatch[5]}:${localMatch[6] || "00"}`;
+  }
+
+  const date = new Date(raw);
+  if (Number.isNaN(date.getTime())) {
+    const error = new Error("INVALID_SLOT_RANGE");
+    error.code = "INVALID_SLOT_RANGE";
+    throw error;
+  }
+
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: VN_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const pick = (type) => parts.find((item) => item.type === type)?.value || "00";
+
+  return `${pick("year")}-${pick("month")}-${pick("day")} ${pick("hour")}:${pick("minute")}:${pick("second")}`;
+};
+
+const formatDbTimeLabel = (value) => {
+  if (value instanceof Date) {
+    return `${String(value.getUTCHours()).padStart(2, "0")}:${String(value.getUTCMinutes()).padStart(2, "0")}`;
+  }
+
+  const raw = String(value || "").trim();
+  const match = raw.match(/\b(\d{2}):(\d{2})(?::\d{2})?/);
+  if (match) return `${match[1]}:${match[2]}`;
+
+  return "";
 };
 
 const buildBookingNote = (note, customerName, customerPhone) => {
@@ -889,10 +920,8 @@ export const getFieldGrid = async (req, res) => {
         ? [String(b.court_id)]
         : gridCourts.map((court) => String(court.court_id));
 
-      // Need local time of the server, actually time is usually stored in DB in UTC or local.
-      // Using string slice to get HH:mm from ISO string or Date object
-      const startStr = new Date(b.start_time).toISOString().substring(11, 16);
-      const endStr = new Date(b.end_time).toISOString().substring(11, 16);
+      const startStr = formatDbTimeLabel(b.start_time);
+      const endStr = formatDbTimeLabel(b.end_time);
 
       return targetCourts.map((courtId) => ({
         courtId,

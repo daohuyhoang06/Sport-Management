@@ -162,6 +162,10 @@ class InboxApi(
         postJsonWithoutBody("$baseUrl/api/user/notifications/read-all", token)
     }
 
+    suspend fun markInboxReadAll(token: String) {
+        postJsonWithoutBody("$baseUrl/api/user/inbox/read-all", token)
+    }
+
     suspend fun getBookingDetail(token: String, bookingId: Int): BookingDetailDto = withContext(Dispatchers.IO) {
         val root = getJson("$baseUrl/api/user/bookings/$bookingId", token)
         val data = root.optJSONObject("data") ?: JSONObject()

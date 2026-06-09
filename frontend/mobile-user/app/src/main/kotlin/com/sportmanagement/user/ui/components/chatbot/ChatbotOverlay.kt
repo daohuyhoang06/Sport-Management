@@ -209,7 +209,6 @@ fun ChatbotOverlay(
 
                             localAnchorX = nextAnchorX
                             localAnchorY = nextAnchorY
-                            onButtonAnchorChanged(nextAnchorX, nextAnchorY)
                         }
                     },
                 buttonSize = floatingButtonSize,

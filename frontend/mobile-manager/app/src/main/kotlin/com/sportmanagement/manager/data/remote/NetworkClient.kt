@@ -10,7 +10,8 @@ import java.util.concurrent.TimeUnit
 
 object NetworkClient {
 
-    // Tự động chọn URL: emulator dùng 10.0.2.2, điện thoại thật dùng IP từ local.properties
+    // Emulator dùng 10.0.2.2; điện thoại thật nên dùng localhost qua adb reverse
+    // hoặc override bằng dev.server.url trong local.properties nếu muốn trỏ sang LAN IP.
     val BASE_URL: String
         get() = if (isEmulator()) "http://10.0.2.2:5000/" else BuildConfig.DEV_SERVER_URL
 

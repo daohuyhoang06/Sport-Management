@@ -211,10 +211,14 @@ private fun DiscoverySection(
     onPopularClick: (String) -> Unit,
     onAreaClick: (String) -> Unit
 ) {
+    val visibleRecentSearches = remember(recentSearches) {
+        recentSearches.distinct().take(8)
+    }
+
     Column(modifier = Modifier.fillMaxWidth()) {
-        if (recentSearches.isNotEmpty()) {
+        if (visibleRecentSearches.isNotEmpty()) {
             SearchSectionTitle("Tìm kiếm gần đây")
-            recentSearches.forEach { item ->
+            visibleRecentSearches.forEach { item ->
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -243,7 +247,7 @@ private fun DiscoverySection(
             contentPadding = PaddingValues(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(popularSearchKeywords) { keyword ->
+            items(popularSearchKeywords, key = { it }) { keyword ->
                 SearchQuickChip(
                     label = keyword,
                     icon = Icons.Default.Search,
@@ -257,7 +261,7 @@ private fun DiscoverySection(
             contentPadding = PaddingValues(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(popularAreas) { area ->
+            items(popularAreas, key = { it }) { area ->
                 SearchQuickChip(
                     label = area,
                     icon = Icons.Default.LocationOn,

@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -48,11 +50,13 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.sportmanagement.user.domain.model.FieldDetail
 import com.sportmanagement.user.domain.model.FieldDetailCourt
 import com.sportmanagement.user.domain.model.FieldDetailPolicy
@@ -220,10 +224,13 @@ private fun FieldHeroSection(
     onGalleryIndexChange: (Int) -> Unit,
     onBackClick: () -> Unit
 ) {
-    val allImages = buildList {
-        add(detail.avatarImageUrl)
-        addAll(detail.galleryUrls)
-    }.distinct()
+    val context = LocalContext.current
+    val allImages = remember(detail.avatarImageUrl, detail.galleryUrls) {
+        buildList {
+            add(detail.avatarImageUrl)
+            addAll(detail.galleryUrls)
+        }.distinct()
+    }
 
     Box(
         modifier = Modifier
@@ -231,7 +238,11 @@ private fun FieldHeroSection(
             .height(280.dp)
     ) {
         AsyncImage(
-            model = allImages.getOrElse(selectedGalleryIndex) { detail.avatarImageUrl },
+            model = ImageRequest.Builder(context)
+                .data(allImages.getOrElse(selectedGalleryIndex) { detail.avatarImageUrl })
+                .size(1080, 560)
+                .crossfade(false)
+                .build(),
             contentDescription = detail.name,
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop
@@ -298,13 +309,23 @@ private fun FieldHeroSection(
                             .clip(RoundedCornerShape(8.dp))
                             .background(MaterialTheme.colorScheme.surfaceVariant)
                             .let {
-                                if (idx == selectedGalleryIndex)
+                                if (idx == selectedGalleryIndex) {
                                     it.shadow(4.dp, RoundedCornerShape(8.dp))
-                                else it
+                                } else {
+                                    it
+                                }
                             }
+                            .clickable(
+                                indication = null,
+                                interactionSource = remember { MutableInteractionSource() }
+                            ) { onGalleryIndexChange(idx) }
                     ) {
                         AsyncImage(
-                            model = url,
+                            model = ImageRequest.Builder(context)
+                                .data(url)
+                                .size(180, 180)
+                                .crossfade(false)
+                                .build(),
                             contentDescription = null,
                             modifier = Modifier
                                 .fillMaxSize()
@@ -324,11 +345,6 @@ private fun FieldHeroSection(
                                     .background(MaterialTheme.colorScheme.primary.copy(0.25f))
                             )
                         }
-                        androidx.compose.foundation.clickable(
-                            indication = null,
-                            interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
-                        ) { onGalleryIndexChange(idx) }
-                            .let { }
                     }
                 }
             }

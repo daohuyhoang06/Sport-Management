@@ -51,7 +51,7 @@ export const getAllFieldsService = async (filters = {}, pagination = {}) => {
     : "NULL as slot_price";
 
   const [rows] = await sequelize.query(
-    `SELECT f.field_id, f.manager_id, f.field_name, f.location, f.status, ${priceSelect},
+    `SELECT f.field_id, f.manager_id, f.field_name, f.location, f.phone, f.status, ${priceSelect},
             f.sport_id, st.sport_name,
                   p.person_name as manager_name, p.email as manager_email
      FROM fields f
@@ -82,7 +82,7 @@ export const getFieldByIdService = async (id) => {
     : "NULL as slot_price";
 
   const [[field]] = await sequelize.query(
-    `SELECT f.field_id, f.manager_id, f.field_name, f.location, f.status, ${priceSelect},
+    `SELECT f.field_id, f.manager_id, f.field_name, f.location, f.phone, f.status, ${priceSelect},
             f.sport_id, st.sport_name,
             p.person_name as manager_name, p.email as manager_email, p.phone as manager_phone
      FROM fields f
@@ -119,6 +119,7 @@ export const createFieldService = async (fieldData) => {
   const {
     field_name,
     location,
+    phone,
     manager_id,
     slot_price,
     status = "active",
@@ -139,12 +140,13 @@ export const createFieldService = async (fieldData) => {
   }
 
   await sequelize.query(
-    `INSERT INTO fields (field_name, location, manager_id, slot_price, status, sport_id)
-     VALUES (?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO fields (field_name, location, phone, manager_id, slot_price, status, sport_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
     {
       replacements: [
         field_name,
         location,
+        phone || null,
         manager_id || null,
         slot_price || null,
         status,
@@ -212,6 +214,10 @@ export const updateFieldService = async (id, fieldData) => {
   if (fieldData.location) {
     updates.push("location = ?");
     params.push(fieldData.location);
+  }
+  if (fieldData.phone !== undefined) {
+    updates.push("phone = ?");
+    params.push(fieldData.phone || null);
   }
   if (fieldData.manager_id !== undefined) {
     updates.push("manager_id = ?");
