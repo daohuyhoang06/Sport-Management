@@ -6,10 +6,29 @@ const clampNumber = (value, fallback, min, max) => {
   return Math.min(Math.max(parsed, min), max);
 };
 
+const REMINDER_NOTIFICATION_TYPES = new Set([
+  "upcoming_match",
+  "booking_reminder",
+  "booking_reminder_urgent",
+]);
+
+const BOOKING_NOTIFICATION_TYPES = new Set([
+  "booking_success",
+  "booking_confirmed",
+  "booking_cancelled",
+]);
+
+const resolveNotificationSection = (row) => {
+  const type = String(row.type || "").trim().toLowerCase();
+  if (REMINDER_NOTIFICATION_TYPES.has(type)) return "activity";
+  if (BOOKING_NOTIFICATION_TYPES.has(type)) return "priority";
+  return row.section;
+};
+
 const mapNotificationRow = (row) => ({
   id: row.id,
   type: row.type,
-  section: row.section,
+  section: resolveNotificationSection(row),
   title: row.title,
   subtitle: row.subtitle,
   content: row.content,
@@ -25,7 +44,7 @@ const mapNotificationRow = (row) => ({
 const mapNotificationDetail = (row) => ({
   id: row.id,
   type: row.type,
-  section: row.section,
+  section: resolveNotificationSection(row),
   title: row.title,
   subtitle: row.subtitle,
   content: row.content,

@@ -6,6 +6,7 @@ import useAdminSportTypes from "../../hooks/useAdminSportTypes";
 const initialFieldForm = {
   field_name: "",
   location: "",
+  phone: "",
   slot_price: "",
   manager_id: "",
   sport_id: "",
@@ -99,6 +100,17 @@ function FieldFormModal({
               value={formState.location}
               onChange={onChange}
               placeholder="Nhập khu vực hoặc địa chỉ"
+            />
+          </label>
+
+          <label className="modal-field">
+            <span>Số điện thoại sân</span>
+            <input
+              type="tel"
+              name="phone"
+              value={formState.phone}
+              onChange={onChange}
+              placeholder="Nhập số điện thoại sân"
             />
           </label>
 
@@ -207,7 +219,7 @@ export default function FieldsPage() {
     return fields.filter((field) => {
       const matchesKeyword =
         !keyword ||
-        [field.name, field.location, field.managerName]
+        [field.name, field.location, field.phone, field.managerName]
           .join(" ")
           .toLowerCase()
           .includes(keyword);
@@ -242,6 +254,7 @@ export default function FieldsPage() {
     setEditForm({
       field_name: field.name || "",
       location: field.location || "",
+      phone: field.phone && field.phone !== "-" ? field.phone : "",
       sport_id: field.sportId ? String(field.sportId) : "",
       slot_price:
         field.pricePerHour !== null &&
@@ -296,6 +309,7 @@ export default function FieldsPage() {
       await createField({
         field_name: createForm.field_name.trim(),
         location: createForm.location.trim(),
+        phone: createForm.phone.trim() || null,
         sport_id: Number(createForm.sport_id),
         slot_price:
           createForm.slot_price && Number(createForm.slot_price) > 0
@@ -351,6 +365,7 @@ export default function FieldsPage() {
       await updateField(selectedField.id, {
         field_name: editForm.field_name.trim(),
         location: editForm.location.trim(),
+        phone: editForm.phone.trim() || null,
         sport_id: Number(editForm.sport_id),
         slot_price:
           editForm.slot_price && Number(editForm.slot_price) > 0
@@ -437,6 +452,11 @@ export default function FieldsPage() {
         render: (row) => (
           <span className="field-sport-type">{row.sportName}</span>
         ),
+      },
+      {
+        key: "phone",
+        label: "SĐT",
+        render: (row) => <span className="user-meta-cell">📱 {row.phone}</span>,
       },
       { key: "managerName", label: "Quản lý" },
       {

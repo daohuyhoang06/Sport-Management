@@ -263,9 +263,7 @@ class InboxViewModel(
             .asSequence()
             .flatMap { section -> section.items.asSequence() }
             .firstOrNull { item ->
-                item.category == InboxCategoryType.Booking &&
-                    (item.bookingId == bookingId ||
-                        item.bookingInfo?.bookingId == bookingId)
+                item.bookingId == bookingId || item.bookingInfo?.bookingId == bookingId
             }
             ?.id
     }
@@ -277,8 +275,7 @@ class InboxViewModel(
             section.copy(
                 items = section.items.map { item ->
                     if (
-                        item.category == InboxCategoryType.Booking &&
-                        (item.bookingId == bookingId || item.bookingInfo?.bookingId == bookingId)
+                        item.bookingId == bookingId || item.bookingInfo?.bookingId == bookingId
                     ) {
                         item.copy(unread = false, badgeCount = 0)
                     } else {
@@ -508,7 +505,12 @@ class InboxViewModel(
                 targetType = item.targetType ?: matched?.targetType,
                 targetId = item.targetId ?: matched?.targetId
             )
-            if (item.section.equals("priority", true)) priority.add(mapped) else activity.add(mapped)
+            addMappedInboxItem(
+                item = mapped,
+                priority = priority,
+                activity = activity,
+                messages = messages
+            )
         }
 
         notifications.forEach { n ->
@@ -529,7 +531,12 @@ class InboxViewModel(
                 targetType = n.targetType,
                 targetId = n.targetId
             )
-            if (n.section.equals("priority", true)) priority.add(mapped) else activity.add(mapped)
+            addMappedInboxItem(
+                item = mapped,
+                priority = priority,
+                activity = activity,
+                messages = messages
+            )
         }
 
         conversations.forEach { row ->
@@ -570,6 +577,19 @@ class InboxViewModel(
         )
     }
 
+    private fun addMappedInboxItem(
+        item: NotificationItem,
+        priority: MutableList<NotificationItem>,
+        activity: MutableList<NotificationItem>,
+        messages: MutableList<NotificationItem>
+    ) {
+        when (item.category) {
+            InboxCategoryType.Booking -> priority.add(item)
+            InboxCategoryType.Message -> messages.add(item)
+            else -> activity.add(item)
+        }
+    }
+
     private suspend fun enrichBookingSections(
         token: String,
         sections: List<NotificationSectionData>
@@ -596,7 +616,7 @@ class InboxViewModel(
                 items = section.items.map { item ->
                     val bookingId = item.bookingId ?: item.bookingInfo?.bookingId
                     val detail = bookingId?.let(bookingDetails::get)
-                    if (detail == null || item.category != InboxCategoryType.Booking) {
+                    if (detail == null || (item.category != InboxCategoryType.Booking && !isBookingReminderType(item.type))) {
                         item
                     } else {
                         item.copy(
@@ -633,11 +653,8 @@ class InboxViewModel(
 
         val category = when {
             normalizedSection == "messages" || normalizedType == "message" -> InboxCategoryType.Message
-            normalizedType == "booking_success" ||
-                normalizedType == "upcoming_match" ||
-                normalizedType == "booking_reminder" ||
-                normalizedType == "booking_reminder_urgent" ||
-                normalizedType == "booking" ||
+            isBookingReminderType(normalizedType) -> InboxCategoryType.Activity
+            isBookingLifecycleType(normalizedType) ||
                 targetType.equals("booking", ignoreCase = true) -> InboxCategoryType.Booking
             else -> InboxCategoryType.Activity
         }
@@ -654,7 +671,7 @@ class InboxViewModel(
             )
         } else null
 
-        val bookingInfo = if (category == InboxCategoryType.Booking) {
+        val bookingInfo = if (category == InboxCategoryType.Booking || isBookingReminderType(normalizedType)) {
             BookingInfo(
                 fieldName = title,
                 timeRange = "",
@@ -817,6 +834,14 @@ private fun isBookingReminderType(type: String?): Boolean {
     return normalized == "booking_reminder" ||
         normalized == "booking_reminder_urgent" ||
         normalized == "upcoming_match"
+}
+
+private fun isBookingLifecycleType(type: String?): Boolean {
+    val normalized = type?.lowercase().orEmpty()
+    return normalized == "booking_success" ||
+        normalized == "booking_confirmed" ||
+        normalized == "booking_cancelled" ||
+        normalized == "booking"
 }
 
 private fun NotificationItem.matchesNotificationId(notificationId: Int): Boolean {

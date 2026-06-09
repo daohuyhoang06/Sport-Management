@@ -19,17 +19,25 @@ const normalizeSection = (value) => {
   return null;
 };
 
+const REMINDER_NOTIFICATION_TYPES = new Set([
+  "upcoming_match",
+  "booking_reminder",
+  "booking_reminder_urgent",
+]);
+
+const BOOKING_NOTIFICATION_TYPES = new Set([
+  "booking_success",
+  "booking_confirmed",
+  "booking_cancelled",
+]);
+
 const resolveNotificationSection = (row) => {
+  const type = String(row.type || "").trim().toLowerCase();
+  if (REMINDER_NOTIFICATION_TYPES.has(type)) return "activity";
+  if (BOOKING_NOTIFICATION_TYPES.has(type)) return "priority";
+
   const explicit = normalizeSection(row.section);
   if (explicit) return explicit;
-  if (
-    row.type === "booking_success" ||
-    row.type === "upcoming_match" ||
-    row.type === "booking_reminder" ||
-    row.type === "booking_reminder_urgent"
-  ) {
-    return "priority";
-  }
   return "activity";
 };
 
