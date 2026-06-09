@@ -38,6 +38,60 @@ const mapNotificationDetail = (row) => ({
   metadata: row.metadata || null,
 });
 
+const hydrateMatchRequestTarget = async (notification, userId) => {
+  if (!notification || notification.type !== "match_request_received") {
+    return notification;
+  }
+
+  if (
+    notification.target_type === "match_request" &&
+    Number.parseInt(notification.target_id, 10) > 0
+  ) {
+    return notification;
+  }
+
+  if (!notification.booking_id) {
+    return notification;
+  }
+
+  const [rows] = await sequelize.query(
+    `SELECT
+      mr.match_request_id
+     FROM match_requests mr
+     INNER JOIN match_posts mp ON mp.match_post_id = mr.match_post_id
+     WHERE mp.booking_id = ?
+       AND mp.owner_user_id = ?
+     ORDER BY
+       CASE mr.status
+         WHEN 'PENDING' THEN 0
+         WHEN 'ACCEPTED' THEN 1
+         ELSE 2
+       END,
+       mr.created_at DESC,
+       mr.match_request_id DESC
+     LIMIT 1`,
+    { replacements: [notification.booking_id, userId] },
+  );
+
+  const resolved = rows?.[0];
+  if (!resolved?.match_request_id) {
+    return notification;
+  }
+
+  return {
+    ...notification,
+    target_type: "match_request",
+    target_id: Number(resolved.match_request_id),
+  };
+};
+
+const hydrateMatchRequestTargets = async (notifications, userId) =>
+  Promise.all(
+    (notifications || []).map((notification) =>
+      hydrateMatchRequestTarget(notification, userId),
+    ),
+  );
+
 // GET /api/user/notifications
 export const listNotifications = async (req, res) => {
   try {
@@ -121,6 +175,7 @@ export const listNotifications = async (req, res) => {
       { replacements: [...replacements, safeLimit, offset] },
     );
 
+    const hydratedRows = await hydrateMatchRequestTargets(rows, userId);
     res.json({
       success: true,
       data: {
@@ -200,6 +255,7 @@ export const getNotificationDetail = async (req, res) => {
       });
     }
 
+    notification = await hydrateMatchRequestTarget(notification, userId);
     if (!notification.is_read) {
       await sequelize.query(
         `UPDATE notifications

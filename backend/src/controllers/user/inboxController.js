@@ -22,7 +22,10 @@ const normalizeSection = (value) => {
 const resolveNotificationSection = (row) => {
   const explicit = normalizeSection(row.section);
   if (explicit) return explicit;
-  if (row.type === "booking_success" || row.type === "upcoming_match") {
+  if (
+    row.type === "booking_success" ||
+    row.type === "upcoming_match" ||
+  ) {
     return "priority";
   }
   return "activity";
@@ -66,6 +69,53 @@ const mapConversationItem = (row) => ({
   conversationId: row.chat_id,
   fieldId: row.field_id,
 });
+
+const hydrateMatchRequestTarget = async (notification, userId) => {
+  if (!notification || notification.type !== "match_request_received") {
+    return notification;
+  }
+
+  if (
+    notification.target_type === "match_request" &&
+    Number.parseInt(notification.target_id, 10) > 0
+  ) {
+    return notification;
+  }
+
+  if (!notification.booking_id) {
+    return notification;
+  }
+
+  const [rows] = await sequelize.query(
+    `SELECT
+      mr.match_request_id
+     FROM match_requests mr
+     INNER JOIN match_posts mp ON mp.match_post_id = mr.match_post_id
+     WHERE mp.booking_id = ?
+       AND mp.owner_user_id = ?
+     ORDER BY
+       CASE mr.status
+         WHEN 'PENDING' THEN 0
+         WHEN 'ACCEPTED' THEN 1
+         ELSE 2
+       END,
+       mr.created_at DESC,
+       mr.match_request_id DESC
+     LIMIT 1`,
+    { replacements: [notification.booking_id, userId] },
+  );
+
+  const resolved = rows?.[0];
+  if (!resolved?.match_request_id) {
+    return notification;
+  }
+
+  return {
+    ...notification,
+    target_type: "match_request",
+    target_id: Number(resolved.match_request_id),
+  };
+};
 
 // GET /api/user/inbox
 export const getInbox = async (req, res) => {
@@ -177,7 +227,11 @@ export const getInbox = async (req, res) => {
       activity: [],
     };
 
-    notificationRows.forEach((row) => {
+    const hydratedNotificationRows = await Promise.all(
+      notificationRows.map((row) => hydrateMatchRequestTarget(row, userId)),
+    );
+
+    hydratedNotificationRows.forEach((row) => {
       const item = mapNotificationItem(row);
       sections[item.section].push(item);
     });

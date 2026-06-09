@@ -15,6 +15,8 @@ import com.sportmanagement.user.data.remote.api.BookingDetailDto
 import com.sportmanagement.user.data.remote.api.InboxApi
 import com.sportmanagement.user.data.remote.api.InboxItemDto
 import com.sportmanagement.user.data.remote.api.NotificationDto
+import com.sportmanagement.user.ui.screens.BookingMatchPostInfo
+import com.sportmanagement.user.ui.screens.BookingMatchRequestInfo
 import com.sportmanagement.user.ui.screens.BookingInfo
 import com.sportmanagement.user.ui.screens.ConversationInfo
 import com.sportmanagement.user.ui.screens.ConversationMessageUi
@@ -186,6 +188,9 @@ class InboxViewModel(
             isLoadingBookingDetail = true,
             bookingDetailError = null,
             activeBookingDetail = null
+            processingMatchRequestId = null,
+            matchRequestActionError = null,
+            matchRequestActionSuccessMessage = null
         )
         viewModelScope.launch {
             runCatching {
@@ -239,7 +244,28 @@ class InboxViewModel(
                             ownerNote = booking.ownerNote,
                             fieldId = booking.fieldId,
                             bookingId = booking.bookingId,
-                            notificationId = null
+                            notificationId = null,
+                            matchPost = booking.matchPost?.let {
+                                BookingMatchPostInfo(
+                                    matchPostId = it.matchPostId,
+                                    teamName = it.teamName,
+                                    playerCount = it.playerCount,
+                                    level = it.level,
+                                    levelLabel = it.levelLabel,
+                                    description = it.description,
+                                    status = it.status
+                                )
+                            },
+                            matchRequests = booking.matchRequests.map {
+                                BookingMatchRequestInfo(
+                                    matchRequestId = it.matchRequestId,
+                                    teamName = it.teamName,
+                                    playerCount = it.playerCount,
+                                    message = it.message,
+                                    status = it.status,
+                                    createdAt = it.createdAt
+                                )
+                            }
                         )
                     )
                 }
@@ -292,7 +318,128 @@ class InboxViewModel(
         _uiState.value = _uiState.value.copy(
             activeBookingDetail = null,
             isLoadingBookingDetail = false,
-            bookingDetailError = null
+            bookingDetailError = null,
+            processingMatchRequestId = null,
+            matchRequestActionError = null,
+            matchRequestActionSuccessMessage = null
+        )
+    }
+
+        val token = token() ?: return
+        val bookingId = activeBooking.bookingId ?: return
+        val fieldId = activeBooking.fieldId ?: return
+
+        _uiState.value = _uiState.value.copy(
+        )
+
+        viewModelScope.launch {
+            runCatching {
+                    token = token,
+                    bookingId = bookingId,
+                    fieldId = fieldId,
+                )
+                _uiState.value = _uiState.value.copy(
+                    )
+                )
+                refreshInbox(silent = true)
+            }.onFailure {
+                _uiState.value = _uiState.value.copy(
+                )
+            }
+        }
+    }
+
+        _uiState.value = _uiState.value.copy(
+        )
+    }
+
+    fun respondToMatchRequest(matchRequestId: Int, accept: Boolean) {
+        val token = token() ?: return
+
+        _uiState.value = _uiState.value.copy(
+            processingMatchRequestId = matchRequestId,
+            matchRequestActionError = null,
+            matchRequestActionSuccessMessage = null
+        )
+
+        viewModelScope.launch {
+            runCatching {
+                if (accept) {
+                    api.acceptMatchRequest(token, matchRequestId)
+                } else {
+                    api.rejectMatchRequest(token, matchRequestId)
+                }
+            }.onSuccess {
+                val refreshedBooking = runCatching {
+                    api.getBookingDetail(token, bookingId)
+                }.getOrNull()
+
+                _uiState.value = _uiState.value.copy(
+                    processingMatchRequestId = null,
+                    matchRequestActionError = null,
+                    matchRequestActionSuccessMessage = if (accept) {
+                        "Đã chấp nhận yêu cầu ghép trận."
+                    } else {
+                        "Đã từ chối yêu cầu ghép trận."
+                    },
+                    ) ?: _uiState.value.activeBookingDetail?.applyMatchRequestUpdate(
+                        matchRequestId = matchRequestId,
+                        accept = accept
+                    )
+                )
+                refreshInbox(silent = true)
+            }.onFailure {
+                _uiState.value = _uiState.value.copy(
+                    processingMatchRequestId = null,
+                    matchRequestActionError = it.message ?: "Không thể xử lý yêu cầu ghép trận."
+                )
+            }
+        }
+    }
+
+    fun respondToNotificationMatchRequest(matchRequestId: Int, accept: Boolean) {
+        val token = token() ?: return
+        val activeDetail = _uiState.value.activeNotificationDetail as? NotificationDetailInfo.MatchRequestNotice
+            ?: return
+
+        _uiState.value = _uiState.value.copy(
+            processingMatchRequestId = matchRequestId,
+            matchRequestActionError = null,
+            matchRequestActionSuccessMessage = null
+        )
+
+        viewModelScope.launch {
+            runCatching {
+                if (accept) {
+                    api.acceptMatchRequest(token, matchRequestId)
+                } else {
+                    api.rejectMatchRequest(token, matchRequestId)
+                }
+            }.onSuccess {
+                _uiState.value = _uiState.value.copy(
+                    processingMatchRequestId = null,
+                    matchRequestActionError = null,
+                    matchRequestActionSuccessMessage = if (accept) {
+                        "Đã chấp nhận yêu cầu ghép trận."
+                    } else {
+                        "Đã từ chối yêu cầu ghép trận."
+                    },
+                    activeNotificationDetail = activeDetail.applyMatchRequestUpdate(accept)
+                )
+                refreshInbox(silent = true)
+            }.onFailure {
+                _uiState.value = _uiState.value.copy(
+                    processingMatchRequestId = null,
+                    matchRequestActionError = it.message ?: "Không thể xử lý yêu cầu ghép trận."
+                )
+            }
+        }
+    }
+
+    fun clearMatchRequestActionFeedback() {
+        _uiState.value = _uiState.value.copy(
+            matchRequestActionError = null,
+            matchRequestActionSuccessMessage = null
         )
     }
 
@@ -332,6 +479,12 @@ class InboxViewModel(
                             avatarRes = R.drawable.field_football
                         )
                     }
+                    "match_request_received" -> {
+                        val booking = detail.bookingId?.let { bid ->
+                            runCatching { api.getBookingDetail(token, bid) }.getOrNull()
+                        }
+                        buildMatchRequestDetail(detail, booking)
+                    }
                     "promotion" -> NotificationDetailInfo.Promotion(
                         title = detail.title,
                         subtitle = detail.subtitle,
@@ -342,7 +495,7 @@ class InboxViewModel(
                         periodText = "",
                         conditions = emptyList()
                     )
-                    "system", "system_notice" -> NotificationDetailInfo.SystemNotice(
+                    "system", "system_notice", "match_request_accepted", "match_request_rejected" -> NotificationDetailInfo.SystemNotice(
                         title = detail.title,
                         subtitle = detail.subtitle,
                         notificationId = detail.id,
@@ -361,7 +514,12 @@ class InboxViewModel(
     }
 
     fun clearActiveNotificationDetail() {
-        _uiState.value = _uiState.value.copy(activeNotificationDetail = null)
+        _uiState.value = _uiState.value.copy(
+            activeNotificationDetail = null,
+            processingMatchRequestId = null,
+            matchRequestActionError = null,
+            matchRequestActionSuccessMessage = null
+        )
     }
 
     fun loadConversation(info: ConversationInfo) {
@@ -574,6 +732,7 @@ class InboxViewModel(
         val bookingIds = sections
             .asSequence()
             .flatMap { it.items.asSequence() }
+            .filter { it.category == InboxCategoryType.Booking }
             .mapNotNull { item -> item.bookingId ?: item.bookingInfo?.bookingId }
             .distinct()
             .toList()
@@ -624,11 +783,16 @@ class InboxViewModel(
     ): NotificationItem {
         val normalizedType = type.lowercase()
         val normalizedSection = section.lowercase()
+        val isMatchRequestNotification =
+            normalizedType == "match_request_received" ||
+                normalizedType == "match_request_accepted" ||
+                normalizedType == "match_request_rejected"
         val effectiveBookingId =
             bookingId ?: if (targetType.equals("booking", ignoreCase = true)) targetId else null
 
         val category = when {
             normalizedSection == "messages" || normalizedType == "message" -> InboxCategoryType.Message
+            isMatchRequestNotification -> InboxCategoryType.Activity
             normalizedType == "booking_success" ||
                 normalizedType == "booking" ||
                 targetType.equals("booking", ignoreCase = true) -> InboxCategoryType.Booking
@@ -686,6 +850,26 @@ class InboxViewModel(
                 phoneNumber = "",
                 avatarRes = R.drawable.field_football
             )
+            "match_request_received" -> NotificationDetailInfo.MatchRequestNotice(
+                title = title,
+                subtitle = subtitle,
+                notificationId = id,
+                bookingId = effectiveBookingId,
+                fieldId = fieldId,
+                matchRequestId = if (targetType.equals("match_request", ignoreCase = true)) targetId else null,
+                fieldName = "",
+                address = "",
+                timeRange = "",
+                dateLabel = "",
+                bookingCode = effectiveBookingId?.let { "#B$it" } ?: "",
+                hostTeamName = subtitle,
+                requesterTeamName = title.substringBefore(" muốn").ifBlank { title },
+                requesterPlayerCount = 0,
+                requesterMessage = content.ifBlank { subtitle },
+                requestStatus = "PENDING",
+                canRespond = true,
+                timeText = formatTime(time)
+            )
             "promotion" -> NotificationDetailInfo.Promotion(
                 title = title,
                 subtitle = subtitle,
@@ -696,7 +880,7 @@ class InboxViewModel(
                 periodText = "",
                 conditions = emptyList()
             )
-            "system", "system_notice" -> NotificationDetailInfo.SystemNotice(
+            "system", "system_notice", "match_request_accepted", "match_request_rejected" -> NotificationDetailInfo.SystemNotice(
                 title = title,
                 subtitle = subtitle,
                 notificationId = id,
@@ -780,7 +964,28 @@ class InboxViewModel(
             ownerNote = ownerNote,
             fieldId = fieldId,
             bookingId = bookingId,
-            notificationId = notificationId
+            notificationId = notificationId,
+            matchPost = matchPost?.let {
+                BookingMatchPostInfo(
+                    matchPostId = it.matchPostId,
+                    teamName = it.teamName,
+                    playerCount = it.playerCount,
+                    level = it.level,
+                    levelLabel = it.levelLabel,
+                    description = it.description,
+                    status = it.status
+                )
+            },
+            matchRequests = matchRequests.map {
+                BookingMatchRequestInfo(
+                    matchRequestId = it.matchRequestId,
+                    teamName = it.teamName,
+                    playerCount = it.playerCount,
+                    message = it.message,
+                    status = it.status,
+                    createdAt = it.createdAt
+                )
+            }
         )
     }
 
@@ -798,6 +1003,84 @@ class InboxViewModel(
             LocalDateTime.parse(raw, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")).toLocalDate().format(output)
         }.getOrDefault(raw)
     }
+
+    private fun buildMatchRequestDetail(
+        detail: NotificationDto,
+        booking: BookingDetailDto?
+    ): NotificationDetailInfo.MatchRequestNotice {
+        val resolvedMatchRequestId =
+            if (detail.targetType.equals("match_request", ignoreCase = true)) {
+                detail.targetId
+            } else {
+                null
+            }
+
+        val request = booking?.matchRequests?.firstOrNull { request ->
+            resolvedMatchRequestId != null && request.matchRequestId == resolvedMatchRequestId
+        } ?: booking?.matchRequests?.firstOrNull { request ->
+            request.status.equals("PENDING", ignoreCase = true)
+        } ?: booking?.matchRequests?.firstOrNull()
+
+        val requestStatus = request?.status ?: "PENDING"
+        return NotificationDetailInfo.MatchRequestNotice(
+            title = detail.title,
+            subtitle = detail.subtitle,
+            notificationId = detail.id,
+            bookingId = detail.bookingId,
+            fieldId = detail.fieldId ?: booking?.fieldId,
+            matchRequestId = request?.matchRequestId ?: resolvedMatchRequestId,
+            fieldName = booking?.fieldName ?: "",
+            address = booking?.fieldAddress ?: "",
+            timeRange = booking?.timeRange?.ifBlank {
+                listOf(booking.startTime, booking.endTime)
+                    .filter { it.isNotBlank() }
+                    .joinToString(" - ")
+            } ?: "",
+            dateLabel = booking?.date?.let(::formatBookingDate) ?: "",
+            bookingCode = booking?.bookingCode ?: (detail.bookingId?.let { "#B$it" } ?: ""),
+            hostTeamName = booking?.matchPost?.teamName ?: detail.subtitle,
+            requesterTeamName = request?.teamName ?: detail.title.substringBefore(" muốn").ifBlank { detail.title },
+            requesterPlayerCount = request?.playerCount ?: 0,
+            requesterMessage = request?.message?.ifBlank { detail.content.ifBlank { detail.subtitle } }
+                ?: detail.content.ifBlank { detail.subtitle },
+            requestStatus = requestStatus,
+            canRespond = requestStatus.equals("PENDING", ignoreCase = true),
+            timeText = formatTime(detail.time)
+        )
+    }
+
+    private fun BookingInfo.applyMatchRequestUpdate(
+        matchRequestId: Int,
+        accept: Boolean
+    ): BookingInfo {
+        val updatedRequests = matchRequests.map { request ->
+            when {
+                request.matchRequestId == matchRequestId -> request.copy(
+                    status = if (accept) "ACCEPTED" else "REJECTED"
+                )
+                accept && request.status.equals("PENDING", ignoreCase = true) -> request.copy(
+                    status = "REJECTED"
+                )
+                else -> request
+            }
+        }
+
+        return copy(
+            matchPost = matchPost?.copy(
+                status = if (accept) "MATCHED" else matchPost.status
+            ),
+            matchRequests = updatedRequests
+        )
+    }
+
+    private fun NotificationDetailInfo.MatchRequestNotice.applyMatchRequestUpdate(
+        accept: Boolean
+    ): NotificationDetailInfo.MatchRequestNotice {
+        return copy(
+            requestStatus = if (accept) "ACCEPTED" else "REJECTED",
+            canRespond = false
+        )
+    }
 }
 
 private fun NotificationItem.matchesNotificationId(notificationId: Int): Boolean {
@@ -805,6 +1088,7 @@ private fun NotificationItem.matchesNotificationId(notificationId: Int): Boolean
         is NotificationDetailInfo.UpcomingMatch -> detail.notificationId
         is NotificationDetailInfo.Promotion -> detail.notificationId
         is NotificationDetailInfo.SystemNotice -> detail.notificationId
+        is NotificationDetailInfo.MatchRequestNotice -> detail.notificationId
         null -> null
     }
 
@@ -826,7 +1110,10 @@ data class InboxUiState(
     val conversationError: String? = null,
     val conversationMessages: List<ConversationMessageUi> = emptyList(),
     val draftMessage: String = "",
-    val isSendingMessage: Boolean = false
+    val isSendingMessage: Boolean = false,
+    val processingMatchRequestId: Int? = null,
+    val matchRequestActionError: String? = null,
+    val matchRequestActionSuccessMessage: String? = null
 )
 
 class InboxViewModelFactory(

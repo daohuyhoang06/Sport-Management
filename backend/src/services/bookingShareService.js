@@ -6,6 +6,7 @@ import {
   formatSlotTimeLabel,
   listBookingSlotsByBookingIds,
 } from "./bookingSlotService.js";
+import { getBookingMatchContext } from "./user/matchmakingService.js";
 
 const CHECKIN_CODE_LENGTH = 8;
 const CHECKIN_CHARSET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -242,6 +243,7 @@ const fetchBookingShareRow = async ({
   }
 
   const statusCode = derivePublicBookingStatusCode(row);
+  const matchContext = await getBookingMatchContext(row.booking_id, {
 
   return {
     bookingId: row.booking_id,
@@ -283,6 +285,8 @@ const fetchBookingShareRow = async ({
     shareToken: row.share_token || "",
     checkInCode: row.checkin_code || "",
     checkedInAt: row.checked_in_at || null,
+    matchPost: matchContext?.matchPost || null,
+    matchRequests: matchContext?.matchRequests || [],
   };
 };
 
@@ -396,6 +400,8 @@ export const buildBookingShareResponse = (detail, baseUrl) => {
     ownerNote: detail.ownerNote,
     checkInCode: detail.checkInCode,
     shareUrl: buildBookingShareUrl(baseUrl, detail.shareToken),
+    matchPost: detail.matchPost,
+    matchRequests: detail.matchRequests,
     slotDetails: detail.slotDetails,
     user: {
       name: detail.userName,

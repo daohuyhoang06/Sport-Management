@@ -1,6 +1,8 @@
 package com.sportmanagement.user.ui.components.booking
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.sportmanagement.user.R
@@ -34,6 +37,7 @@ import com.sportmanagement.user.ui.theme.AppHeaderGradientEnd
 import com.sportmanagement.user.ui.theme.AppHeaderGradientStart
 import com.sportmanagement.user.ui.theme.AppInputCornerRadius
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun BookingHeaderSection(
     selectedDateText: String,
@@ -105,14 +109,16 @@ fun BookingHeaderSection(
                 }
             }
 
-            Row(
+            FlowRow(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+                horizontalArrangement = Arrangement.spacedBy(14.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 BookingLegendItem(SlotStatus.AVAILABLE, stringResource(R.string.booking_status_available))
                 BookingLegendItem(SlotStatus.BOOKED, stringResource(R.string.booking_status_booked))
+                BookingLegendItem(SlotStatus.FIND_OPPONENT, stringResource(R.string.booking_status_find_opponent))
                 BookingLegendItem(SlotStatus.LOCKED, stringResource(R.string.booking_status_locked))
             }
 
@@ -140,7 +146,9 @@ private fun BookingLegendItem(status: SlotStatus, label: String) {
         Text(
             text = label,
             style = bookingInfoLabelStyle(),
-            color = MaterialTheme.colorScheme.onPrimary
+            color = MaterialTheme.colorScheme.onPrimary,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
         )
     }
 }

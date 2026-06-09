@@ -128,6 +128,7 @@
     <string name="booking_calendar_content_description">Chọn ngày</string>
     <string name="booking_status_available">Trống</string>
     <string name="booking_status_booked">Đã đặt</string>
+    <string name="booking_status_find_opponent">Tìm đối thủ</string>
     <string name="booking_status_locked">Khóa</string>
     <string name="booking_status_event">Sự kiện</string>
     <string name="booking_view_field_and_price">Xem sân &amp; bảng giá</string>

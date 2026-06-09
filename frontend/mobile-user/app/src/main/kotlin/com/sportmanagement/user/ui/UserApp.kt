@@ -66,6 +66,7 @@ import com.sportmanagement.user.ui.screens.UserMapScreen
 import com.sportmanagement.user.ui.screens.UserProfileScreen
 import com.sportmanagement.user.ui.screens.SettingsScreen
 import com.sportmanagement.user.ui.screens.SupportFaqScreen
+import com.sportmanagement.user.ui.screens.FindOpponentDraft
 import com.sportmanagement.user.ui.share.FieldShareLink
 import com.sportmanagement.user.ui.share.FieldShareLink.MomoPaymentReturn
 import com.sportmanagement.user.ui.viewmodel.ChatbotViewModel
@@ -115,6 +116,7 @@ fun UserApp(
     var bookingContactPhone by rememberSaveable { mutableStateOf("") }
     var bookingNote by rememberSaveable { mutableStateOf("") }
     var bookingConfirmationData by remember { mutableStateOf<BookingConfirmationData?>(null) }
+    var bookingFindOpponentDraft by remember { mutableStateOf<FindOpponentDraft?>(null) }
     var selectedBookingField by remember { mutableStateOf<UserField?>(null) }
     var conversationInfo by remember { mutableStateOf<ConversationInfo?>(null) }
     var notificationDetailInfo by remember { mutableStateOf<NotificationDetailInfo?>(null) }
@@ -166,6 +168,7 @@ fun UserApp(
         bookingContactName = uiState.profile.name
         bookingContactPhone = uiState.profile.phone
         bookingNote = ""
+        bookingFindOpponentDraft = null
         showBookingPaymentScreen = false
         showBookingConfirmationScreen = false
         bookingConfirmationData = null
@@ -247,6 +250,7 @@ fun UserApp(
         showBookingPaymentScreen = false
         selectedFieldId = null
         bookingConfirmationData = null
+        bookingFindOpponentDraft = null
         selectedBookingField = null
         resolvedUserViewModel.onTabSelected(UserTab.Home)
     }
@@ -434,6 +438,7 @@ fun UserApp(
                     userName = bookingContactName,
                     userPhone = bookingContactPhone,
                     bookingNote = bookingNote,
+                    findOpponentDraft = bookingFindOpponentDraft,
                     incomingMomoPaymentReturn = incomingMomoPaymentReturn,
                     onMomoPaymentReturnConsumed = onMomoPaymentReturnConsumed,
                     onBackClick = {
@@ -455,6 +460,7 @@ fun UserApp(
                         showBookingConfirmationScreen = false
                         showBookingScreen = false
                         bookingConfirmationData = null
+                        bookingFindOpponentDraft = null
                         selectedBookingField = null
                         closeHomeOverlayFlows()
                         resolvedUserViewModel.onTabSelected(UserTab.Inbox)
@@ -464,6 +470,7 @@ fun UserApp(
                         showBookingConfirmationScreen = false
                         showBookingScreen = false
                         bookingConfirmationData = null
+                        bookingFindOpponentDraft = null
                         selectedBookingField = null
                         closeHomeOverlayFlows()
                         resolvedUserViewModel.onTabSelected(UserTab.Home)
@@ -478,6 +485,7 @@ fun UserApp(
                     userName = bookingContactName,
                     userPhone = bookingContactPhone,
                     isLoggedIn = uiState.isAuthenticated,
+                    findOpponentDraft = bookingFindOpponentDraft,
                     onBackClick = {
                         showBookingConfirmationScreen = false
                         showBookingScreen = true
@@ -490,15 +498,27 @@ fun UserApp(
                         showBookingPaymentScreen = true
                     }
                 )
+                    processingMatchRequestId = null,
+                    matchRequestActionError = null,
+                    matchRequestActionSuccessMessage = null,
+                    onAcceptMatchRequest = {},
+                    onRejectMatchRequest = {},
+                    onMatchRequestFeedbackConsumed = {},
             } else if (showBookingDetailScreen) {
                 when {
                     inboxUiState.activeBookingDetail != null -> {
                         BookingDetailScreen(
                             info = inboxUiState.activeBookingDetail!!,
+                            processingMatchRequestId = inboxUiState.processingMatchRequestId,
+                            matchRequestActionError = inboxUiState.matchRequestActionError,
+                            matchRequestActionSuccessMessage = inboxUiState.matchRequestActionSuccessMessage,
                             onBackClick = {
                                 showBookingDetailScreen = false
                                 inboxViewModel.clearActiveBookingDetail()
                             },
+                            onAcceptMatchRequest = { inboxViewModel.respondToMatchRequest(it, accept = true) },
+                            onRejectMatchRequest = { inboxViewModel.respondToMatchRequest(it, accept = false) },
+                            onMatchRequestFeedbackConsumed = inboxViewModel::clearMatchRequestActionFeedback,
                             onOpenChat = { info ->
                                 conversationInfo = info
                                 showBookingDetailScreen = false
@@ -626,6 +646,15 @@ fun UserApp(
                     onPromotionAction = {
                         showNotificationDetailScreen = false
                         resolvedUserViewModel.onTabSelected(UserTab.Map)
+                    },
+                    processingMatchRequestId = inboxUiState.processingMatchRequestId,
+                    matchRequestActionError = inboxUiState.matchRequestActionError,
+                    matchRequestActionSuccessMessage = inboxUiState.matchRequestActionSuccessMessage,
+                    onAcceptMatchRequest = { matchRequestId ->
+                        inboxViewModel.respondToNotificationMatchRequest(matchRequestId, accept = true)
+                    },
+                    onRejectMatchRequest = { matchRequestId ->
+                        inboxViewModel.respondToNotificationMatchRequest(matchRequestId, accept = false)
                     }
                 )
             } else if (showHomeSearchFilterScreen) {
@@ -650,13 +679,14 @@ fun UserApp(
                         bookingConfirmationData = null
                         selectedBookingField = null
                     },
-                    onNextClick = { confirmationData ->
+                    onNextClick = { confirmationData, findOpponentDraft ->
                         val selectedField = selectedBookingField
                         bookingConfirmationData = confirmationData.copy(
                             fieldId = selectedField?.fieldId,
                             fieldName = selectedField?.name.orEmpty(),
                             fieldAddress = selectedField?.location.orEmpty()
                         )
+                        bookingFindOpponentDraft = findOpponentDraft
                         showBookingScreen = false
                         showBookingPaymentScreen = false
                         showBookingConfirmationScreen = true

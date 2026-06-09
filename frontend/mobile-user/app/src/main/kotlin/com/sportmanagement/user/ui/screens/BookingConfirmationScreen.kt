@@ -32,6 +32,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.sportmanagement.user.R
 import com.sportmanagement.user.domain.model.BookingConfirmationData
+import com.sportmanagement.user.ui.AppNavigationBarEffect
 import com.sportmanagement.user.ui.components.booking.BookingConfirmationBottomBar
 import com.sportmanagement.user.ui.components.booking.BookingConfirmationHeader
 import com.sportmanagement.user.ui.components.booking.BookingNoticeCard
@@ -41,7 +42,6 @@ import com.sportmanagement.user.ui.components.booking.ConfirmPhoneField
 import com.sportmanagement.user.ui.components.booking.ConfirmReadonlyField
 import com.sportmanagement.user.ui.components.booking.ConfirmationInfoCard
 import com.sportmanagement.user.ui.components.booking.InfoLine
-import com.sportmanagement.user.ui.AppNavigationBarEffect
 import com.sportmanagement.user.ui.components.booking.bookingInfoLabelStyle
 import com.sportmanagement.user.ui.components.booking.bookingInfoValueStyle
 import com.sportmanagement.user.ui.components.booking.formatConfirmationCurrencyVnd
@@ -53,6 +53,7 @@ fun BookingConfirmationScreen(
     userName: String,
     userPhone: String,
     isLoggedIn: Boolean,
+    findOpponentDraft: FindOpponentDraft? = null,
     onBackClick: () -> Unit,
     onConfirmPaymentClick: (name: String, phone: String, note: String) -> Unit,
     modifier: Modifier = Modifier
@@ -69,28 +70,28 @@ fun BookingConfirmationScreen(
     )
 
     Scaffold(
-            modifier = modifier,
-            contentWindowInsets = WindowInsets(0, 0, 0, 0),
-            containerColor = MaterialTheme.colorScheme.primary,
-            bottomBar = {
-                BookingConfirmationBottomBar(
-                    onConfirmPaymentClick = {
-                        if (!isLoggedIn) {
-                            Toast.makeText(
-                                context,
-                                context.getString(R.string.booking_confirm_login_required),
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        } else {
-                            onConfirmPaymentClick(
-                                editableUserName.trim(),
-                                editableUserPhone.trim(),
-                                note.trim()
-                            )
-                        }
+        modifier = modifier,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        containerColor = MaterialTheme.colorScheme.primary,
+        bottomBar = {
+            BookingConfirmationBottomBar(
+                onConfirmPaymentClick = {
+                    if (!isLoggedIn) {
+                        Toast.makeText(
+                            context,
+                            context.getString(R.string.booking_confirm_login_required),
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    } else {
+                        onConfirmPaymentClick(
+                            editableUserName.trim(),
+                            editableUserPhone.trim(),
+                            note.trim()
+                        )
                     }
-                )
-            }
+                }
+            )
+        }
     ) { innerPadding ->
         LazyColumn(
             modifier = Modifier
@@ -206,6 +207,21 @@ fun BookingConfirmationScreen(
                         )
                     }
                 }
+            }
+
+            if (findOpponentDraft != null) {
+                item {
+                    ConfirmationInfoCard(
+                        title = "Hình thức đặt sân",
+                        icon = Icons.Default.Map
+                    ) {
+                        InfoLine(
+                            label = "Hình thức",
+                            value = "Tìm đối thủ"
+                        )
+                    }
+                }
+                item { Spacer(modifier = Modifier.height(10.dp)) }
             }
 
             item {

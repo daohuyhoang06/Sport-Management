@@ -1,4 +1,4 @@
-﻿package com.sportmanagement.user.data.remote.api
+package com.sportmanagement.user.data.remote.api
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -95,7 +95,30 @@ data class BookingDetailDto(
     val fieldAddress: String,
     val fieldAvatar: String?,
     val ownerName: String,
-    val ownerPhone: String
+    val ownerPhone: String,
+    val matchPost: BookingMatchPostDto?,
+    val matchRequests: List<BookingMatchRequestDto>
+)
+
+)
+
+data class BookingMatchPostDto(
+    val matchPostId: Int,
+    val teamName: String,
+    val playerCount: Int,
+    val level: String,
+    val levelLabel: String,
+    val description: String,
+    val status: String
+)
+
+data class BookingMatchRequestDto(
+    val matchRequestId: Int,
+    val teamName: String,
+    val playerCount: Int,
+    val message: String,
+    val status: String,
+    val createdAt: String
 )
 
 class InboxApi(
@@ -150,15 +173,15 @@ class InboxApi(
         data.toNotificationDto()
     }
 
-    suspend fun markNotificationRead(token: String, id: Int) {
+    suspend fun markNotificationRead(token: String, id: Int) = withContext(Dispatchers.IO) {
         postJsonWithoutBody("$baseUrl/api/user/notifications/$id/read", token)
     }
 
-    suspend fun markBookingNotificationsRead(token: String, bookingId: Int) {
+    suspend fun markBookingNotificationsRead(token: String, bookingId: Int) = withContext(Dispatchers.IO) {
         postJsonWithoutBody("$baseUrl/api/user/notifications/booking/$bookingId/read", token)
     }
 
-    suspend fun markAllNotificationsRead(token: String) {
+    suspend fun markAllNotificationsRead(token: String) = withContext(Dispatchers.IO) {
         postJsonWithoutBody("$baseUrl/api/user/notifications/read-all", token)
     }
 
@@ -193,8 +216,50 @@ class InboxApi(
             fieldAddress = field.optString("address"),
             fieldAvatar = field.optString("avatar").takeIf { it.isNotBlank() },
             ownerName = field.optString("ownerName"),
-            ownerPhone = field.optString("ownerPhone")
+            ownerPhone = field.optString("ownerPhone"),
+            matchPost = data.optJSONObject("matchPost")?.let { row ->
+                BookingMatchPostDto(
+                    matchPostId = row.optInt("matchPostId"),
+                    teamName = row.optString("teamName"),
+                    playerCount = row.optInt("playerCount"),
+                    level = row.optString("level"),
+                    levelLabel = row.optString("levelLabel"),
+                    description = row.optString("description"),
+                    status = row.optString("status")
+                )
+            },
+            matchRequests = (data.optJSONArray("matchRequests") ?: JSONArray()).let { items ->
+                List(items.length()) { index ->
+                    val row = items.optJSONObject(index) ?: JSONObject()
+                    BookingMatchRequestDto(
+                        matchRequestId = row.optInt("matchRequestId"),
+                        teamName = row.optString("teamName"),
+                        playerCount = row.optInt("playerCount"),
+                        message = row.optString("message"),
+                        status = row.optString("status"),
+                        createdAt = row.optString("createdAt")
+                    )
+                }
+            }
         )
+    }
+
+        token: String,
+        bookingId: Int,
+        fieldId: Int,
+        val body = JSONObject()
+            .put("booking_id", bookingId)
+            .put("field_id", fieldId)
+
+        )
+    }
+
+    suspend fun acceptMatchRequest(token: String, matchRequestId: Int) = withContext(Dispatchers.IO) {
+        postJsonWithoutBody("$baseUrl/api/user/match-requests/$matchRequestId/accept", token)
+    }
+
+    suspend fun rejectMatchRequest(token: String, matchRequestId: Int) = withContext(Dispatchers.IO) {
+        postJsonWithoutBody("$baseUrl/api/user/match-requests/$matchRequestId/reject", token)
     }
 
     suspend fun getConversations(token: String): List<ConversationListItemDto> = withContext(Dispatchers.IO) {
@@ -273,7 +338,7 @@ class InboxApi(
         )
     }
 
-    suspend fun markConversationRead(token: String, conversationId: Int) {
+    suspend fun markConversationRead(token: String, conversationId: Int) = withContext(Dispatchers.IO) {
         postJsonWithoutBody("$baseUrl/api/user/conversations/$conversationId/read", token)
     }
 
@@ -337,8 +402,9 @@ class InboxApi(
     }
 
     private fun postJsonWithoutBody(endpoint: String, token: String) {
-        val connection = createConnection(endpoint, "POST", token)
+        val connection = createConnection(endpoint, "POST", token).apply { doOutput = true }
         try {
+            connection.outputStream.bufferedWriter().use { it.write("{}") }
             val responseCode = connection.responseCode
             val responseText = readResponseBody(connection, responseCode)
             if (responseCode !in 200..299) {

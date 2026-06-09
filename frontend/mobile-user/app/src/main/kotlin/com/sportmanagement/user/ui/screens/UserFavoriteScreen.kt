@@ -44,6 +44,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.ChatBubble
 import androidx.compose.material.icons.outlined.CameraAlt
@@ -1023,7 +1024,30 @@ data class BookingInfo(
     val ownerNote: String,
     val fieldId: Int? = null,
     val bookingId: Int? = null,
-    val notificationId: Int? = null
+    val notificationId: Int? = null,
+    val matchPost: BookingMatchPostInfo? = null,
+    val matchRequests: List<BookingMatchRequestInfo> = emptyList()
+)
+
+@Immutable
+data class BookingMatchPostInfo(
+    val matchPostId: Int,
+    val teamName: String,
+    val playerCount: Int,
+    val level: String,
+    val levelLabel: String,
+    val description: String,
+    val status: String
+)
+
+@Immutable
+data class BookingMatchRequestInfo(
+    val matchRequestId: Int,
+    val teamName: String,
+    val playerCount: Int,
+    val message: String,
+    val status: String,
+    val createdAt: String
 )
 
 @Immutable
@@ -1074,6 +1098,27 @@ sealed class NotificationDetailInfo {
         val notificationId: Int? = null,
         val contentText: String,
         val features: List<String>,
+        val timeText: String
+    ) : NotificationDetailInfo()
+
+    data class MatchRequestNotice(
+        val title: String,
+        val subtitle: String,
+        val notificationId: Int? = null,
+        val bookingId: Int? = null,
+        val fieldId: Int? = null,
+        val matchRequestId: Int? = null,
+        val fieldName: String,
+        val address: String,
+        val timeRange: String,
+        val dateLabel: String,
+        val bookingCode: String,
+        val hostTeamName: String,
+        val requesterTeamName: String,
+        val requesterPlayerCount: Int,
+        val requesterMessage: String,
+        val requestStatus: String,
+        val canRespond: Boolean,
         val timeText: String
     ) : NotificationDetailInfo()
 }
@@ -1321,7 +1366,13 @@ private fun inboxSections(): List<NotificationSectionData> {
 @Composable
 fun BookingDetailScreen(
     info: BookingInfo,
+    processingMatchRequestId: Int? = null,
+    matchRequestActionError: String? = null,
+    matchRequestActionSuccessMessage: String? = null,
     onBackClick: () -> Unit,
+    onAcceptMatchRequest: (Int) -> Unit = {},
+    onRejectMatchRequest: (Int) -> Unit = {},
+    onMatchRequestFeedbackConsumed: () -> Unit = {},
     onOpenChat: (ConversationInfo) -> Unit
 ) {
     val context = LocalContext.current
@@ -1356,6 +1407,26 @@ fun BookingDetailScreen(
                 append('\n')
                 append(info.shareUrl)
             }
+        }
+    }
+
+        }
+    }
+
+    LaunchedEffect(matchRequestActionSuccessMessage) {
+        if (!matchRequestActionSuccessMessage.isNullOrBlank()) {
+            Toast.makeText(context, matchRequestActionSuccessMessage, Toast.LENGTH_SHORT).show()
+            onMatchRequestFeedbackConsumed()
+        }
+    }
+
+    LaunchedEffect(matchRequestActionError) {
+        if (!matchRequestActionError.isNullOrBlank()) {
+            Toast.makeText(context, matchRequestActionError, Toast.LENGTH_SHORT).show()
+            onMatchRequestFeedbackConsumed()
+        }
+    }
+
         }
     }
 
@@ -1435,6 +1506,9 @@ fun BookingDetailScreen(
                         }
                 }
             },
+            processingMatchRequestId = processingMatchRequestId,
+            onAcceptMatchRequest = onAcceptMatchRequest,
+            onRejectMatchRequest = onRejectMatchRequest,
             modifier = Modifier
                 .weight(1f)
                 .verticalScroll(rememberScrollState())
@@ -1532,6 +1606,9 @@ private fun BookingDetailContent(
     info: BookingInfo,
     onShareQr: () -> Unit,
     onDownloadQr: () -> Unit,
+    processingMatchRequestId: Int?,
+    onAcceptMatchRequest: (Int) -> Unit,
+    onRejectMatchRequest: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier) {
@@ -1544,6 +1621,23 @@ private fun BookingDetailContent(
         BookerInfoCard(info)
         Spacer(Modifier.height(12.dp))
         BookingOwnerNoteCard(note = info.ownerNote)
+        if (info.matchPost != null) {
+            Spacer(Modifier.height(12.dp))
+            MatchPostInfoCard(post = info.matchPost)
+        }
+        if (info.matchRequests.isNotEmpty()) {
+            Spacer(Modifier.height(12.dp))
+            MatchRequestsCard(
+                requests = info.matchRequests,
+                processingMatchRequestId = processingMatchRequestId,
+                onAcceptMatchRequest = onAcceptMatchRequest,
+                onRejectMatchRequest = onRejectMatchRequest
+            )
+        }
+            Spacer(Modifier.height(12.dp))
+                info = info,
+            )
+        }
         Spacer(Modifier.height(16.dp))
         BookingCheckInCard(
             info = info,
@@ -1838,6 +1932,27 @@ private fun BookingOwnerNoteCard(note: String) {
     }
 }
 
+private fun MatchPostInfoCard(post: BookingMatchPostInfo) {
+            BookingDetailRow(label = "Tên đội", value = post.teamName)
+            BookingDetailRow(label = "Số lượng", value = "${post.playerCount} người")
+            BookingDetailRow(label = "Trình độ", value = post.levelLabel)
+            if (post.description.isNotBlank()) {
+                    text = post.description,
+private fun MatchRequestsCard(
+    requests: List<BookingMatchRequestInfo>,
+    processingMatchRequestId: Int?,
+    onAcceptMatchRequest: (Int) -> Unit,
+    onRejectMatchRequest: (Int) -> Unit
+                MatchRequestItem(
+                    isProcessing = processingMatchRequestId == request.matchRequestId,
+                    onAccept = { onAcceptMatchRequest(request.matchRequestId) },
+                    onReject = { onRejectMatchRequest(request.matchRequestId) }
+private fun MatchRequestItem(
+    request: BookingMatchRequestInfo,
+            BookingDetailRow(label = "Tên đội", value = request.teamName)
+            BookingDetailRow(label = "Số lượng", value = "${request.playerCount} người")
+                    contentDescription = null,
+                contentDescription = null,
 @Composable
 private fun BookingDetailBottomActions(
     onDirectionsClick: () -> Unit,
@@ -2011,7 +2126,12 @@ fun NotificationDetailScreen(
     info: NotificationDetailInfo,
     onBackClick: () -> Unit,
     onOpenChat: (ConversationInfo) -> Unit,
-    onPromotionAction: () -> Unit
+    onPromotionAction: () -> Unit,
+    processingMatchRequestId: Int? = null,
+    matchRequestActionError: String? = null,
+    matchRequestActionSuccessMessage: String? = null,
+    onAcceptMatchRequest: (Int) -> Unit = {},
+    onRejectMatchRequest: (Int) -> Unit = {}
 ) {
     val context = LocalContext.current
     var showContactSheet by remember { mutableStateOf(false) }
@@ -2027,6 +2147,8 @@ fun NotificationDetailScreen(
             NotificationDetailTopBar(onBackClick = onBackClick)
             NotificationDetailContent(
                 info = info,
+                matchRequestActionError = matchRequestActionError,
+                matchRequestActionSuccessMessage = matchRequestActionSuccessMessage,
                 modifier = Modifier
                     .weight(1f)
                     .verticalScroll(rememberScrollState())
@@ -2046,6 +2168,16 @@ fun NotificationDetailScreen(
                 NotificationDetailBottomAction(
                     label = stringResource(R.string.inbox_promo_action),
                     onClick = onPromotionAction,
+                    modifier = Modifier.align(Alignment.BottomCenter)
+                )
+            }
+            is NotificationDetailInfo.MatchRequestNotice -> {
+                val matchRequestId = info.matchRequestId
+                MatchRequestBottomActions(
+                    canRespond = info.canRespond && matchRequestId != null,
+                    isProcessing = processingMatchRequestId == matchRequestId,
+                    onAccept = { if (matchRequestId != null) onAcceptMatchRequest(matchRequestId) },
+                    onReject = { if (matchRequestId != null) onRejectMatchRequest(matchRequestId) },
                     modifier = Modifier.align(Alignment.BottomCenter)
                 )
             }
@@ -2123,6 +2255,8 @@ private fun NotificationDetailTopBar(onBackClick: () -> Unit) {
 @Composable
 private fun NotificationDetailContent(
     info: NotificationDetailInfo,
+    matchRequestActionError: String? = null,
+    matchRequestActionSuccessMessage: String? = null,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier) {
@@ -2170,6 +2304,28 @@ private fun NotificationDetailContent(
                 Spacer(Modifier.height(12.dp))
                 SystemNoticeContentCard(info)
                 Spacer(Modifier.height(24.dp))
+            }
+            is NotificationDetailInfo.MatchRequestNotice -> {
+                NotificationBannerCard(
+                    title = info.title,
+                    subtitle = info.subtitle,
+                    backgroundColor = Color(0xFFE6F4EA),
+                    icon = Icons.Outlined.EventAvailable,
+                    iconTint = Color(0xFF2E7D32)
+                )
+                Spacer(Modifier.height(12.dp))
+                MatchRequestFieldCard(info)
+                Spacer(Modifier.height(12.dp))
+                MatchRequestScheduleCard(info)
+                Spacer(Modifier.height(12.dp))
+                MatchRequestTeamsCard(info)
+                Spacer(Modifier.height(12.dp))
+                MatchRequestMetaCard(
+                    info = info,
+                    errorMessage = matchRequestActionError,
+                    successMessage = matchRequestActionSuccessMessage
+                )
+                Spacer(Modifier.height(84.dp))
             }
         }
     }
@@ -2475,6 +2631,115 @@ private fun SystemIllustrationCard() {
 }
 
 @Composable
+private fun MatchRequestFieldCard(info: NotificationDetailInfo.MatchRequestNotice) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(AppCardCornerRadius),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            SectionHeader(title = "Thông tin sân", icon = Icons.Outlined.Place)
+            Spacer(Modifier.height(10.dp))
+            Text(
+                text = info.fieldName.ifBlank { "Sân đang cập nhật" },
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            if (info.address.isNotBlank()) {
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = info.address,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MatchRequestScheduleCard(info: NotificationDetailInfo.MatchRequestNotice) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(AppCardCornerRadius),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            SectionHeader(title = "Slot đặt sân", icon = Icons.Outlined.Schedule)
+            Spacer(Modifier.height(10.dp))
+            BookingDetailRow(label = "Khung giờ", value = info.timeRange.ifBlank { "Đang cập nhật" })
+            BookingDetailRow(label = "Ngày", value = info.dateLabel.ifBlank { "Đang cập nhật" })
+            BookingDetailRow(label = "Mã booking", value = info.bookingCode.ifBlank { "Đang cập nhật" })
+        }
+    }
+}
+
+@Composable
+private fun MatchRequestTeamsCard(info: NotificationDetailInfo.MatchRequestNotice) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(AppCardCornerRadius),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            SectionHeader(title = "Thông tin đội", icon = Icons.Outlined.Person)
+            Spacer(Modifier.height(10.dp))
+            BookingDetailRow(label = "Đội của bạn", value = info.hostTeamName.ifBlank { "Đang cập nhật" })
+            BookingDetailRow(label = "Đội gửi yêu cầu", value = info.requesterTeamName.ifBlank { "Đang cập nhật" })
+            BookingDetailRow(
+                label = "Số lượng người",
+                value = if (info.requesterPlayerCount > 0) "${info.requesterPlayerCount} người" else "Đang cập nhật"
+            )
+            BookingDetailRow(
+                label = "Lời nhắn",
+                value = info.requesterMessage.ifBlank { "Không có lời nhắn" }
+            )
+        }
+    }
+}
+
+@Composable
+private fun MatchRequestMetaCard(
+    info: NotificationDetailInfo.MatchRequestNotice,
+    errorMessage: String?,
+    successMessage: String?
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(AppCardCornerRadius),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            SectionHeader(title = "Trạng thái yêu cầu", icon = Icons.Outlined.Info)
+            Spacer(Modifier.height(10.dp))
+            BookingDetailRow(label = "Trạng thái", value = info.requestStatus)
+            BookingDetailRow(label = "Thời gian", value = info.timeText)
+            if (!successMessage.isNullOrBlank()) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = successMessage,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFF2E7D32)
+                )
+            }
+            if (!errorMessage.isNullOrBlank()) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = errorMessage,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun SystemNoticeContentCard(info: NotificationDetailInfo.SystemNotice) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -2517,6 +2782,63 @@ private fun SystemNoticeContentCard(info: NotificationDetailInfo.SystemNotice) {
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+        }
+    }
+}
+
+@Composable
+private fun MatchRequestBottomActions(
+    canRespond: Boolean,
+    isProcessing: Boolean,
+    onAccept: () -> Unit,
+    onReject: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 4.dp,
+        shadowElevation = 12.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(horizontal = AppScreenHorizontalPadding, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            OutlinedButton(
+                onClick = onReject,
+                enabled = canRespond && !isProcessing,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(AppCtaWideHeight),
+                shape = RoundedCornerShape(AppCtaCornerRadius)
+            ) {
+                Text(
+                    text = if (isProcessing) "Đang xử lý..." else "Từ chối",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+            Button(
+                onClick = onAccept,
+                enabled = canRespond && !isProcessing,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(AppCtaWideHeight),
+                shape = RoundedCornerShape(AppCtaCornerRadius),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                )
+            ) {
+                Text(
+                    text = if (isProcessing) "Đang xử lý..." else "Chấp nhận",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
         }
     }
 }
