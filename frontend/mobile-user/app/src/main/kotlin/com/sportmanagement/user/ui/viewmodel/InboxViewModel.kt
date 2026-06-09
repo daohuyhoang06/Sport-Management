@@ -133,19 +133,20 @@ class InboxViewModel(
         _uiState.value = _uiState.value.copy(sections = clearedSections)
 
         viewModelScope.launch {
-            runCatching { api.markAllNotificationsRead(token) }
+            runCatching { api.markInboxReadAll(token) }
                 .recoverCatching {
+                    api.markAllNotificationsRead(token)
                     unreadNotificationIds.forEach { notificationId ->
                         runCatching { api.markNotificationRead(token, notificationId) }
                     }
-                }
-            unreadConversationIds.forEach { conversationId ->
-                runCatching { api.markConversationRead(token, conversationId) }
-                    .recoverCatching {
-                        // Fallback: opening thread API also marks incoming messages as read on backend.
-                        api.getConversationMessages(token, conversationId)
+                    unreadConversationIds.forEach { conversationId ->
+                        runCatching { api.markConversationRead(token, conversationId) }
+                            .recoverCatching {
+                                // Fallback: opening thread API also marks incoming messages as read on backend.
+                                api.getConversationMessages(token, conversationId)
+                            }
                     }
-            }
+                }
             refreshInbox()
         }
     }
@@ -192,6 +193,7 @@ class InboxViewModel(
                 val notificationDetail = notificationId?.let { nid ->
                     api.getNotificationDetail(token, nid)
                 }
+                val shouldFocusVenueInfo = isBookingReminderType(notificationDetail?.type)
                 val resolvedBookingId =
                     bookingId ?: notificationDetail?.bookingId ?: notificationDetail?.targetId
                 val resolvedNotificationId = notificationId ?: resolveBookingNotificationId(resolvedBookingId)
@@ -199,9 +201,9 @@ class InboxViewModel(
                 resolvedNotificationId?.let { clearNotificationUnreadState(it) }
                 resolvedNotificationId?.let { runCatching { api.markNotificationRead(token, it) } }
                 resolvedBookingId?.let { runCatching { api.markBookingNotificationsRead(token, it) } }
-                resolvedBookingId?.let { api.getBookingDetail(token, it) }
+                resolvedBookingId?.let { api.getBookingDetail(token, it) } to shouldFocusVenueInfo
             }
-                .onSuccess { booking ->
+                .onSuccess { (booking, shouldFocusVenueInfo) ->
                     if (booking == null) {
                         _uiState.value = _uiState.value.copy(
                             isLoadingBookingDetail = false,
@@ -239,7 +241,8 @@ class InboxViewModel(
                             ownerNote = booking.ownerNote,
                             fieldId = booking.fieldId,
                             bookingId = booking.bookingId,
-                            notificationId = null
+                            notificationId = null,
+                            focusVenueInfo = shouldFocusVenueInfo
                         )
                     )
                 }
@@ -598,7 +601,8 @@ class InboxViewModel(
                     } else {
                         item.copy(
                             bookingInfo = detail.toBookingInfo(
-                                notificationId = item.bookingInfo?.notificationId ?: item.id
+                                notificationId = item.bookingInfo?.notificationId ?: item.id,
+                                focusVenueInfo = item.bookingInfo?.focusVenueInfo ?: isBookingReminderType(item.type)
                             )
                         )
                     }
@@ -630,6 +634,9 @@ class InboxViewModel(
         val category = when {
             normalizedSection == "messages" || normalizedType == "message" -> InboxCategoryType.Message
             normalizedType == "booking_success" ||
+                normalizedType == "upcoming_match" ||
+                normalizedType == "booking_reminder" ||
+                normalizedType == "booking_reminder_urgent" ||
                 normalizedType == "booking" ||
                 targetType.equals("booking", ignoreCase = true) -> InboxCategoryType.Booking
             else -> InboxCategoryType.Activity
@@ -663,7 +670,8 @@ class InboxViewModel(
                 ownerNote = subtitle,
                 fieldId = fieldId,
                 bookingId = effectiveBookingId,
-                notificationId = id
+                notificationId = id,
+                focusVenueInfo = isBookingReminderType(normalizedType)
             )
         } else null
 
@@ -753,7 +761,10 @@ class InboxViewModel(
         }.getOrDefault(raw)
     }
 
-    private fun BookingDetailDto.toBookingInfo(notificationId: Int?): BookingInfo {
+    private fun BookingDetailDto.toBookingInfo(
+        notificationId: Int?,
+        focusVenueInfo: Boolean = false
+    ): BookingInfo {
         val resolvedTimeRange = timeRange.ifBlank {
             listOf(startTime, endTime)
                 .filter { it.isNotBlank() }
@@ -780,7 +791,8 @@ class InboxViewModel(
             ownerNote = ownerNote,
             fieldId = fieldId,
             bookingId = bookingId,
-            notificationId = notificationId
+            notificationId = notificationId,
+            focusVenueInfo = focusVenueInfo
         )
     }
 
@@ -798,6 +810,13 @@ class InboxViewModel(
             LocalDateTime.parse(raw, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")).toLocalDate().format(output)
         }.getOrDefault(raw)
     }
+}
+
+private fun isBookingReminderType(type: String?): Boolean {
+    val normalized = type?.lowercase().orEmpty()
+    return normalized == "booking_reminder" ||
+        normalized == "booking_reminder_urgent" ||
+        normalized == "upcoming_match"
 }
 
 private fun NotificationItem.matchesNotificationId(notificationId: Int): Boolean {

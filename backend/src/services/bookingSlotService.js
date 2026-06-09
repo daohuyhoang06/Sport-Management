@@ -14,25 +14,68 @@ export const ACTIVE_BOOKING_STATUS_CONDITION = `
 
 export const buildInClause = (items) => items.map(() => "?").join(", ");
 
-const formatVnDatePart = (value, options) =>
-  new Intl.DateTimeFormat("en-GB", {
-    timeZone: VN_TIME_ZONE,
-    ...options,
-  }).format(new Date(value));
+const getDbDateTimeParts = (value) => {
+  if (!value) return null;
 
-export const formatSlotTimeLabel = (value) =>
-  formatVnDatePart(value, {
+  if (value instanceof Date) {
+    return {
+      year: value.getUTCFullYear(),
+      month: value.getUTCMonth() + 1,
+      day: value.getUTCDate(),
+      hour: value.getUTCHours(),
+      minute: value.getUTCMinutes(),
+    };
+  }
+
+  const raw = String(value).trim();
+  const match = raw.match(
+    /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/,
+  );
+  if (match) {
+    return {
+      year: Number(match[1]),
+      month: Number(match[2]),
+      day: Number(match[3]),
+      hour: Number(match[4] || 0),
+      minute: Number(match[5] || 0),
+    };
+  }
+
+  const fallback = new Date(value);
+  if (Number.isNaN(fallback.getTime())) return null;
+
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: VN_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
     hour: "2-digit",
     minute: "2-digit",
     hourCycle: "h23",
-  });
+  }).formatToParts(fallback);
+
+  return {
+    year: Number(parts.find((item) => item.type === "year")?.value || 0),
+    month: Number(parts.find((item) => item.type === "month")?.value || 0),
+    day: Number(parts.find((item) => item.type === "day")?.value || 0),
+    hour: Number(parts.find((item) => item.type === "hour")?.value || 0),
+    minute: Number(parts.find((item) => item.type === "minute")?.value || 0),
+  };
+};
+
+export const formatSlotTimeLabel = (value) =>
+  (() => {
+    const parts = getDbDateTimeParts(value);
+    if (!parts) return "";
+    return `${String(parts.hour).padStart(2, "0")}:${String(parts.minute).padStart(2, "0")}`;
+  })();
 
 export const formatSlotDateLabel = (value) =>
-  formatVnDatePart(value, {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
+  (() => {
+    const parts = getDbDateTimeParts(value);
+    if (!parts) return "";
+    return `${String(parts.day).padStart(2, "0")}/${String(parts.month).padStart(2, "0")}/${parts.year}`;
+  })();
 
 export const deriveAggregateCourtId = (slots) => {
   const normalizedCourtIds = [...new Set(

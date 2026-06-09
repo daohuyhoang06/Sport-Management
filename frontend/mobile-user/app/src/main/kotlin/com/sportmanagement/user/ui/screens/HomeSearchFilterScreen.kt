@@ -742,7 +742,10 @@ private fun AreaPickerDialog(
                                     .weight(1f)
                                     .fillMaxHeight()
                             ) {
-                                itemsIndexed(provinces) { index, province ->
+                                itemsIndexed(
+                                    items = provinces,
+                                    key = { _, province -> province.provinceName }
+                                ) { index, province ->
                                     PickerOptionRow(
                                         text = province.provinceName,
                                         selected = selectedProvince == province.provinceName,
@@ -762,7 +765,10 @@ private fun AreaPickerDialog(
                                     .weight(1f)
                                     .fillMaxHeight()
                             ) {
-                                itemsIndexed(districts) { index, district ->
+                                itemsIndexed(
+                                    items = districts,
+                                    key = { _, district -> district }
+                                ) { index, district ->
                                     PickerOptionRow(
                                         text = district,
                                         selected = selectedDistrict == district,

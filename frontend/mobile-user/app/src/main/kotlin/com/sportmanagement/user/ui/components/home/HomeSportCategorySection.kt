@@ -48,7 +48,10 @@ fun HomeSportCategorySection(
         contentPadding = PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        itemsIndexed(sportCategories) { index, category ->
+        itemsIndexed(
+            items = sportCategories,
+            key = { _, category -> "${category.name}_${category.iconType}" }
+        ) { index, category ->
             SportCategoryItem(
                 category = category,
                 isSelected = selectedCategoryIndex == index,

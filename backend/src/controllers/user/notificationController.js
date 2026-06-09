@@ -76,12 +76,12 @@ export const listNotifications = async (req, res) => {
        LEFT JOIN bookings b ON n.booking_id = b.booking_id
        WHERE ${whereSql}
         AND (
-          n.type <> 'booking_success'
+          n.type NOT IN ('booking_success', 'upcoming_match', 'booking_reminder', 'booking_reminder_urgent')
           OR (
             n.booking_id IS NOT NULL
             AND b.booking_id IS NOT NULL
             AND b.customer_id = n.user_id
-            AND b.status IN ('confirmed', 'completed')
+            AND b.status IN ('confirmed', 'approved', 'completed', 'paid')
           )
         )`,
       { replacements },
@@ -108,12 +108,12 @@ export const listNotifications = async (req, res) => {
       LEFT JOIN bookings b ON n.booking_id = b.booking_id
       WHERE ${whereSql}
         AND (
-          n.type <> 'booking_success'
+          n.type NOT IN ('booking_success', 'upcoming_match', 'booking_reminder', 'booking_reminder_urgent')
           OR (
             n.booking_id IS NOT NULL
             AND b.booking_id IS NOT NULL
             AND b.customer_id = n.user_id
-            AND b.status IN ('confirmed', 'completed')
+            AND b.status IN ('confirmed', 'approved', 'completed', 'paid')
           )
         )
       ORDER BY n.created_at DESC
@@ -180,12 +180,12 @@ export const getNotificationDetail = async (req, res) => {
       LEFT JOIN bookings b ON n.booking_id = b.booking_id
       WHERE n.id = ? AND n.user_id = ?
         AND (
-          n.type <> 'booking_success'
+          n.type NOT IN ('booking_success', 'upcoming_match', 'booking_reminder', 'booking_reminder_urgent')
           OR (
             n.booking_id IS NOT NULL
             AND b.booking_id IS NOT NULL
             AND b.customer_id = n.user_id
-            AND b.status IN ('confirmed', 'completed')
+            AND b.status IN ('confirmed', 'approved', 'completed', 'paid')
           )
         )
       LIMIT 1`,
