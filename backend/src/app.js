@@ -8,6 +8,7 @@ import swaggerUi from "swagger-ui-express";
 import { fileURLToPath } from "url";
 import swaggerSpec from "./config/swagger.js";
 import { releaseExpiredPendingBookings } from "./services/user/scheduleService.js";
+import { startUpcomingBookingReminderJob } from "./services/user/bookingReminderService.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -150,5 +151,11 @@ setInterval(async () => {
     console.error("releaseExpiredPendingBookings interval error:", error.message);
   }
 }, 30 * 1000);
+
+// Create in-app reminders for user bookings starting within the next 15 minutes.
+startUpcomingBookingReminderJob({
+  intervalMs: 60 * 1000,
+  runImmediately: true,
+});
 
 export default app;

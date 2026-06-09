@@ -89,6 +89,34 @@ function BookingModal({
             <input type="text" value={booking.field} readOnly />
           </label>
 
+          <label className="modal-field">
+            <span>Số điện thoại</span>
+            <input type="text" value={booking.customerPhone || "-"} readOnly />
+          </label>
+
+          <label className="modal-field">
+            <span>Ngày đặt</span>
+            <input type="text" value={booking.date || "-"} readOnly />
+          </label>
+
+          <label className="modal-field">
+            <span>Khung giờ</span>
+            <input type="text" value={booking.slot || "-"} readOnly />
+          </label>
+
+          <label className="modal-field">
+            <span>Thanh toán</span>
+            <input
+              type="text"
+              value={
+                [booking.paymentStatus, booking.paymentMethod]
+                  .filter((item) => item && item !== "-")
+                  .join(" - ") || "-"
+              }
+              readOnly
+            />
+          </label>
+
           {!isCancel && (
             <label className="modal-field">
               <span>Trạng thái</span>

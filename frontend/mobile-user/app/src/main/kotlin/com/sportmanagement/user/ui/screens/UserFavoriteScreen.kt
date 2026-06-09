@@ -1,4 +1,4 @@
-package com.sportmanagement.user.ui.screens
+﻿package com.sportmanagement.user.ui.screens
 
 import android.content.Intent
 import android.graphics.Bitmap
@@ -98,6 +98,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -147,11 +148,24 @@ fun InboxScreen(
 ) {
     val layoutDirection = LocalLayoutDirection.current
     var selectedCategory by rememberSaveable { mutableStateOf<InboxCategoryType?>(null) }
+    var selectedActivityTab by rememberSaveable { mutableStateOf(ActivityInboxTab.Upcoming) }
     val filteredSections = sections.mapNotNull { section ->
         val filteredItems = section.items.filter { item ->
-            selectedCategory == null || item.category == selectedCategory
+            val matchesCategory = selectedCategory == null || item.category == selectedCategory
+            val matchesActivityTab = selectedCategory != InboxCategoryType.Activity ||
+                activityTabMatches(item, selectedActivityTab)
+            matchesCategory && matchesActivityTab
         }
-        if (filteredItems.isEmpty()) null else section.copy(items = filteredItems)
+        if (filteredItems.isEmpty()) {
+            null
+        } else {
+            val title = if (selectedCategory == InboxCategoryType.Activity) {
+                selectedActivityTab.title
+            } else {
+                section.title
+            }
+            section.copy(title = title, items = filteredItems)
+        }
     }
     val quickActions = inboxQuickActions(sections)
     val hasVisibleContent = filteredSections.any { it.items.isNotEmpty() }
@@ -179,6 +193,9 @@ fun InboxScreen(
                     selectedCategory = selectedCategory,
                     onCategorySelected = { category ->
                         selectedCategory = if (selectedCategory == category) null else category
+                        if (category == InboxCategoryType.Activity) {
+                            selectedActivityTab = ActivityInboxTab.Upcoming
+                        }
                     },
                     modifier = Modifier
                         .align(Alignment.TopCenter)
@@ -219,7 +236,7 @@ fun InboxScreen(
                 ) {
                     Text(text = message, color = MaterialTheme.colorScheme.error)
                     Text(
-                        text = "Thử lại",
+                        text = "Thá»­ láº¡i",
                         color = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.clickable(onClick = onRefresh)
                     )
@@ -231,6 +248,17 @@ fun InboxScreen(
             Spacer(Modifier.height(InboxMenuContentGap))
         }
 
+        if (selectedCategory == InboxCategoryType.Activity) {
+            item {
+                ActivityInboxTabs(
+                    selectedTab = selectedActivityTab,
+                    onTabSelected = { selectedActivityTab = it },
+                    modifier = Modifier.padding(horizontal = AppScreenHorizontalPadding)
+                )
+                Spacer(Modifier.height(InboxSectionGap))
+            }
+        }
+
         filteredSections.forEach { section ->
             item {
                 NotificationSection(
@@ -238,6 +266,10 @@ fun InboxScreen(
                     onMarkAllClick = onMarkAllRead,
                     onItemClick = { item ->
                         when {
+                            isReminderNotificationItem(item) && item.bookingInfo != null -> {
+                                onNotificationOpened(item.bookingInfo.notificationId ?: item.id)
+                                onBookingSelected(item.bookingInfo)
+                            }
                             item.category == InboxCategoryType.Booking && item.bookingInfo != null -> {
                                 onNotificationOpened(item.bookingInfo.notificationId ?: item.id)
                                 onBookingSelected(item.bookingInfo)
@@ -261,7 +293,7 @@ fun InboxScreen(
         if (!isLoading && errorMessage.isNullOrBlank() && filteredSections.all { it.items.isEmpty() }) {
             item {
                 Text(
-                    text = "Hộp thư chưa có dữ liệu.",
+                    text = "Há»™p thÆ° chÆ°a cÃ³ dá»¯ liá»‡u.",
                     modifier = Modifier.padding(horizontal = AppScreenHorizontalPadding),
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -424,6 +456,52 @@ fun QuickActionItem(
             color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center
         )
+    }
+}
+
+@Composable
+private fun ActivityInboxTabs(
+    selectedTab: ActivityInboxTab,
+    onTabSelected: (ActivityInboxTab) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(AppInputCornerRadius),
+        color = MaterialTheme.colorScheme.surfaceContainerLow
+    ) {
+        Row(
+            modifier = Modifier.padding(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            ActivityInboxTab.values().forEach { tab ->
+                val isSelected = selectedTab == tab
+                Surface(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { onTabSelected(tab) },
+                    shape = RoundedCornerShape(AppPillCornerRadius),
+                    color = if (isSelected) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        Color.Transparent
+                    }
+                ) {
+                    Text(
+                        text = tab.title,
+                        modifier = Modifier.padding(vertical = 9.dp),
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (isSelected) {
+                            MaterialTheme.colorScheme.onPrimary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -610,7 +688,7 @@ private fun NotificationBadge(value: String, modifier: Modifier = Modifier) {
 private fun looksLikeBookingCodePreview(text: String): Boolean {
     val normalized = text.trim()
     return normalized.contains("#B", ignoreCase = true) ||
-        normalized.contains("Mã đặt sân", ignoreCase = true) ||
+        normalized.contains("MÃ£ Ä‘áº·t sÃ¢n", ignoreCase = true) ||
         normalized.contains("Booking #B", ignoreCase = true)
 }
 
@@ -655,7 +733,7 @@ private fun NotificationDetailSheet(item: NotificationItem, modifier: Modifier =
                     )
                     Spacer(Modifier.height(2.dp))
                     Text(
-                        text = "${item.timeLabel} • ${item.subtitle}",
+                        text = "${item.timeLabel} â€¢ ${item.subtitle}",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -698,7 +776,7 @@ private fun NotificationDetailSheet(item: NotificationItem, modifier: Modifier =
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Text(
-                        text = "LIÊN HỆ CHỦ SÂN",
+                        text = "LIÃŠN Há»† CHá»¦ SÃ‚N",
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onPrimary
@@ -743,12 +821,12 @@ private fun BookingDetailCard(info: BookingInfo) {
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             SectionHeader(
-                title = "Thông tin lịch đặt",
+                title = "ThÃ´ng tin lá»‹ch Ä‘áº·t",
                 icon = Icons.Outlined.EventAvailable
             )
             Spacer(Modifier.height(10.dp))
-            BookingDetailRow(label = "Khung giờ", value = info.timeRange)
-            BookingDetailRow(label = "Ngày", value = info.dateLabel)
+            BookingDetailRow(label = "Khung giá»", value = info.timeRange)
+            BookingDetailRow(label = "NgÃ y", value = info.dateLabel)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -757,7 +835,7 @@ private fun BookingDetailCard(info: BookingInfo) {
                 verticalAlignment = Alignment.Top
             ) {
                 Text(
-                    text = "Mã booking",
+                    text = "MÃ£ booking",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(0.42f)
@@ -790,7 +868,7 @@ private fun BookingDetailCard(info: BookingInfo) {
                 verticalAlignment = Alignment.Top
             ) {
                 Text(
-                    text = "Trạng thái",
+                    text = "Tráº¡ng thÃ¡i",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(0.42f)
@@ -802,8 +880,8 @@ private fun BookingDetailCard(info: BookingInfo) {
                     StatusBadge(label = info.statusLabel)
                 }
             }
-            BookingDetailRow(label = "Phương thức thanh toán", value = info.paymentMethod)
-            BookingDetailRow(label = "Tổng tiền", value = info.totalAmount, highlight = true)
+            BookingDetailRow(label = "PhÆ°Æ¡ng thá»©c thanh toÃ¡n", value = info.paymentMethod)
+            BookingDetailRow(label = "Tá»•ng tiá»n", value = info.totalAmount, highlight = true)
         }
     }
 }
@@ -878,13 +956,13 @@ private fun BookingHighlightCard(info: BookingInfo) {
             }
             Column {
                 Text(
-                    text = "Đơn đặt sân của bạn đã được xác nhận",
+                    text = "ÄÆ¡n Ä‘áº·t sÃ¢n cá»§a báº¡n Ä‘Ã£ Ä‘Æ°á»£c xÃ¡c nháº­n",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.primary
                 )
                 Text(
-                    text = "Sân sẽ sẵn sàng đón bạn theo lịch hẹn.",
+                    text = "SÃ¢n sáº½ sáºµn sÃ ng Ä‘Ã³n báº¡n theo lá»‹ch háº¹n.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -944,12 +1022,12 @@ private fun BookerInfoCard(info: BookingInfo) {
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             SectionHeader(
-                title = "Thông tin người đặt",
+                title = "ThÃ´ng tin ngÆ°á»i Ä‘áº·t",
                 icon = Icons.Outlined.Person
             )
             Spacer(Modifier.height(10.dp))
-            BookingDetailRow(label = "Tên", value = info.customerName)
-            BookingDetailRow(label = "Số điện thoại", value = info.customerPhone)
+            BookingDetailRow(label = "TÃªn", value = info.customerName)
+            BookingDetailRow(label = "Sá»‘ Ä‘iá»‡n thoáº¡i", value = info.customerPhone)
         }
     }
 }
@@ -1022,6 +1100,8 @@ data class BookingInfo(
     val customerPhone: String,
     val ownerPhone: String = "",
     val ownerNote: String,
+    val fieldId: Int? = null,
+    val bookingId: Int? = null,
     val notificationId: Int? = null,
     val canReview: Boolean = false,
     val reviewSubmitted: Boolean = false,
@@ -1029,7 +1109,8 @@ data class BookingInfo(
     val reviewRating: Int? = null,
     val reviewComment: String = "",
     val matchPost: BookingMatchPostInfo? = null,
-    val matchRequests: List<BookingMatchRequestInfo> = emptyList()
+    val matchRequests: List<BookingMatchRequestInfo> = emptyList(),
+    val focusVenueInfo: Boolean = false
 )
 
 @Immutable
@@ -1052,7 +1133,6 @@ data class BookingMatchRequestInfo(
     val status: String,
     val createdAt: String
 )
-
 @Immutable
 data class ConversationInfo(
     val fieldName: String,
@@ -1143,12 +1223,41 @@ enum class InboxCategoryType {
     Support
 }
 
+private enum class ActivityInboxTab(val title: String) {
+    Upcoming("Sáº¯p diá»…n ra"),
+    Review("Cáº§n Ä‘Ã¡nh giÃ¡")
+}
+
 @Immutable
 data class NotificationSectionData(
     val title: String,
     val showMarkAll: Boolean,
     val items: List<NotificationItem>
 )
+
+private fun activityTabMatches(
+    item: NotificationItem,
+    tab: ActivityInboxTab
+): Boolean {
+    return when (tab) {
+        ActivityInboxTab.Upcoming -> isReminderNotificationItem(item)
+        ActivityInboxTab.Review -> isReviewNotificationItem(item)
+    }
+}
+
+private fun isReminderNotificationItem(item: NotificationItem): Boolean {
+    val normalized = item.type?.lowercase().orEmpty()
+    return normalized == "booking_reminder" ||
+        normalized == "booking_reminder_urgent" ||
+        normalized == "upcoming_match"
+}
+
+private fun isReviewNotificationItem(item: NotificationItem): Boolean {
+    val normalized = item.type?.lowercase().orEmpty()
+    return normalized == "review_request" ||
+        normalized == "booking_completed" ||
+        normalized == "field_review_request"
+}
 
 @Composable
 private fun inboxQuickActions(sections: List<NotificationSectionData>): List<InboxCategory> {
@@ -1161,7 +1270,7 @@ private fun inboxQuickActions(sections: List<NotificationSectionData>): List<Inb
 
     return listOf(
         InboxCategory(
-            label = "Đặt sân",
+            label = "Äáº·t sÃ¢n",
             icon = Icons.Outlined.EventAvailable,
             badgeCount = badgeCounts[InboxCategoryType.Booking] ?: 0,
             type = InboxCategoryType.Booking,
@@ -1169,7 +1278,7 @@ private fun inboxQuickActions(sections: List<NotificationSectionData>): List<Inb
             iconTint = MaterialTheme.colorScheme.primary
         ),
         InboxCategory(
-            label = "Hoạt động",
+            label = "Hoáº¡t Ä‘á»™ng",
             icon = Icons.Outlined.Notifications,
             badgeCount = badgeCounts[InboxCategoryType.Activity] ?: 0,
             type = InboxCategoryType.Activity,
@@ -1177,7 +1286,7 @@ private fun inboxQuickActions(sections: List<NotificationSectionData>): List<Inb
             iconTint = MaterialTheme.colorScheme.onSecondary
         ),
         InboxCategory(
-            label = "Tin nhắn",
+            label = "Tin nháº¯n",
             icon = Icons.Outlined.ChatBubble,
             badgeCount = badgeCounts[InboxCategoryType.Message] ?: 0,
             type = InboxCategoryType.Message,
@@ -1185,7 +1294,7 @@ private fun inboxQuickActions(sections: List<NotificationSectionData>): List<Inb
             iconTint = MaterialTheme.colorScheme.tertiary
         ),
         InboxCategory(
-            label = "Hỗ trợ",
+            label = "Há»— trá»£",
             icon = Icons.Outlined.HelpOutline,
             badgeCount = badgeCounts[InboxCategoryType.Support] ?: 0,
             type = InboxCategoryType.Support,
@@ -1204,51 +1313,51 @@ private fun inboxSections(): List<NotificationSectionData> {
 
     val priorityItems = listOf(
         NotificationItem(
-            title = "Đặt sân thành công",
-            subtitle = "Sân Mỹ Đình Mini • 18:00 hôm nay",
-            detail = "Booking #B123456 đã được xác nhận.",
-            longDetail = "Bạn có thể đến sân trước 10 phút để hoàn tất thủ tục nhận sân.",
+            title = "Äáº·t sÃ¢n thÃ nh cÃ´ng",
+            subtitle = "SÃ¢n Má»¹ ÄÃ¬nh Mini â€¢ 18:00 hÃ´m nay",
+            detail = "Booking #B123456 Ä‘Ã£ Ä‘Æ°á»£c xÃ¡c nháº­n.",
+            longDetail = "Báº¡n cÃ³ thá»ƒ Ä‘áº¿n sÃ¢n trÆ°á»›c 10 phÃºt Ä‘á»ƒ hoÃ n táº¥t thá»§ tá»¥c nháº­n sÃ¢n.",
             timeLabel = "10:30",
             unread = true,
             category = InboxCategoryType.Booking,
             bookingInfo = BookingInfo(
-                fieldName = "Sân Mỹ Đình Mini",
+                fieldName = "SÃ¢n Má»¹ ÄÃ¬nh Mini",
                 timeRange = "18:00 - 19:30",
-                dateLabel = "Hôm nay, 23/05/2026",
+                dateLabel = "HÃ´m nay, 23/05/2026",
                 bookingCode = "#B123456",
-                statusLabel = "Đã xác nhận",
-                address = "Đường Lê Đức Thọ, Mỹ Đình, Nam Từ Liêm, Hà Nội",
-                paymentMethod = "Ví điện tử",
-                totalAmount = "150.000 đ",
-                customerName = "Nguyễn Văn An",
+                statusLabel = "ÄÃ£ xÃ¡c nháº­n",
+                address = "ÄÆ°á»ng LÃª Äá»©c Thá», Má»¹ ÄÃ¬nh, Nam Tá»« LiÃªm, HÃ  Ná»™i",
+                paymentMethod = "VÃ­ Ä‘iá»‡n tá»­",
+                totalAmount = "150.000 Ä‘",
+                customerName = "Nguyá»…n VÄƒn An",
                 customerPhone = "090 789 0123",
                 ownerPhone = "090 123 4567",
-                ownerNote = "Bạn vui lòng đến trước 10 phút để check sân nhé!"
+                ownerNote = "Báº¡n vui lÃ²ng Ä‘áº¿n trÆ°á»›c 10 phÃºt Ä‘á»ƒ check sÃ¢n nhÃ©!"
             ),
             icon = Icons.Outlined.EventAvailable,
             iconBackground = accentPrimary.copy(alpha = 0.12f),
             iconTint = accentPrimary
         ),
         NotificationItem(
-            title = "Sắp đến giờ thi đấu",
-            subtitle = "Còn 1 giờ nữa tới lịch đặt sân",
-            detail = "Sân Hoàng Mai • 17:00 hôm nay",
-            longDetail = "Bạn vui lòng có mặt đúng giờ để tránh mất lượt đặt sân.",
+            title = "Sáº¯p Ä‘áº¿n giá» thi Ä‘áº¥u",
+            subtitle = "CÃ²n 1 giá» ná»¯a tá»›i lá»‹ch Ä‘áº·t sÃ¢n",
+            detail = "SÃ¢n HoÃ ng Mai â€¢ 17:00 hÃ´m nay",
+            longDetail = "Báº¡n vui lÃ²ng cÃ³ máº·t Ä‘Ãºng giá» Ä‘á»ƒ trÃ¡nh máº¥t lÆ°á»£t Ä‘áº·t sÃ¢n.",
             timeLabel = "15:00",
             unread = true,
             category = InboxCategoryType.Activity,
             detailInfo = NotificationDetailInfo.UpcomingMatch(
-                title = "Sắp đến giờ thi đấu",
-                subtitle = "Bạn có lịch đặt sân lúc 17:00 hôm nay.",
-                fieldName = "Sân Hoàng Mai",
-                address = "Đường Hoàng Mai, Hoàng Mai, Hà Nội",
+                title = "Sáº¯p Ä‘áº¿n giá» thi Ä‘áº¥u",
+                subtitle = "Báº¡n cÃ³ lá»‹ch Ä‘áº·t sÃ¢n lÃºc 17:00 hÃ´m nay.",
+                fieldName = "SÃ¢n HoÃ ng Mai",
+                address = "ÄÆ°á»ng HoÃ ng Mai, HoÃ ng Mai, HÃ  Ná»™i",
                 timeRange = "17:00 - 18:30",
-                dateLabel = "Hôm nay, 23/05/2026",
+                dateLabel = "HÃ´m nay, 23/05/2026",
                 bookingCode = "#B987654",
-                statusLabel = "Đã xác nhận",
-                paymentMethod = "Tiền mặt",
-                totalAmount = "200.000 đ",
-                reminderText = "Còn 1 giờ nữa tới lịch đặt sân. Đừng quên đến trước 10 phút để có trải nghiệm tốt nhất nhé!",
+                statusLabel = "ÄÃ£ xÃ¡c nháº­n",
+                paymentMethod = "Tiá»n máº·t",
+                totalAmount = "200.000 Ä‘",
+                reminderText = "CÃ²n 1 giá» ná»¯a tá»›i lá»‹ch Ä‘áº·t sÃ¢n. Äá»«ng quÃªn Ä‘áº¿n trÆ°á»›c 10 phÃºt Ä‘á»ƒ cÃ³ tráº£i nghiá»‡m tá»‘t nháº¥t nhÃ©!",
                 phoneNumber = "090 789 0123",
                 avatarRes = R.drawable.field_football
             ),
@@ -1257,23 +1366,23 @@ private fun inboxSections(): List<NotificationSectionData> {
             iconTint = MaterialTheme.colorScheme.onSecondary
         ),
         NotificationItem(
-            title = "Ưu đãi dành cho bạn",
-            subtitle = "Giảm 20% cho khung giờ sáng",
-            detail = "Áp dụng đến 30/05/2026",
-            longDetail = "Ưu đãi áp dụng cho các khung giờ trước 10:00 và không cộng dồn với chương trình khác.",
+            title = "Æ¯u Ä‘Ã£i dÃ nh cho báº¡n",
+            subtitle = "Giáº£m 20% cho khung giá» sÃ¡ng",
+            detail = "Ãp dá»¥ng Ä‘áº¿n 30/05/2026",
+            longDetail = "Æ¯u Ä‘Ã£i Ã¡p dá»¥ng cho cÃ¡c khung giá» trÆ°á»›c 10:00 vÃ  khÃ´ng cá»™ng dá»“n vá»›i chÆ°Æ¡ng trÃ¬nh khÃ¡c.",
             timeLabel = "09:00",
             unread = true,
             category = InboxCategoryType.Activity,
             detailInfo = NotificationDetailInfo.Promotion(
-                title = "Ưu đãi dành cho bạn",
-                subtitle = "Giảm 20% cho khung giờ sáng",
-                promoTitle = "GIẢM 20%",
-                promoSubtitle = "KHUNG GIỜ SÁNG",
-                contentText = "Giảm 20% cho tất cả các khung giờ từ 6:00 - 11:00. Áp dụng cho tất cả sân trên hệ thống.",
-                periodText = "Từ 20/05/2026 đến 30/05/2026",
+                title = "Æ¯u Ä‘Ã£i dÃ nh cho báº¡n",
+                subtitle = "Giáº£m 20% cho khung giá» sÃ¡ng",
+                promoTitle = "GIáº¢M 20%",
+                promoSubtitle = "KHUNG GIá»œ SÃNG",
+                contentText = "Giáº£m 20% cho táº¥t cáº£ cÃ¡c khung giá» tá»« 6:00 - 11:00. Ãp dá»¥ng cho táº¥t cáº£ sÃ¢n trÃªn há»‡ thá»‘ng.",
+                periodText = "Tá»« 20/05/2026 Ä‘áº¿n 30/05/2026",
                 conditions = listOf(
-                    "Áp dụng cho đặt sân qua ứng dụng",
-                    "Không áp dụng với các chương trình ưu đãi khác"
+                    "Ãp dá»¥ng cho Ä‘áº·t sÃ¢n qua á»©ng dá»¥ng",
+                    "KhÃ´ng Ã¡p dá»¥ng vá»›i cÃ¡c chÆ°Æ¡ng trÃ¬nh Æ°u Ä‘Ã£i khÃ¡c"
                 )
             ),
             icon = Icons.Outlined.LocalOffer,
@@ -1284,16 +1393,16 @@ private fun inboxSections(): List<NotificationSectionData> {
 
     val messageItems = listOf(
         NotificationItem(
-            title = "Sân Mỹ Đình đã phản hồi",
-            subtitle = "Sân Mỹ Đình Mini đã gửi cho bạn một tin nhắn mới.",
+            title = "SÃ¢n Má»¹ ÄÃ¬nh Ä‘Ã£ pháº£n há»“i",
+            subtitle = "SÃ¢n Má»¹ ÄÃ¬nh Mini Ä‘Ã£ gá»­i cho báº¡n má»™t tin nháº¯n má»›i.",
             detail = "",
-            longDetail = "Chủ sân đã xác nhận sân vẫn trống. Bạn có muốn đặt thêm khung giờ tối không?",
-            timeLabel = "Hôm qua",
+            longDetail = "Chá»§ sÃ¢n Ä‘Ã£ xÃ¡c nháº­n sÃ¢n váº«n trá»‘ng. Báº¡n cÃ³ muá»‘n Ä‘áº·t thÃªm khung giá» tá»‘i khÃ´ng?",
+            timeLabel = "HÃ´m qua",
             badgeCount = 2,
             category = InboxCategoryType.Message,
             conversationInfo = ConversationInfo(
-                fieldName = "Sân Mỹ Đình Mini",
-                statusLabel = "Đang hoạt động",
+                fieldName = "SÃ¢n Má»¹ ÄÃ¬nh Mini",
+                statusLabel = "Äang hoáº¡t Ä‘á»™ng",
                 phoneNumber = "090 789 0123",
                 avatarRes = R.drawable.field_football
             ),
@@ -1302,16 +1411,16 @@ private fun inboxSections(): List<NotificationSectionData> {
             iconTint = accentPrimary
         ),
         NotificationItem(
-            title = "FC Phoenix muốn giao lưu",
-            subtitle = "Đội bóng FC Phoenix muốn giao lưu vào cuối tuần này.",
+            title = "FC Phoenix muá»‘n giao lÆ°u",
+            subtitle = "Äá»™i bÃ³ng FC Phoenix muá»‘n giao lÆ°u vÃ o cuá»‘i tuáº§n nÃ y.",
             detail = "",
-            longDetail = "Họ muốn giao lưu vào chiều thứ 7. Bạn có thể phản hồi để chốt lịch và sân.",
-            timeLabel = "2 ngày trước",
+            longDetail = "Há» muá»‘n giao lÆ°u vÃ o chiá»u thá»© 7. Báº¡n cÃ³ thá»ƒ pháº£n há»“i Ä‘á»ƒ chá»‘t lá»‹ch vÃ  sÃ¢n.",
+            timeLabel = "2 ngÃ y trÆ°á»›c",
             badgeCount = 1,
             category = InboxCategoryType.Message,
             conversationInfo = ConversationInfo(
-                fieldName = "Sân Mỹ Đình Mini",
-                statusLabel = "Đang hoạt động",
+                fieldName = "SÃ¢n Má»¹ ÄÃ¬nh Mini",
+                statusLabel = "Äang hoáº¡t Ä‘á»™ng",
                 phoneNumber = "090 789 0123",
                 avatarRes = R.drawable.field_football
             ),
@@ -1323,22 +1432,22 @@ private fun inboxSections(): List<NotificationSectionData> {
 
     val activityItems = listOf(
         NotificationItem(
-            title = "Thông báo hệ thống",
-            subtitle = "Bảo trì hệ thống vào 02:00 AM ngày 25/05/2026.",
+            title = "ThÃ´ng bÃ¡o há»‡ thá»‘ng",
+            subtitle = "Báº£o trÃ¬ há»‡ thá»‘ng vÃ o 02:00 AM ngÃ y 25/05/2026.",
             detail = "",
-            longDetail = "Trong thời gian bảo trì, một số tính năng đặt sân có thể tạm thời gián đoạn.",
+            longDetail = "Trong thá»i gian báº£o trÃ¬, má»™t sá»‘ tÃ­nh nÄƒng Ä‘áº·t sÃ¢n cÃ³ thá»ƒ táº¡m thá»i giÃ¡n Ä‘oáº¡n.",
             timeLabel = "18/05/2026",
             category = InboxCategoryType.Support,
             detailInfo = NotificationDetailInfo.SystemNotice(
-                title = "Thông báo hệ thống",
-                subtitle = "Cập nhật tính năng mới",
-                contentText = "Chúng tôi vừa cập nhật thêm tính năng mới giúp bạn dễ dàng quản lý lịch đặt sân và theo dõi trận đấu.",
+                title = "ThÃ´ng bÃ¡o há»‡ thá»‘ng",
+                subtitle = "Cáº­p nháº­t tÃ­nh nÄƒng má»›i",
+                contentText = "ChÃºng tÃ´i vá»«a cáº­p nháº­t thÃªm tÃ­nh nÄƒng má»›i giÃºp báº¡n dá»… dÃ ng quáº£n lÃ½ lá»‹ch Ä‘áº·t sÃ¢n vÃ  theo dÃµi tráº­n Ä‘áº¥u.",
                 features = listOf(
-                    "Quản lý lịch đặt sân tiện lợi hơn",
-                    "Nhắc lịch trước trận đấu",
-                    "Chat trực tiếp với chủ sân"
+                    "Quáº£n lÃ½ lá»‹ch Ä‘áº·t sÃ¢n tiá»‡n lá»£i hÆ¡n",
+                    "Nháº¯c lá»‹ch trÆ°á»›c tráº­n Ä‘áº¥u",
+                    "Chat trá»±c tiáº¿p vá»›i chá»§ sÃ¢n"
                 ),
-                timeText = "23/05/2026 • 09:00"
+                timeText = "23/05/2026 â€¢ 09:00"
             ),
             icon = Icons.Outlined.Notifications,
             iconBackground = infoTint.copy(alpha = 0.08f),
@@ -1367,19 +1476,9 @@ private fun inboxSections(): List<NotificationSectionData> {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-    isSubmittingReview: Boolean = false,
-    reviewSubmissionError: String? = null,
-    reviewSubmissionSuccessMessage: String? = null,
-    processingMatchRequestId: Int? = null,
-    matchRequestActionError: String? = null,
-    matchRequestActionSuccessMessage: String? = null,
-    autoOpenReviewSheet: Boolean = false,
+fun BookingDetailScreen(
+    info: BookingInfo,
     onBackClick: () -> Unit,
-    onSubmitReview: (Int, String) -> Unit = { _, _ -> },
-    onReviewFeedbackConsumed: () -> Unit = {},
-    onAcceptMatchRequest: (Int) -> Unit = {},
-    onRejectMatchRequest: (Int) -> Unit = {},
-    onMatchRequestFeedbackConsumed: () -> Unit = {},
     onOpenChat: (ConversationInfo) -> Unit
 ) {
     val context = LocalContext.current
@@ -1390,6 +1489,8 @@ private fun inboxSections(): List<NotificationSectionData> {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val reviewSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val screenBackground = MaterialTheme.colorScheme.background
+    val contentScrollState = rememberScrollState()
+    val reminderFocusOffset = with(LocalDensity.current) { 92.dp.roundToPx() }
     val qrBitmap = rememberQrBitmap(info.shareUrl)
     val shareText = remember(info) {
         buildString {
@@ -1401,7 +1502,7 @@ private fun inboxSections(): List<NotificationSectionData> {
             append('\n')
             append("Khung giờ: ${info.timeRange}")
             append('\n')
-            append("Người đặt: ${info.customerName.ifBlank { "Chưa cập nhật" }}")
+            append("Người đặt: ${info.customerName.ifBlank { \"Chưa cập nhật\" }}")
             append('\n')
             append("Trạng thái: ${info.statusLabel}")
             if (info.paymentMethod.isNotBlank() || info.totalAmount.isNotBlank()) {
@@ -1448,6 +1549,13 @@ private fun inboxSections(): List<NotificationSectionData> {
             onMatchRequestFeedbackConsumed()
         }
     }
+
+    LaunchedEffect(info.bookingId, info.focusVenueInfo) {
+        if (info.focusVenueInfo) {
+            contentScrollState.animateScrollTo(reminderFocusOffset)
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -1473,7 +1581,7 @@ private fun inboxSections(): List<NotificationSectionData> {
                     } catch (_: Exception) {
                         Toast.makeText(
                             context,
-                            "Không thể chia sẻ hóa đơn lúc này",
+                            "KhÃ´ng thá»ƒ chia sáº» hÃ³a Ä‘Æ¡n lÃºc nÃ y",
                             Toast.LENGTH_SHORT
                         ).show()
                     }
@@ -1491,7 +1599,7 @@ private fun inboxSections(): List<NotificationSectionData> {
                 if (qrBitmap == null || info.shareUrl.isBlank()) {
                     Toast.makeText(
                         context,
-                        "QR check-in chưa sẵn sàng",
+                        "QR check-in chÆ°a sáºµn sÃ ng",
                         Toast.LENGTH_SHORT
                     ).show()
                 } else {
@@ -1499,7 +1607,7 @@ private fun inboxSections(): List<NotificationSectionData> {
                         .onFailure {
                             Toast.makeText(
                                 context,
-                                "Không thể chia sẻ QR lúc này",
+                                "KhÃ´ng thá»ƒ chia sáº» QR lÃºc nÃ y",
                                 Toast.LENGTH_SHORT
                             ).show()
                         }
@@ -1509,7 +1617,7 @@ private fun inboxSections(): List<NotificationSectionData> {
                 if (qrBitmap == null || info.shareUrl.isBlank()) {
                     Toast.makeText(
                         context,
-                        "QR check-in chưa sẵn sàng",
+                        "QR check-in chÆ°a sáºµn sÃ ng",
                         Toast.LENGTH_SHORT
                     ).show()
                 } else {
@@ -1517,14 +1625,14 @@ private fun inboxSections(): List<NotificationSectionData> {
                         .onSuccess {
                             Toast.makeText(
                                 context,
-                                "Đã tải QR xuống máy",
+                                "ÄÃ£ táº£i QR xuá»‘ng mÃ¡y",
                                 Toast.LENGTH_SHORT
                             ).show()
                         }
                         .onFailure {
                             Toast.makeText(
                                 context,
-                                "Không thể tải QR xuống",
+                                "KhÃ´ng thá»ƒ táº£i QR xuá»‘ng",
                                 Toast.LENGTH_SHORT
                             ).show()
                         }
@@ -1535,7 +1643,7 @@ private fun inboxSections(): List<NotificationSectionData> {
             onRejectMatchRequest = onRejectMatchRequest,
             modifier = Modifier
                 .weight(1f)
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(contentScrollState)
                     .padding(horizontal = AppScreenHorizontalPadding, vertical = 12.dp)
             )
         }
@@ -1552,7 +1660,7 @@ private fun inboxSections(): List<NotificationSectionData> {
 
         if (showContactSheet) {
             val ownerPhone = info.ownerPhone.trim()
-            val ownerPhoneLabel = ownerPhone.ifBlank { "Chưa có số liên hệ" }
+            val ownerPhoneLabel = ownerPhone.ifBlank { "ChÆ°a cÃ³ sá»‘ liÃªn há»‡" }
             ModalBottomSheet(
                 onDismissRequest = { showContactSheet = false },
                 sheetState = sheetState,
@@ -1575,7 +1683,7 @@ private fun inboxSections(): List<NotificationSectionData> {
                         onOpenChat(
                             ConversationInfo(
                                 fieldName = info.fieldName,
-                                statusLabel = "Đang hoạt động",
+                                statusLabel = "Äang hoáº¡t Ä‘á»™ng",
                                 phoneNumber = ownerPhone,
                                 avatarRes = R.drawable.field_football,
                                 fieldId = info.fieldId,
@@ -1719,16 +1827,16 @@ private fun BookingStatusCard(info: BookingInfo) {
         MaterialTheme.colorScheme.error
     }
     val title = when (info.statusCode) {
-        "checked_in" -> "Đã check-in"
-        "expired" -> "Mã check-in đã hết hạn"
-        "cancelled" -> "Đơn đặt sân đã hủy"
-        else -> "Đặt sân thành công"
+        "checked_in" -> "ÄÃ£ check-in"
+        "expired" -> "MÃ£ check-in Ä‘Ã£ háº¿t háº¡n"
+        "cancelled" -> "ÄÆ¡n Ä‘áº·t sÃ¢n Ä‘Ã£ há»§y"
+        else -> "Äáº·t sÃ¢n thÃ nh cÃ´ng"
     }
     val subtitle = when (info.statusCode) {
-        "checked_in" -> "Booking ${info.bookingCode} đã được chủ sân xác nhận check-in."
-        "expired" -> "Booking ${info.bookingCode} đã qua thời gian sử dụng."
-        "cancelled" -> "Booking ${info.bookingCode} không còn hiệu lực."
-        else -> "Booking ${info.bookingCode} đã được thanh toán."
+        "checked_in" -> "Booking ${info.bookingCode} Ä‘Ã£ Ä‘Æ°á»£c chá»§ sÃ¢n xÃ¡c nháº­n check-in."
+        "expired" -> "Booking ${info.bookingCode} Ä‘Ã£ qua thá»i gian sá»­ dá»¥ng."
+        "cancelled" -> "Booking ${info.bookingCode} khÃ´ng cÃ²n hiá»‡u lá»±c."
+        else -> "Booking ${info.bookingCode} Ä‘Ã£ Ä‘Æ°á»£c thanh toÃ¡n."
     }
 
     Card(
@@ -1813,7 +1921,7 @@ private fun BookingCheckInCard(
                         )
                     } else {
                         Text(
-                            text = "Đang tạo QR...",
+                            text = "Äang táº¡o QR...",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -1843,7 +1951,7 @@ private fun BookingCheckInCard(
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            text = "Chia sẻ",
+                            text = "Chia sáº»",
                             style = MaterialTheme.typography.labelLarge,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.primary
@@ -1866,7 +1974,7 @@ private fun BookingCheckInCard(
                         )
                         Spacer(Modifier.width(8.dp))
                         Text(
-                            text = "Tải xuống",
+                            text = "Táº£i xuá»‘ng",
                             style = MaterialTheme.typography.labelLarge,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -1933,7 +2041,7 @@ private fun shareQrBitmap(
         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         clipData = android.content.ClipData.newRawUri("QR Check-in", uri)
     }
-    context.startActivity(Intent.createChooser(shareIntent, "Chia sẻ QR Check-in"))
+    context.startActivity(Intent.createChooser(shareIntent, "Chia sáº» QR Check-in"))
 }
 
 private fun saveQrBitmap(
@@ -1976,7 +2084,7 @@ private fun BookingOwnerNoteCard(note: String) {
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             SectionHeader(
-                title = "Ghi chú từ chủ sân",
+                title = "Ghi chÃº tá»« chá»§ sÃ¢n",
                 icon = Icons.Outlined.Notifications
             )
             Spacer(Modifier.height(8.dp))
@@ -1990,9 +2098,9 @@ private fun BookingOwnerNoteCard(note: String) {
 }
 
 private fun MatchPostInfoCard(post: BookingMatchPostInfo) {
-            BookingDetailRow(label = "Tên đội", value = post.teamName)
-            BookingDetailRow(label = "Số lượng", value = "${post.playerCount} người")
-            BookingDetailRow(label = "Trình độ", value = post.levelLabel)
+            BookingDetailRow(label = "TÃªn Ä‘á»™i", value = post.teamName)
+            BookingDetailRow(label = "Sá»‘ lÆ°á»£ng", value = "${post.playerCount} ngÆ°á»i")
+            BookingDetailRow(label = "TrÃ¬nh Ä‘á»™", value = post.levelLabel)
             if (post.description.isNotBlank()) {
                     text = post.description,
 private fun MatchRequestsCard(
@@ -2006,8 +2114,8 @@ private fun MatchRequestsCard(
                     onReject = { onRejectMatchRequest(request.matchRequestId) }
 private fun MatchRequestItem(
     request: BookingMatchRequestInfo,
-            BookingDetailRow(label = "Tên đội", value = request.teamName)
-            BookingDetailRow(label = "Số lượng", value = "${request.playerCount} người")
+            BookingDetailRow(label = "TÃªn Ä‘á»™i", value = request.teamName)
+            BookingDetailRow(label = "Sá»‘ lÆ°á»£ng", value = "${request.playerCount} ngÆ°á»i")
                     contentDescription = null,
                 contentDescription = null,
 @Composable
@@ -2019,11 +2127,11 @@ private fun MatchRequestItem(
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             SectionHeader(
-                title = "Bài tìm đối thủ",
+                title = "BÃ i tÃ¬m Ä‘á»‘i thá»§",
                 icon = Icons.Outlined.Search
             )
             Spacer(Modifier.height(10.dp))
-            BookingDetailRow(label = "Trạng thái", value = post.status)
+            BookingDetailRow(label = "Tráº¡ng thÃ¡i", value = post.status)
                 Spacer(Modifier.height(8.dp))
                 Text(
                     style = MaterialTheme.typography.bodySmall,
@@ -2044,7 +2152,7 @@ private fun MatchRequestItem(
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             SectionHeader(
-                title = "Yêu cầu ghép trận",
+                title = "YÃªu cáº§u ghÃ©p tráº­n",
                 icon = Icons.Outlined.Notifications
             )
             Spacer(Modifier.height(10.dp))
@@ -2069,7 +2177,7 @@ private fun MatchRequestItem(
         color = MaterialTheme.colorScheme.surfaceContainerLow
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
-            BookingDetailRow(label = "Trạng thái", value = request.status)
+            BookingDetailRow(label = "Tráº¡ng thÃ¡i", value = request.status)
             if (request.message.isNotBlank()) {
                 Spacer(Modifier.height(8.dp))
                 Text(
@@ -2090,7 +2198,7 @@ private fun MatchRequestItem(
                         enabled = !isProcessing,
                         shape = RoundedCornerShape(AppCtaCornerRadius)
                     ) {
-                        Text(if (isProcessing) "Đang xử lý..." else "Từ chối")
+                        Text(if (isProcessing) "Äang xá»­ lÃ½..." else "Tá»« chá»‘i")
                     }
                     Button(
                         onClick = onAccept,
@@ -2098,7 +2206,7 @@ private fun MatchRequestItem(
                         enabled = !isProcessing,
                         shape = RoundedCornerShape(AppCtaCornerRadius)
                     ) {
-                        Text(if (isProcessing) "Đang xử lý..." else "Chấp nhận")
+                        Text(if (isProcessing) "Äang xá»­ lÃ½..." else "Cháº¥p nháº­n")
                     }
                 }
             }
@@ -2121,15 +2229,15 @@ private fun ReviewBookingCard(
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             SectionHeader(
-                title = if (hasSubmitted) "Đánh giá của bạn" else "Đánh giá sân",
+                title = if (hasSubmitted) "ÄÃ¡nh giÃ¡ cá»§a báº¡n" else "ÄÃ¡nh giÃ¡ sÃ¢n",
                 icon = Icons.Default.Star
             )
             Spacer(Modifier.height(8.dp))
             Text(
                 text = if (hasSubmitted) {
-                    "Cảm ơn bạn đã để lại đánh giá cho booking ${info.bookingCode}."
+                    "Cáº£m Æ¡n báº¡n Ä‘Ã£ Ä‘á»ƒ láº¡i Ä‘Ã¡nh giÃ¡ cho booking ${info.bookingCode}."
                 } else {
-                    "Booking ${info.bookingCode} đã kết thúc. Hãy chia sẻ trải nghiệm sân để giúp người dùng khác."
+                    "Booking ${info.bookingCode} Ä‘Ã£ káº¿t thÃºc. HÃ£y chia sáº» tráº£i nghiá»‡m sÃ¢n Ä‘á»ƒ giÃºp ngÆ°á»i dÃ¹ng khÃ¡c."
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -2161,7 +2269,7 @@ private fun ReviewBookingCard(
                     )
                 ) {
                     Text(
-                        text = "Đánh giá ngay",
+                        text = "ÄÃ¡nh giÃ¡ ngay",
                         style = MaterialTheme.typography.labelLarge,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -2193,7 +2301,7 @@ private fun ReviewBookingSheet(
     ) {
         Box(modifier = Modifier.fillMaxWidth()) {
             Text(
-                text = "Đánh giá sân",
+                text = "ÄÃ¡nh giÃ¡ sÃ¢n",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface,
@@ -2211,7 +2319,7 @@ private fun ReviewBookingSheet(
         }
         Spacer(Modifier.height(12.dp))
         Text(
-            text = "Chất lượng sân của bạn thế nào?",
+            text = "Cháº¥t lÆ°á»£ng sÃ¢n cá»§a báº¡n tháº¿ nÃ o?",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurface
         )
@@ -2230,7 +2338,7 @@ private fun ReviewBookingSheet(
             modifier = Modifier.fillMaxWidth(),
             placeholder = {
                 Text(
-                    text = "Viết cảm nhận của bạn về mặt sân, dịch vụ, ánh sáng...",
+                    text = "Viáº¿t cáº£m nháº­n cá»§a báº¡n vá» máº·t sÃ¢n, dá»‹ch vá»¥, Ã¡nh sÃ¡ng...",
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
@@ -2255,7 +2363,7 @@ private fun ReviewBookingSheet(
             )
         ) {
             Text(
-                text = if (isSubmitting) "Đang gửi..." else "Gửi đánh giá",
+                text = if (isSubmitting) "Äang gá»­i..." else "Gá»­i Ä‘Ã¡nh giÃ¡",
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.SemiBold
             )
@@ -2540,7 +2648,7 @@ fun NotificationDetailScreen(
                         onOpenChat(
                             ConversationInfo(
                                 fieldName = info.fieldName,
-                                statusLabel = "Đang hoạt động",
+                                statusLabel = "Äang hoáº¡t Ä‘á»™ng",
                                 phoneNumber = info.phoneNumber,
                                 avatarRes = info.avatarRes,
                                 fieldId = info.fieldId,
@@ -2789,19 +2897,19 @@ private fun UpcomingMatchBookingCard(info: NotificationDetailInfo.UpcomingMatch)
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             SectionHeader(
-                title = "Thông tin lịch đặt",
+                title = "ThÃ´ng tin lá»‹ch Ä‘áº·t",
                 icon = Icons.Outlined.Schedule
             )
             Spacer(Modifier.height(10.dp))
-            BookingDetailRow(label = "Khung giờ", value = info.timeRange)
-            BookingDetailRow(label = "Ngày đặt", value = info.dateLabel)
+            BookingDetailRow(label = "Khung giá»", value = info.timeRange)
+            BookingDetailRow(label = "NgÃ y Ä‘áº·t", value = info.dateLabel)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Mã booking",
+                    text = "MÃ£ booking",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -2827,15 +2935,15 @@ private fun UpcomingMatchBookingCard(info: NotificationDetailInfo.UpcomingMatch)
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Trạng thái",
+                    text = "Tráº¡ng thÃ¡i",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 StatusBadge(label = info.statusLabel)
             }
             Spacer(Modifier.height(6.dp))
-            BookingDetailRow(label = "Phương thức thanh toán", value = info.paymentMethod)
-            BookingDetailRow(label = "Tổng tiền", value = info.totalAmount, highlight = true)
+            BookingDetailRow(label = "PhÆ°Æ¡ng thá»©c thanh toÃ¡n", value = info.paymentMethod)
+            BookingDetailRow(label = "Tá»•ng tiá»n", value = info.totalAmount, highlight = true)
         }
     }
 }
@@ -2849,7 +2957,7 @@ private fun ReminderCard(text: String) {
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
-            SectionHeader(title = "Nhắc bạn", icon = Icons.Outlined.Notifications)
+            SectionHeader(title = "Nháº¯c báº¡n", icon = Icons.Outlined.Notifications)
             Spacer(Modifier.height(8.dp))
             Text(
                 text = text,
@@ -2894,7 +3002,7 @@ private fun PromotionContentCard(info: NotificationDetailInfo.Promotion) {
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
-            SectionHeader(title = "Nội dung ưu đãi", icon = Icons.Outlined.LocalOffer)
+            SectionHeader(title = "Ná»™i dung Æ°u Ä‘Ã£i", icon = Icons.Outlined.LocalOffer)
             Spacer(Modifier.height(8.dp))
             Text(
                 text = info.contentText,
@@ -2902,7 +3010,7 @@ private fun PromotionContentCard(info: NotificationDetailInfo.Promotion) {
                 color = MaterialTheme.colorScheme.onSurface
             )
             Spacer(Modifier.height(12.dp))
-            SectionHeader(title = "Thời gian áp dụng", icon = Icons.Outlined.Schedule)
+            SectionHeader(title = "Thá»i gian Ã¡p dá»¥ng", icon = Icons.Outlined.Schedule)
             Spacer(Modifier.height(8.dp))
             Text(
                 text = info.periodText,
@@ -2910,7 +3018,7 @@ private fun PromotionContentCard(info: NotificationDetailInfo.Promotion) {
                 color = MaterialTheme.colorScheme.onSurface
             )
             Spacer(Modifier.height(12.dp))
-            SectionHeader(title = "Điều kiện áp dụng", icon = Icons.Outlined.Notifications)
+            SectionHeader(title = "Äiá»u kiá»‡n Ã¡p dá»¥ng", icon = Icons.Outlined.Notifications)
             Spacer(Modifier.height(8.dp))
             info.conditions.forEach { item ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -2974,10 +3082,10 @@ private fun MatchRequestFieldCard(info: NotificationDetailInfo.MatchRequestNotic
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
-            SectionHeader(title = "Thông tin sân", icon = Icons.Outlined.Place)
+            SectionHeader(title = "ThÃ´ng tin sÃ¢n", icon = Icons.Outlined.Place)
             Spacer(Modifier.height(10.dp))
             Text(
-                text = info.fieldName.ifBlank { "Sân đang cập nhật" },
+                text = info.fieldName.ifBlank { "SÃ¢n Ä‘ang cáº­p nháº­t" },
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface
@@ -3003,11 +3111,11 @@ private fun MatchRequestScheduleCard(info: NotificationDetailInfo.MatchRequestNo
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
-            SectionHeader(title = "Slot đặt sân", icon = Icons.Outlined.Schedule)
+            SectionHeader(title = "Slot Ä‘áº·t sÃ¢n", icon = Icons.Outlined.Schedule)
             Spacer(Modifier.height(10.dp))
-            BookingDetailRow(label = "Khung giờ", value = info.timeRange.ifBlank { "Đang cập nhật" })
-            BookingDetailRow(label = "Ngày", value = info.dateLabel.ifBlank { "Đang cập nhật" })
-            BookingDetailRow(label = "Mã booking", value = info.bookingCode.ifBlank { "Đang cập nhật" })
+            BookingDetailRow(label = "Khung giá»", value = info.timeRange.ifBlank { "Äang cáº­p nháº­t" })
+            BookingDetailRow(label = "NgÃ y", value = info.dateLabel.ifBlank { "Äang cáº­p nháº­t" })
+            BookingDetailRow(label = "MÃ£ booking", value = info.bookingCode.ifBlank { "Äang cáº­p nháº­t" })
         }
     }
 }
@@ -3021,17 +3129,17 @@ private fun MatchRequestTeamsCard(info: NotificationDetailInfo.MatchRequestNotic
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
-            SectionHeader(title = "Thông tin đội", icon = Icons.Outlined.Person)
+            SectionHeader(title = "ThÃ´ng tin Ä‘á»™i", icon = Icons.Outlined.Person)
             Spacer(Modifier.height(10.dp))
-            BookingDetailRow(label = "Đội của bạn", value = info.hostTeamName.ifBlank { "Đang cập nhật" })
-            BookingDetailRow(label = "Đội gửi yêu cầu", value = info.requesterTeamName.ifBlank { "Đang cập nhật" })
+            BookingDetailRow(label = "Äá»™i cá»§a báº¡n", value = info.hostTeamName.ifBlank { "Äang cáº­p nháº­t" })
+            BookingDetailRow(label = "Äá»™i gá»­i yÃªu cáº§u", value = info.requesterTeamName.ifBlank { "Äang cáº­p nháº­t" })
             BookingDetailRow(
-                label = "Số lượng người",
-                value = if (info.requesterPlayerCount > 0) "${info.requesterPlayerCount} người" else "Đang cập nhật"
+                label = "Sá»‘ lÆ°á»£ng ngÆ°á»i",
+                value = if (info.requesterPlayerCount > 0) "${info.requesterPlayerCount} ngÆ°á»i" else "Äang cáº­p nháº­t"
             )
             BookingDetailRow(
-                label = "Lời nhắn",
-                value = info.requesterMessage.ifBlank { "Không có lời nhắn" }
+                label = "Lá»i nháº¯n",
+                value = info.requesterMessage.ifBlank { "KhÃ´ng cÃ³ lá»i nháº¯n" }
             )
         }
     }
@@ -3050,10 +3158,10 @@ private fun MatchRequestMetaCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
-            SectionHeader(title = "Trạng thái yêu cầu", icon = Icons.Outlined.Info)
+            SectionHeader(title = "Tráº¡ng thÃ¡i yÃªu cáº§u", icon = Icons.Outlined.Info)
             Spacer(Modifier.height(10.dp))
-            BookingDetailRow(label = "Trạng thái", value = info.requestStatus)
-            BookingDetailRow(label = "Thời gian", value = info.timeText)
+            BookingDetailRow(label = "Tráº¡ng thÃ¡i", value = info.requestStatus)
+            BookingDetailRow(label = "Thá»i gian", value = info.timeText)
             if (!successMessage.isNullOrBlank()) {
                 Spacer(Modifier.height(8.dp))
                 Text(
@@ -3083,7 +3191,7 @@ private fun SystemNoticeContentCard(info: NotificationDetailInfo.SystemNotice) {
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
-            SectionHeader(title = "Nội dung", icon = Icons.Outlined.Info)
+            SectionHeader(title = "Ná»™i dung", icon = Icons.Outlined.Info)
             Spacer(Modifier.height(8.dp))
             Text(
                 text = info.contentText,
@@ -3091,7 +3199,7 @@ private fun SystemNoticeContentCard(info: NotificationDetailInfo.SystemNotice) {
                 color = MaterialTheme.colorScheme.onSurface
             )
             Spacer(Modifier.height(12.dp))
-            SectionHeader(title = "Tính năng mới", icon = Icons.Outlined.Notifications)
+            SectionHeader(title = "TÃ­nh nÄƒng má»›i", icon = Icons.Outlined.Notifications)
             Spacer(Modifier.height(8.dp))
             info.features.forEach { item ->
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -3110,7 +3218,7 @@ private fun SystemNoticeContentCard(info: NotificationDetailInfo.SystemNotice) {
                 Spacer(Modifier.height(6.dp))
             }
             Spacer(Modifier.height(12.dp))
-            SectionHeader(title = "Thời gian", icon = Icons.Outlined.Schedule)
+            SectionHeader(title = "Thá»i gian", icon = Icons.Outlined.Schedule)
             Spacer(Modifier.height(8.dp))
             Text(
                 text = info.timeText,
@@ -3151,7 +3259,7 @@ private fun MatchRequestBottomActions(
                 shape = RoundedCornerShape(AppCtaCornerRadius)
             ) {
                 Text(
-                    text = if (isProcessing) "Đang xử lý..." else "Từ chối",
+                    text = if (isProcessing) "Äang xá»­ lÃ½..." else "Tá»« chá»‘i",
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -3169,7 +3277,7 @@ private fun MatchRequestBottomActions(
                 )
             ) {
                 Text(
-                    text = if (isProcessing) "Đang xử lý..." else "Chấp nhận",
+                    text = if (isProcessing) "Äang xá»­ lÃ½..." else "Cháº¥p nháº­n",
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -3230,14 +3338,15 @@ fun ConversationScreen(
     val screenBackground = MaterialTheme.colorScheme.background
     val listState = rememberLazyListState()
     val sortedMessages = remember(messages) { messages.sortedBy { it.id } }
-    val imeBottom = WindowInsets.ime.asPaddingValues().calculateBottomPadding()
     val bottomAnchorIndex =
         1 + sortedMessages.size +
             (if (isLoading) 1 else 0) +
             (if (!errorMessage.isNullOrBlank()) 1 else 0)
 
-    LaunchedEffect(bottomAnchorIndex, imeBottom) {
-        listState.animateScrollToItem(bottomAnchorIndex)
+    LaunchedEffect(bottomAnchorIndex) {
+        if (bottomAnchorIndex > 0) {
+            listState.animateScrollToItem(bottomAnchorIndex)
+        }
     }
 
     Column(
@@ -3267,7 +3376,7 @@ fun ConversationScreen(
         ) {
             item {
                 Text(
-                    text = "Hôm nay",
+                    text = "HÃ´m nay",
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier
@@ -3280,7 +3389,7 @@ fun ConversationScreen(
             if (isLoading) {
                 item {
                     Text(
-                        text = "Đang tải tin nhắn...",
+                        text = "Äang táº£i tin nháº¯n...",
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -3290,7 +3399,7 @@ fun ConversationScreen(
                 item {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text(text = message, color = MaterialTheme.colorScheme.error)
-                        Text(text = "Thử lại", color = MaterialTheme.colorScheme.primary, modifier = Modifier.clickable(onClick = onRetry))
+                        Text(text = "Thá»­ láº¡i", color = MaterialTheme.colorScheme.primary, modifier = Modifier.clickable(onClick = onRetry))
                     }
                 }
             }

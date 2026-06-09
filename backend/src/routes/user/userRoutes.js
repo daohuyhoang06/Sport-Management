@@ -36,7 +36,7 @@ import {
   markBookingNotificationsRead,
   markAllNotificationsRead,
 } from "../../controllers/user/notificationController.js";
-import { getInbox } from "../../controllers/user/inboxController.js";
+import { getInbox, markInboxReadAll } from "../../controllers/user/inboxController.js";
 import {
   createConversation,
   listConversations,
@@ -95,6 +95,8 @@ r.patch("/notifications/:id/read", requireAuth, markNotificationRead);
 r.post("/notifications/:id/read", requireAuth, markNotificationRead);
 
 r.get("/inbox", requireAuth, getInbox);
+r.patch("/inbox/read-all", requireAuth, markInboxReadAll);
+r.post("/inbox/read-all", requireAuth, markInboxReadAll);
 
 r.post("/conversations", requireAuth, createConversation);
 r.get("/conversations", requireAuth, listConversations);

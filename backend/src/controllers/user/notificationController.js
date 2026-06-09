@@ -7,10 +7,47 @@ const clampNumber = (value, fallback, min, max) => {
   return Math.min(Math.max(parsed, min), max);
 };
 
+const normalizeSection = (value) => {
+  if (!value) return null;
+  const normalized = String(value).trim().toLowerCase();
+  if (
+    normalized === "priority" ||
+    normalized === "messages" ||
+    normalized === "activity"
+  ) {
+    return normalized;
+  }
+  return null;
+};
+
+const REMINDER_NOTIFICATION_TYPES = new Set([
+  "upcoming_match",
+  "booking_reminder",
+  "booking_reminder_urgent",
+]);
+
+const BOOKING_NOTIFICATION_TYPES = new Set([
+  "booking_success",
+  "booking_confirmed",
+  "booking_cancelled",
+]);
+
+const resolveNotificationSection = (row) => {
+  const type = String(row.type || "").trim().toLowerCase();
+  if (REMINDER_NOTIFICATION_TYPES.has(type)) return "activity";
+  if (BOOKING_NOTIFICATION_TYPES.has(type) || type === "review_reminder") {
+    return "priority";
+  }
+
+  const explicit = normalizeSection(row.section);
+  if (explicit) return explicit;
+  return "activity";
+};
+
 const mapNotificationRow = (row) => ({
   id: row.id,
   type: row.type,
-  section: row.section,
+  section: resolveNotificationSection(row),
   title: row.title,
   subtitle: row.subtitle,
   content: row.content,
@@ -26,7 +63,7 @@ const mapNotificationRow = (row) => ({
 const mapNotificationDetail = (row) => ({
   id: row.id,
   type: row.type,
-  section: row.section,
+  section: resolveNotificationSection(row),
   title: row.title,
   subtitle: row.subtitle,
   content: row.content,
@@ -133,12 +170,12 @@ export const listNotifications = async (req, res) => {
        LEFT JOIN bookings b ON n.booking_id = b.booking_id
        WHERE ${whereSql}
          AND (
-           n.type <> 'booking_success'
+           n.type NOT IN ('booking_success', 'upcoming_match', 'booking_reminder', 'booking_reminder_urgent')
            OR (
              n.booking_id IS NOT NULL
              AND b.booking_id IS NOT NULL
              AND b.customer_id = n.user_id
-             AND b.status IN ('confirmed', 'completed')
+             AND b.status IN ('confirmed', 'approved', 'completed', 'paid')
            )
          )
          AND (
@@ -182,12 +219,12 @@ export const listNotifications = async (req, res) => {
       LEFT JOIN bookings b ON n.booking_id = b.booking_id
       WHERE ${whereSql}
         AND (
-          n.type <> 'booking_success'
+          n.type NOT IN ('booking_success', 'upcoming_match', 'booking_reminder', 'booking_reminder_urgent')
           OR (
             n.booking_id IS NOT NULL
             AND b.booking_id IS NOT NULL
             AND b.customer_id = n.user_id
-            AND b.status IN ('confirmed', 'completed')
+            AND b.status IN ('confirmed', 'approved', 'completed', 'paid')
           )
         )
         AND (
@@ -274,12 +311,12 @@ export const getNotificationDetail = async (req, res) => {
       LEFT JOIN bookings b ON n.booking_id = b.booking_id
       WHERE n.id = ? AND n.user_id = ?
         AND (
-          n.type <> 'booking_success'
+          n.type NOT IN ('booking_success', 'upcoming_match', 'booking_reminder', 'booking_reminder_urgent')
           OR (
             n.booking_id IS NOT NULL
             AND b.booking_id IS NOT NULL
             AND b.customer_id = n.user_id
-            AND b.status IN ('confirmed', 'completed')
+            AND b.status IN ('confirmed', 'approved', 'completed', 'paid')
           )
         )
         AND (

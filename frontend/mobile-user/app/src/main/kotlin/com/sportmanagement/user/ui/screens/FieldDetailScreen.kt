@@ -50,11 +50,13 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import com.sportmanagement.user.domain.model.FieldDetail
 import com.sportmanagement.user.domain.model.FieldDetailCourt
 import com.sportmanagement.user.domain.model.FieldDetailPolicy
@@ -222,10 +224,13 @@ private fun FieldHeroSection(
     onGalleryIndexChange: (Int) -> Unit,
     onBackClick: () -> Unit
 ) {
-    val allImages = buildList {
-        add(detail.avatarImageUrl)
-        addAll(detail.galleryUrls)
-    }.distinct()
+    val context = LocalContext.current
+    val allImages = remember(detail.avatarImageUrl, detail.galleryUrls) {
+        buildList {
+            add(detail.avatarImageUrl)
+            addAll(detail.galleryUrls)
+        }.distinct()
+    }
 
     Box(
         modifier = Modifier
@@ -233,7 +238,11 @@ private fun FieldHeroSection(
             .height(280.dp)
     ) {
         AsyncImage(
-            model = allImages.getOrElse(selectedGalleryIndex) { detail.avatarImageUrl },
+            model = ImageRequest.Builder(context)
+                .data(allImages.getOrElse(selectedGalleryIndex) { detail.avatarImageUrl })
+                .size(1080, 560)
+                .crossfade(false)
+                .build(),
             contentDescription = detail.name,
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop
@@ -312,7 +321,11 @@ private fun FieldHeroSection(
                             ) { onGalleryIndexChange(idx) }
                     ) {
                         AsyncImage(
-                            model = url,
+                            model = ImageRequest.Builder(context)
+                                .data(url)
+                                .size(180, 180)
+                                .crossfade(false)
+                                .build(),
                             contentDescription = null,
                             modifier = Modifier
                                 .fillMaxSize()
