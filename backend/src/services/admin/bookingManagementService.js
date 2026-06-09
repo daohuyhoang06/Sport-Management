@@ -1,5 +1,49 @@
 import sequelize from "../../config/database.js";
 
+const adminBookingSelect = `
+      b.booking_id,
+      CONCAT('B', LPAD(b.booking_id, 6, '0')) AS bookingCode,
+      b.customer_id,
+      b.field_id,
+      b.start_time,
+      b.end_time,
+      DATE_FORMAT(b.start_time, '%Y-%m-%d') AS bookingDate,
+      DATE_FORMAT(b.start_time, '%H:%i') AS startTime,
+      DATE_FORMAT(b.end_time, '%H:%i') AS endTime,
+      b.status,
+      b.price,
+      b.price AS totalPrice,
+      b.note,
+      COALESCE(b.customer_name, p.person_name, p.username, '-') AS customer_name,
+      COALESCE(b.customer_phone, p.phone, '-') AS customer_phone,
+      p.email AS customer_email,
+      p.address AS customer_address,
+      f.field_name,
+      f.location,
+      f.location AS fieldAddress,
+      f.phone AS fieldPhone,
+      pay.payment_id,
+      pay.amount AS paymentAmount,
+      pay.payment_method AS paymentMethod,
+      COALESCE(pay.payment_status, pay.status) AS paymentStatus,
+      pay.transaction_id AS transactionId,
+      pay.transaction_code AS transactionCode,
+      DATE_FORMAT(COALESCE(pay.paid_at, pay.payment_date, pay.created_at), '%Y-%m-%d %H:%i') AS paymentCreatedAt`;
+
+const latestPaymentJoin = `
+     LEFT JOIN payments pay ON pay.payment_id = (
+       SELECT p2.payment_id
+       FROM payments p2
+       WHERE p2.booking_id = b.booking_id
+          OR (
+            p2.booking_ids_json IS NOT NULL
+            AND JSON_VALID(p2.booking_ids_json)
+            AND JSON_CONTAINS(p2.booking_ids_json, CAST(b.booking_id AS CHAR), '$')
+          )
+       ORDER BY p2.payment_id DESC
+       LIMIT 1
+     )`;
+
 /**
  * Get all bookings with filters and pagination
  */
@@ -49,13 +93,11 @@ export const getAllBookingsService = async (filters = {}, pagination = {}) => {
   // Get bookings
   const [bookings] = await sequelize.query(
     `SELECT 
-      b.booking_id, b.customer_id, b.field_id, b.start_time, b.end_time,
-      b.status, b.price, b.note,
-      p.person_name as customer_name, p.email as customer_email, p.phone as customer_phone,
-      f.field_name, f.location
+      ${adminBookingSelect}
      FROM bookings b
      LEFT JOIN person p ON b.customer_id = p.person_id
      LEFT JOIN fields f ON b.field_id = f.field_id
+     ${latestPaymentJoin}
      ${whereClause}
      ORDER BY b.start_time DESC
      LIMIT ? OFFSET ?`,
@@ -76,13 +118,11 @@ export const getAllBookingsService = async (filters = {}, pagination = {}) => {
 export const getBookingByIdService = async (id) => {
   const [[booking]] = await sequelize.query(
     `SELECT 
-      b.booking_id, b.customer_id, b.field_id, b.start_time, b.end_time,
-      b.status, b.price, b.note,
-      p.person_name as customer_name, p.email as customer_email, p.phone as customer_phone, p.address as customer_address,
-      f.field_name, f.location
+      ${adminBookingSelect}
      FROM bookings b
      LEFT JOIN person p ON b.customer_id = p.person_id
      LEFT JOIN fields f ON b.field_id = f.field_id
+     ${latestPaymentJoin}
      WHERE b.booking_id = ?`,
     { replacements: [id] },
   );
@@ -179,15 +219,8 @@ export const getBookingStatsService = async () => {
     "SELECT COUNT(*) as cancelled FROM bookings WHERE status = 'cancelled'",
   );
 
-  // Today's bookings
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-
   const [[{ todayCount }]] = await sequelize.query(
-    "SELECT COUNT(*) as todayCount FROM bookings WHERE start_time >= ? AND start_time < ?",
-    { replacements: [today, tomorrow] },
+    "SELECT COUNT(*) as todayCount FROM bookings WHERE DATE(start_time) = CURRENT_DATE",
   );
 
   return {
@@ -206,13 +239,11 @@ export const getBookingStatsService = async () => {
 export const getBookingsByDateRangeService = async (startDate, endDate) => {
   const [bookings] = await sequelize.query(
     `SELECT 
-      b.booking_id, b.customer_id, b.field_id, b.start_time, b.end_time,
-      b.status, b.price, b.note,
-      p.person_name as customer_name, p.phone as customer_phone,
-      f.field_name
+      ${adminBookingSelect}
      FROM bookings b
      LEFT JOIN person p ON b.customer_id = p.person_id
      LEFT JOIN fields f ON b.field_id = f.field_id
+     ${latestPaymentJoin}
      WHERE b.start_time BETWEEN ? AND ?
      ORDER BY b.start_time ASC`,
     { replacements: [startDate, endDate] },

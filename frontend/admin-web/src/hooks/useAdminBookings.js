@@ -6,6 +6,12 @@ function formatDate(value) {
     return "-";
   }
 
+  const raw = String(value).trim();
+  const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (match) {
+    return `${match[3]}/${match[2]}/${match[1]}`;
+  }
+
   const date = new Date(value);
   return new Intl.DateTimeFormat("vi-VN", {
     day: "2-digit",
@@ -17,6 +23,12 @@ function formatDate(value) {
 function formatTime(value) {
   if (!value) {
     return "--:--";
+  }
+
+  const raw = String(value).trim();
+  const match = raw.match(/(?:^|[ T])(\d{2}):(\d{2})/);
+  if (match) {
+    return `${match[1]}:${match[2]}`;
   }
 
   const date = new Date(value);
@@ -31,11 +43,18 @@ function normalizeBookings(rawBookings = []) {
   return rawBookings
     .map((item) => ({
       id: item.booking_id,
+      code: item.bookingCode || item.booking_code || `B${String(item.booking_id).padStart(6, "0")}`,
       customer: item.customer_name || "-",
+      customerPhone: item.customer_phone || "-",
       field: item.field_name || "-",
-      slot: `${formatTime(item.start_time)} - ${formatTime(item.end_time)}`,
-      date: formatDate(item.start_time),
+      fieldAddress: item.fieldAddress || item.field_address || item.location || "-",
+      slot: `${item.startTime || formatTime(item.start_time)} - ${item.endTime || formatTime(item.end_time)}`,
+      date: formatDate(item.bookingDate || item.start_time),
       status: item.status || "pending",
+      totalPrice: Number(item.totalPrice ?? item.total_price ?? item.price ?? 0),
+      paymentStatus: item.paymentStatus || item.payment_status || "-",
+      paymentMethod: item.paymentMethod || item.payment_method || "-",
+      createdAt: item.createdAt || item.created_at || "-",
     }))
     .sort((left, right) => Number(left.id) - Number(right.id));
 }

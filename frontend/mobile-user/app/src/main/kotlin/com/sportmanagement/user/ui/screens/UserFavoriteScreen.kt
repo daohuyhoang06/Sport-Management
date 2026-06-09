@@ -147,11 +147,24 @@ fun InboxScreen(
 ) {
     val layoutDirection = LocalLayoutDirection.current
     var selectedCategory by rememberSaveable { mutableStateOf<InboxCategoryType?>(null) }
+    var selectedActivityTab by rememberSaveable { mutableStateOf(ActivityInboxTab.Upcoming) }
     val filteredSections = sections.mapNotNull { section ->
         val filteredItems = section.items.filter { item ->
-            selectedCategory == null || item.category == selectedCategory
+            val matchesCategory = selectedCategory == null || item.category == selectedCategory
+            val matchesActivityTab = selectedCategory != InboxCategoryType.Activity ||
+                activityTabMatches(item, selectedActivityTab)
+            matchesCategory && matchesActivityTab
         }
-        if (filteredItems.isEmpty()) null else section.copy(items = filteredItems)
+        if (filteredItems.isEmpty()) {
+            null
+        } else {
+            val title = if (selectedCategory == InboxCategoryType.Activity) {
+                selectedActivityTab.title
+            } else {
+                section.title
+            }
+            section.copy(title = title, items = filteredItems)
+        }
     }
     val quickActions = inboxQuickActions(sections)
     val hasVisibleContent = filteredSections.any { it.items.isNotEmpty() }
@@ -179,6 +192,9 @@ fun InboxScreen(
                     selectedCategory = selectedCategory,
                     onCategorySelected = { category ->
                         selectedCategory = if (selectedCategory == category) null else category
+                        if (category == InboxCategoryType.Activity) {
+                            selectedActivityTab = ActivityInboxTab.Upcoming
+                        }
                     },
                     modifier = Modifier
                         .align(Alignment.TopCenter)
@@ -231,6 +247,17 @@ fun InboxScreen(
             Spacer(Modifier.height(InboxMenuContentGap))
         }
 
+        if (selectedCategory == InboxCategoryType.Activity) {
+            item {
+                ActivityInboxTabs(
+                    selectedTab = selectedActivityTab,
+                    onTabSelected = { selectedActivityTab = it },
+                    modifier = Modifier.padding(horizontal = AppScreenHorizontalPadding)
+                )
+                Spacer(Modifier.height(InboxSectionGap))
+            }
+        }
+
         filteredSections.forEach { section ->
             item {
                 NotificationSection(
@@ -238,6 +265,10 @@ fun InboxScreen(
                     onMarkAllClick = onMarkAllRead,
                     onItemClick = { item ->
                         when {
+                            isReminderNotificationItem(item) && item.bookingInfo != null -> {
+                                onNotificationOpened(item.bookingInfo.notificationId ?: item.id)
+                                onBookingSelected(item.bookingInfo)
+                            }
                             item.category == InboxCategoryType.Booking && item.bookingInfo != null -> {
                                 onNotificationOpened(item.bookingInfo.notificationId ?: item.id)
                                 onBookingSelected(item.bookingInfo)
@@ -424,6 +455,52 @@ fun QuickActionItem(
             color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center
         )
+    }
+}
+
+@Composable
+private fun ActivityInboxTabs(
+    selectedTab: ActivityInboxTab,
+    onTabSelected: (ActivityInboxTab) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(AppInputCornerRadius),
+        color = MaterialTheme.colorScheme.surfaceContainerLow
+    ) {
+        Row(
+            modifier = Modifier.padding(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            ActivityInboxTab.values().forEach { tab ->
+                val isSelected = selectedTab == tab
+                Surface(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable { onTabSelected(tab) },
+                    shape = RoundedCornerShape(AppPillCornerRadius),
+                    color = if (isSelected) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        Color.Transparent
+                    }
+                ) {
+                    Text(
+                        text = tab.title,
+                        modifier = Modifier.padding(vertical = 9.dp),
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (isSelected) {
+                            MaterialTheme.colorScheme.onPrimary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -1097,12 +1174,41 @@ enum class InboxCategoryType {
     Support
 }
 
+private enum class ActivityInboxTab(val title: String) {
+    Upcoming("Sắp diễn ra"),
+    Review("Cần đánh giá")
+}
+
 @Immutable
 data class NotificationSectionData(
     val title: String,
     val showMarkAll: Boolean,
     val items: List<NotificationItem>
 )
+
+private fun activityTabMatches(
+    item: NotificationItem,
+    tab: ActivityInboxTab
+): Boolean {
+    return when (tab) {
+        ActivityInboxTab.Upcoming -> isReminderNotificationItem(item)
+        ActivityInboxTab.Review -> isReviewNotificationItem(item)
+    }
+}
+
+private fun isReminderNotificationItem(item: NotificationItem): Boolean {
+    val normalized = item.type?.lowercase().orEmpty()
+    return normalized == "booking_reminder" ||
+        normalized == "booking_reminder_urgent" ||
+        normalized == "upcoming_match"
+}
+
+private fun isReviewNotificationItem(item: NotificationItem): Boolean {
+    val normalized = item.type?.lowercase().orEmpty()
+    return normalized == "review_request" ||
+        normalized == "booking_completed" ||
+        normalized == "field_review_request"
+}
 
 @Composable
 private fun inboxQuickActions(sections: List<NotificationSectionData>): List<InboxCategory> {

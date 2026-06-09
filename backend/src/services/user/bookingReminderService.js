@@ -234,7 +234,7 @@ export const createUpcomingBookingReminderNotifications = async (
     const [result] = await sequelize.query(
       `INSERT IGNORE INTO notifications
         (user_id, type, section, title, subtitle, content, target_type, target_id, booking_id, field_id, is_read, metadata, created_at, updated_at)
-       VALUES (?, ?, 'priority', ?, ?, ?, 'booking', ?, ?, ?, 0, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+       VALUES (?, ?, 'activity', ?, ?, ?, 'booking', ?, ?, ?, 0, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
       {
         replacements: [
           userId,
