@@ -30,6 +30,7 @@ import com.sportmanagement.manager.domain.model.ServiceDetailItem
 import com.sportmanagement.manager.domain.model.ServiceItemStatus
 import java.text.SimpleDateFormat
 import java.util.Locale
+import java.util.TimeZone
 
 // ── Field ──────────────────────────────────────────────────────────────────────
 
@@ -150,7 +151,10 @@ private fun formatChatTime(raw: String?): String {
     if (raw == null) return ""
     return runCatching {
         val date = isoFmt.parse(raw) ?: isoFmtAlt.parse(raw) ?: return@runCatching raw
-        timeFmt.format(date)
+        val now = java.util.Date()
+        val diffMs = now.time - date.time
+        val diffDays = diffMs / (1000 * 60 * 60 * 24)
+        if (diffDays < 1) chatTimeFmt.format(date) else chatDateTimeFmt.format(date)
     }.getOrDefault(raw)
 }
 
@@ -178,10 +182,13 @@ fun BookingHistoryDto.toHistoryEvent(): BookingHistoryEvent = BookingHistoryEven
 
 // ── Booking ────────────────────────────────────────────────────────────────────
 
-private val isoFmt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
-private val isoFmtAlt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault())
+private val utc = TimeZone.getTimeZone("UTC")
+private val isoFmt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault()).also { it.timeZone = utc }
+private val isoFmtAlt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault()).also { it.timeZone = utc }
 private val dateFmt = SimpleDateFormat("dd/MM/yyyy", Locale("vi", "VN"))
 private val timeFmt = SimpleDateFormat("HH:mm", Locale.getDefault())
+private val chatTimeFmt = SimpleDateFormat("HH:mm", Locale.getDefault())
+private val chatDateTimeFmt = SimpleDateFormat("dd/MM HH:mm", Locale.getDefault())
 private val dayFmt = SimpleDateFormat("EEEE", Locale("vi", "VN"))
 
 private fun parseIso(raw: String?): java.util.Date? {
@@ -189,7 +196,9 @@ private fun parseIso(raw: String?): java.util.Date? {
     return runCatching { isoFmt.parse(raw) }.getOrNull()
         ?: runCatching { isoFmtAlt.parse(raw) }.getOrNull()
         ?: runCatching {
-            SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()).parse(raw)
+            SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+                .also { it.timeZone = utc }
+                .parse(raw)
         }.getOrNull()
 }
 

@@ -4,20 +4,83 @@ import com.sportmanagement.manager.domain.model.BookingCustomer
 import com.sportmanagement.manager.domain.model.BookingHistoryEvent
 import com.sportmanagement.manager.domain.model.BookingItem
 import com.sportmanagement.manager.domain.model.BookingStatus
+import java.util.Date
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
 
-data class DayChipData(val dayLabel: String, val dayNumber: String, val isSelected: Boolean)
+data class DayChipData(val dayLabel: String, val dayNumber: String, val isSelected: Boolean, val isoDate: String = "", val isToday: Boolean = false)
 data class PitchFilterData(val label: String, val isSelected: Boolean)
+
+private val VI_DAY_LABELS = mapOf(
+    Calendar.MONDAY to "T2",
+    Calendar.TUESDAY to "T3",
+    Calendar.WEDNESDAY to "T4",
+    Calendar.THURSDAY to "T5",
+    Calendar.FRIDAY to "T6",
+    Calendar.SATURDAY to "T7",
+    Calendar.SUNDAY to "CN"
+)
+
+private val isoDateFmt = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+private val weekLabelFmt = SimpleDateFormat("dd/MM/yyyy", Locale("vi", "VN"))
+
+private fun parseIsoDate(raw: String): Calendar? {
+    val date = runCatching { isoDateFmt.parse(raw) }.getOrNull() ?: return null
+    return Calendar.getInstance().apply { time = date }
+}
+
+private fun currentIsoDate(): String = isoDateFmt.format(Date())
+
+private fun startOfWeekIso(dateIso: String): String {
+    val calendar = parseIsoDate(dateIso) ?: Calendar.getInstance()
+    calendar.set(Calendar.HOUR_OF_DAY, 0)
+    calendar.set(Calendar.MINUTE, 0)
+    calendar.set(Calendar.SECOND, 0)
+    calendar.set(Calendar.MILLISECOND, 0)
+    calendar.firstDayOfWeek = Calendar.MONDAY
+    while (calendar.get(Calendar.DAY_OF_WEEK) != Calendar.MONDAY) {
+        calendar.add(Calendar.DAY_OF_MONTH, -1)
+    }
+    return isoDateFmt.format(calendar.time)
+}
+
+fun formatWeekRangeLabel(weekStartDateIso: String): String {
+    val start = parseIsoDate(weekStartDateIso) ?: return "Tuần hiện tại"
+    val end = (start.clone() as Calendar).apply { add(Calendar.DAY_OF_MONTH, 6) }
+    return "${weekLabelFmt.format(start.time)} - ${weekLabelFmt.format(end.time)}"
+}
+
+fun buildWeekDayChips(weekStartDateIso: String, selectedDateIso: String? = null): List<DayChipData> {
+    val todayIso = currentIsoDate()
+    val weekStart = (parseIsoDate(weekStartDateIso) ?: Calendar.getInstance()).apply {
+        set(Calendar.HOUR_OF_DAY, 0)
+        set(Calendar.MINUTE, 0)
+        set(Calendar.SECOND, 0)
+        set(Calendar.MILLISECOND, 0)
+    }
+    return (0..6).map { offset ->
+        val c = (weekStart.clone() as Calendar).apply { add(Calendar.DAY_OF_MONTH, offset) }
+        val dow = c.get(Calendar.DAY_OF_WEEK)
+        val isoDate = isoDateFmt.format(c.time)
+        DayChipData(
+            dayLabel = VI_DAY_LABELS[dow] ?: "?",
+            dayNumber = c.get(Calendar.DAY_OF_MONTH).toString(),
+            isSelected = isoDate == selectedDateIso,
+            isoDate = isoDate,
+            isToday = isoDate == todayIso
+        )
+    }
+}
+
+fun currentWeekStartIso(): String = startOfWeekIso(currentIsoDate())
 
 data class BookingsUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
-    val dayChips: List<DayChipData> = listOf(
-        DayChipData("T2", "23", true),
-        DayChipData("T3", "24", false),
-        DayChipData("T4", "25", false),
-        DayChipData("T5", "26", false),
-        DayChipData("T6", "27", false)
-    ),
+    val visibleWeekStartDate: String = currentWeekStartIso(),
+    val dayChips: List<DayChipData> = buildWeekDayChips(currentWeekStartIso(), currentIsoDate()),
+    val selectedDate: String = currentIsoDate(),
     val pitchFilters: List<PitchFilterData> = listOf(
         PitchFilterData("Tất cả", true)
     ),
@@ -56,7 +119,19 @@ data class BookingsUiState(
 
     // Booking history (per booking id)
     val bookingHistory: Map<String, List<BookingHistoryEvent>> = emptyMap()
-)
+) {
+    val filteredBookings: List<BookingItem>
+        get() {
+            val selectedPitch = pitchFilters.firstOrNull { it.isSelected && it.label != "Tất cả" }
+            return bookings.filter { booking ->
+                val matchPitch = selectedPitch == null ||
+                    booking.pitchName.contains(selectedPitch.label, ignoreCase = true) ||
+                    booking.courtCode == selectedPitch.label ||
+                    booking.courtName.contains(selectedPitch.label, ignoreCase = true)
+                matchPitch
+            }
+        }
+}
 
 // Demo data kept for @Preview only — không dùng làm default
 private val customerAn = BookingCustomer(

@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
@@ -25,11 +27,15 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.runtime.remember
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FloatingActionButton
@@ -39,9 +45,14 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -55,6 +66,7 @@ import com.sportmanagement.manager.domain.model.BookingItem
 import com.sportmanagement.manager.domain.model.BookingStatus
 import com.sportmanagement.manager.ui.state.DayChipData
 import com.sportmanagement.manager.ui.state.PitchFilterData
+import com.sportmanagement.manager.ui.state.formatWeekRangeLabel
 import com.sportmanagement.manager.ui.viewmodel.BookingsViewModel
 import com.sportmanagement.manager.ui.theme.Amber
 import com.sportmanagement.manager.ui.theme.AmberContainer
@@ -85,6 +97,7 @@ private val BookingStatus.badgeText: Color
     }
 
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
 fun BookingsScreen(
     padding: PaddingValues,
     onBookingClick: (BookingItem) -> Unit = {},
@@ -92,6 +105,7 @@ fun BookingsScreen(
     viewModel: BookingsViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var showDatePicker by remember { mutableStateOf(false) }
 
     Box(
         modifier = Modifier
@@ -105,28 +119,62 @@ fun BookingsScreen(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            item { BookingHeader() }
+            item {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    BookingHeader(
+                        weekRangeLabel = formatWeekRangeLabel(uiState.visibleWeekStartDate),
+                        onCalendarClick = { showDatePicker = true }
+                    )
+                    WeekNavigator(
+                        onPreviousWeek = viewModel::onPreviousWeek,
+                        onNextWeek = viewModel::onNextWeek,
+                        weekRangeLabel = formatWeekRangeLabel(uiState.visibleWeekStartDate)
+                    )
+                }
+            }
 
             item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    uiState.dayChips.forEachIndexed { index, chip ->
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    itemsIndexed(uiState.dayChips) { index, chip ->
                         DayChipView(
                             chip = chip,
                             onClick = { viewModel.onDaySelected(index) }
                         )
                     }
                 }
+
+                if (showDatePicker) {
+                    val selectedMillis = uiState.dayChips.firstOrNull { it.isSelected }?.isoDate?.let { dateIso ->
+                        runCatching {
+                            java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).apply {
+                                timeZone = java.util.TimeZone.getTimeZone("UTC")
+                            }.parse(dateIso)?.time
+                        }.getOrNull()
+                    }
+                    val datePickerState = rememberDatePickerState(initialSelectedDateMillis = selectedMillis)
+
+                    DatePickerDialog(
+                        onDismissRequest = { showDatePicker = false },
+                        confirmButton = {
+                            TextButton(
+                                onClick = {
+                                    datePickerState.selectedDateMillis?.let(viewModel::onCalendarDateSelected)
+                                    showDatePicker = false
+                                }
+                            ) { Text("Chọn") }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showDatePicker = false }) { Text("Hủy") }
+                        }
+                    ) {
+                        DatePicker(state = datePickerState)
+                    }
+                }
             }
 
             item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    uiState.pitchFilters.forEachIndexed { index, chip ->
+                LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    itemsIndexed(uiState.pitchFilters) { index, chip ->
                         FilterChipView(
                             chip = chip,
                             onClick = { viewModel.onPitchFilterSelected(index) }
@@ -135,7 +183,7 @@ fun BookingsScreen(
                 }
             }
 
-            items(uiState.bookings) { booking ->
+            items(uiState.filteredBookings) { booking ->
                 TimelineRow(
                     booking = booking,
                     onClick = { onBookingClick(booking) },
@@ -144,14 +192,14 @@ fun BookingsScreen(
                 )
             }
 
-            item { Spacer(Modifier.height(80.dp)) }
+            item { Spacer(Modifier.height(16.dp)) }
         }
 
         FloatingActionButton(
             onClick = onAddBooking,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(bottom = 84.dp, end = 24.dp),
+                .padding(bottom = padding.calculateBottomPadding() + 16.dp, end = 24.dp),
             containerColor = MaterialTheme.colorScheme.primary,
             contentColor = MaterialTheme.colorScheme.onPrimary,
             shape = RoundedCornerShape(18.dp)
@@ -217,7 +265,10 @@ private fun CancelBookingDialog(
 }
 
 @Composable
-private fun BookingHeader() {
+private fun BookingHeader(
+    weekRangeLabel: String,
+    onCalendarClick: () -> Unit
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -228,22 +279,41 @@ private fun BookingHeader() {
             style = MaterialTheme.typography.headlineMedium,
             color = MaterialTheme.colorScheme.onBackground
         )
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
+        IconButton(onClick = onCalendarClick) {
             Icon(
                 imageVector = Icons.Filled.CalendarMonth,
-                contentDescription = null,
+                contentDescription = "Chọn ngày",
                 tint = MaterialTheme.colorScheme.primary
             )
-            Text(
-                text = "THÁNG 10, 2023",
-                fontSize = 13.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.primary
-            )
         }
+    }
+    Text(
+        text = weekRangeLabel,
+        fontSize = 13.sp,
+        fontWeight = FontWeight.Medium,
+        color = MaterialTheme.colorScheme.outline
+    )
+}
+
+@Composable
+private fun WeekNavigator(
+    onPreviousWeek: () -> Unit,
+    onNextWeek: () -> Unit,
+    weekRangeLabel: String
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        OutlinedButton(onClick = onPreviousWeek) { Text("<") }
+        Text(
+            text = weekRangeLabel,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.primary
+        )
+        OutlinedButton(onClick = onNextWeek) { Text(">") }
     }
 }
 
@@ -251,18 +321,28 @@ private fun BookingHeader() {
 private fun DayChipView(chip: DayChipData, onClick: () -> Unit) {
     val bg = if (chip.isSelected) MaterialTheme.colorScheme.primary else Color.White
     val textColor = if (chip.isSelected) Color.White else MaterialTheme.colorScheme.outline
-    val numberColor = if (chip.isSelected) Color.White else MaterialTheme.colorScheme.onBackground
+    val numberColor = when {
+        chip.isSelected -> Color.White
+        chip.isToday -> MaterialTheme.colorScheme.primary
+        else -> MaterialTheme.colorScheme.onBackground
+    }
+    val borderWidth = when {
+        chip.isSelected -> 0.dp
+        chip.isToday -> 1.5.dp
+        else -> 1.dp
+    }
+    val borderColor = when {
+        chip.isSelected -> Color.Transparent
+        chip.isToday -> MaterialTheme.colorScheme.primary
+        else -> MaterialTheme.colorScheme.surfaceContainer
+    }
 
     Column(
         modifier = Modifier
             .width(56.dp)
             .clip(RoundedCornerShape(18.dp))
             .background(bg)
-            .border(
-                width = if (chip.isSelected) 0.dp else 1.dp,
-                color = MaterialTheme.colorScheme.surfaceContainer,
-                shape = RoundedCornerShape(18.dp)
-            )
+            .border(width = borderWidth, color = borderColor, shape = RoundedCornerShape(18.dp))
             .clickable { onClick() }
             .padding(vertical = 10.dp),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -277,8 +357,19 @@ private fun DayChipView(chip: DayChipData, onClick: () -> Unit) {
         Text(
             text = chip.dayNumber,
             fontSize = 18.sp,
-            fontWeight = FontWeight.Bold,
+            fontWeight = if (chip.isToday) FontWeight.ExtraBold else FontWeight.Bold,
             color = numberColor
+        )
+        Spacer(Modifier.height(4.dp))
+        Box(
+            modifier = Modifier
+                .size(5.dp)
+                .clip(CircleShape)
+                .background(
+                    if (chip.isToday) {
+                        if (chip.isSelected) Color.White else MaterialTheme.colorScheme.primary
+                    } else Color.Transparent
+                )
         )
     }
 }
@@ -379,7 +470,7 @@ private fun BookingCard(
             Box(
                 modifier = Modifier
                     .width(4.dp)
-                    .height(150.dp)
+                    .fillMaxHeight()
                     .background(booking.status.accent)
             )
             Column(

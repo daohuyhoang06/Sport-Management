@@ -8,11 +8,13 @@ import com.sportmanagement.manager.data.remote.api.BookingApiService
 import com.sportmanagement.manager.data.remote.api.ChatApiService
 import com.sportmanagement.manager.data.remote.api.DashboardApiService
 import com.sportmanagement.manager.data.remote.api.FieldApiService
+import com.sportmanagement.manager.data.remote.api.ProfileApiService
 import com.sportmanagement.manager.data.repository.AuthRepository
 import com.sportmanagement.manager.data.repository.BookingRepository
 import com.sportmanagement.manager.data.repository.ChatRepository
 import com.sportmanagement.manager.data.repository.DashboardRepository
 import com.sportmanagement.manager.data.repository.FieldRepository
+import com.sportmanagement.manager.data.repository.ProfileRepository
 
 object AppContainer {
 
@@ -27,6 +29,8 @@ object AppContainer {
     lateinit var bookingRepository: BookingRepository
         private set
     lateinit var chatRepository: ChatRepository
+        private set
+    lateinit var profileRepository: ProfileRepository
         private set
 
     private var initialized = false
@@ -44,11 +48,13 @@ object AppContainer {
         val fieldApiService = NetworkClient.createService(FieldApiService::class.java, okHttpClient)
         val bookingApiService = NetworkClient.createService(BookingApiService::class.java, okHttpClient)
         val chatApiService = NetworkClient.createService(ChatApiService::class.java, okHttpClient)
+        val profileApiService = NetworkClient.createService(ProfileApiService::class.java, okHttpClient)
 
         authRepository = AuthRepository(authApiService, sessionManager)
         dashboardRepository = DashboardRepository(dashboardApiService)
         fieldRepository = FieldRepository(fieldApiService)
         bookingRepository = BookingRepository(bookingApiService)
         chatRepository = ChatRepository(chatApiService)
+        profileRepository = ProfileRepository(profileApiService)
     }
 }

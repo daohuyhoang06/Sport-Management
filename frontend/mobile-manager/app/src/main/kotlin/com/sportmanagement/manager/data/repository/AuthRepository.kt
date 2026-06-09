@@ -41,5 +41,6 @@ class AuthRepository(
     fun getManagerName(): String? = sessionManager.getUserName()
     fun getAvatarUrl(): String? = sessionManager.getAvatarUrl()
     fun getUserId(): Int = sessionManager.getUserId()
+    fun updateName(name: String) = sessionManager.updateName(name)
     fun logout() = sessionManager.clearSession()
 }

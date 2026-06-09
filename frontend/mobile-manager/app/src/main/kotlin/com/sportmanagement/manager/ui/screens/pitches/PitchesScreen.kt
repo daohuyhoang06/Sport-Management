@@ -3,6 +3,7 @@ package com.sportmanagement.manager.ui.screens.pitches
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -65,6 +66,7 @@ import java.util.Locale
 fun PitchesScreen(
     padding: PaddingValues,
     onPitchClick: (Pitch) -> Unit = {},
+    onAddFieldClick: () -> Unit = {},
     viewModel: PitchesViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -137,14 +139,14 @@ fun PitchesScreen(
                 PitchCard(pitch = pitch, onClick = { onPitchClick(pitch) })
             }
 
-            item { Spacer(Modifier.height(8.dp)) }
+            item { Spacer(Modifier.height(16.dp)) }
         }
 
         FloatingActionButton(
-            onClick = { },
+            onClick = onAddFieldClick,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(bottom = 80.dp, end = 24.dp),
+                .padding(bottom = padding.calculateBottomPadding() + 16.dp, end = 24.dp),
             containerColor = MaterialTheme.colorScheme.primary,
             contentColor = MaterialTheme.colorScheme.onPrimary,
             shape = RoundedCornerShape(16.dp)
@@ -177,72 +179,54 @@ private fun SearchAndFilterBar(
     onSearchQueryChanged: (String) -> Unit,
     onFilterClick: () -> Unit = {}
 ) {
+    val outlineVariant = MaterialTheme.colorScheme.outlineVariant
+    val outline = MaterialTheme.colorScheme.outline
+    val onBackground = MaterialTheme.colorScheme.onBackground
+    val surfaceLow = MaterialTheme.colorScheme.surfaceContainerLowest
+
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
+        BasicTextField(
+            value = searchQuery,
+            onValueChange = onSearchQueryChanged,
             modifier = Modifier
                 .weight(1f)
                 .height(44.dp)
                 .clip(RoundedCornerShape(8.dp))
-                .background(MaterialTheme.colorScheme.surfaceContainerLowest)
-                .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp))
-                .padding(horizontal = 12.dp),
-            contentAlignment = Alignment.CenterStart
-        ) {
-            if (searchQuery.isEmpty()) {
+                .background(surfaceLow)
+                .border(1.dp, outlineVariant, RoundedCornerShape(8.dp)),
+            textStyle = MaterialTheme.typography.bodyMedium.copy(color = onBackground),
+            singleLine = true,
+            decorationBox = { innerTextField ->
                 Row(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth()
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Search,
                         contentDescription = null,
                         modifier = Modifier.size(20.dp),
-                        tint = MaterialTheme.colorScheme.outline
+                        tint = outline
                     )
-                    Text(
-                        text = "Tìm kiếm sân...",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.outline
-                    )
-                }
-            } else {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Search,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp),
-                        tint = MaterialTheme.colorScheme.outline
-                    )
-                    Text(
-                        text = searchQuery,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onBackground
-                    )
+                    Box(modifier = Modifier.weight(1f)) {
+                        if (searchQuery.isEmpty()) {
+                            Text(
+                                text = "Tìm kiếm sân...",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = outline
+                            )
+                        }
+                        innerTextField()
+                    }
                 }
             }
-
-            BasicTextField(
-                value = searchQuery,
-                onValueChange = onSearchQueryChanged,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(44.dp),
-                textStyle = MaterialTheme.typography.bodyMedium.copy(
-                    color = MaterialTheme.colorScheme.onBackground
-                ),
-                singleLine = true,
-                decorationBox = { innerTextField -> innerTextField() }
-            )
-        }
+        )
 
         Box(
             modifier = Modifier
@@ -250,7 +234,7 @@ private fun SearchAndFilterBar(
                 .clip(RoundedCornerShape(8.dp))
                 .background(
                     if (hasActiveFilter) MaterialTheme.colorScheme.primary
-                    else MaterialTheme.colorScheme.surfaceContainerLowest
+                    else surfaceLow
                 )
                 .clickable { onFilterClick() },
             contentAlignment = Alignment.Center
@@ -278,7 +262,7 @@ private fun PitchCard(pitch: Pitch, onClick: () -> Unit = {}) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(160.dp)
+                    .aspectRatio(16f / 9f)
                     .background(Color.Gray.copy(alpha = 0.2f))
             ) {
                 AsyncImage(
@@ -339,7 +323,7 @@ private fun PitchCard(pitch: Pitch, onClick: () -> Unit = {}) {
                 }
 
                 IconButton(
-                    onClick = { },
+                    onClick = { onClick() },
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .padding(8.dp)

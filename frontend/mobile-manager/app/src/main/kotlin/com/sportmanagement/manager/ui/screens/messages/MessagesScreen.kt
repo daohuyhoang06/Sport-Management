@@ -9,9 +9,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -134,14 +136,14 @@ fun MessagesScreen(
             }
 
             item { RatingSummary(average = uiState.averageRating, total = uiState.totalReviews) }
-            item { Spacer(Modifier.height(80.dp)) }
+            item { Spacer(Modifier.height(16.dp)) }
         }
 
         FloatingActionButton(
             onClick = { },
             modifier = Modifier
                 .align(Alignment.BottomEnd)
-                .padding(bottom = 84.dp, end = 24.dp),
+                .padding(bottom = padding.calculateBottomPadding() + 16.dp, end = 24.dp),
             containerColor = MaterialTheme.colorScheme.primary,
             contentColor = MaterialTheme.colorScheme.onPrimary
         ) {
@@ -203,7 +205,7 @@ private fun ConversationCard(conversation: ConversationItem, onClick: () -> Unit
                 Box(
                     modifier = Modifier
                         .width(4.dp)
-                        .height(74.dp)
+                        .fillMaxHeight()
                         .background(MaterialTheme.colorScheme.primary)
                 )
             }
@@ -261,14 +263,18 @@ private fun ConversationCard(conversation: ConversationItem, onClick: () -> Unit
                         Text(
                             text = conversation.customerName,
                             style = MaterialTheme.typography.titleMedium,
+                            fontWeight = if (conversation.unreadCount > 0) FontWeight.Bold else FontWeight.Normal,
                             color = MaterialTheme.colorScheme.onBackground,
                             maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f)
                         )
                         Text(
                             text = conversation.lastMessageTime,
                             fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.outline
+                            fontWeight = if (conversation.unreadCount > 0) FontWeight.SemiBold else FontWeight.Normal,
+                            color = if (conversation.unreadCount > 0) MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.outline
                         )
                     }
                     Text(
@@ -430,7 +436,7 @@ private fun ReviewCard(
                     onValueChange = onReplyChanged,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(100.dp),
+                        .heightIn(min = 80.dp),
                     placeholder = { Text(text = "Nhập câu trả lời...") },
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLow,

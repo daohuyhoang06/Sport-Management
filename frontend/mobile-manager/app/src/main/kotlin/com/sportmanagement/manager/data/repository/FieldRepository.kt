@@ -11,6 +11,17 @@ import com.sportmanagement.manager.data.remote.dto.UpdateFieldStatusRequest
 
 class FieldRepository(private val api: FieldApiService) {
 
+    suspend fun createField(request: com.sportmanagement.manager.data.remote.dto.CreateFieldRequest): Result<FieldDto> = safeCall {
+        val response = api.createField(request)
+        if (response.isSuccessful) {
+            val data = response.body()?.data
+                ?: return@safeCall Result.failure(Exception("Tạo sân thất bại: không có dữ liệu trả về"))
+            Result.success(data)
+        } else {
+            Result.failure(Exception("Tạo sân thất bại (${response.code()})"))
+        }
+    }
+
     suspend fun getFields(): Result<List<FieldDto>> = safeCall {
         val response = api.getFields()
         if (response.isSuccessful) {

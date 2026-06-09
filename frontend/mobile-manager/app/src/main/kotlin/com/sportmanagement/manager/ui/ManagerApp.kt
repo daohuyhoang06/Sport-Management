@@ -6,6 +6,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -39,8 +40,10 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -67,7 +70,6 @@ import com.sportmanagement.manager.R
 import com.sportmanagement.manager.data.AppContainer
 import com.sportmanagement.manager.domain.model.Pitch
 import com.sportmanagement.manager.ui.navigation.ManagerTab
-import com.sportmanagement.manager.ui.state.BookingsUiState
 import com.sportmanagement.manager.ui.screens.auth.LoginScreen
 import com.sportmanagement.manager.ui.screens.bookings.AddBookingScreen
 import com.sportmanagement.manager.ui.screens.bookings.BookingDetailScreen
@@ -75,10 +77,11 @@ import com.sportmanagement.manager.ui.screens.bookings.BookingsScreen
 import com.sportmanagement.manager.ui.screens.dashboard.DashboardScreen
 import com.sportmanagement.manager.ui.screens.messages.MessageThreadScreen
 import com.sportmanagement.manager.ui.screens.messages.MessagesScreen
+import com.sportmanagement.manager.ui.screens.pitches.AddFieldScreen
 import com.sportmanagement.manager.ui.screens.pitches.PitchDetailScreen
 import com.sportmanagement.manager.ui.screens.pitches.PitchesScreen
-import com.sportmanagement.manager.ui.screens.services.ServiceDetailScreen
-import com.sportmanagement.manager.ui.screens.services.ServicesScreen
+import com.sportmanagement.manager.ui.screens.profile.ProfileScreen
+import com.sportmanagement.manager.ui.state.BookingsUiState
 import com.sportmanagement.manager.ui.theme.AppAccentCitrus
 import com.sportmanagement.manager.ui.theme.AppControlCornerRadius
 import com.sportmanagement.manager.ui.theme.AppHeaderGradientEnd
@@ -88,7 +91,8 @@ import com.sportmanagement.manager.ui.theme.AppNavIconGradientStart
 import com.sportmanagement.manager.ui.viewmodel.BookingsViewModel
 import com.sportmanagement.manager.ui.viewmodel.DashboardViewModel
 import com.sportmanagement.manager.ui.viewmodel.MessagesViewModel
-import com.sportmanagement.manager.ui.viewmodel.ServicesViewModel
+import com.sportmanagement.manager.ui.viewmodel.PitchesViewModel
+import com.sportmanagement.manager.ui.viewmodel.ProfileViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -110,16 +114,49 @@ fun ManagerApp(dashboardViewModel: DashboardViewModel = viewModel()) {
 
     val bookingsViewModel: BookingsViewModel = viewModel()
     val messagesViewModel: MessagesViewModel = viewModel()
-    val servicesViewModel: ServicesViewModel = viewModel()
+    val pitchesViewModel: PitchesViewModel = viewModel()
+    val profileViewModel: ProfileViewModel = viewModel()
 
     val bookingsState by bookingsViewModel.uiState.collectAsState()
     val messagesState by messagesViewModel.uiState.collectAsState()
-    val servicesState by servicesViewModel.uiState.collectAsState()
+    val pitchesState by pitchesViewModel.uiState.collectAsState()
 
     var selectedTab by rememberSaveable { mutableStateOf(ManagerTab.Dashboard) }
+    var previousTab by rememberSaveable { mutableStateOf(ManagerTab.Dashboard) }
     var selectedPitch by remember { mutableStateOf<Pitch?>(null) }
+    var showProfile by remember { mutableStateOf(false) }
+
+    BackHandler {
+        when {
+            showProfile -> showProfile = false
+            pitchesState.showAddField -> pitchesViewModel.onToggleAddField()
+            selectedPitch != null -> selectedPitch = null
+            bookingsState.selectedBooking != null -> bookingsViewModel.onBackFromDetail()
+            bookingsState.showAddBooking -> bookingsViewModel.onToggleAddBooking()
+            messagesState.selectedConversation != null -> messagesViewModel.onBackFromThread()
+            selectedTab != previousTab -> {
+                val currentTab = selectedTab
+                selectedTab = previousTab
+                previousTab = currentTab
+            }
+        }
+    }
 
     when {
+        showProfile -> {
+            ProfileScreen(
+                onBackClick = { showProfile = false },
+                viewModel = profileViewModel
+            )
+            return
+        }
+        pitchesState.showAddField -> {
+            AddFieldScreen(
+                onBackClick = { pitchesViewModel.onToggleAddField() },
+                viewModel = pitchesViewModel
+            )
+            return
+        }
         selectedPitch != null -> {
             PitchDetailScreen(
                 fieldId = selectedPitch!!.id,
@@ -203,18 +240,10 @@ fun ManagerApp(dashboardViewModel: DashboardViewModel = viewModel()) {
                 conversation = conv,
                 messages = messagesState.chatMessages[conv.id] ?: emptyList(),
                 draftMessage = messagesState.draftMessage,
+                isLoading = messagesState.loadingChatId == conv.id,
                 onBackClick = { messagesViewModel.onBackFromThread() },
                 onDraftChanged = messagesViewModel::onDraftMessageChanged,
                 onSend = { messagesViewModel.onSendMessage() }
-            )
-            return
-        }
-        servicesState.selectedService != null -> {
-            ServiceDetailScreen(
-                service = servicesState.selectedService!!,
-                onBackClick = { servicesViewModel.onBackFromDetail() },
-                onToggleActive = { servicesViewModel.onToggleServiceActive(it) },
-                onAdjustStock = { id, delta -> servicesViewModel.onAdjustStock(id, delta) }
             )
             return
         }
@@ -224,34 +253,54 @@ fun ManagerApp(dashboardViewModel: DashboardViewModel = viewModel()) {
         topBar = {
             ManagerTopAppBar(
                 managerName = dashboardState.managerName,
-                managerAvatarUrl = dashboardState.managerAvatarUrl
+                managerAvatarUrl = dashboardState.managerAvatarUrl,
+                onAvatarClick = { showProfile = true }
             )
         },
         bottomBar = {
             ManagerBottomBar(
                 selectedTab = selectedTab,
-                onTabSelected = { selectedTab = it }
+                onTabSelected = { newTab ->
+                    if (newTab != selectedTab) {
+                        if (newTab == ManagerTab.Bookings) {
+                            bookingsViewModel.showTodaySchedule()
+                        }
+                        previousTab = selectedTab
+                        selectedTab = newTab
+                    }
+                }
             )
         },
         containerColor = MaterialTheme.colorScheme.background
     ) { padding ->
         when (selectedTab) {
-            ManagerTab.Dashboard -> DashboardScreen(padding = padding, viewModel = dashboardViewModel)
-            ManagerTab.Pitches -> PitchesScreen(padding = padding, onPitchClick = { selectedPitch = it })
+            ManagerTab.Dashboard -> DashboardScreen(
+                padding = padding,
+                viewModel = dashboardViewModel,
+                onAddBooking = { bookingsViewModel.onToggleAddBooking() },
+                onViewSchedule = {
+                    previousTab = selectedTab
+                    selectedTab = ManagerTab.Bookings
+                }
+            )
+            ManagerTab.Pitches -> PitchesScreen(
+                padding = padding,
+                onPitchClick = { selectedPitch = it },
+                onAddFieldClick = { pitchesViewModel.onToggleAddField() },
+                viewModel = pitchesViewModel
+            )
             ManagerTab.Bookings -> BookingsScreen(
                 padding = padding,
                 onBookingClick = { bookingsViewModel.onBookingClick(it) },
                 onAddBooking = { bookingsViewModel.onToggleAddBooking() },
                 viewModel = bookingsViewModel
             )
-            ManagerTab.Services -> ServicesScreen(
-                padding = padding,
-                onServiceClick = { servicesViewModel.onServiceClick(it) },
-                viewModel = servicesViewModel
-            )
             ManagerTab.Messages -> MessagesScreen(
                 padding = padding,
-                onConversationClick = { messagesViewModel.onConversationClick(it) },
+                onConversationClick = {
+                    previousTab = selectedTab
+                    messagesViewModel.onConversationClick(it)
+                },
                 viewModel = messagesViewModel
             )
         }
@@ -261,14 +310,15 @@ fun ManagerApp(dashboardViewModel: DashboardViewModel = viewModel()) {
 // ─── Top App Bar ──────────────────────────────────────────────────────────────
 
 @Composable
-private fun ManagerAvatar(managerName: String, avatarUrl: String?) {
+private fun ManagerAvatar(managerName: String, avatarUrl: String?, onClick: () -> Unit = {}) {
     val initial = managerName.trim().firstOrNull()?.uppercaseChar()?.toString() ?: "M"
 
     Box(
         modifier = Modifier
             .size(46.dp)
             .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.92f), CircleShape)
-            .border(1.5.dp, Color.White.copy(alpha = 0.7f), CircleShape),
+            .border(1.5.dp, Color.White.copy(alpha = 0.7f), CircleShape)
+            .then(Modifier.clickable(onClick = onClick)),
         contentAlignment = Alignment.Center
     ) {
         if (!avatarUrl.isNullOrBlank()) {
@@ -293,25 +343,24 @@ private fun ManagerAvatar(managerName: String, avatarUrl: String?) {
 }
 
 @Composable
-private fun ManagerTopAppBar(managerName: String, managerAvatarUrl: String?) {
+private fun ManagerTopAppBar(managerName: String, managerAvatarUrl: String?, onAvatarClick: () -> Unit = {}) {
     val todayLabel = remember { formatCurrentDateLabel() }
 
     Box(modifier = Modifier.fillMaxWidth()) {
-        // Banner image — same as user app
+        // Banner image — matchParentSize so height is driven by Row content (statusBarsPadding adaptive)
         Image(
             painter = painterResource(id = R.drawable.banner_app),
             contentDescription = null,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(136.dp),
+                .matchParentSize(),
             contentScale = ContentScale.Crop
         )
 
         // Dark gradient scrim for readability
         Box(
             modifier = Modifier
-                .fillMaxWidth()
-                .height(136.dp)
+                .matchParentSize()
                 .background(
                     brush = Brush.verticalGradient(
                         colors = listOf(
@@ -332,7 +381,7 @@ private fun ManagerTopAppBar(managerName: String, managerAvatarUrl: String?) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                ManagerAvatar(managerName = managerName, avatarUrl = managerAvatarUrl)
+                ManagerAvatar(managerName = managerName, avatarUrl = managerAvatarUrl, onClick = onAvatarClick)
                 Spacer(Modifier.width(10.dp))
                 Column {
                     Text(

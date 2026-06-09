@@ -11,9 +11,11 @@ class BookingRepository(private val api: BookingApiService) {
 
     suspend fun getBookings(
         status: String? = null,
-        fieldId: Int? = null
+        fieldId: Int? = null,
+        startDate: String? = null,
+        endDate: String? = null
     ): Result<List<BookingDto>> = safeCall {
-        val response = api.getBookings(status = status, fieldId = fieldId)
+        val response = api.getBookings(status = status, fieldId = fieldId, startDate = startDate, endDate = endDate)
         if (response.isSuccessful) {
             Result.success(response.body() ?: emptyList())
         } else {
