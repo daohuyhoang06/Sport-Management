@@ -50,6 +50,7 @@ import com.sportmanagement.user.ui.theme.AppMediaCornerRadius
 @Composable
 fun HomeVenueCard(
     field: UserField,
+    displayRating: String = field.rating,
     isFavorite: Boolean,
     onCardClick: () -> Unit,
     onBookClick: () -> Unit,
@@ -57,15 +58,16 @@ fun HomeVenueCard(
     onShareClick: () -> Unit
 ) {
     when (field.cardType) {
-        VenueCardType.LARGE_IMAGE -> LargeVenueCard(field, isFavorite, onCardClick, onBookClick, onFavoriteClick, onShareClick)
-        VenueCardType.SMALL_HORIZONTAL -> SmallHorizontalCard(field, isFavorite, onCardClick, onBookClick, onFavoriteClick, onShareClick)
-        VenueCardType.SMALL_HORIZONTAL_NO_IMAGE -> SmallNoImageCard(field, isFavorite, onCardClick, onBookClick, onFavoriteClick, onShareClick)
+        VenueCardType.LARGE_IMAGE -> LargeVenueCard(field, displayRating, isFavorite, onCardClick, onBookClick, onFavoriteClick, onShareClick)
+        VenueCardType.SMALL_HORIZONTAL -> SmallHorizontalCard(field, displayRating, isFavorite, onCardClick, onBookClick, onFavoriteClick, onShareClick)
+        VenueCardType.SMALL_HORIZONTAL_NO_IMAGE -> SmallNoImageCard(field, displayRating, isFavorite, onCardClick, onBookClick, onFavoriteClick, onShareClick)
     }
 }
 
 @Composable
 private fun LargeVenueCard(
     field: UserField,
+    displayRating: String,
     isFavorite: Boolean,
     onCardClick: () -> Unit,
     onBookClick: () -> Unit,
@@ -101,7 +103,7 @@ private fun LargeVenueCard(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     HomeSportNameChip(sportIconType = field.sportIconType)
-                    HomeRatingChip(rating = field.rating)
+                    HomeRatingChip(rating = displayRating)
                 }
 
                 Row(
@@ -162,6 +164,7 @@ private fun LargeVenueCard(
 @Composable
 private fun SmallHorizontalCard(
     field: UserField,
+    displayRating: String,
     isFavorite: Boolean,
     onCardClick: () -> Unit,
     onBookClick: () -> Unit,
@@ -185,7 +188,7 @@ private fun SmallHorizontalCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 HomeSportNameChip(sportIconType = field.sportIconType)
-                HomeRatingChip(rating = field.rating)
+                HomeRatingChip(rating = displayRating)
             }
 
             Row(
@@ -256,6 +259,7 @@ private fun SmallHorizontalCard(
 @Composable
 private fun SmallNoImageCard(
     field: UserField,
+    displayRating: String,
     isFavorite: Boolean,
     onCardClick: () -> Unit,
     onBookClick: () -> Unit,
@@ -279,7 +283,7 @@ private fun SmallNoImageCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 HomeSportNameChip(sportIconType = field.sportIconType)
-                HomeRatingChip(rating = field.rating)
+                HomeRatingChip(rating = displayRating)
             }
 
             Row(

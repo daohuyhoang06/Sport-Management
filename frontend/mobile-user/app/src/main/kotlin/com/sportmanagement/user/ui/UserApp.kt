@@ -540,7 +540,7 @@ fun UserApp(
                     matchRequestActionError = null,
                     matchRequestActionSuccessMessage = null,
                     onBackClick = {},
-                    onSubmitReview = { _, _ -> },
+                    onSubmitReview = { _, _, _ -> },
                     onReviewFeedbackConsumed = {},
                     onAcceptMatchRequest = {},
                     onRejectMatchRequest = {},
@@ -564,7 +564,9 @@ fun UserApp(
                                 showBookingDetailScreen = false
                                 inboxViewModel.clearActiveBookingDetail()
                             },
-                            onSubmitReview = inboxViewModel::submitReview,
+                            onSubmitReview = { rating, comment, imageUri ->
+                                inboxViewModel.submitReview(rating, comment, imageUri)
+                            },
                             onReviewFeedbackConsumed = inboxViewModel::clearReviewSubmissionFeedback,
                             onAcceptMatchRequest = { inboxViewModel.respondToMatchRequest(it, accept = true) },
                             onRejectMatchRequest = { inboxViewModel.respondToMatchRequest(it, accept = false) },
@@ -651,6 +653,9 @@ fun UserApp(
                     padding = padding,
                     fields = uiState.favoriteFields,
                     favoriteFields = uiState.favoriteFields,
+                    fieldReviewStatsByFieldId = uiState.fieldReviewStatsByFieldId,
+                    fieldReviewsByFieldId = uiState.fieldReviewsByFieldId,
+                    loadingFieldReviewIds = uiState.loadingFieldReviewIds,
                     isLoading = false,
                     title = appContext.getString(R.string.favorite_title),
                     emptyTitle = "Chua co san yeu thich",
@@ -660,6 +665,9 @@ fun UserApp(
                     onBookFieldClick = startBookingFlow,
                     onFavoriteFieldClick = toggleFavoriteField,
                     onShareFieldClick = shareField,
+                    onFieldDetailOpened = { fieldId ->
+                        resolvedUserViewModel.loadFieldReviewData(fieldId, force = true)
+                    },
                     showFilterButton = false
                 )
             } else if (showConversationScreen && conversationInfo != null) {
@@ -788,6 +796,9 @@ fun UserApp(
                                     padding = padding,
                                     fields = uiState.homeFields,
                                     favoriteFields = uiState.favoriteFields,
+                                    fieldReviewStatsByFieldId = uiState.fieldReviewStatsByFieldId,
+                                    fieldReviewsByFieldId = uiState.fieldReviewsByFieldId,
+                                    loadingFieldReviewIds = uiState.loadingFieldReviewIds,
                                     isLoading = uiState.isHomeLoading,
                                     title = appContext.getString(R.string.home_search_results_title),
                                     emptyTitle = appContext.getString(R.string.home_search_results_empty_title),
@@ -798,13 +809,19 @@ fun UserApp(
                                     },
                                     onBookFieldClick = startBookingFlow,
                                     onFavoriteFieldClick = toggleFavoriteField,
-                                    onShareFieldClick = shareField
+                                    onShareFieldClick = shareField,
+                                    onFieldDetailOpened = { fieldId ->
+                                        resolvedUserViewModel.loadFieldReviewData(fieldId, force = true)
+                                    }
                                 )
                             } else if (showFavoriteFieldsScreen) {
                                 HomeSearchResultsScreen(
                                     padding = padding,
                                     fields = uiState.favoriteFields,
                                     favoriteFields = uiState.favoriteFields,
+                                    fieldReviewStatsByFieldId = uiState.fieldReviewStatsByFieldId,
+                                    fieldReviewsByFieldId = uiState.fieldReviewsByFieldId,
+                                    loadingFieldReviewIds = uiState.loadingFieldReviewIds,
                                     isLoading = false,
                                     title = appContext.getString(R.string.favorite_title),
                                     emptyTitle = "Chua co san yeu thich",
@@ -814,6 +831,9 @@ fun UserApp(
                                     onBookFieldClick = startBookingFlow,
                                     onFavoriteFieldClick = toggleFavoriteField,
                                     onShareFieldClick = shareField,
+                                    onFieldDetailOpened = { fieldId ->
+                                        resolvedUserViewModel.loadFieldReviewData(fieldId, force = true)
+                                    },
                                     showFilterButton = false
                                 )
                             } else {
@@ -821,6 +841,9 @@ fun UserApp(
                                     padding = padding,
                                     fields = uiState.homeFields,
                                     favoriteFields = uiState.favoriteFields,
+                                    fieldReviewStatsByFieldId = uiState.fieldReviewStatsByFieldId,
+                                    fieldReviewsByFieldId = uiState.fieldReviewsByFieldId,
+                                    loadingFieldReviewIds = uiState.loadingFieldReviewIds,
                                     sportCategories = uiState.sportCategories,
                                     userName = uiState.profile.name,
                                     userAvatarUrl = uiState.profile.avatarUrl,
@@ -880,6 +903,9 @@ fun UserApp(
                                     onBookFieldClick = startBookingFlow,
                                     onFavoriteFieldClick = toggleFavoriteField,
                                     onShareFieldClick = shareField,
+                                    onFieldDetailOpened = { fieldId ->
+                                        resolvedUserViewModel.loadFieldReviewData(fieldId, force = true)
+                                    },
                                     deepLinkFieldIdToOpen = pendingDeepLinkFieldId,
                                     onDeepLinkFieldConsumed = {
                                         pendingDeepLinkFieldId = null
@@ -892,6 +918,9 @@ fun UserApp(
                                 sportCategories = uiState.sportCategories,
                                 nearby = uiState.nearbyFields,
                                 favoriteFields = uiState.favoriteFields,
+                                fieldReviewStatsByFieldId = uiState.fieldReviewStatsByFieldId,
+                                fieldReviewsByFieldId = uiState.fieldReviewsByFieldId,
+                                loadingFieldReviewIds = uiState.loadingFieldReviewIds,
                                 searchResults = uiState.fieldSearchResults,
                                 recentSearches = uiState.recentFieldSearches,
                                 isSearchLoading = uiState.isFieldSearchLoading,
@@ -921,7 +950,10 @@ fun UserApp(
                                 },
                                 onBookFieldClick = startBookingFlow,
                                 onFavoriteFieldClick = toggleFavoriteField,
-                                onShareFieldClick = shareField
+                                onShareFieldClick = shareField,
+                                onFieldDetailOpened = { fieldId ->
+                                    resolvedUserViewModel.loadFieldReviewData(fieldId, force = true)
+                                }
                             )
                             UserTab.Inbox -> InboxScreen(
                                 padding = padding,

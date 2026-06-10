@@ -1,6 +1,8 @@
 package com.sportmanagement.user.ui.viewmodel
 
 import android.content.Context
+import android.net.Uri
+import android.webkit.MimeTypeMap
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ChatBubble
 import androidx.compose.material.icons.outlined.EventAvailable
@@ -24,6 +26,7 @@ import com.sportmanagement.user.ui.screens.InboxCategoryType
 import com.sportmanagement.user.ui.screens.NotificationDetailInfo
 import com.sportmanagement.user.ui.screens.NotificationItem
 import com.sportmanagement.user.ui.screens.NotificationSectionData
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,6 +34,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.supervisorScope
+import kotlinx.coroutines.withContext
+import java.io.IOException
 import java.time.LocalDateTime
 import java.time.LocalDate
 import java.time.OffsetDateTime
@@ -202,6 +207,7 @@ class InboxViewModel(
                     api.getNotificationDetail(token, nid)
                 }
                 val shouldFocusVenueInfo = isBookingReminderType(notificationDetail?.type)
+                val shouldFocusReview = isReviewReminderType(notificationDetail?.type)
                 val resolvedBookingId =
                     bookingId ?: notificationDetail?.bookingId ?: notificationDetail?.targetId
                 val resolvedNotificationId = notificationId ?: resolveBookingNotificationId(resolvedBookingId)
@@ -209,9 +215,9 @@ class InboxViewModel(
                 resolvedNotificationId?.let { clearNotificationUnreadState(it) }
                 resolvedNotificationId?.let { runCatching { api.markNotificationRead(token, it) } }
                 resolvedBookingId?.let { runCatching { api.markBookingNotificationsRead(token, it) } }
-                resolvedBookingId?.let { api.getBookingDetail(token, it) } to shouldFocusVenueInfo
+                resolvedBookingId?.let { api.getBookingDetail(token, it) } to Pair(shouldFocusVenueInfo, shouldFocusReview)
             }
-                .onSuccess { (booking, shouldFocusVenueInfo) ->
+                .onSuccess { (booking, focusFlags) ->
                     if (booking == null) {
                         _uiState.value = _uiState.value.copy(
                             isLoadingBookingDetail = false,
@@ -219,6 +225,7 @@ class InboxViewModel(
                         )
                         return@onSuccess
                     }
+                    val (shouldFocusVenueInfo, shouldFocusReview) = focusFlags
                     val dateLabel = booking.date.ifBlank { "" }
                     val timeRange = booking.timeRange.ifBlank {
                         listOf(booking.startTime, booking.endTime)
@@ -282,7 +289,8 @@ class InboxViewModel(
                                     createdAt = it.createdAt
                                 )
                             },
-                            focusVenueInfo = shouldFocusVenueInfo
+                            focusVenueInfo = shouldFocusVenueInfo,
+                            reviewFocusOnly = shouldFocusReview
                         )
                     )
                 }
@@ -342,7 +350,7 @@ class InboxViewModel(
         )
     }
 
-    fun submitReview(rating: Int, comment: String) {
+    fun submitReview(rating: Int, comment: String, imageUri: String? = null) {
         val activeBooking = _uiState.value.activeBookingDetail ?: return
         val token = token() ?: return
         val bookingId = activeBooking.bookingId ?: return
@@ -356,12 +364,17 @@ class InboxViewModel(
 
         viewModelScope.launch {
             runCatching {
+                val uploadedImages = imageUri
+                    ?.takeIf { it.isNotBlank() }
+                    ?.let { uploadReviewImage(token, it) }
+                    .orEmpty()
                 api.submitBookingReview(
                     token = token,
                     bookingId = bookingId,
                     fieldId = fieldId,
                     rating = rating,
-                    comment = comment.trim()
+                    comment = comment.trim(),
+                    images = uploadedImages
                 )
             }.onSuccess { review ->
                 _uiState.value = _uiState.value.copy(
@@ -384,6 +397,44 @@ class InboxViewModel(
                 )
             }
         }
+    }
+
+    private suspend fun uploadReviewImage(token: String, imageUriString: String): List<String> = withContext(Dispatchers.IO) {
+        val uri = Uri.parse(imageUriString)
+        val resolver = appContext.contentResolver
+        val mimeType = resolver.getType(uri)
+            ?: guessMimeType(uri)
+            ?: "image/jpeg"
+        val imageBytes = resolver.openInputStream(uri)?.use { it.readBytes() }
+            ?: throw IOException("Unable to read selected review image")
+        val fileName = buildReviewImageFileName(uri, mimeType)
+        api.uploadReviewImage(
+            token = token,
+            imageBytes = imageBytes,
+            fileName = fileName,
+            mimeType = mimeType
+        )
+    }
+
+    private fun guessMimeType(uri: Uri): String? {
+        val extension = MimeTypeMap.getFileExtensionFromUrl(uri.toString())
+            .lowercase()
+            .takeIf { it.isNotBlank() }
+        return extension?.let { MimeTypeMap.getSingleton().getMimeTypeFromExtension(it) }
+    }
+
+    private fun buildReviewImageFileName(uri: Uri, mimeType: String): String {
+        val extension = MimeTypeMap.getSingleton().getExtensionFromMimeType(mimeType)
+            ?.takeIf { it.isNotBlank() }
+            ?: "jpg"
+        val rawName = uri.lastPathSegment
+            ?.substringAfterLast('/')
+            ?.substringBefore('?')
+            ?.substringBefore('#')
+            ?.takeIf { it.isNotBlank() }
+            ?: "review"
+        val safeName = rawName.replace(Regex("[^A-Za-z0-9._-]"), "_")
+        return "${safeName}-${System.currentTimeMillis()}.$extension"
     }
 
     fun clearReviewSubmissionFeedback() {
@@ -842,7 +893,8 @@ class InboxViewModel(
                             bookingInfo = detail.toBookingInfo(
                                 notificationId = item.bookingInfo?.notificationId ?: item.id,
                                 focusVenueInfo = item.bookingInfo?.focusVenueInfo ?:
-                                    (isBookingReminderType(item.type) || isReviewReminderType(item.type))
+                                    (isBookingReminderType(item.type) || isReviewReminderType(item.type)),
+                                reviewFocusOnly = item.bookingInfo?.reviewFocusOnly ?: isReviewReminderType(item.type)
                             )
                         )
                     }
@@ -921,7 +973,8 @@ class InboxViewModel(
                 fieldId = fieldId,
                 bookingId = effectiveBookingId,
                 notificationId = id,
-                focusVenueInfo = isBookingReminderType(normalizedType) || isReviewReminderNotification
+                focusVenueInfo = isBookingReminderType(normalizedType) || isReviewReminderNotification,
+                reviewFocusOnly = isReviewReminderNotification
             )
         } else null
 
@@ -1063,7 +1116,8 @@ class InboxViewModel(
 
     private fun BookingDetailDto.toBookingInfo(
         notificationId: Int?,
-        focusVenueInfo: Boolean = false
+        focusVenueInfo: Boolean = false,
+        reviewFocusOnly: Boolean = false
     ): BookingInfo {
         val resolvedTimeRange = timeRange.ifBlank {
             listOf(startTime, endTime)
@@ -1124,7 +1178,8 @@ class InboxViewModel(
                     createdAt = it.createdAt
                 )
             },
-            focusVenueInfo = focusVenueInfo
+            focusVenueInfo = focusVenueInfo,
+            reviewFocusOnly = reviewFocusOnly
         )
     }
 

@@ -4,6 +4,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.DataOutputStream
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
@@ -279,13 +280,17 @@ class InboxApi(
         bookingId: Int,
         fieldId: Int,
         rating: Int,
-        comment: String
+        comment: String,
+        images: List<String> = emptyList()
     ): ReviewSubmissionDto = withContext(Dispatchers.IO) {
         val body = JSONObject()
             .put("booking_id", bookingId)
             .put("field_id", fieldId)
             .put("rating", rating)
             .put("comment", comment)
+        if (images.isNotEmpty()) {
+            body.put("images", JSONArray(images))
+        }
 
         val root = postJsonWithResponse("$baseUrl/api/user/reviews", token, body)
         val review = root.optJSONObject("review") ?: root.optJSONObject("data") ?: JSONObject()
@@ -294,6 +299,52 @@ class InboxApi(
             rating = review.optInt("rating", rating),
             comment = review.optString("comment", comment)
         )
+    }
+
+    suspend fun uploadReviewImage(
+        token: String,
+        imageBytes: ByteArray,
+        fileName: String,
+        mimeType: String
+    ): List<String> = withContext(Dispatchers.IO) {
+        val boundary = "----SportManagementBoundary${System.currentTimeMillis()}"
+        val connection = (URL("$baseUrl/api/user/reviews/upload").openConnection() as HttpURLConnection).apply {
+            requestMethod = "POST"
+            connectTimeout = 30_000
+            readTimeout = 30_000
+            doOutput = true
+            setRequestProperty("Accept", "application/json")
+            setRequestProperty("Authorization", "Bearer $token")
+            setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
+        }
+
+        try {
+            DataOutputStream(connection.outputStream).use { output ->
+                output.writeBytes("--$boundary\r\n")
+                output.writeBytes(
+                    "Content-Disposition: form-data; name=\"images\"; filename=\"$fileName\"\r\n"
+                )
+                output.writeBytes("Content-Type: $mimeType\r\n\r\n")
+                output.write(imageBytes)
+                output.writeBytes("\r\n")
+                output.writeBytes("--$boundary--\r\n")
+                output.flush()
+            }
+
+            val responseCode = connection.responseCode
+            val responseText = readResponseBody(connection, responseCode)
+            if (responseCode !in 200..299) {
+                throw IOException(readApiErrorMessage(responseCode, responseText))
+            }
+
+            val root = JSONObject(responseText)
+            val images = root.optJSONArray("images")
+                ?: root.optJSONObject("data")?.optJSONArray("images")
+                ?: JSONArray()
+            List(images.length()) { index -> images.optString(index) }
+        } finally {
+            connection.disconnect()
+        }
     }
 
     suspend fun acceptMatchRequest(token: String, matchRequestId: Int) = withContext(Dispatchers.IO) {

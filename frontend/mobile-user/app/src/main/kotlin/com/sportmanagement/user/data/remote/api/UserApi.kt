@@ -52,6 +52,27 @@ data class CreateBatchBookingResponse(
     val pendingHoldSeconds: Int
 )
 
+data class FieldReviewDto(
+    val reviewId: Int,
+    val fieldId: Int,
+    val customerName: String,
+    val customerAvatarUrl: String,
+    val rating: Int,
+    val comment: String,
+    val createdAt: String,
+    val imageUrls: List<String>
+)
+
+data class FieldReviewStatsDto(
+    val averageRating: Double,
+    val totalReviews: Int,
+    val fiveStar: Int,
+    val fourStar: Int,
+    val threeStar: Int,
+    val twoStar: Int,
+    val oneStar: Int
+)
+
 class UserApi(
     private val baseUrl: String = ApiConfig.BASE_URL
 ) {
@@ -211,6 +232,41 @@ class UserApi(
         } finally {
             connection.disconnect()
         }
+    }
+
+    suspend fun getFieldReviews(fieldId: Int): List<FieldReviewDto> = withContext(Dispatchers.IO) {
+        val endpoint = "$baseUrl/api/user/reviews?field_id=$fieldId"
+        val array = readJsonArray(endpoint)
+        List(array.length()) { index ->
+            val item = array.optJSONObject(index) ?: JSONObject()
+            val imagesArray = item.optJSONArray("images") ?: JSONArray()
+            FieldReviewDto(
+                reviewId = item.optInt("review_id"),
+                fieldId = item.optInt("field_id"),
+                customerName = item.optString("customer_name"),
+                customerAvatarUrl = resolveMediaUrl(item.optString("customer_avatar_url")),
+                rating = item.optInt("rating"),
+                comment = item.optString("comment"),
+                createdAt = item.optString("created_at"),
+                imageUrls = List(imagesArray.length()) { imageIndex ->
+                    resolveMediaUrl(imagesArray.optString(imageIndex))
+                }.filter { it.isNotBlank() }
+            )
+        }
+    }
+
+    suspend fun getFieldReviewStats(fieldId: Int): FieldReviewStatsDto = withContext(Dispatchers.IO) {
+        val endpoint = "$baseUrl/api/user/reviews/stats/$fieldId"
+        val root = readJsonObject(endpoint)
+        FieldReviewStatsDto(
+            averageRating = root.optDouble("average_rating", 0.0).takeIf { it.isFinite() } ?: 0.0,
+            totalReviews = root.optInt("total_reviews", 0),
+            fiveStar = root.optInt("five_star", 0),
+            fourStar = root.optInt("four_star", 0),
+            threeStar = root.optInt("three_star", 0),
+            twoStar = root.optInt("two_star", 0),
+            oneStar = root.optInt("one_star", 0)
+        )
     }
 
     suspend fun createBooking(
@@ -451,6 +507,30 @@ class UserApi(
         endpoint: String,
         token: String? = null
     ): List<UserFieldDto> {
+        val array = readJsonArray(endpoint, token)
+        return List(array.length()) { idx -> array.getJSONObject(idx).toFieldDto() }
+    }
+
+    private fun readJsonArray(
+        endpoint: String,
+        token: String? = null
+    ): JSONArray {
+        val responseText = readJsonResponse(endpoint, token)
+        return JSONArray(responseText)
+    }
+
+    private fun readJsonObject(
+        endpoint: String,
+        token: String? = null
+    ): JSONObject {
+        val responseText = readJsonResponse(endpoint, token)
+        return JSONObject(responseText)
+    }
+
+    private fun readJsonResponse(
+        endpoint: String,
+        token: String? = null
+    ): String {
         val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
             requestMethod = "GET"
             connectTimeout = 30_000
@@ -473,11 +553,19 @@ class UserApi(
                 throw IOException("HTTP $responseCode")
             }
 
-            val array = JSONArray(responseText)
-            List(array.length()) { idx -> array.getJSONObject(idx).toFieldDto() }
+            responseText
         } finally {
             connection.disconnect()
         }
+    }
+
+    private fun resolveMediaUrl(value: String): String {
+        val trimmed = value.trim()
+        if (trimmed.isBlank() || trimmed.equals("null", ignoreCase = true)) return ""
+        if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+            return trimmed
+        }
+        return "$baseUrl${if (trimmed.startsWith("/")) trimmed else "/$trimmed"}"
     }
 
     private fun writeFavorite(

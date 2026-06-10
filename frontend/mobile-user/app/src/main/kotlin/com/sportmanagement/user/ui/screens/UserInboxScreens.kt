@@ -568,6 +568,8 @@ fun NotificationCard(item: NotificationItem, onClick: () -> Unit) {
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
     ) {
         val isMatchItem = isMatchNotificationItem(item)
+        val isReminderItem = isReminderNotificationItem(item)
+        val isReviewItem = isReviewNotificationItem(item)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -594,13 +596,17 @@ fun NotificationCard(item: NotificationItem, onClick: () -> Unit) {
                 val isMessageItem = item.category == InboxCategoryType.Message
                 val subtitleStyle = when {
                     isMatchItem -> MaterialTheme.typography.bodySmall
+                    isReminderItem -> MaterialTheme.typography.bodySmall
+                    isReviewItem -> MaterialTheme.typography.bodySmall
                     subtitleLooksSecondary -> MaterialTheme.typography.bodySmall
                     else -> MaterialTheme.typography.bodyMedium
                 }
                 val subtitleWeight =
-                    if (isMatchItem || subtitleLooksSecondary || isMessageItem) FontWeight.Normal else FontWeight.Medium
+                    if (isMatchItem || isReminderItem || isReviewItem || subtitleLooksSecondary || isMessageItem) FontWeight.Normal else FontWeight.Medium
                 val subtitleColor = when {
                     isMatchItem -> MaterialTheme.colorScheme.onSurfaceVariant
+                    isReminderItem -> MaterialTheme.colorScheme.onSurfaceVariant
+                    isReviewItem -> MaterialTheme.colorScheme.onSurfaceVariant
                     subtitleLooksSecondary -> MaterialTheme.colorScheme.onSurfaceVariant
                     else -> MaterialTheme.colorScheme.onSurface
                 }
@@ -634,13 +640,27 @@ fun NotificationCard(item: NotificationItem, onClick: () -> Unit) {
                     verticalAlignment = if (isMatchItem) Alignment.CenterVertically else Alignment.Top
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = item.subtitle,
-                            style = subtitleStyle,
-                            fontWeight = subtitleWeight,
-                            color = subtitleColor
-                        )
-                        if (item.detail.isNotBlank()) {
+                        if (isReviewItem) {
+                            reviewNotificationSummaryLines(item).forEachIndexed { index, line ->
+                                if (index > 0) {
+                                    Spacer(Modifier.height(2.dp))
+                                }
+                                Text(
+                                    text = line,
+                                    style = subtitleStyle,
+                                    fontWeight = subtitleWeight,
+                                    color = subtitleColor
+                                )
+                            }
+                        } else {
+                            Text(
+                                text = item.subtitle,
+                                style = subtitleStyle,
+                                fontWeight = subtitleWeight,
+                                color = subtitleColor
+                            )
+                        }
+                        if (item.detail.isNotBlank() && !isReminderItem && !isReviewItem) {
                             Spacer(Modifier.height(3.dp))
                             Text(
                                 text = item.detail,
@@ -707,6 +727,44 @@ private fun looksLikeBookingCodePreview(text: String): Boolean {
     return normalized.contains("#B", ignoreCase = true) ||
     normalized.contains("Mã đặt sân", ignoreCase = true) ||
         normalized.contains("Booking #B", ignoreCase = true)
+}
+
+private fun reviewNotificationSummary(item: NotificationItem): String {
+    return reviewNotificationSummaryLines(item).joinToString(". ")
+}
+
+private fun reviewNotificationSummaryLines(item: NotificationItem): List<String> {
+    val fieldName = item.bookingInfo?.fieldName
+        ?.takeIf { it.isNotBlank() }
+        ?: item.title.ifBlank { item.subtitle }
+
+    return buildList {
+        add("Bạn vừa thi đấu xong tại $fieldName")
+        add("Hãy để lại đánh giá của bạn")
+    }
+}
+
+private fun sanitizeReviewSummaryText(text: String): String {
+    return text
+        .replace(Regex("(?i)\\bbooking\\b"), "")
+        .replace(Regex("(?i)booking\\s*#?[A-Z]*\\d+"), "")
+        .replace(Regex("(?i)đã\\s+kết\\s+thúc"), "")
+        .replace(Regex("(?i)#?b\\d+"), "")
+        .replace(Regex("(?i)hãy\\s+để\\s+lại\\s+đánh\\s+giá\\s+của\\s+bạn"), "")
+        .replace(Regex("(?i)khung giờ"), "")
+        .replace(Regex("\\b\\d{1,2}:\\d{2}(?:\\s*(?:AM|PM))?\\b"), "")
+        .replace("?", "")
+        .replace(Regex("\\s+"), " ")
+        .replace(Regex("\\s+([.,;:])"), "$1")
+        .trim()
+}
+
+private fun splitReviewSummaryText(text: String): List<String> {
+    if (text.isBlank()) return emptyList()
+    return text
+        .split(Regex("[\\n\\r]+|(?<=[.!?])\\s+|\\s*;\\s*|\\s*,\\s*"))
+        .map { it.trim() }
+        .filter { it.isNotBlank() }
 }
 
 @Composable
@@ -801,11 +859,6 @@ private fun NotificationDetailSheet(item: NotificationItem, modifier: Modifier =
                 }
             }
         } else {
-            Text(
-                text = item.subtitle,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface
-            )
             if (item.detail.isNotBlank()) {
                 Spacer(Modifier.height(6.dp))
                 Text(
@@ -1127,7 +1180,8 @@ data class BookingInfo(
     val reviewComment: String = "",
     val matchPost: BookingMatchPostInfo? = null,
     val matchRequests: List<BookingMatchRequestInfo> = emptyList(),
-    val focusVenueInfo: Boolean = false
+    val focusVenueInfo: Boolean = false,
+    val reviewFocusOnly: Boolean = false
 )
 
 @Immutable
@@ -1548,7 +1602,7 @@ fun BookingDetailScreen(
     matchRequestActionError: String? = null,
     matchRequestActionSuccessMessage: String? = null,
     onBackClick: () -> Unit,
-    onSubmitReview: (Int, String) -> Unit = { _, _ -> },
+    onSubmitReview: (Int, String, String?) -> Unit = { _, _, _ -> },
     onReviewFeedbackConsumed: () -> Unit = {},
     onAcceptMatchRequest: (Int) -> Unit = {},
     onRejectMatchRequest: (Int) -> Unit = {},
@@ -1567,6 +1621,12 @@ fun BookingDetailScreen(
     val contentScrollState = rememberScrollState()
     val reminderFocusOffset = with(LocalDensity.current) { 92.dp.roundToPx() }
     val qrBitmap = rememberQrBitmap(info.shareUrl)
+    var reviewImageUri by rememberSaveable(info.bookingId) { mutableStateOf<String?>(null) }
+    val reviewImagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        reviewImageUri = uri?.toString()
+    }
     val shareText = remember(info) {
         buildString {
             append("Hóa đơn & QR Check-in")
@@ -1600,13 +1660,20 @@ fun BookingDetailScreen(
     LaunchedEffect(reviewSubmissionSuccessMessage) {
         if (!reviewSubmissionSuccessMessage.isNullOrBlank()) {
             showReviewSheet = false
+            reviewImageUri = null
             Toast.makeText(context, reviewSubmissionSuccessMessage, Toast.LENGTH_SHORT).show()
             onReviewFeedbackConsumed()
         }
     }
 
     LaunchedEffect(autoOpenReviewSheet, info.bookingId) {
-        if (autoOpenReviewSheet && info.canReview && !info.reviewSubmitted) {
+        if (
+            autoOpenReviewSheet &&
+            info.canReview &&
+            !info.reviewSubmitted &&
+            !info.reviewFocusOnly &&
+            info.statusCode != "expired"
+        ) {
             showReviewSheet = true
         }
     }
@@ -1642,6 +1709,8 @@ fun BookingDetailScreen(
         ) {
             BookingDetailTopBar(
                 onBackClick = onBackClick,
+                title = if (info.reviewFocusOnly) "Đánh giá sân" else stringResource(R.string.inbox_booking_detail_title),
+                showShare = !info.reviewFocusOnly,
                 onShareClick = {
                     try {
                         context.startActivity(
@@ -1662,76 +1731,98 @@ fun BookingDetailScreen(
                     }
                 }
             )
-        BookingDetailContent(
-            info = info,
-            onReviewClick = {
-                reviewRating = info.reviewRating ?: 0
-                reviewComment = info.reviewComment
-                showReviewSheet = true
-                onReviewFeedbackConsumed()
-            },
-            onShareQr = {
-                if (qrBitmap == null || info.shareUrl.isBlank()) {
-                    Toast.makeText(
-                        context,
-                        "QR check-in chưa sẵn sàng",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                } else {
-                    runCatching { shareQrBitmap(context, qrBitmap, info.bookingCode) }
-                        .onFailure {
+            if (info.reviewFocusOnly) {
+                ReviewDetailContent(
+                    info = info,
+                    rating = reviewRating,
+                    comment = reviewComment,
+                    selectedImageUri = reviewImageUri,
+                    isSubmitting = isSubmittingReview,
+                    errorMessage = reviewSubmissionError,
+                    hasSubmitted = info.reviewSubmitted,
+                    onRatingSelected = { reviewRating = it },
+                    onCommentChanged = { reviewComment = it },
+                    onPickImage = { reviewImagePickerLauncher.launch("image/*") },
+                    onRemoveImage = { reviewImageUri = null },
+                    onSubmitClick = {
+                        onSubmitReview(reviewRating, reviewComment, reviewImageUri)
+                    },
+                    modifier = Modifier
+                        .weight(1f)
+                        .verticalScroll(contentScrollState)
+                        .padding(horizontal = AppScreenHorizontalPadding, vertical = 12.dp)
+                )
+            } else {
+                BookingDetailContent(
+                    info = info,
+                    onReviewClick = {
+                        reviewRating = info.reviewRating ?: 0
+                        reviewComment = info.reviewComment
+                        showReviewSheet = true
+                        onReviewFeedbackConsumed()
+                    },
+                    onShareQr = {
+                        if (qrBitmap == null || info.shareUrl.isBlank()) {
                             Toast.makeText(
                                 context,
-                                "Không thể chia sẻ QR lúc này",
+                                "QR check-in chưa sẵn sàng",
                                 Toast.LENGTH_SHORT
                             ).show()
+                        } else {
+                            runCatching { shareQrBitmap(context, qrBitmap, info.bookingCode) }
+                                .onFailure {
+                                    Toast.makeText(
+                                        context,
+                                        "Không thể chia sẻ QR lúc này",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
                         }
-                }
-            },
-            onDownloadQr = {
-                if (qrBitmap == null || info.shareUrl.isBlank()) {
-                    Toast.makeText(
-                        context,
-                        "QR check-in chưa sẵn sàng",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                } else {
-                    runCatching { saveQrBitmap(context, qrBitmap, info.bookingCode) }
-                        .onSuccess {
+                    },
+                    onDownloadQr = {
+                        if (qrBitmap == null || info.shareUrl.isBlank()) {
                             Toast.makeText(
                                 context,
-                                "Đang tải QR xuống máy",
+                                "QR check-in chưa sẵn sàng",
                                 Toast.LENGTH_SHORT
                             ).show()
+                        } else {
+                            runCatching { saveQrBitmap(context, qrBitmap, info.bookingCode) }
+                                .onSuccess {
+                                    Toast.makeText(
+                                        context,
+                                        "Đang tải QR xuống máy",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                                .onFailure {
+                                    Toast.makeText(
+                                        context,
+                                        "Không thể tải QR xuống",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
                         }
-                        .onFailure {
-                            Toast.makeText(
-                                context,
-                                "Không thể tải QR xuống",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
-                }
-            },
-            processingMatchRequestId = processingMatchRequestId,
-            onAcceptMatchRequest = onAcceptMatchRequest,
-            onRejectMatchRequest = onRejectMatchRequest,
-            modifier = Modifier
-                .weight(1f)
-                .verticalScroll(contentScrollState)
-                    .padding(horizontal = AppScreenHorizontalPadding, vertical = 12.dp)
-            )
-        }
+                    },
+                    processingMatchRequestId = processingMatchRequestId,
+                    onAcceptMatchRequest = onAcceptMatchRequest,
+                    onRejectMatchRequest = onRejectMatchRequest,
+                    modifier = Modifier
+                        .weight(1f)
+                        .verticalScroll(contentScrollState)
+                        .padding(horizontal = AppScreenHorizontalPadding, vertical = 12.dp)
+                )
 
-        BookingDetailBottomActions(
-            onDirectionsClick = {
-                val geoUri = Uri.parse("geo:0,0?q=${Uri.encode(info.address)}")
-                val intent = Intent(Intent.ACTION_VIEW, geoUri)
-                context.startActivity(intent)
-            },
-            onContactClick = { showContactSheet = true },
-            modifier = Modifier.align(Alignment.BottomCenter)
-        )
+                BookingDetailBottomActions(
+                    onDirectionsClick = {
+                        val geoUri = Uri.parse("geo:0,0?q=${Uri.encode(info.address)}")
+                        val intent = Intent(Intent.ACTION_VIEW, geoUri)
+                        context.startActivity(intent)
+                    },
+                    onContactClick = { showContactSheet = true }
+                )
+            }
+        }
 
         if (showContactSheet) {
             val ownerPhone = info.ownerPhone.trim()
@@ -1770,7 +1861,7 @@ fun BookingDetailScreen(
             }
         }
 
-        if (showReviewSheet) {
+        if (showReviewSheet && info.statusCode != "expired") {
             ModalBottomSheet(
                 onDismissRequest = {
                     showReviewSheet = false
@@ -1793,7 +1884,7 @@ fun BookingDetailScreen(
                         onReviewFeedbackConsumed()
                     },
                     onSubmitClick = {
-                        onSubmitReview(reviewRating, reviewComment)
+                        onSubmitReview(reviewRating, reviewComment, null)
                     }
                 )
             }
@@ -1804,6 +1895,8 @@ fun BookingDetailScreen(
 @Composable
 private fun BookingDetailTopBar(
     onBackClick: () -> Unit,
+    title: String,
+    showShare: Boolean,
     onShareClick: () -> Unit
 ) {
     Row(
@@ -1821,18 +1914,22 @@ private fun BookingDetailTopBar(
             )
         }
         Text(
-            text = stringResource(R.string.inbox_booking_detail_title),
+            text = title,
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.weight(1f),
             color = MaterialTheme.colorScheme.onSurface
         )
-        IconButton(onClick = onShareClick) {
-            Icon(
-                imageVector = Icons.Default.Share,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+        if (showShare) {
+            IconButton(onClick = onShareClick) {
+                Icon(
+                    imageVector = Icons.Default.Share,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        } else {
+            Spacer(modifier = Modifier.size(48.dp))
         }
     }
 }
@@ -1858,7 +1955,7 @@ private fun BookingDetailContent(
         BookerInfoCard(info)
         Spacer(Modifier.height(12.dp))
         BookingOwnerNoteCard(note = info.ownerNote)
-        if (info.canReview || info.reviewSubmitted) {
+        if ((info.canReview || info.reviewSubmitted) && info.statusCode != "expired") {
             Spacer(Modifier.height(12.dp))
             ReviewBookingCard(
                 info = info,
@@ -1874,6 +1971,42 @@ private fun BookingDetailContent(
             info = info,
             onShareQr = onShareQr,
             onDownloadQr = onDownloadQr
+        )
+        Spacer(Modifier.height(140.dp))
+    }
+}
+
+@Composable
+private fun ReviewDetailContent(
+    info: BookingInfo,
+    rating: Int,
+    comment: String,
+    selectedImageUri: String?,
+    isSubmitting: Boolean,
+    errorMessage: String?,
+    hasSubmitted: Boolean,
+    onRatingSelected: (Int) -> Unit,
+    onCommentChanged: (String) -> Unit,
+    onPickImage: () -> Unit,
+    onRemoveImage: () -> Unit,
+    onSubmitClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier) {
+        VenueInfoCard(info)
+        Spacer(Modifier.height(12.dp))
+        ReviewInlineCard(
+            rating = rating,
+            comment = comment,
+            selectedImageUri = selectedImageUri,
+            isSubmitting = isSubmitting,
+            errorMessage = errorMessage,
+            hasSubmitted = hasSubmitted,
+            onRatingSelected = onRatingSelected,
+            onCommentChanged = onCommentChanged,
+            onPickImage = onPickImage,
+            onRemoveImage = onRemoveImage,
+            onSubmitClick = onSubmitClick
         )
         Spacer(Modifier.height(140.dp))
     }
@@ -2324,7 +2457,7 @@ private fun ReviewBookingCard(
                     color = MaterialTheme.colorScheme.onSurface
                 )
             }
-            if (info.canReview) {
+            if (info.canReview && info.statusCode != "expired") {
                 Spacer(Modifier.height(12.dp))
                 Button(
                     onClick = onReviewClick,
@@ -2341,6 +2474,159 @@ private fun ReviewBookingCard(
                         fontWeight = FontWeight.SemiBold
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReviewInlineCard(
+    rating: Int,
+    comment: String,
+    selectedImageUri: String?,
+    isSubmitting: Boolean,
+    errorMessage: String?,
+    hasSubmitted: Boolean,
+    onRatingSelected: (Int) -> Unit,
+    onCommentChanged: (String) -> Unit,
+    onPickImage: () -> Unit,
+    onRemoveImage: () -> Unit,
+    onSubmitClick: () -> Unit
+) {
+    val canSubmit = !hasSubmitted && rating in 1..5 && comment.trim().isNotBlank() && !isSubmitting
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(AppCardCornerRadius),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            SectionHeader(
+                title = "Đánh giá sân",
+                icon = Icons.Default.Star
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = "Chất lượng sân của bạn thế nào?",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(Modifier.height(10.dp))
+            ReviewStars(
+                rating = rating,
+                onRatingSelected = if (hasSubmitted || isSubmitting) null else onRatingSelected
+            )
+            Spacer(Modifier.height(12.dp))
+            TextField(
+                value = comment,
+                onValueChange = onCommentChanged,
+                enabled = !hasSubmitted && !isSubmitting,
+                minLines = 4,
+                maxLines = 5,
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = {
+                    Text(
+                        text = "Viết cảm nhận của bạn về mặt sân, dịch vụ, ánh sáng...",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            )
+            Spacer(Modifier.height(12.dp))
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(enabled = !hasSubmitted && !isSubmitting) {
+                        onPickImage()
+                    },
+                shape = RoundedCornerShape(AppCardCornerRadius),
+                color = MaterialTheme.colorScheme.surfaceContainerLow
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.CameraAlt,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Thêm ảnh",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "Bạn có thể bổ sung ảnh đánh giá ở bước này.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+
+            if (selectedImageUri != null) {
+                Spacer(Modifier.height(10.dp))
+                Box(
+                    modifier = Modifier
+                        .size(80.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp))
+                ) {
+                    AsyncImage(
+                        model = selectedImageUri,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                    IconButton(
+                        onClick = onRemoveImage,
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .size(20.dp)
+                            .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                            .padding(2.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Close,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(10.dp)
+                        )
+                    }
+                }
+            }
+
+            if (!errorMessage.isNullOrBlank()) {
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    text = errorMessage,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+
+            Spacer(Modifier.height(14.dp))
+            Button(
+                onClick = onSubmitClick,
+                enabled = canSubmit,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(AppCtaCornerRadius),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                )
+            ) {
+                Text(
+                    text = if (isSubmitting) "Đang gửi..." else if (hasSubmitted) "Đã gửi đánh giá" else "Gửi đánh giá",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold
+                )
             }
         }
     }

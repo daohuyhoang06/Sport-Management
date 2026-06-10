@@ -30,6 +30,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -46,8 +47,12 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.sportmanagement.user.R
+import com.sportmanagement.user.domain.model.FieldReview
+import com.sportmanagement.user.domain.model.FieldReviewStats
 import com.sportmanagement.user.domain.model.UserField
 import com.sportmanagement.user.ui.components.field.FieldDetailBottomSheet
+import com.sportmanagement.user.ui.components.field.formatFieldRating
+import com.sportmanagement.user.ui.components.field.resolveFieldReviewMetrics
 import com.sportmanagement.user.ui.components.home.HomeVenueCard
 import com.sportmanagement.user.ui.theme.AppInputCornerRadius
 import java.text.Normalizer
@@ -57,6 +62,9 @@ fun HomeSearchResultsScreen(
     padding: PaddingValues,
     fields: List<UserField>,
     favoriteFields: List<UserField>,
+    fieldReviewStatsByFieldId: Map<Int, FieldReviewStats>,
+    fieldReviewsByFieldId: Map<Int, List<FieldReview>>,
+    loadingFieldReviewIds: Set<Int>,
     isLoading: Boolean,
     title: String,
     emptyTitle: String,
@@ -66,6 +74,7 @@ fun HomeSearchResultsScreen(
     onBookFieldClick: (UserField) -> Unit,
     onFavoriteFieldClick: (UserField, Boolean) -> Unit,
     onShareFieldClick: (UserField) -> Unit,
+    onFieldDetailOpened: (Int) -> Unit,
     showFilterButton: Boolean = true
 ) {
     BackHandler(onBack = onBackClick)
@@ -75,6 +84,16 @@ fun HomeSearchResultsScreen(
     var searchQuery by rememberSaveable { mutableStateOf("") }
     var selectedFieldForDetail by remember { mutableStateOf<UserField?>(null) }
     val favoriteFieldIds = remember(favoriteFields) { favoriteFields.map { it.fieldId }.toSet() }
+    val resolvedFieldRatings = remember(fields, fieldReviewStatsByFieldId, fieldReviewsByFieldId) {
+        fields.associate { field ->
+            val metrics = resolveFieldReviewMetrics(
+                reviewStats = fieldReviewStatsByFieldId[field.fieldId],
+                reviews = fieldReviewsByFieldId[field.fieldId].orEmpty(),
+                fallbackRating = field.rating
+            )
+            field.fieldId to formatFieldRating(metrics.averageRating)
+        }
+    }
     val fieldSearchIndex = remember(fields) {
         fields.map { field ->
             SearchableResultsField(
@@ -94,6 +113,10 @@ fun HomeSearchResultsScreen(
                     entry.normalizedLocation.contains(normalizedQuery)
             }.map(SearchableResultsField::field)
         }
+    }
+
+    LaunchedEffect(selectedFieldForDetail?.fieldId) {
+        selectedFieldForDetail?.fieldId?.takeIf { it > 0 }?.let(onFieldDetailOpened)
     }
     Box(
         modifier = Modifier
@@ -131,6 +154,7 @@ fun HomeSearchResultsScreen(
                 items(visibleFields, key = { "field_${it.fieldId}_${it.name}" }) { field ->
                     HomeVenueCard(
                         field = field,
+                        displayRating = resolvedFieldRatings[field.fieldId] ?: field.rating.ifBlank { "0.0" },
                         isFavorite = field.fieldId in favoriteFieldIds,
                         onCardClick = { selectedFieldForDetail = field },
                         onBookClick = { onBookFieldClick(field) },
@@ -272,6 +296,9 @@ fun HomeSearchResultsScreen(
             FieldDetailBottomSheet(
                 field = selectedField,
                 isFavorite = selectedField.fieldId in favoriteFieldIds,
+                reviewStats = fieldReviewStatsByFieldId[selectedField.fieldId],
+                reviews = fieldReviewsByFieldId[selectedField.fieldId].orEmpty(),
+                isReviewLoading = selectedField.fieldId in loadingFieldReviewIds,
                 onDismissRequest = { selectedFieldForDetail = null },
                 onFavoriteClick = {
                     onFavoriteFieldClick(selectedField, selectedField.fieldId !in favoriteFieldIds)
