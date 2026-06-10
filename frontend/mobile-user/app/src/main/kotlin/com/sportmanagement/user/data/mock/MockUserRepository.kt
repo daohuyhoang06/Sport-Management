@@ -4,6 +4,8 @@ import com.sportmanagement.user.domain.model.BookingScheduleData
 import com.sportmanagement.user.domain.model.BookingSubCourt
 import com.sportmanagement.user.domain.model.BookingTimeGridData
 import com.sportmanagement.user.domain.model.BookingTimeRange
+import com.sportmanagement.user.domain.model.FieldReview
+import com.sportmanagement.user.domain.model.FieldReviewStats
 import com.sportmanagement.user.domain.model.HomeSearchFilterOptions
 import com.sportmanagement.user.domain.model.HomeSearchProvinceOption
 import com.sportmanagement.user.domain.model.SportCategory
@@ -504,6 +506,32 @@ class   MockUserRepository : UserRepository {
     override suspend fun getFieldGrid(fieldId: Int, date: String): BookingScheduleData {
         return getBookingSchedule().copy(selectedDate = date)
     }
+
+    override suspend fun getFieldReviews(fieldId: Int): List<FieldReview> =
+        listOf(
+            FieldReview(
+                reviewId = 1,
+                fieldId = fieldId,
+                customerName = "Nguyễn Văn An",
+                rating = 5,
+                comment = "Sân sạch, đèn tốt, nhân viên hỗ trợ nhanh."
+            ),
+            FieldReview(
+                reviewId = 2,
+                fieldId = fieldId,
+                customerName = "Trần Minh Khoa",
+                rating = 4,
+                comment = "Mặt sân ổn, giờ cao điểm hơi đông nhưng trải nghiệm nhìn chung tốt."
+            )
+        )
+
+    override suspend fun getFieldReviewStats(fieldId: Int): FieldReviewStats =
+        FieldReviewStats(
+            averageRating = 4.5,
+            totalReviews = 2,
+            fiveStar = 1,
+            fourStar = 1
+        )
 
     override suspend fun getHomeSearchFilterOptions(): HomeSearchFilterOptions {
         val provinceOptions = getNearbyFields(null, null)

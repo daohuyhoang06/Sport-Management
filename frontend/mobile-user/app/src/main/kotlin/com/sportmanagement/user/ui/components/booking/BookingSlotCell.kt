@@ -27,6 +27,7 @@ internal fun BookingSlotCell(
     val background = when (status) {
         SlotStatus.AVAILABLE -> Color.White
         SlotStatus.BOOKED -> Color(0xFF6B7280)
+        SlotStatus.FIND_OPPONENT -> Color(0xFF22C55E)
         SlotStatus.LOCKED -> Color(0xFFEF4444)
         SlotStatus.EVENT -> MaterialTheme.colorScheme.outlineVariant
         SlotStatus.SELECTED -> MaterialTheme.colorScheme.primaryContainer

@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sportmanagement.user.data.repository.UserRepositoryImpl
 import com.sportmanagement.user.domain.model.BookingScheduleData
+import com.sportmanagement.user.domain.model.FieldReview
+import com.sportmanagement.user.domain.model.FieldReviewStats
 import com.sportmanagement.user.domain.model.HomeSearchCriteria
 import com.sportmanagement.user.domain.model.HomeSearchFilterOptions
 import com.sportmanagement.user.domain.model.SportCategory
@@ -274,6 +276,85 @@ class UserViewModel(
             _uiState.update { current ->
                 current.copy(favoriteFields = favorites)
             }
+            preloadFieldReviewStats(favorites)
+        }
+    }
+
+    fun loadFieldReviewData(fieldId: Int, force: Boolean = false) {
+        if (fieldId <= 0) return
+        val state = _uiState.value
+        val hasCachedReviews = state.fieldReviewsByFieldId.containsKey(fieldId)
+        val hasCachedStats = state.fieldReviewStatsByFieldId.containsKey(fieldId)
+        if (!force && hasCachedReviews && hasCachedStats) return
+        if (fieldId in state.loadingFieldReviewIds) return
+
+        _uiState.update { current ->
+            current.copy(
+                loadingFieldReviewIds = current.loadingFieldReviewIds + fieldId
+            )
+        }
+
+        viewModelScope.launch {
+            val (reviews, stats) = supervisorScope {
+                val reviewsDeferred = async { repository.getFieldReviews(fieldId) }
+                val statsDeferred = async { repository.getFieldReviewStats(fieldId) }
+                reviewsDeferred.await() to statsDeferred.await()
+            }
+            val normalizedStats = stats.withReviewFallback(reviews)
+            val normalizedRating = formatAverageRating(normalizedStats.averageRating)
+
+            _uiState.update { current ->
+                current.copy(
+                    homeFields = patchFieldRating(current.homeFields, fieldId, normalizedRating),
+                    nearbyFields = patchFieldRating(current.nearbyFields, fieldId, normalizedRating),
+                    fieldSearchResults = patchFieldRating(current.fieldSearchResults, fieldId, normalizedRating),
+                    favoriteFields = patchFieldRating(current.favoriteFields, fieldId, normalizedRating),
+                    fieldReviewsByFieldId = current.fieldReviewsByFieldId + (fieldId to reviews),
+                    fieldReviewStatsByFieldId = current.fieldReviewStatsByFieldId + (fieldId to normalizedStats),
+                    loadingFieldReviewIds = current.loadingFieldReviewIds - fieldId
+                )
+            }
+
+            allHomeFields = patchFieldRating(allHomeFields, fieldId, normalizedRating)
+            allNearbyFields = patchFieldRating(allNearbyFields, fieldId, normalizedRating)
+        }
+    }
+
+    fun preloadFieldReviewStats(fields: List<UserField>, force: Boolean = false) {
+        val fieldIds = fields.map { it.fieldId }.filter { it > 0 }.distinct()
+        if (fieldIds.isEmpty()) return
+
+        viewModelScope.launch {
+            fieldIds.forEach { fieldId ->
+                val cachedStats = _uiState.value.fieldReviewStatsByFieldId[fieldId]
+                if (!force && cachedStats != null) {
+                    return@forEach
+                }
+                val stats = repository.getFieldReviewStats(fieldId)
+                val fallbackReviews = if (stats.totalReviews > 0) {
+                    emptyList()
+                } else {
+                    repository.getFieldReviews(fieldId)
+                }
+                val normalizedStats = stats.withReviewFallback(fallbackReviews)
+                val normalizedRating = formatAverageRating(normalizedStats.averageRating)
+                _uiState.update { current ->
+                    current.copy(
+                        homeFields = patchFieldRating(current.homeFields, fieldId, normalizedRating),
+                        nearbyFields = patchFieldRating(current.nearbyFields, fieldId, normalizedRating),
+                        fieldSearchResults = patchFieldRating(current.fieldSearchResults, fieldId, normalizedRating),
+                        favoriteFields = patchFieldRating(current.favoriteFields, fieldId, normalizedRating),
+                        fieldReviewStatsByFieldId = current.fieldReviewStatsByFieldId + (fieldId to normalizedStats),
+                        fieldReviewsByFieldId = if (fallbackReviews.isNotEmpty()) {
+                            current.fieldReviewsByFieldId + (fieldId to fallbackReviews)
+                        } else {
+                            current.fieldReviewsByFieldId
+                        }
+                    )
+                }
+                allHomeFields = patchFieldRating(allHomeFields, fieldId, normalizedRating)
+                allNearbyFields = patchFieldRating(allNearbyFields, fieldId, normalizedRating)
+            }
         }
     }
 
@@ -468,6 +549,7 @@ class UserViewModel(
                     hasMoreHomeFields = hasMorePages
                 )
             }
+            preloadFieldReviewStats(pageItems)
             isLoadingPage = false
         }
     }
@@ -531,6 +613,7 @@ class UserViewModel(
                     hasMoreHomeFields = hasMorePages
                 )
             }
+            preloadFieldReviewStats(firstPage)
 
             val supportDeferred = async { loadSupportingDataBundle() }
             val nearbyDeferred = async {
@@ -566,6 +649,7 @@ class UserViewModel(
                     hasMoreHomeFields = hasMorePages
                 )
             }
+            preloadFieldReviewStats(allHomeFields + allNearbyFields + supportData.favoriteFields)
         }
     }
 
@@ -586,6 +670,7 @@ class UserViewModel(
                     stats = supportData.stats
                 )
             }
+            preloadFieldReviewStats(allNearbyFields + supportData.favoriteFields)
         }
     }
 
@@ -639,6 +724,7 @@ class UserViewModel(
                     hasMoreFieldSearchResults = hasMoreSearchPages
                 )
             }
+            preloadFieldReviewStats(updatedResults)
         }
     }
 
@@ -731,6 +817,39 @@ class UserViewModel(
         } else {
             options.copy(sports = options.sports.filter { it.iconType in preferredSportTypes })
         }
+    }
+
+    private fun patchFieldRating(
+        fields: List<UserField>,
+        fieldId: Int,
+        rating: String
+    ): List<UserField> {
+        if (fieldId <= 0 || rating.isBlank()) return fields
+        return fields.map { field ->
+            if (field.fieldId == fieldId) field.copy(rating = rating) else field
+        }
+    }
+
+    private fun formatAverageRating(value: Double): String {
+        if (!value.isFinite() || value <= 0.0) {
+            return "0.0"
+        }
+        return String.format("%.1f", value)
+    }
+
+    private fun FieldReviewStats.withReviewFallback(reviews: List<FieldReview>): FieldReviewStats {
+        if (totalReviews > 0 || reviews.isEmpty()) {
+            return this
+        }
+        return copy(
+            averageRating = reviews.map { it.rating }.average(),
+            totalReviews = reviews.size,
+            fiveStar = reviews.count { it.rating == 5 },
+            fourStar = reviews.count { it.rating == 4 },
+            threeStar = reviews.count { it.rating == 3 },
+            twoStar = reviews.count { it.rating == 2 },
+            oneStar = reviews.count { it.rating == 1 }
+        )
     }
 
     private data class SupportingDataBundle(

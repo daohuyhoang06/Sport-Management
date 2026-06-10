@@ -1,6 +1,8 @@
 package com.sportmanagement.user.ui.state
 
 import com.sportmanagement.user.domain.model.BookingScheduleData
+import com.sportmanagement.user.domain.model.FieldReview
+import com.sportmanagement.user.domain.model.FieldReviewStats
 import com.sportmanagement.user.domain.model.HomeSearchCriteria
 import com.sportmanagement.user.domain.model.HomeSearchFilterOptions
 import com.sportmanagement.user.domain.model.SportCategory
@@ -30,6 +32,9 @@ data class UserUiState(
     val homeSearchFilterOptions: HomeSearchFilterOptions = HomeSearchFilterOptions(),
     val activeHomeSearchCriteria: HomeSearchCriteria = HomeSearchCriteria(),
     val bookingSchedule: BookingScheduleData = BookingScheduleData(""),
+    val fieldReviewsByFieldId: Map<Int, List<FieldReview>> = emptyMap(),
+    val fieldReviewStatsByFieldId: Map<Int, FieldReviewStats> = emptyMap(),
+    val loadingFieldReviewIds: Set<Int> = emptySet(),
     val profile: UserProfile = UserProfile(
         name = "",
         email = "",

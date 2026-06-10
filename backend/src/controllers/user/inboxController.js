@@ -1,4 +1,5 @@
 import sequelize from "../../config/database.js";
+import { ensureReviewReminderNotifications } from "../../services/user/bookingNotificationService.js";
 
 const clampNumber = (value, fallback, min, max) => {
   const parsed = Number.parseInt(value, 10);
@@ -34,7 +35,9 @@ const BOOKING_NOTIFICATION_TYPES = new Set([
 const resolveNotificationSection = (row) => {
   const type = String(row.type || "").trim().toLowerCase();
   if (REMINDER_NOTIFICATION_TYPES.has(type)) return "activity";
-  if (BOOKING_NOTIFICATION_TYPES.has(type)) return "priority";
+  if (BOOKING_NOTIFICATION_TYPES.has(type) || type === "review_reminder") {
+    return "priority";
+  }
 
   const explicit = normalizeSection(row.section);
   if (explicit) return explicit;
@@ -80,6 +83,53 @@ const mapConversationItem = (row) => ({
   fieldId: row.field_id,
 });
 
+const hydrateMatchRequestTarget = async (notification, userId) => {
+  if (!notification || notification.type !== "match_request_received") {
+    return notification;
+  }
+
+  if (
+    notification.target_type === "match_request" &&
+    Number.parseInt(notification.target_id, 10) > 0
+  ) {
+    return notification;
+  }
+
+  if (!notification.booking_id) {
+    return notification;
+  }
+
+  const [rows] = await sequelize.query(
+    `SELECT
+      mr.match_request_id
+     FROM match_requests mr
+     INNER JOIN match_posts mp ON mp.match_post_id = mr.match_post_id
+     WHERE mp.booking_id = ?
+       AND mp.owner_user_id = ?
+     ORDER BY
+       CASE mr.status
+         WHEN 'PENDING' THEN 0
+         WHEN 'ACCEPTED' THEN 1
+         ELSE 2
+       END,
+       mr.created_at DESC,
+       mr.match_request_id DESC
+     LIMIT 1`,
+    { replacements: [notification.booking_id, userId] },
+  );
+
+  const resolved = rows?.[0];
+  if (!resolved?.match_request_id) {
+    return notification;
+  }
+
+  return {
+    ...notification,
+    target_type: "match_request",
+    target_id: Number(resolved.match_request_id),
+  };
+};
+
 // GET /api/user/inbox
 export const getInbox = async (req, res) => {
   try {
@@ -92,6 +142,8 @@ export const getInbox = async (req, res) => {
         message: "Unauthorized",
       });
     }
+
+    await ensureReviewReminderNotifications(userId);
 
     const safePage = clampNumber(page, 1, 1, 1000000);
     const safeLimit = clampNumber(limit, 50, 1, 100);
@@ -125,6 +177,23 @@ export const getInbox = async (req, res) => {
             AND b.booking_id IS NOT NULL
             AND b.customer_id = n.user_id
             AND b.status IN ('confirmed', 'approved', 'completed', 'paid')
+          )
+        )
+        AND (
+          n.type <> 'review_reminder'
+          OR (
+            n.booking_id IS NOT NULL
+            AND b.booking_id IS NOT NULL
+            AND b.customer_id = n.user_id
+            AND b.status IN ('confirmed', 'approved', 'completed')
+            AND b.end_time IS NOT NULL
+            AND b.end_time < NOW()
+            AND NOT EXISTS (
+              SELECT 1
+              FROM reviews r
+              WHERE r.booking_id = n.booking_id
+                AND r.customer_id = n.user_id
+            )
           )
         )
       ORDER BY n.created_at DESC
@@ -190,7 +259,11 @@ export const getInbox = async (req, res) => {
       activity: [],
     };
 
-    notificationRows.forEach((row) => {
+    const hydratedNotificationRows = await Promise.all(
+      notificationRows.map((row) => hydrateMatchRequestTarget(row, userId)),
+    );
+
+    hydratedNotificationRows.forEach((row) => {
       const item = mapNotificationItem(row);
       sections[item.section].push(item);
     });

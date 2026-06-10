@@ -11,6 +11,11 @@ import {
   ACTIVE_BOOKING_STATUS_CONDITION,
   deriveAggregateBookingValues,
 } from "../../services/bookingSlotService.js";
+import {
+  createMatchPostForBooking,
+  listOpenMatchPostPreviewsForFieldDate,
+  normalizeMatchPostPayload,
+} from "../../services/user/matchmakingService.js";
 
 const PENDING_HOLD_MINUTES = 6;
 const SPORT_NAME_TO_ICON = {
@@ -250,6 +255,7 @@ const createAggregateBookingWithSlots = async ({
   finalNote,
   customerName,
   customerPhone,
+  matchPostPayload = null,
 }) => {
   let booking = null;
 
@@ -348,6 +354,16 @@ const createAggregateBookingWithSlots = async ({
           transaction,
         },
       );
+    }
+
+    if (matchPostPayload) {
+      await createMatchPostForBooking({
+        bookingId,
+        fieldId,
+        ownerUserId: customerId,
+        payload: matchPostPayload,
+        transaction,
+      });
     }
 
     booking = bookingRow;
@@ -914,6 +930,7 @@ export const getFieldGrid = async (req, res) => {
          AND ${ACTIVE_BOOKING_STATUS_CONDITION}`,
       { replacements: [id, date] },
     );
+    const matchPosts = await listOpenMatchPostPreviewsForFieldDate(id, date);
 
     const bookedSlots = bookings.flatMap((b) => {
       const targetCourts = b.court_id
@@ -980,6 +997,7 @@ export const getFieldGrid = async (req, res) => {
         })),
         bookedSlots: bookedSlots,
         blockedSlots: blockedSlots,
+        matchPosts,
       },
       pricePerHour: price,
       estimatedPrice:
@@ -1007,6 +1025,7 @@ export const createBooking = async (req, res) => {
       note,
       customer_name,
       customer_phone,
+      find_opponent,
     } = req.body;
 
     if (!customer_id) {
@@ -1032,6 +1051,7 @@ export const createBooking = async (req, res) => {
         ? customer_phone.trim()
         : null;
     const finalNote = buildBookingNote(note, customer_name, customer_phone);
+    const matchPostPayload = normalizeMatchPostPayload(find_opponent);
 
     const [customerCheck] = await sequelize.query(
       "SELECT person_id FROM person WHERE person_id = ? LIMIT 1",
@@ -1076,6 +1096,7 @@ export const createBooking = async (req, res) => {
       finalNote,
       customerName: snapshotCustomerName,
       customerPhone: snapshotCustomerPhone,
+      matchPostPayload,
     });
 
     res.status(201).json({
@@ -1108,6 +1129,16 @@ export const createBooking = async (req, res) => {
         error: err.code,
       });
     }
+    if (
+      err?.code === "TEAM_NAME_REQUIRED" ||
+      err?.code === "INVALID_PLAYER_COUNT" ||
+      err?.code === "INVALID_MATCH_LEVEL"
+    ) {
+      return res.status(400).json({
+        message: "Thong tin tim doi thu khong hop le",
+        error: err.code,
+      });
+    }
 
     console.error("createBooking error:", err);
     console.error("Error stack:", err.stack);
@@ -1127,6 +1158,7 @@ export const createBatchBookings = async (req, res) => {
     const customer_id = req.user?.id;
     const { field_id, bookings, note, customer_name, customer_phone } =
       req.body || {};
+    const matchPostPayload = normalizeMatchPostPayload(req.body?.find_opponent);
 
     if (!customer_id) {
       return res.status(400).json({ message: "Missing customer_id" });
@@ -1183,6 +1215,7 @@ export const createBatchBookings = async (req, res) => {
       finalNote,
       customerName: snapshotCustomerName,
       customerPhone: snapshotCustomerPhone,
+      matchPostPayload,
     });
 
     res.status(201).json({
@@ -1213,6 +1246,16 @@ export const createBatchBookings = async (req, res) => {
     if (err?.code === "INVALID_SLOT_RANGE" || err?.code === "DUPLICATE_BOOKING_SLOT") {
       return res.status(400).json({
         message: "Danh sach khung gio khong hop le",
+        error: err.code,
+      });
+    }
+    if (
+      err?.code === "TEAM_NAME_REQUIRED" ||
+      err?.code === "INVALID_PLAYER_COUNT" ||
+      err?.code === "INVALID_MATCH_LEVEL"
+    ) {
+      return res.status(400).json({
+        message: "Thong tin tim doi thu khong hop le",
         error: err.code,
       });
     }

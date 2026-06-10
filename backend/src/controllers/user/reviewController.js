@@ -4,6 +4,48 @@ import { fileURLToPath } from "url";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const CUSTOMER_NAME_SQL = "COALESCE(p.person_name, p.username, '')";
+
+const parseReviewImages = (value) => {
+  if (Array.isArray(value)) {
+    return value.filter((item) => typeof item === "string" && item.trim());
+  }
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return [];
+    }
+    try {
+      const parsed = JSON.parse(trimmed);
+      return Array.isArray(parsed)
+        ? parsed.filter((item) => typeof item === "string" && item.trim())
+        : [];
+    } catch (_error) {
+      return [];
+    }
+  }
+  return [];
+};
+
+const resolvePublicAssetUrl = (req, assetPath) => {
+  if (!assetPath || typeof assetPath !== "string") {
+    return null;
+  }
+  if (/^https?:\/\//i.test(assetPath)) {
+    return assetPath;
+  }
+  const normalizedPath = assetPath.startsWith("/") ? assetPath : `/${assetPath}`;
+  if (!req) {
+    return normalizedPath;
+  }
+  return `${req.protocol}://${req.get("host")}${normalizedPath}`;
+};
+
+const serializeReview = (req, review) => ({
+  ...review,
+  customer_avatar_url: resolvePublicAssetUrl(req, review.customer_avatar_url),
+  images: parseReviewImages(review.images).map((item) => resolvePublicAssetUrl(req, item)),
+});
 
 // POST /api/user/reviews/upload - Upload images only
 export const uploadImages = async (req, res) => {
@@ -49,7 +91,8 @@ export const getReviews = async (req, res) => {
         r.comment,
         r.images,
         r.created_at,
-        p.name as customer_name
+        ${CUSTOMER_NAME_SQL} as customer_name,
+        p.avatar_url as customer_avatar_url
       FROM reviews r
       LEFT JOIN person p ON r.customer_id = p.person_id
       WHERE r.field_id = ?
@@ -58,10 +101,9 @@ export const getReviews = async (req, res) => {
     );
 
     // MySQL JSON column is already parsed, just ensure it's an array
-    const reviewsWithParsedImages = reviews.map((review) => ({
-      ...review,
-      images: Array.isArray(review.images) ? review.images : [],
-    }));
+    const reviewsWithParsedImages = reviews.map((review) =>
+      serializeReview(req, review),
+    );
 
     res.json(reviewsWithParsedImages);
   } catch (err) {
@@ -76,40 +118,69 @@ export const getReviews = async (req, res) => {
 // POST /api/user/reviews
 export const createReview = async (req, res) => {
   try {
-    const { field_id, customer_id, rating, comment, images } = req.body;
+    const userId = req.user?.id;
+    const { field_id, booking_id, rating, comment, images } = req.body;
+    const normalizedRating = Number.parseInt(rating, 10);
+    const normalizedComment = String(comment || "").trim();
+
+    if (!userId) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
 
     // Validate
-    if (!field_id || !customer_id || !rating || !comment) {
+    if (!booking_id || !normalizedRating || !normalizedComment) {
       return res.status(400).json({
         message:
-          "Missing required fields: field_id, customer_id, rating, comment",
+          "Missing required fields: booking_id, rating, comment",
       });
     }
 
-    if (rating < 1 || rating > 5) {
+    if (normalizedRating < 1 || normalizedRating > 5) {
       return res
         .status(400)
         .json({ message: "Rating must be between 1 and 5" });
     }
 
-    // Check if field exists
-    const [fieldCheck] = await sequelize.query(
-      "SELECT field_id FROM fields WHERE field_id = ? LIMIT 1",
-      { replacements: [field_id] },
+    const [bookingRows] = await sequelize.query(
+      `SELECT booking_id, field_id, customer_id, status, end_time
+       FROM bookings
+       WHERE booking_id = ?
+       LIMIT 1`,
+      { replacements: [booking_id] },
     );
+    const booking = bookingRows?.[0];
 
-    if (!fieldCheck || fieldCheck.length === 0) {
-      return res.status(400).json({ message: "Field not found" });
+    if (!booking) {
+      return res.status(404).json({ message: "Booking not found" });
     }
 
-    // Check if customer exists
-    const [customerCheck] = await sequelize.query(
-      "SELECT person_id FROM person WHERE person_id = ? LIMIT 1",
-      { replacements: [customer_id] },
+    if (Number(booking.customer_id) !== Number(userId)) {
+      return res.status(403).json({ message: "You cannot review this booking" });
+    }
+
+    if (field_id && Number(field_id) !== Number(booking.field_id)) {
+      return res.status(400).json({ message: "field_id does not match booking" });
+    }
+
+    if (!["confirmed", "approved", "completed"].includes(String(booking.status || "").toLowerCase())) {
+      return res.status(400).json({ message: "Booking is not eligible for review" });
+    }
+
+    const bookingEndTime = new Date(booking.end_time).getTime();
+    if (!Number.isFinite(bookingEndTime) || bookingEndTime >= Date.now()) {
+      return res.status(400).json({ message: "You can only review after the booking has ended" });
+    }
+
+    const [existingReviewRows] = await sequelize.query(
+      `SELECT review_id
+       FROM reviews
+       WHERE booking_id = ? AND customer_id = ?
+       LIMIT 1`,
+      { replacements: [booking_id, userId] },
     );
 
-    if (!customerCheck || customerCheck.length === 0) {
-      return res.status(400).json({ message: "Customer not found" });
+    if (existingReviewRows?.[0]) {
+      return res.status(409).json({ message: "You have already reviewed this booking" });
     }
 
     // Insert review
@@ -117,9 +188,18 @@ export const createReview = async (req, res) => {
       images && images.length > 0 ? JSON.stringify(images) : null;
 
     await sequelize.query(
-      `INSERT INTO reviews (field_id, customer_id, rating, comment, images)
-       VALUES (?, ?, ?, ?, ?)`,
-      { replacements: [field_id, customer_id, rating, comment, imagesJson] },
+      `INSERT INTO reviews (field_id, customer_id, booking_id, rating, comment, images)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      {
+        replacements: [
+          booking.field_id,
+          userId,
+          booking_id,
+          normalizedRating,
+          normalizedComment,
+          imagesJson,
+        ],
+      },
     );
 
     const [[{ review_id: reviewId }]] = await sequelize.query(
@@ -132,11 +212,13 @@ export const createReview = async (req, res) => {
         r.review_id,
         r.field_id,
         r.customer_id,
+        r.booking_id,
         r.rating,
         r.comment,
         r.images,
         r.created_at,
-        p.name as customer_name
+        ${CUSTOMER_NAME_SQL} as customer_name,
+        p.avatar_url as customer_avatar_url
       FROM reviews r
       LEFT JOIN person p ON r.customer_id = p.person_id
       WHERE r.review_id = ?
@@ -149,10 +231,7 @@ export const createReview = async (req, res) => {
     res.status(201).json({
       message: "Review created successfully",
       review: review
-        ? {
-            ...review,
-            images: Array.isArray(review.images) ? review.images : [],
-          }
+        ? serializeReview(req, review)
         : null,
     });
   } catch (err) {

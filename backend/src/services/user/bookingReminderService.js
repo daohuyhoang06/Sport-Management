@@ -123,24 +123,19 @@ const resolveReminderType = (booking, now) => {
   return null;
 };
 
-const buildReminderSubtitle = (booking) => {
+const buildReminderSubtitle = (booking, now) => {
   const fieldName = booking.field_name || DEFAULT_FIELD_NAME;
   const startTime = formatSlotTimeLabel(booking.reminder_start_time);
-  return `Còn khoảng 15 phút nữa đến lịch đặt sân ${fieldName} lúc ${startTime}.`;
+  const remainingMinutes = Math.max(1, diffMinutes(booking.reminder_start_time, now));
+  return `Chỉ còn ${remainingMinutes} phút nữa đến lịch thi đấu ${fieldName} lúc ${startTime}`;
 };
 
 const buildUrgentReminderSubtitle = (booking, now) => {
-  const remainingMinutes = Math.max(1, diffMinutes(booking.reminder_start_time, now));
-  return `Chỉ còn ${remainingMinutes} phút nữa đến lịch đặt sân của bạn.`;
+  return buildReminderSubtitle(booking, now);
 };
 
-const buildReminderContent = (booking, slots) => {
-  const fieldName = booking.field_name || DEFAULT_FIELD_NAME;
-  const slotSummary = buildBookingSlotSummary(slots, {
-    fallback: `${formatSlotTimeLabel(booking.reminder_start_time)} - ${formatSlotTimeLabel(booking.reminder_end_time)}`,
-  });
-
-  return `Sân: ${fieldName}. Khung giờ:\n${slotSummary}`;
+const buildReminderContent = (booking, slots, now) => {
+  return buildReminderSubtitle(booking, now);
 };
 
 const findUpcomingReminderBookings = async (now, lookaheadMinutes) => {
@@ -231,6 +226,7 @@ export const createUpcomingBookingReminderNotifications = async (
 
     const slots = slotMap.get(bookingId) || [];
     const isUrgent = reminderType === URGENT_REMINDER_TYPE;
+    const subtitle = isUrgent ? buildUrgentReminderSubtitle(booking, now) : buildReminderSubtitle(booking, now);
     const [result] = await sequelize.query(
       `INSERT IGNORE INTO notifications
         (user_id, type, section, title, subtitle, content, target_type, target_id, booking_id, field_id, is_read, metadata, created_at, updated_at)
@@ -240,8 +236,8 @@ export const createUpcomingBookingReminderNotifications = async (
           userId,
           reminderType,
           isUrgent ? URGENT_REMINDER_TITLE : REMINDER_TITLE,
-          isUrgent ? buildUrgentReminderSubtitle(booking, now) : buildReminderSubtitle(booking),
-          isUrgent ? buildUrgentReminderSubtitle(booking, now) : buildReminderContent(booking, slots),
+          subtitle,
+          subtitle,
           bookingId,
           bookingId,
           Number.isInteger(fieldId) ? fieldId : null,

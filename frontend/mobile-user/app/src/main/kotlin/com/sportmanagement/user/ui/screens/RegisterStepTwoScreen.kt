@@ -86,7 +86,7 @@ fun RegisterStepTwoScreen(
                 sports = sports,
                 selectedSports = selectedSports,
                 onToggleSport = onToggleSport,
-                modifier = Modifier.height(328.dp)
+                modifier = Modifier.fillMaxWidth()
             )
 
             Spacer(Modifier.height(14.dp))

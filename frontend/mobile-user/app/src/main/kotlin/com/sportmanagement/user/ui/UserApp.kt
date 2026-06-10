@@ -60,12 +60,15 @@ import com.sportmanagement.user.ui.screens.NotificationDetailInfo
 import com.sportmanagement.user.ui.screens.LoginScreen
 import com.sportmanagement.user.ui.screens.RegisterScreen
 import com.sportmanagement.user.ui.screens.InboxScreen
+import com.sportmanagement.user.ui.screens.InboxCategoryType
+import com.sportmanagement.user.ui.screens.ActivityInboxTab
 import com.sportmanagement.user.ui.screens.HomeSearchResultsScreen
 import com.sportmanagement.user.ui.screens.UserHomeScreen
 import com.sportmanagement.user.ui.screens.UserMapScreen
 import com.sportmanagement.user.ui.screens.UserProfileScreen
 import com.sportmanagement.user.ui.screens.SettingsScreen
 import com.sportmanagement.user.ui.screens.SupportFaqScreen
+import com.sportmanagement.user.ui.screens.FindOpponentDraft
 import com.sportmanagement.user.ui.share.FieldShareLink
 import com.sportmanagement.user.ui.share.FieldShareLink.MomoPaymentReturn
 import com.sportmanagement.user.ui.viewmodel.ChatbotViewModel
@@ -82,7 +85,8 @@ fun UserApp(
     incomingDeepLinkFieldId: Int? = null,
     onDeepLinkConsumed: () -> Unit = {},
     incomingMomoPaymentReturn: MomoPaymentReturn? = null,
-    onMomoPaymentReturnConsumed: () -> Unit = {}
+    onMomoPaymentReturnConsumed: () -> Unit = {},
+    showReviewDemoUi: Boolean = false
 ) {
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
@@ -111,10 +115,13 @@ fun UserApp(
     var showBookingDetailScreen by rememberSaveable { mutableStateOf(false) }
     var showConversationScreen by rememberSaveable { mutableStateOf(false) }
     var showNotificationDetailScreen by rememberSaveable { mutableStateOf(false) }
+    var selectedInboxCategory by rememberSaveable { mutableStateOf<InboxCategoryType?>(null) }
+    var selectedInboxActivityTab by rememberSaveable { mutableStateOf(ActivityInboxTab.Match) }
     var bookingContactName by rememberSaveable { mutableStateOf("") }
     var bookingContactPhone by rememberSaveable { mutableStateOf("") }
     var bookingNote by rememberSaveable { mutableStateOf("") }
     var bookingConfirmationData by remember { mutableStateOf<BookingConfirmationData?>(null) }
+    var bookingFindOpponentDraft by remember { mutableStateOf<FindOpponentDraft?>(null) }
     var selectedBookingField by remember { mutableStateOf<UserField?>(null) }
     var conversationInfo by remember { mutableStateOf<ConversationInfo?>(null) }
     var notificationDetailInfo by remember { mutableStateOf<NotificationDetailInfo?>(null) }
@@ -166,6 +173,7 @@ fun UserApp(
         bookingContactName = uiState.profile.name
         bookingContactPhone = uiState.profile.phone
         bookingNote = ""
+        bookingFindOpponentDraft = null
         showBookingPaymentScreen = false
         showBookingConfirmationScreen = false
         bookingConfirmationData = null
@@ -180,6 +188,33 @@ fun UserApp(
     }
     val shareField: (UserField) -> Unit = { field ->
         fieldToShare = field
+    }
+
+    val demoReviewBooking = remember {
+        com.sportmanagement.user.ui.screens.BookingInfo(
+            fieldName = "Sân bóng Bắc Từ Liêm Arena",
+            timeRange = "18:00 - 20:00",
+            dateLabel = "09/06/2026",
+            bookingCode = "#B20260609",
+            statusLabel = "Đã hoàn thành",
+            statusCode = "expired",
+            address = "Cầu Diễn, Bắc Từ Liêm, Hà Nội",
+            paymentMethod = "MoMo",
+            totalAmount = "600.000 VND",
+            transactionId = "MOMO20260609001",
+            orderId = "ORDER20260609001",
+            checkInCode = "Q7K2M9A1",
+            shareUrl = "https://sport-management.vn/l/booking/demo",
+            customerName = "Hoàng Nguyễn Văn",
+            customerPhone = "0901234567",
+            ownerPhone = "0987654321",
+            ownerNote = "Vui lòng đến trước 10 phút để check-in.",
+            fieldId = 101,
+            bookingId = 20260609,
+            notificationId = 998,
+            canReview = true,
+            reviewSubmitted = false
+        )
     }
 
     val selectedFieldShareUrl = remember(fieldToShare) {
@@ -247,6 +282,7 @@ fun UserApp(
         showBookingPaymentScreen = false
         selectedFieldId = null
         bookingConfirmationData = null
+        bookingFindOpponentDraft = null
         selectedBookingField = null
         resolvedUserViewModel.onTabSelected(UserTab.Home)
     }
@@ -434,6 +470,7 @@ fun UserApp(
                     userName = bookingContactName,
                     userPhone = bookingContactPhone,
                     bookingNote = bookingNote,
+                    findOpponentDraft = bookingFindOpponentDraft,
                     incomingMomoPaymentReturn = incomingMomoPaymentReturn,
                     onMomoPaymentReturnConsumed = onMomoPaymentReturnConsumed,
                     onBackClick = {
@@ -455,6 +492,7 @@ fun UserApp(
                         showBookingConfirmationScreen = false
                         showBookingScreen = false
                         bookingConfirmationData = null
+                        bookingFindOpponentDraft = null
                         selectedBookingField = null
                         closeHomeOverlayFlows()
                         resolvedUserViewModel.onTabSelected(UserTab.Inbox)
@@ -464,6 +502,7 @@ fun UserApp(
                         showBookingConfirmationScreen = false
                         showBookingScreen = false
                         bookingConfirmationData = null
+                        bookingFindOpponentDraft = null
                         selectedBookingField = null
                         closeHomeOverlayFlows()
                         resolvedUserViewModel.onTabSelected(UserTab.Home)
@@ -478,6 +517,7 @@ fun UserApp(
                     userName = bookingContactName,
                     userPhone = bookingContactPhone,
                     isLoggedIn = uiState.isAuthenticated,
+                    findOpponentDraft = bookingFindOpponentDraft,
                     onBackClick = {
                         showBookingConfirmationScreen = false
                         showBookingScreen = true
@@ -490,15 +530,47 @@ fun UserApp(
                         showBookingPaymentScreen = true
                     }
                 )
+            } else if (showReviewDemoUi) {
+                BookingDetailScreen(
+                    info = demoReviewBooking,
+                    isSubmittingReview = false,
+                    reviewSubmissionError = null,
+                    reviewSubmissionSuccessMessage = null,
+                    processingMatchRequestId = null,
+                    matchRequestActionError = null,
+                    matchRequestActionSuccessMessage = null,
+                    onBackClick = {},
+                    onSubmitReview = { _, _, _ -> },
+                    onReviewFeedbackConsumed = {},
+                    onAcceptMatchRequest = {},
+                    onRejectMatchRequest = {},
+                    onMatchRequestFeedbackConsumed = {},
+                    onOpenChat = {},
+                    autoOpenReviewSheet = true
+                )
             } else if (showBookingDetailScreen) {
                 when {
                     inboxUiState.activeBookingDetail != null -> {
                         BookingDetailScreen(
                             info = inboxUiState.activeBookingDetail!!,
+                            isSubmittingReview = inboxUiState.isSubmittingReview,
+                            reviewSubmissionError = inboxUiState.reviewSubmissionError,
+                            reviewSubmissionSuccessMessage = inboxUiState.reviewSubmissionSuccessMessage,
+                            processingMatchRequestId = inboxUiState.processingMatchRequestId,
+                            matchRequestActionError = inboxUiState.matchRequestActionError,
+                            matchRequestActionSuccessMessage = inboxUiState.matchRequestActionSuccessMessage,
+                            autoOpenReviewSheet = false,
                             onBackClick = {
                                 showBookingDetailScreen = false
                                 inboxViewModel.clearActiveBookingDetail()
                             },
+                            onSubmitReview = { rating, comment, imageUri ->
+                                inboxViewModel.submitReview(rating, comment, imageUri)
+                            },
+                            onReviewFeedbackConsumed = inboxViewModel::clearReviewSubmissionFeedback,
+                            onAcceptMatchRequest = { inboxViewModel.respondToMatchRequest(it, accept = true) },
+                            onRejectMatchRequest = { inboxViewModel.respondToMatchRequest(it, accept = false) },
+                            onMatchRequestFeedbackConsumed = inboxViewModel::clearMatchRequestActionFeedback,
                             onOpenChat = { info ->
                                 conversationInfo = info
                                 showBookingDetailScreen = false
@@ -581,6 +653,9 @@ fun UserApp(
                     padding = padding,
                     fields = uiState.favoriteFields,
                     favoriteFields = uiState.favoriteFields,
+                    fieldReviewStatsByFieldId = uiState.fieldReviewStatsByFieldId,
+                    fieldReviewsByFieldId = uiState.fieldReviewsByFieldId,
+                    loadingFieldReviewIds = uiState.loadingFieldReviewIds,
                     isLoading = false,
                     title = appContext.getString(R.string.favorite_title),
                     emptyTitle = "Chua co san yeu thich",
@@ -590,6 +665,9 @@ fun UserApp(
                     onBookFieldClick = startBookingFlow,
                     onFavoriteFieldClick = toggleFavoriteField,
                     onShareFieldClick = shareField,
+                    onFieldDetailOpened = { fieldId ->
+                        resolvedUserViewModel.loadFieldReviewData(fieldId, force = true)
+                    },
                     showFilterButton = false
                 )
             } else if (showConversationScreen && conversationInfo != null) {
@@ -611,23 +689,45 @@ fun UserApp(
                         inboxViewModel.clearConversationState()
                     }
                 )
-            } else if (showNotificationDetailScreen && notificationDetailInfo != null) {
-                NotificationDetailScreen(
-                    info = notificationDetailInfo!!,
-                    onBackClick = {
-                        showNotificationDetailScreen = false
-                        inboxViewModel.clearActiveNotificationDetail()
-                    },
-                    onOpenChat = { info ->
-                        conversationInfo = info
-                        showNotificationDetailScreen = false
-                        showConversationScreen = true
-                    },
-                    onPromotionAction = {
-                        showNotificationDetailScreen = false
-                        resolvedUserViewModel.onTabSelected(UserTab.Map)
+            } else if (showNotificationDetailScreen) {
+                if (inboxUiState.isLoadingNotificationDetail) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(MaterialTheme.colorScheme.background),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        AppRotatingLoadingIndicator(
+                            label = null
+                        )
                     }
-                )
+                } else if (notificationDetailInfo != null) {
+                    NotificationDetailScreen(
+                        info = notificationDetailInfo!!,
+                        onBackClick = {
+                            showNotificationDetailScreen = false
+                            inboxViewModel.clearActiveNotificationDetail()
+                        },
+                        onOpenChat = { info ->
+                            conversationInfo = info
+                            showNotificationDetailScreen = false
+                            showConversationScreen = true
+                        },
+                        onPromotionAction = {
+                            showNotificationDetailScreen = false
+                            resolvedUserViewModel.onTabSelected(UserTab.Map)
+                        },
+                        processingMatchRequestId = inboxUiState.processingMatchRequestId,
+                        matchRequestActionError = inboxUiState.matchRequestActionError,
+                        matchRequestActionSuccessMessage = inboxUiState.matchRequestActionSuccessMessage,
+                        onAcceptMatchRequest = { matchRequestId ->
+                            inboxViewModel.respondToNotificationMatchRequest(matchRequestId, accept = true)
+                        },
+                        onRejectMatchRequest = { matchRequestId ->
+                            inboxViewModel.respondToNotificationMatchRequest(matchRequestId, accept = false)
+                        }
+                    )
+                }
             } else if (showHomeSearchFilterScreen) {
                 HomeSearchFilterScreen(
                     filterOptions = uiState.homeSearchFilterOptions,
@@ -650,13 +750,14 @@ fun UserApp(
                         bookingConfirmationData = null
                         selectedBookingField = null
                     },
-                    onNextClick = { confirmationData ->
+                    onNextClick = { confirmationData, findOpponentDraft ->
                         val selectedField = selectedBookingField
                         bookingConfirmationData = confirmationData.copy(
                             fieldId = selectedField?.fieldId,
                             fieldName = selectedField?.name.orEmpty(),
                             fieldAddress = selectedField?.location.orEmpty()
                         )
+                        bookingFindOpponentDraft = findOpponentDraft
                         showBookingScreen = false
                         showBookingPaymentScreen = false
                         showBookingConfirmationScreen = true
@@ -695,6 +796,9 @@ fun UserApp(
                                     padding = padding,
                                     fields = uiState.homeFields,
                                     favoriteFields = uiState.favoriteFields,
+                                    fieldReviewStatsByFieldId = uiState.fieldReviewStatsByFieldId,
+                                    fieldReviewsByFieldId = uiState.fieldReviewsByFieldId,
+                                    loadingFieldReviewIds = uiState.loadingFieldReviewIds,
                                     isLoading = uiState.isHomeLoading,
                                     title = appContext.getString(R.string.home_search_results_title),
                                     emptyTitle = appContext.getString(R.string.home_search_results_empty_title),
@@ -705,13 +809,19 @@ fun UserApp(
                                     },
                                     onBookFieldClick = startBookingFlow,
                                     onFavoriteFieldClick = toggleFavoriteField,
-                                    onShareFieldClick = shareField
+                                    onShareFieldClick = shareField,
+                                    onFieldDetailOpened = { fieldId ->
+                                        resolvedUserViewModel.loadFieldReviewData(fieldId, force = true)
+                                    }
                                 )
                             } else if (showFavoriteFieldsScreen) {
                                 HomeSearchResultsScreen(
                                     padding = padding,
                                     fields = uiState.favoriteFields,
                                     favoriteFields = uiState.favoriteFields,
+                                    fieldReviewStatsByFieldId = uiState.fieldReviewStatsByFieldId,
+                                    fieldReviewsByFieldId = uiState.fieldReviewsByFieldId,
+                                    loadingFieldReviewIds = uiState.loadingFieldReviewIds,
                                     isLoading = false,
                                     title = appContext.getString(R.string.favorite_title),
                                     emptyTitle = "Chua co san yeu thich",
@@ -721,6 +831,9 @@ fun UserApp(
                                     onBookFieldClick = startBookingFlow,
                                     onFavoriteFieldClick = toggleFavoriteField,
                                     onShareFieldClick = shareField,
+                                    onFieldDetailOpened = { fieldId ->
+                                        resolvedUserViewModel.loadFieldReviewData(fieldId, force = true)
+                                    },
                                     showFilterButton = false
                                 )
                             } else {
@@ -728,6 +841,9 @@ fun UserApp(
                                     padding = padding,
                                     fields = uiState.homeFields,
                                     favoriteFields = uiState.favoriteFields,
+                                    fieldReviewStatsByFieldId = uiState.fieldReviewStatsByFieldId,
+                                    fieldReviewsByFieldId = uiState.fieldReviewsByFieldId,
+                                    loadingFieldReviewIds = uiState.loadingFieldReviewIds,
                                     sportCategories = uiState.sportCategories,
                                     userName = uiState.profile.name,
                                     userAvatarUrl = uiState.profile.avatarUrl,
@@ -787,6 +903,9 @@ fun UserApp(
                                     onBookFieldClick = startBookingFlow,
                                     onFavoriteFieldClick = toggleFavoriteField,
                                     onShareFieldClick = shareField,
+                                    onFieldDetailOpened = { fieldId ->
+                                        resolvedUserViewModel.loadFieldReviewData(fieldId, force = true)
+                                    },
                                     deepLinkFieldIdToOpen = pendingDeepLinkFieldId,
                                     onDeepLinkFieldConsumed = {
                                         pendingDeepLinkFieldId = null
@@ -799,6 +918,9 @@ fun UserApp(
                                 sportCategories = uiState.sportCategories,
                                 nearby = uiState.nearbyFields,
                                 favoriteFields = uiState.favoriteFields,
+                                fieldReviewStatsByFieldId = uiState.fieldReviewStatsByFieldId,
+                                fieldReviewsByFieldId = uiState.fieldReviewsByFieldId,
+                                loadingFieldReviewIds = uiState.loadingFieldReviewIds,
                                 searchResults = uiState.fieldSearchResults,
                                 recentSearches = uiState.recentFieldSearches,
                                 isSearchLoading = uiState.isFieldSearchLoading,
@@ -828,13 +950,20 @@ fun UserApp(
                                 },
                                 onBookFieldClick = startBookingFlow,
                                 onFavoriteFieldClick = toggleFavoriteField,
-                                onShareFieldClick = shareField
+                                onShareFieldClick = shareField,
+                                onFieldDetailOpened = { fieldId ->
+                                    resolvedUserViewModel.loadFieldReviewData(fieldId, force = true)
+                                }
                             )
                             UserTab.Inbox -> InboxScreen(
                                 padding = padding,
                                 sections = inboxUiState.sections,
                                 isLoading = inboxUiState.isLoadingInbox,
                                 errorMessage = inboxUiState.inboxError,
+                                selectedCategory = selectedInboxCategory,
+                                selectedActivityTab = selectedInboxActivityTab,
+                                onSelectedCategoryChange = { selectedInboxCategory = it },
+                                onSelectedActivityTabChange = { selectedInboxActivityTab = it },
                                 onRefresh = { inboxViewModel.refreshInbox() },
                                 onMarkAllRead = inboxViewModel::markAllRead,
                                 onNotificationOpened = inboxViewModel::markNotificationRead,

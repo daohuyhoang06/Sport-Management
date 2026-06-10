@@ -1,9 +1,23 @@
 import sequelize from "../../config/database.js";
+import { ensureReviewReminderNotifications } from "../../services/user/bookingNotificationService.js";
 
 const clampNumber = (value, fallback, min, max) => {
   const parsed = Number.parseInt(value, 10);
   if (Number.isNaN(parsed)) return fallback;
   return Math.min(Math.max(parsed, min), max);
+};
+
+const normalizeSection = (value) => {
+  if (!value) return null;
+  const normalized = String(value).trim().toLowerCase();
+  if (
+    normalized === "priority" ||
+    normalized === "messages" ||
+    normalized === "activity"
+  ) {
+    return normalized;
+  }
+  return null;
 };
 
 const REMINDER_NOTIFICATION_TYPES = new Set([
@@ -21,8 +35,13 @@ const BOOKING_NOTIFICATION_TYPES = new Set([
 const resolveNotificationSection = (row) => {
   const type = String(row.type || "").trim().toLowerCase();
   if (REMINDER_NOTIFICATION_TYPES.has(type)) return "activity";
-  if (BOOKING_NOTIFICATION_TYPES.has(type)) return "priority";
-  return row.section;
+  if (BOOKING_NOTIFICATION_TYPES.has(type) || type === "review_reminder") {
+    return "priority";
+  }
+
+  const explicit = normalizeSection(row.section);
+  if (explicit) return explicit;
+  return "activity";
 };
 
 const mapNotificationRow = (row) => ({
@@ -57,6 +76,60 @@ const mapNotificationDetail = (row) => ({
   metadata: row.metadata || null,
 });
 
+const hydrateMatchRequestTarget = async (notification, userId) => {
+  if (!notification || notification.type !== "match_request_received") {
+    return notification;
+  }
+
+  if (
+    notification.target_type === "match_request" &&
+    Number.parseInt(notification.target_id, 10) > 0
+  ) {
+    return notification;
+  }
+
+  if (!notification.booking_id) {
+    return notification;
+  }
+
+  const [rows] = await sequelize.query(
+    `SELECT
+      mr.match_request_id
+     FROM match_requests mr
+     INNER JOIN match_posts mp ON mp.match_post_id = mr.match_post_id
+     WHERE mp.booking_id = ?
+       AND mp.owner_user_id = ?
+     ORDER BY
+       CASE mr.status
+         WHEN 'PENDING' THEN 0
+         WHEN 'ACCEPTED' THEN 1
+         ELSE 2
+       END,
+       mr.created_at DESC,
+       mr.match_request_id DESC
+     LIMIT 1`,
+    { replacements: [notification.booking_id, userId] },
+  );
+
+  const resolved = rows?.[0];
+  if (!resolved?.match_request_id) {
+    return notification;
+  }
+
+  return {
+    ...notification,
+    target_type: "match_request",
+    target_id: Number(resolved.match_request_id),
+  };
+};
+
+const hydrateMatchRequestTargets = async (notifications, userId) =>
+  Promise.all(
+    (notifications || []).map((notification) =>
+      hydrateMatchRequestTarget(notification, userId),
+    ),
+  );
+
 // GET /api/user/notifications
 export const listNotifications = async (req, res) => {
   try {
@@ -69,6 +142,8 @@ export const listNotifications = async (req, res) => {
         message: "Unauthorized",
       });
     }
+
+    await ensureReviewReminderNotifications(userId);
 
     const safePage = clampNumber(page, 1, 1, 1000000);
     const safeLimit = clampNumber(limit, 20, 1, 100);
@@ -94,15 +169,32 @@ export const listNotifications = async (req, res) => {
        FROM notifications n
        LEFT JOIN bookings b ON n.booking_id = b.booking_id
        WHERE ${whereSql}
-        AND (
-          n.type NOT IN ('booking_success', 'upcoming_match', 'booking_reminder', 'booking_reminder_urgent')
-          OR (
-            n.booking_id IS NOT NULL
-            AND b.booking_id IS NOT NULL
-            AND b.customer_id = n.user_id
-            AND b.status IN ('confirmed', 'approved', 'completed', 'paid')
-          )
-        )`,
+         AND (
+           n.type NOT IN ('booking_success', 'upcoming_match', 'booking_reminder', 'booking_reminder_urgent')
+           OR (
+             n.booking_id IS NOT NULL
+             AND b.booking_id IS NOT NULL
+             AND b.customer_id = n.user_id
+             AND b.status IN ('confirmed', 'approved', 'completed', 'paid')
+           )
+         )
+         AND (
+           n.type <> 'review_reminder'
+           OR (
+             n.booking_id IS NOT NULL
+             AND b.booking_id IS NOT NULL
+             AND b.customer_id = n.user_id
+             AND b.status IN ('confirmed', 'approved', 'completed')
+             AND b.end_time IS NOT NULL
+             AND b.end_time < NOW()
+             AND NOT EXISTS (
+               SELECT 1
+               FROM reviews r
+               WHERE r.booking_id = n.booking_id
+                 AND r.customer_id = n.user_id
+             )
+           )
+         )`,
       { replacements },
     );
     const total = Number(countRows?.[0]?.total || 0);
@@ -135,15 +227,33 @@ export const listNotifications = async (req, res) => {
             AND b.status IN ('confirmed', 'approved', 'completed', 'paid')
           )
         )
+        AND (
+          n.type <> 'review_reminder'
+          OR (
+            n.booking_id IS NOT NULL
+            AND b.booking_id IS NOT NULL
+            AND b.customer_id = n.user_id
+            AND b.status IN ('confirmed', 'approved', 'completed')
+            AND b.end_time IS NOT NULL
+            AND b.end_time < NOW()
+            AND NOT EXISTS (
+              SELECT 1
+              FROM reviews r
+              WHERE r.booking_id = n.booking_id
+                AND r.customer_id = n.user_id
+            )
+          )
+        )
       ORDER BY n.created_at DESC
       LIMIT ? OFFSET ?`,
       { replacements: [...replacements, safeLimit, offset] },
     );
 
+    const hydratedRows = await hydrateMatchRequestTargets(rows, userId);
     res.json({
       success: true,
       data: {
-        items: rows.map(mapNotificationRow),
+        items: hydratedRows.map(mapNotificationRow),
         page: safePage,
         limit: safeLimit,
         total,
@@ -179,6 +289,8 @@ export const getNotificationDetail = async (req, res) => {
       });
     }
 
+    await ensureReviewReminderNotifications(userId);
+
     const [rows] = await sequelize.query(
       `SELECT
         n.id,
@@ -207,11 +319,28 @@ export const getNotificationDetail = async (req, res) => {
             AND b.status IN ('confirmed', 'approved', 'completed', 'paid')
           )
         )
+        AND (
+          n.type <> 'review_reminder'
+          OR (
+            n.booking_id IS NOT NULL
+            AND b.booking_id IS NOT NULL
+            AND b.customer_id = n.user_id
+            AND b.status IN ('confirmed', 'approved', 'completed')
+            AND b.end_time IS NOT NULL
+            AND b.end_time < NOW()
+            AND NOT EXISTS (
+              SELECT 1
+              FROM reviews r
+              WHERE r.booking_id = n.booking_id
+                AND r.customer_id = n.user_id
+            )
+          )
+        )
       LIMIT 1`,
       { replacements: [id, userId] },
     );
 
-    const notification = rows?.[0];
+    let notification = rows?.[0];
     if (!notification) {
       return res.status(404).json({
         success: false,
@@ -219,6 +348,7 @@ export const getNotificationDetail = async (req, res) => {
       });
     }
 
+    notification = await hydrateMatchRequestTarget(notification, userId);
     if (!notification.is_read) {
       await sequelize.query(
         `UPDATE notifications
