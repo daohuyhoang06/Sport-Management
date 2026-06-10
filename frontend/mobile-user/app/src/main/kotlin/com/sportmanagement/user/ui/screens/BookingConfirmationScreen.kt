@@ -216,7 +216,7 @@ fun BookingConfirmationScreen(
                         icon = Icons.Default.Map
                     ) {
                         InfoLine(
-                            label = "Hình thức",
+                            label = "Hình thức: ",
                             value = "Tìm đối thủ"
                         )
                     }

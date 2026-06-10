@@ -374,6 +374,7 @@ class UserApi(
         matchPostId: Int,
         teamName: String,
         playerCount: Int,
+        level: String,
         message: String
     ): MatchRequestResultDto = withContext(Dispatchers.IO) {
         val root = postJsonWithResponse(
@@ -382,6 +383,7 @@ class UserApi(
             JSONObject().apply {
                 put("team_name", teamName)
                 put("player_count", playerCount)
+                put("level", level)
                 put("message", message)
             }
         )

@@ -90,6 +90,7 @@ fun BookingScheduleScreen(
     var requestTeamName by remember { mutableStateOf("") }
     var requestPlayerCount by remember { mutableStateOf("") }
     var requestMessage by remember { mutableStateOf("") }
+    var requestLevel by remember { mutableStateOf("BEGINNER") }
     var isSubmittingMatchRequest by remember { mutableStateOf(false) }
     var pendingConfirmationData by remember { mutableStateOf<BookingConfirmationData?>(null) }
     var showBookingModeDialog by remember { mutableStateOf(false) }
@@ -283,6 +284,7 @@ fun BookingScheduleScreen(
                 requestTeamName = ""
                 requestPlayerCount = ""
                 requestMessage = ""
+                requestLevel = "BEGINNER"
             }
         )
     }
@@ -308,10 +310,12 @@ fun BookingScheduleScreen(
             teamName = requestTeamName,
             playerCount = requestPlayerCount,
             message = requestMessage,
+            selectedLevel = requestLevel,
             isSubmitting = isSubmittingMatchRequest,
             onTeamNameChange = { requestTeamName = it },
             onPlayerCountChange = { requestPlayerCount = it.filter(Char::isDigit) },
             onMessageChange = { requestMessage = it },
+            onLevelSelected = { requestLevel = it },
             onDismiss = {
                 showJoinDialog = false
                 selectedMatchPost = null
@@ -344,6 +348,7 @@ fun BookingScheduleScreen(
                                 matchPostId = activeMatchPost.matchPostId,
                                 teamName = requestTeamName.trim(),
                                 playerCount = playerCount,
+                                level = requestLevel,
                                 message = requestMessage.trim()
                             )
                         }.onSuccess {
@@ -675,10 +680,9 @@ private fun MatchPostDetailDialog(
                 item { MatchInfoLine("Trình độ", post.levelLabel) }
                 item { MatchInfoLine("Khung giờ", "${post.startTime} - ${post.endTime}") }
                 item {
-                    Text(
-                        text = if (post.description.isBlank()) "Chưa có mô tả thêm." else post.description,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    MatchInfoLine(
+                        label = "Mô tả",
+                        value = if (post.description.isBlank()) "Chưa có mô tả thêm." else post.description
                     )
                 }
                 item {
@@ -712,14 +716,23 @@ private fun MatchRequestDialog(
     teamName: String,
     playerCount: String,
     message: String,
+    selectedLevel: String,
     isSubmitting: Boolean,
     onTeamNameChange: (String) -> Unit,
     onPlayerCountChange: (String) -> Unit,
     onMessageChange: (String) -> Unit,
+    onLevelSelected: (String) -> Unit,
     onDismiss: () -> Unit,
     onBack: () -> Unit,
     onSubmit: () -> Unit
 ) {
+    val levels = listOf(
+        "BEGINNER" to "Mới chơi",
+        "INTERMEDIATE" to "Trung bình",
+        "ADVANCED" to "Khá",
+        "PRO" to "Chuyên nghiệp"
+    )
+
     Dialog(onDismissRequest = onDismiss) {
         Surface(
             shape = androidx.compose.foundation.shape.RoundedCornerShape(AppCardCornerRadius),
@@ -731,7 +744,7 @@ private fun MatchRequestDialog(
             ) {
                 item {
                     Text(
-                        text = "Gửi yêu cầu ghép trận",
+                        text = "Thông tin đội",
                         style = MaterialTheme.typography.titleMedium,
                         color = MaterialTheme.colorScheme.onSurface
                     )
@@ -764,10 +777,46 @@ private fun MatchRequestDialog(
                     )
                 }
                 item {
+                    Text(
+                        text = "Trình độ",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+                item {
+                    androidx.compose.foundation.layout.FlowRow(
+                        horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp),
+                        verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)
+                    ) {
+                        levels.forEach { (value, label) ->
+                            Surface(
+                                onClick = { onLevelSelected(value) },
+                                shape = androidx.compose.foundation.shape.RoundedCornerShape(AppCtaCornerRadius),
+                                color = if (selectedLevel == value) {
+                                    MaterialTheme.colorScheme.primaryContainer
+                                } else {
+                                    MaterialTheme.colorScheme.surfaceContainerLow
+                                }
+                            ) {
+                                Text(
+                                    text = label,
+                                    color = if (selectedLevel == value) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    },
+                                    style = MaterialTheme.typography.labelLarge,
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+                item {
                     OutlinedTextField(
                         value = message,
                         onValueChange = onMessageChange,
-                        label = { Text("Lời nhắn") },
+                        label = { Text("Mô tả") },
                         modifier = Modifier.fillMaxWidth(),
                         minLines = 3,
                         enabled = !isSubmitting

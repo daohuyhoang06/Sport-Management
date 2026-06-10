@@ -133,8 +133,8 @@ export const ensureReviewReminderNotifications = async (userId) => {
         replacements: [
           normalizedUserId,
           `${REVIEW_REMINDER_TITLE} - ${booking.field_name || DEFAULT_FIELD_NAME}`,
-          `Booking #B${bookingId} da ket thuc`,
-          `Ban vua da xong tai ${booking.field_name || DEFAULT_FIELD_NAME}. Khung gio:\n${slotSummary}\nHay de lai danh gia cua ban.`,
+          `Bạn vừa thi đấu xong tại ${booking.field_name || DEFAULT_FIELD_NAME}. Hãy để lại đánh giá của bạn.`,
+          `Bạn vừa thi đấu xong tại ${booking.field_name || DEFAULT_FIELD_NAME}. Hãy để lại đánh giá của bạn.`,
           bookingId,
           bookingId,
           booking.field_id,

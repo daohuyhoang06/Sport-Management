@@ -167,6 +167,7 @@ export const ensureBookingShareAccess = async (
 const fetchBookingShareRow = async ({
   whereClause,
   replacements,
+  viewerUserId = null,
   transaction = null,
 }) => {
   const [rows] = await sequelize.query(
@@ -274,7 +275,10 @@ const fetchBookingShareRow = async ({
     effectiveEndTime != null &&
     Number.isFinite(new Date(effectiveEndTime).getTime()) &&
     new Date(effectiveEndTime).getTime() < Date.now();
+  const isViewerCustomer =
+    viewerUserId == null || Number(viewerUserId) === Number(row.customer_id);
   const canReview =
+    isViewerCustomer &&
     hasEnded &&
     !hasReview &&
     ["confirmed", "approved", "completed"].includes(
@@ -282,7 +286,7 @@ const fetchBookingShareRow = async ({
     );
 
   const matchContext = await getBookingMatchContext(row.booking_id, {
-    viewerUserId: row.customer_id,
+    viewerUserId: viewerUserId ?? row.customer_id,
     transaction,
   });
 
@@ -342,9 +346,23 @@ export const getBookingShareDetailByBookingId = async (
 ) =>
   fetchBookingShareRow({
     whereClause: options.userId
-      ? "b.booking_id = ? AND b.customer_id = ?"
+      ? `b.booking_id = ?
+         AND (
+           b.customer_id = ?
+           OR EXISTS (
+             SELECT 1
+             FROM match_requests mr
+             INNER JOIN match_posts mp ON mp.match_post_id = mr.match_post_id
+             WHERE mr.booking_id = b.booking_id
+               AND mr.requester_user_id = ?
+               AND mr.status = 'ACCEPTED'
+           )
+         )`
       : "b.booking_id = ?",
-    replacements: options.userId ? [bookingId, options.userId] : [bookingId],
+    replacements: options.userId
+      ? [bookingId, options.userId, options.userId]
+      : [bookingId],
+    viewerUserId: options.userId ?? null,
     transaction: options.transaction,
   });
 

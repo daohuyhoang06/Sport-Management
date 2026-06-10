@@ -279,6 +279,7 @@
     <string name="share_sheet_facebook">Facebook</string>
     <string name="share_sheet_gmail">Gmail</string>
     <string name="share_sheet_more">More</string>
+
     <string name="share_text_prefix">Chia sẻ từ %1$s</string>
     <string name="share_text_field_label">Sân: %1$s</string>
     <string name="share_text_location_label">Địa chỉ: %1$s</string>

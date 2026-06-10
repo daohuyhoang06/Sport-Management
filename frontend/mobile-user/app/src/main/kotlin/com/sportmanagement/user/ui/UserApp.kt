@@ -60,6 +60,8 @@ import com.sportmanagement.user.ui.screens.NotificationDetailInfo
 import com.sportmanagement.user.ui.screens.LoginScreen
 import com.sportmanagement.user.ui.screens.RegisterScreen
 import com.sportmanagement.user.ui.screens.InboxScreen
+import com.sportmanagement.user.ui.screens.InboxCategoryType
+import com.sportmanagement.user.ui.screens.ActivityInboxTab
 import com.sportmanagement.user.ui.screens.HomeSearchResultsScreen
 import com.sportmanagement.user.ui.screens.UserHomeScreen
 import com.sportmanagement.user.ui.screens.UserMapScreen
@@ -113,6 +115,8 @@ fun UserApp(
     var showBookingDetailScreen by rememberSaveable { mutableStateOf(false) }
     var showConversationScreen by rememberSaveable { mutableStateOf(false) }
     var showNotificationDetailScreen by rememberSaveable { mutableStateOf(false) }
+    var selectedInboxCategory by rememberSaveable { mutableStateOf<InboxCategoryType?>(null) }
+    var selectedInboxActivityTab by rememberSaveable { mutableStateOf(ActivityInboxTab.Match) }
     var bookingContactName by rememberSaveable { mutableStateOf("") }
     var bookingContactPhone by rememberSaveable { mutableStateOf("") }
     var bookingNote by rememberSaveable { mutableStateOf("") }
@@ -677,32 +681,45 @@ fun UserApp(
                         inboxViewModel.clearConversationState()
                     }
                 )
-            } else if (showNotificationDetailScreen && notificationDetailInfo != null) {
-                NotificationDetailScreen(
-                    info = notificationDetailInfo!!,
-                    onBackClick = {
-                        showNotificationDetailScreen = false
-                        inboxViewModel.clearActiveNotificationDetail()
-                    },
-                    onOpenChat = { info ->
-                        conversationInfo = info
-                        showNotificationDetailScreen = false
-                        showConversationScreen = true
-                    },
-                    onPromotionAction = {
-                        showNotificationDetailScreen = false
-                        resolvedUserViewModel.onTabSelected(UserTab.Map)
-                    },
-                    processingMatchRequestId = inboxUiState.processingMatchRequestId,
-                    matchRequestActionError = inboxUiState.matchRequestActionError,
-                    matchRequestActionSuccessMessage = inboxUiState.matchRequestActionSuccessMessage,
-                    onAcceptMatchRequest = { matchRequestId ->
-                        inboxViewModel.respondToNotificationMatchRequest(matchRequestId, accept = true)
-                    },
-                    onRejectMatchRequest = { matchRequestId ->
-                        inboxViewModel.respondToNotificationMatchRequest(matchRequestId, accept = false)
+            } else if (showNotificationDetailScreen) {
+                if (inboxUiState.isLoadingNotificationDetail) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(MaterialTheme.colorScheme.background),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        AppRotatingLoadingIndicator(
+                            label = null
+                        )
                     }
-                )
+                } else if (notificationDetailInfo != null) {
+                    NotificationDetailScreen(
+                        info = notificationDetailInfo!!,
+                        onBackClick = {
+                            showNotificationDetailScreen = false
+                            inboxViewModel.clearActiveNotificationDetail()
+                        },
+                        onOpenChat = { info ->
+                            conversationInfo = info
+                            showNotificationDetailScreen = false
+                            showConversationScreen = true
+                        },
+                        onPromotionAction = {
+                            showNotificationDetailScreen = false
+                            resolvedUserViewModel.onTabSelected(UserTab.Map)
+                        },
+                        processingMatchRequestId = inboxUiState.processingMatchRequestId,
+                        matchRequestActionError = inboxUiState.matchRequestActionError,
+                        matchRequestActionSuccessMessage = inboxUiState.matchRequestActionSuccessMessage,
+                        onAcceptMatchRequest = { matchRequestId ->
+                            inboxViewModel.respondToNotificationMatchRequest(matchRequestId, accept = true)
+                        },
+                        onRejectMatchRequest = { matchRequestId ->
+                            inboxViewModel.respondToNotificationMatchRequest(matchRequestId, accept = false)
+                        }
+                    )
+                }
             } else if (showHomeSearchFilterScreen) {
                 HomeSearchFilterScreen(
                     filterOptions = uiState.homeSearchFilterOptions,
@@ -911,6 +928,10 @@ fun UserApp(
                                 sections = inboxUiState.sections,
                                 isLoading = inboxUiState.isLoadingInbox,
                                 errorMessage = inboxUiState.inboxError,
+                                selectedCategory = selectedInboxCategory,
+                                selectedActivityTab = selectedInboxActivityTab,
+                                onSelectedCategoryChange = { selectedInboxCategory = it },
+                                onSelectedActivityTabChange = { selectedInboxActivityTab = it },
                                 onRefresh = { inboxViewModel.refreshInbox() },
                                 onMarkAllRead = inboxViewModel::markAllRead,
                                 onNotificationOpened = inboxViewModel::markNotificationRead,

@@ -250,10 +250,12 @@ export const createMatchRequestForPost = async ({
   requesterUserId,
   teamName,
   playerCount,
+  level,
   message,
 }) => {
   const normalizedTeamName = normalizeText(teamName, 120);
   const normalizedPlayerCount = Number.parseInt(playerCount, 10);
+  const normalizedLevel = normalizeLevel(level);
   const normalizedMessage = normalizeText(message, 1000);
 
   if (!normalizedTeamName) {
@@ -269,6 +271,12 @@ export const createMatchRequestForPost = async ({
   ) {
     const error = new Error("INVALID_REQUEST_PLAYER_COUNT");
     error.code = "INVALID_REQUEST_PLAYER_COUNT";
+    throw error;
+  }
+
+  if (!normalizedLevel) {
+    const error = new Error("INVALID_MATCH_LEVEL");
+    error.code = "INVALID_MATCH_LEVEL";
     throw error;
   }
 
@@ -318,12 +326,13 @@ export const createMatchRequestForPost = async ({
     if (existing) {
       await sequelize.query(
         `UPDATE match_requests
-         SET team_name = ?, player_count = ?, message = ?, status = 'PENDING', updated_at = CURRENT_TIMESTAMP
+         SET team_name = ?, player_count = ?, level = ?, message = ?, status = 'PENDING', updated_at = CURRENT_TIMESTAMP
          WHERE match_request_id = ?`,
         {
           replacements: [
             normalizedTeamName,
             normalizedPlayerCount,
+            normalizedLevel,
             normalizedMessage || null,
             existing.match_request_id,
           ],
@@ -333,8 +342,8 @@ export const createMatchRequestForPost = async ({
     } else {
       await sequelize.query(
         `INSERT INTO match_requests
-          (match_post_id, booking_id, requester_user_id, team_name, player_count, message, status, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, 'PENDING', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+          (match_post_id, booking_id, requester_user_id, team_name, player_count, level, message, status, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
         {
           replacements: [
             matchPostId,
@@ -342,6 +351,7 @@ export const createMatchRequestForPost = async ({
             requesterUserId,
             normalizedTeamName,
             normalizedPlayerCount,
+            normalizedLevel,
             normalizedMessage || null,
           ],
           transaction,
@@ -357,10 +367,13 @@ export const createMatchRequestForPost = async ({
         mr.requester_user_id,
         mr.team_name,
         mr.player_count,
+        mr.level,
         mr.message,
         mr.status,
-        mr.created_at
+        mr.created_at,
+        p.username AS requester_username
        FROM match_requests mr
+       LEFT JOIN person p ON p.person_id = mr.requester_user_id
        WHERE mr.match_post_id = ? AND mr.requester_user_id = ?
        LIMIT 1`,
       {
@@ -382,6 +395,7 @@ export const createMatchRequestForPost = async ({
       metadata: {
         icon: "match_request_received",
         matchRequestId: Number(requestRows?.[0]?.match_request_id || 0),
+        peerUserId: Number(requesterUserId),
       },
       transaction,
     });
@@ -395,12 +409,77 @@ const mapMatchRequestRow = (row, statusOverride = null) => ({
   matchPostId: Number(row.match_post_id),
   bookingId: Number(row.booking_id),
   requesterUserId: Number(row.requester_user_id),
+  requesterUsername: row.requester_username || "",
   teamName: row.team_name || "",
   playerCount: Number(row.player_count || 0),
+  level: row.level || "INTERMEDIATE",
+  levelLabel: formatLevelLabel(row.level),
   message: row.message || "",
   status: statusOverride || row.status || "PENDING",
   createdAt: row.created_at,
 });
+
+const ensurePeerConversationForAcceptedMatch = async ({
+  bookingId,
+  ownerUserId,
+  requesterUserId,
+  transaction,
+}) => {
+  const normalizedBookingId = Number(bookingId);
+  const normalizedOwnerUserId = Number(ownerUserId);
+  const normalizedRequesterUserId = Number(requesterUserId);
+
+  if (
+    !Number.isInteger(normalizedBookingId) ||
+    !Number.isInteger(normalizedOwnerUserId) ||
+    !Number.isInteger(normalizedRequesterUserId)
+  ) {
+    return null;
+  }
+
+  const [existingRows] = await sequelize.query(
+    `SELECT chat_id
+     FROM chats
+     WHERE booking_id = ?
+       AND field_id IS NULL
+       AND (
+         (user_id = ? AND manager_id = ?)
+         OR (user_id = ? AND manager_id = ?)
+       )
+     ORDER BY chat_id DESC
+     LIMIT 1`,
+    {
+      replacements: [
+        normalizedBookingId,
+        normalizedOwnerUserId,
+        normalizedRequesterUserId,
+        normalizedRequesterUserId,
+        normalizedOwnerUserId,
+      ],
+      transaction,
+    },
+  );
+
+  if (existingRows?.[0]?.chat_id) {
+    return Number(existingRows[0].chat_id);
+  }
+
+  const [insertResult] = await sequelize.query(
+    `INSERT INTO chats
+      (user_id, manager_id, field_id, booking_id, created_at, updated_at)
+     VALUES (?, ?, NULL, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+    {
+      replacements: [
+        normalizedOwnerUserId,
+        normalizedRequesterUserId,
+        normalizedBookingId,
+      ],
+      transaction,
+    },
+  );
+
+  return insertResult?.insertId ? Number(insertResult.insertId) : null;
+};
 
 const getMatchRequestForOwnerAction = async ({
   matchRequestId,
@@ -415,9 +494,11 @@ const getMatchRequestForOwnerAction = async ({
       mr.requester_user_id,
       mr.team_name,
       mr.player_count,
+      mr.level,
       mr.message,
       mr.status,
       mr.created_at,
+      p.username AS requester_username,
       mp.field_id,
       mp.owner_user_id,
       mp.team_name AS owner_team_name,
@@ -425,6 +506,7 @@ const getMatchRequestForOwnerAction = async ({
      FROM match_requests mr
      INNER JOIN match_posts mp ON mp.match_post_id = mr.match_post_id
      INNER JOIN bookings b ON b.booking_id = mp.booking_id
+     LEFT JOIN person p ON p.person_id = mr.requester_user_id
      WHERE mr.match_request_id = ?
        AND mp.owner_user_id = ?
        AND ${ACTIVE_BOOKING_STATUS_CONDITION}
@@ -456,6 +538,7 @@ const notifyRejectedRequests = async ({
   requests,
   fieldId,
   ownerTeamName,
+  ownerUserId,
   transaction,
 }) => {
   for (const request of requests) {
@@ -469,7 +552,10 @@ const notifyRejectedRequests = async ({
       targetId: Number(request.match_request_id),
       bookingId: Number(request.booking_id),
       fieldId: Number(fieldId),
-      metadata: { icon: "match_request_rejected" },
+      metadata: {
+        icon: "match_request_rejected",
+        peerUserId: Number(ownerUserId),
+      },
       transaction,
     });
   }
@@ -573,6 +659,7 @@ export const acceptMatchRequest = async ({ matchRequestId, ownerUserId }) =>
         requests: otherRows,
         fieldId: request.field_id,
         ownerTeamName: request.owner_team_name,
+        ownerUserId: request.owner_user_id,
         transaction,
       });
     }
@@ -584,6 +671,13 @@ export const acceptMatchRequest = async ({ matchRequestId, ownerUserId }) =>
       bookingId: Number(request.booking_id),
       requesterUserId: Number(request.requester_user_id),
       autoRejectedCount: otherRows.length,
+    });
+
+    await ensurePeerConversationForAcceptedMatch({
+      bookingId: Number(request.booking_id),
+      ownerUserId: Number(ownerUserId),
+      requesterUserId: Number(request.requester_user_id),
+      transaction,
     });
 
     await insertNotification({
@@ -599,6 +693,7 @@ export const acceptMatchRequest = async ({ matchRequestId, ownerUserId }) =>
       metadata: {
         icon: "match_request_accepted",
         matchRequestId: Number(matchRequestId),
+        peerUserId: Number(request.owner_user_id),
       },
       transaction,
     });
@@ -661,6 +756,7 @@ export const rejectMatchRequest = async ({ matchRequestId, ownerUserId }) =>
       metadata: {
         icon: "match_request_rejected",
         matchRequestId: Number(matchRequestId),
+        peerUserId: Number(request.owner_user_id),
       },
       transaction,
     });
@@ -692,12 +788,14 @@ export const getBookingMatchContext = async (
       mp.booking_id,
       mp.field_id,
       mp.owner_user_id,
+      po.username AS owner_username,
       mp.team_name,
       mp.player_count,
       mp.level,
       mp.description,
       mp.status
      FROM match_posts mp
+     LEFT JOIN person po ON po.person_id = mp.owner_user_id
      WHERE mp.booking_id = ?
      LIMIT 1`,
     { replacements: [normalizedBookingId], transaction },
@@ -716,10 +814,13 @@ export const getBookingMatchContext = async (
       mr.requester_user_id,
       mr.team_name,
       mr.player_count,
+      mr.level,
       mr.message,
       mr.status,
-      mr.created_at
+      mr.created_at,
+      p.username AS requester_username
      FROM match_requests mr
+     LEFT JOIN person p ON p.person_id = mr.requester_user_id
      WHERE mr.match_post_id = ?
      ORDER BY
        CASE mr.status
@@ -746,6 +847,7 @@ export const getBookingMatchContext = async (
       bookingId: Number(post.booking_id),
       fieldId: Number(post.field_id),
       ownerUserId: Number(post.owner_user_id),
+      ownerUsername: post.owner_username || "",
       teamName: post.team_name || "",
       playerCount: Number(post.player_count || 0),
       level: post.level || "INTERMEDIATE",

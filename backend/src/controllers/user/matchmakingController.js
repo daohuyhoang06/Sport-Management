@@ -18,7 +18,7 @@ export const createMatchRequest = async (req, res) => {
   try {
     const requesterUserId = req.user?.id;
     const { id } = req.params;
-    const { team_name, player_count, message } = req.body || {};
+    const { team_name, player_count, level, message } = req.body || {};
 
     if (!requesterUserId) {
       return res.status(401).json({
@@ -32,6 +32,7 @@ export const createMatchRequest = async (req, res) => {
       requesterUserId,
       teamName: team_name,
       playerCount: player_count,
+      level,
       message,
     });
 
@@ -47,6 +48,7 @@ export const createMatchRequest = async (req, res) => {
       MATCH_REQUEST_ALREADY_PENDING: [409, "Bạn đã gửi yêu cầu ghép trận cho bài đăng này"],
       REQUEST_TEAM_NAME_REQUIRED: [400, "Thiếu tên đội"],
       INVALID_REQUEST_PLAYER_COUNT: [400, "Số lượng người chơi không hợp lệ"],
+      INVALID_MATCH_LEVEL: [400, "Trình độ không hợp lệ"],
     };
 
     const mapped = errorMap[error?.code];

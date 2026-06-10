@@ -29,7 +29,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.sportmanagement.user.R
 import com.sportmanagement.user.domain.model.SlotStatus
@@ -118,17 +117,9 @@ fun BookingHeaderSection(
             ) {
                 BookingLegendItem(SlotStatus.AVAILABLE, stringResource(R.string.booking_status_available))
                 BookingLegendItem(SlotStatus.BOOKED, stringResource(R.string.booking_status_booked))
-                BookingLegendItem(SlotStatus.FIND_OPPONENT, stringResource(R.string.booking_status_find_opponent))
                 BookingLegendItem(SlotStatus.LOCKED, stringResource(R.string.booking_status_locked))
+                BookingLegendItem(SlotStatus.FIND_OPPONENT, stringResource(R.string.booking_status_find_opponent))
             }
-
-            Text(
-                text = stringResource(R.string.booking_view_field_and_price),
-                modifier = Modifier.padding(top = 10.dp),
-                style = bookingHelperTextStyle(),
-                textDecoration = TextDecoration.Underline,
-                color = MaterialTheme.colorScheme.secondary,
-            )
         }
     }
 }

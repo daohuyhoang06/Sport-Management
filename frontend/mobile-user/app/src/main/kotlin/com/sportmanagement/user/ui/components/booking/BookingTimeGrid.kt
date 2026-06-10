@@ -293,6 +293,9 @@ private fun resolveBookingBlockState(
             )
     }
     if (matchingPost != null) {
+        if (isPastSlot(selectedDate, currentDateText, slotStart, currentTimeMinutes)) {
+            return GridCellState(status = SlotStatus.BOOKED)
+        }
         return GridCellState(
             status = SlotStatus.FIND_OPPONENT,
             matchPost = matchingPost
@@ -337,7 +340,7 @@ private fun resolveBookingBlockState(
     )
 }
 
-private fun shouldLockByTime(
+private fun isPastSlot(
     selectedDate: String,
     currentDateText: String,
     slotStart: Int,
@@ -349,6 +352,15 @@ private fun shouldLockByTime(
         selectedDate > currentDateText -> false
         else -> slotStart < currentTimeMinutes
     }
+}
+
+private fun shouldLockByTime(
+    selectedDate: String,
+    currentDateText: String,
+    slotStart: Int,
+    currentTimeMinutes: Int
+): Boolean {
+    return isPastSlot(selectedDate, currentDateText, slotStart, currentTimeMinutes)
 }
 
 private fun generateBookingSlotStarts(

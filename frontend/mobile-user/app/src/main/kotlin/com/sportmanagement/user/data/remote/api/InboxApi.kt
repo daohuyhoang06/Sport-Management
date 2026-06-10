@@ -36,7 +36,8 @@ data class NotificationDto(
     val targetType: String?,
     val targetId: Int?,
     val bookingId: Int?,
-    val fieldId: Int?
+    val fieldId: Int?,
+    val peerUserId: Int?
 )
 
 data class ConversationMessageDto(
@@ -113,6 +114,8 @@ data class ReviewSubmissionDto(
 
 data class BookingMatchPostDto(
     val matchPostId: Int,
+    val ownerUserId: Int,
+    val ownerUsername: String,
     val teamName: String,
     val playerCount: Int,
     val level: String,
@@ -123,8 +126,12 @@ data class BookingMatchPostDto(
 
 data class BookingMatchRequestDto(
     val matchRequestId: Int,
+    val requesterUserId: Int,
+    val requesterUsername: String,
     val teamName: String,
     val playerCount: Int,
+    val level: String,
+    val levelLabel: String,
     val message: String,
     val status: String,
     val createdAt: String
@@ -237,6 +244,8 @@ class InboxApi(
             matchPost = data.optJSONObject("matchPost")?.let { row ->
                 BookingMatchPostDto(
                     matchPostId = row.optInt("matchPostId"),
+                    ownerUserId = row.optInt("ownerUserId"),
+                    ownerUsername = row.optString("ownerUsername"),
                     teamName = row.optString("teamName"),
                     playerCount = row.optInt("playerCount"),
                     level = row.optString("level"),
@@ -250,8 +259,12 @@ class InboxApi(
                     val row = items.optJSONObject(index) ?: JSONObject()
                     BookingMatchRequestDto(
                         matchRequestId = row.optInt("matchRequestId"),
+                        requesterUserId = row.optInt("requesterUserId"),
+                        requesterUsername = row.optString("requesterUsername"),
                         teamName = row.optString("teamName"),
                         playerCount = row.optInt("playerCount"),
+                        level = row.optString("level"),
+                        levelLabel = row.optString("levelLabel"),
                         message = row.optString("message"),
                         status = row.optString("status"),
                         createdAt = row.optString("createdAt")
@@ -313,11 +326,13 @@ class InboxApi(
     suspend fun createConversation(
         token: String,
         fieldId: Int?,
-        bookingId: Int?
+        bookingId: Int?,
+        peerUserId: Int? = null
     ): CreateConversationResultDto = withContext(Dispatchers.IO) {
         val body = JSONObject()
         fieldId?.let { body.put("fieldId", it) }
         bookingId?.let { body.put("bookingId", it) }
+        peerUserId?.let { body.put("peerUserId", it) }
 
         val root = postJsonWithResponse("$baseUrl/api/user/conversations", token, body)
         val data = root.optJSONObject("data") ?: JSONObject()
@@ -384,8 +399,19 @@ class InboxApi(
             targetType = optString("targetType").takeIf { it.isNotBlank() },
             targetId = optIntOrNull("targetId"),
             bookingId = optIntOrNull("bookingId"),
-            fieldId = optIntOrNull("fieldId")
+            fieldId = optIntOrNull("fieldId"),
+            peerUserId = optMetadataInt("peerUserId")
         )
+    }
+
+    private fun JSONObject.optMetadataInt(key: String): Int? {
+        val metadataValue = opt("metadata")
+        val metadata = when (metadataValue) {
+            is JSONObject -> metadataValue
+            is String -> runCatching { JSONObject(metadataValue) }.getOrNull()
+            else -> null
+        } ?: return null
+        return metadata.optIntOrNull(key)
     }
 
     private fun getJson(endpoint: String, token: String): JSONObject {
