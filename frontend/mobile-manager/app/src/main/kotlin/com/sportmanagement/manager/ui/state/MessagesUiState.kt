@@ -7,6 +7,8 @@ import com.sportmanagement.manager.domain.model.ReviewItem
 data class MessagesUiState(
     val isLoading: Boolean = false,
     val error: String? = null,
+    val loadingChatId: String? = null,
+    val isSendingMessage: Boolean = false,
     val searchQuery: String = "",
     val conversations: List<ConversationItem> = emptyList(),
     val reviews: List<ReviewItem> = emptyList(),
@@ -18,10 +20,14 @@ data class MessagesUiState(
     val replyDrafts: Map<String, String> = emptyMap()
 ) {
     val filteredConversations: List<ConversationItem>
-        get() = if (searchQuery.isBlank()) conversations
-        else conversations.filter {
-            it.customerName.contains(searchQuery, ignoreCase = true) ||
-                it.customerPhone.contains(searchQuery)
+        get() {
+            val base = if (searchQuery.isBlank()) conversations
+                       else conversations.filter {
+                           it.customerName.contains(searchQuery, ignoreCase = true) ||
+                               it.customerPhone.contains(searchQuery)
+                       }
+            // Unread conversations float to top; within each group keep original order (backend: updated_at DESC)
+            return base.sortedWith(compareByDescending { it.unreadCount > 0 })
         }
 
     val unreadCount: Int get() = conversations.sumOf { it.unreadCount }

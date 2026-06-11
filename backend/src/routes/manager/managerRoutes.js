@@ -1,14 +1,21 @@
 import { Router } from "express";
-import { 
-  listBookings, 
+import {
+  listBookings,
+  createBooking,
   getBookingById,
-  approveBooking, 
+  getBookingHistory,
+  approveBooking,
   rejectBooking,
   completeBooking,
   cancelBooking,
   getBookingByCheckInCode,
   confirmBookingCheckIn
 } from "../../controllers/manager/bookingController.js";
+import {
+  listBlockedSlots,
+  createBlockedSlot,
+  deleteBlockedSlot,
+} from "../../controllers/manager/blockedSlotController.js";
 import { 
   getAllFields, 
   getFieldById,
@@ -55,9 +62,11 @@ r.get('/dashboard/monthly-revenue', getMonthlyRevenue);
 
 // Booking management
 r.get('/bookings', listBookings);
+r.post('/bookings', createBooking);
 r.get('/bookings/check-in/:code', getBookingByCheckInCode);
 r.put('/bookings/check-in/:code/confirm', confirmBookingCheckIn);
 r.get('/bookings/:id', getBookingById);
+r.get('/bookings/:id/history', getBookingHistory);
 r.put('/bookings/:id/approve', approveBooking);
 r.put('/bookings/:id/reject', rejectBooking);
 r.put('/bookings/:id/complete', completeBooking);
@@ -86,5 +95,10 @@ r.get('/fields/:id/policies', listFieldPolicies);
 r.post('/fields/:id/policies', createFieldPolicy);
 r.put('/fields/:id/policies/:policyId', updateFieldPolicy);
 r.delete('/fields/:id/policies/:policyId', deleteFieldPolicy);
+
+// Blocked slots
+r.get('/fields/:id/blocked-slots', listBlockedSlots);
+r.post('/fields/:id/blocked-slots', createBlockedSlot);
+r.delete('/fields/:id/blocked-slots/:slotId', deleteBlockedSlot);
 
 export default r;

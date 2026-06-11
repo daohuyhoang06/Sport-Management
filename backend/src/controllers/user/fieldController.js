@@ -273,6 +273,26 @@ const createAggregateBookingWithSlots = async ({
     }
 
     for (const item of normalizedBookings) {
+      const [blockedConflicts] = await sequelize.query(
+        `SELECT slot_id
+         FROM field_blocked_slots
+         WHERE field_id = ?
+           AND block_date = DATE(?)
+           AND start_time < TIME(?)
+           AND end_time > TIME(?)
+         FOR UPDATE`,
+        {
+          replacements: [fieldId, item.start_time, item.end_time, item.start_time],
+          transaction,
+        },
+      );
+
+      if (blockedConflicts && blockedConflicts.length > 0) {
+        const conflictError = new Error("SLOT_NOT_AVAILABLE");
+        conflictError.code = "SLOT_NOT_AVAILABLE";
+        throw conflictError;
+      }
+
       const [conflicts] = await sequelize.query(
         `SELECT bs.booking_slot_id
          FROM booking_slots bs
@@ -932,6 +952,13 @@ export const getFieldGrid = async (req, res) => {
     );
     const matchPosts = await listOpenMatchPostPreviewsForFieldDate(id, date);
 
+    const [blockedRows] = await sequelize.query(
+      `SELECT court_id, start_time, end_time
+       FROM field_blocked_slots
+       WHERE field_id = ? AND block_date = ?`,
+      { replacements: [id, date] },
+    );
+
     const bookedSlots = bookings.flatMap((b) => {
       const targetCourts = b.court_id
         ? [String(b.court_id)]
@@ -983,6 +1010,22 @@ export const getFieldGrid = async (req, res) => {
         ),
       );
     }
+
+    blockedRows.forEach((row) => {
+      const startStr = formatDbTimeLabel(row.start_time);
+      const endStr = formatDbTimeLabel(row.end_time);
+      const targetCourts = row.court_id
+        ? [String(row.court_id)]
+        : courts.map((court) => String(court.court_id));
+
+      blockedSlots.push(
+        ...targetCourts.map((courtId) => ({
+          courtId,
+          startTime: startStr,
+          endTime: endStr,
+        })),
+      );
+    });
 
     const responseData = {
       selectedDate: date,

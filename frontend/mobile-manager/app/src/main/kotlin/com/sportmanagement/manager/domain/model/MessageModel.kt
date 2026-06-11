@@ -1,5 +1,7 @@
 package com.sportmanagement.manager.domain.model
 
+enum class MessageStatus { SENDING, SENT, FAILED }
+
 data class ConversationItem(
     val id: String,
     val customerName: String,
@@ -17,7 +19,9 @@ data class ChatMessage(
     val content: String,
     val isFromManager: Boolean,
     val timestamp: String,
-    val isRead: Boolean = true
+    val rawTimestamp: String? = null,
+    val isRead: Boolean = true,
+    val status: MessageStatus = MessageStatus.SENT
 )
 
 data class ReviewItem(

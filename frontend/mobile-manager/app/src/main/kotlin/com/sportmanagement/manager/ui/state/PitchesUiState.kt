@@ -11,7 +11,10 @@ data class PitchesUiState(
     val showFilterDialog: Boolean = false,
     val filterStatus: PitchStatus? = null,
     val filterSportType: String? = null,
-    val filterMaxPrice: Long? = null
+    val filterMaxPrice: Long? = null,
+    val showAddField: Boolean = false,
+    val isSaving: Boolean = false,
+    val saveError: String? = null
 ) {
     val filteredPitches: List<Pitch>
         get() = pitches.filter { pitch ->

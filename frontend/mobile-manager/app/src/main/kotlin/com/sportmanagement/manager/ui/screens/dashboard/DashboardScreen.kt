@@ -10,9 +10,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -29,7 +31,10 @@ import androidx.compose.material.icons.filled.EventNote
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.PieChart
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.TrendingUp
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -73,37 +78,75 @@ import androidx.compose.ui.tooling.preview.Preview
 @Composable
 fun DashboardScreen(
     padding: PaddingValues,
-    viewModel: DashboardViewModel = viewModel()
+    viewModel: DashboardViewModel = viewModel(),
+    onAddBooking: () -> Unit = {},
+    onViewSchedule: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
-    LazyColumn(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .padding(padding)
-            .background(MaterialTheme.colorScheme.background),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+            .background(MaterialTheme.colorScheme.background)
     ) {
-        item {
-            MetricsSection(stats = uiState.stats)
-        }
-        item {
-            RevenueTrendCard(
-                points = uiState.activeRevenue,
-                selectedPeriod = uiState.selectedPeriod,
-                onPeriodSelected = viewModel::onPeriodSelected
-            )
-        }
-        item {
-            QuickActionsSection()
-        }
-        uiState.upcomingBooking?.let { booking ->
-            item {
-                UpcomingSlotCard(booking = booking)
+        when {
+            uiState.isLoading -> {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+            }
+            uiState.error != null -> {
+                Column(
+                    modifier = Modifier.align(Alignment.Center),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Refresh,
+                        contentDescription = null,
+                        modifier = Modifier.size(48.dp),
+                        tint = MaterialTheme.colorScheme.outline
+                    )
+                    Text(
+                        text = uiState.error ?: "Lỗi tải dữ liệu",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.outline
+                    )
+                    Button(onClick = { viewModel.loadStats(); viewModel.loadMonthlyRevenue() }) {
+                        Text("Thử lại")
+                    }
+                }
+            }
+            else -> {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    item {
+                        MetricsSection(stats = uiState.stats)
+                    }
+                    item {
+                        RevenueTrendCard(
+                            points = uiState.activeRevenue,
+                            selectedPeriod = uiState.selectedPeriod,
+                            onPeriodSelected = viewModel::onPeriodSelected
+                        )
+                    }
+                    item {
+                        QuickActionsSection(
+                            onAddBooking = onAddBooking,
+                            onViewSchedule = onViewSchedule
+                        )
+                    }
+                    uiState.upcomingBooking?.let { booking ->
+                        item {
+                            UpcomingSlotCard(booking = booking)
+                        }
+                    }
+                    item { Spacer(Modifier.height(8.dp)) }
+                }
             }
         }
-        item { Spacer(Modifier.height(8.dp)) }
     }
 }
 
@@ -147,7 +190,7 @@ private fun TopPitchCard(pitchName: String, revenue: Long) {
         Box(
             modifier = Modifier
                 .width(4.dp)
-                .height(84.dp)
+                .fillMaxHeight()
                 .background(Color(0xFFF59E0B))
         )
         Row(
@@ -209,7 +252,7 @@ private fun RevenueCard(stats: DashboardStats) {
         Box(
             modifier = Modifier
                 .width(4.dp)
-                .height(104.dp)
+                .fillMaxHeight()
                 .background(accentColor)
         )
 
@@ -389,13 +432,14 @@ private fun RevenueTrendCard(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .heightIn(min = 120.dp, max = 180.dp)
                     .height(140.dp)
             ) {
                 RevenueLineChart(
                     points = points,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(115.dp)
+                        .fillMaxHeight(0.82f)
                         .align(Alignment.TopCenter)
                 )
                 Row(
@@ -531,7 +575,10 @@ private fun RevenueLineChart(
 // ─── Quick Actions ────────────────────────────────────────────────────────────
 
 @Composable
-private fun QuickActionsSection() {
+private fun QuickActionsSection(
+    onAddBooking: () -> Unit = {},
+    onViewSchedule: () -> Unit = {}
+) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(
             text = "Thao tác nhanh",
@@ -544,15 +591,17 @@ private fun QuickActionsSection() {
             title = "Thêm đặt sân mới",
             subtitle = "Tạo lịch đặt nhanh cho khách",
             icon = Icons.Filled.AddCircle,
-            isPrimary = true
+            isPrimary = true,
+            onClick = onAddBooking
         )
         QuickActionButton(
             categoryLabel = "LỊCH TRÌNH",
             categoryIcon = Icons.Filled.EventNote,
             title = "Lịch trình hôm nay",
-            subtitle = "Xem chi tiết 18 lượt đặt",
+            subtitle = "Xem lịch đặt sân trong ngày",
             icon = Icons.Filled.CalendarMonth,
-            isPrimary = false
+            isPrimary = false,
+            onClick = onViewSchedule
         )
     }
 }
@@ -564,7 +613,8 @@ private fun QuickActionButton(
     title: String,
     subtitle: String,
     icon: ImageVector,
-    isPrimary: Boolean
+    isPrimary: Boolean,
+    onClick: () -> Unit = {}
 ) {
     val bgColor = if (isPrimary) MaterialTheme.colorScheme.primary else Color.White
     val textColor = if (isPrimary) Color.White else MaterialTheme.colorScheme.onBackground
@@ -579,7 +629,7 @@ private fun QuickActionButton(
             .shadow(elevation = 4.dp, shape = RoundedCornerShape(16.dp))
             .clip(RoundedCornerShape(16.dp))
             .background(bgColor)
-            .clickable { }
+            .clickable { onClick() }
             .padding(16.dp)
     } else {
         Modifier
@@ -588,7 +638,7 @@ private fun QuickActionButton(
             .clip(RoundedCornerShape(16.dp))
             .background(bgColor)
             .border(1.dp, Color(0xFFE2E8F0), RoundedCornerShape(16.dp))
-            .clickable { }
+            .clickable { onClick() }
             .padding(16.dp)
     }
 
@@ -665,7 +715,7 @@ private fun UpcomingSlotCard(booking: UpcomingBooking) {
         Box(
             modifier = Modifier
                 .width(4.dp)
-                .height(88.dp)
+                .fillMaxHeight()
                 .background(Amber)
         )
 

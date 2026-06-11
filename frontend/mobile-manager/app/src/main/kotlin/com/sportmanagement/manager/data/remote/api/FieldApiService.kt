@@ -11,15 +11,23 @@ import com.sportmanagement.manager.data.remote.dto.FieldResponse
 import com.sportmanagement.manager.data.remote.dto.PoliciesResponse
 import com.sportmanagement.manager.data.remote.dto.ServicesResponse
 import com.sportmanagement.manager.data.remote.dto.UpdateFieldStatusRequest
+import com.sportmanagement.manager.data.remote.dto.UploadImageResponse
+import okhttp3.MultipartBody
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.Multipart
 import retrofit2.http.POST
 import retrofit2.http.PUT
+import retrofit2.http.Part
 import retrofit2.http.Path
 
 interface FieldApiService {
+
+    @Multipart
+    @POST("api/manager/upload/field-image")
+    suspend fun uploadFieldImage(@Part image: MultipartBody.Part): Response<UploadImageResponse>
 
     @GET("api/manager/fields")
     suspend fun getFields(): Response<FieldListResponse>

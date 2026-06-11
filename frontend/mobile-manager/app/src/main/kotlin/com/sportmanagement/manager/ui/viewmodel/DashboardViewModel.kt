@@ -33,21 +33,28 @@ class DashboardViewModel : ViewModel() {
 
     fun loadStats() {
         viewModelScope.launch {
-            AppContainer.dashboardRepository.getStats().onSuccess { dto ->
-                _uiState.update { state ->
-                    state.copy(
-                        stats = DashboardStats(
-                            revenue = dto.monthlyRevenue.toLong(),
-                            revenueTrendPercent = 0,
-                            bookingCount = dto.totalBookings,
-                            occupancyRate = if (dto.totalFields > 0)
-                                (dto.activeFields * 100 / dto.totalFields) else 0,
-                            topPitchName = "",
-                            topPitchRevenue = dto.totalRevenue.toLong()
+            _uiState.update { it.copy(isLoading = true, error = null) }
+            AppContainer.dashboardRepository.getStats()
+                .onSuccess { dto ->
+                    _uiState.update { state ->
+                        state.copy(
+                            isLoading = false,
+                            stats = DashboardStats(
+                                revenue = dto.monthlyRevenue.toLong(),
+                                revenueTrendPercent = if (dto.totalBookings > 0) dto.todayBookings * 100 / dto.totalBookings else 0,
+                                bookingCount = dto.totalBookings,
+                                occupancyRate = if (dto.totalFields > 0)
+                                    (dto.activeFields * 100 / dto.totalFields) else 0,
+                                topPitchName = dto.topFieldName
+                                    ?: if (dto.activeFields > 0) "${dto.activeFields} sân đang hoạt động" else "Chưa có sân",
+                                topPitchRevenue = dto.topFieldRevenue?.toLong() ?: dto.totalRevenue.toLong()
+                            )
                         )
-                    )
+                    }
                 }
-            }
+                .onFailure { e ->
+                    _uiState.update { it.copy(isLoading = false, error = e.message) }
+                }
         }
     }
 

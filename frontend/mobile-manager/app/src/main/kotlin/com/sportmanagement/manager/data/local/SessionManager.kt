@@ -36,6 +36,9 @@ class SessionManager(context: Context) {
 
     fun isLoggedIn(): Boolean = getToken() != null
 
+    fun updateName(name: String) = prefs.edit().putString(KEY_NAME, name).apply()
+    fun updateAvatarUrl(url: String?) = prefs.edit().putString(KEY_AVATAR_URL, url).apply()
+
     fun clearSession() = prefs.edit().clear().apply()
 
     companion object {

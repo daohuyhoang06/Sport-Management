@@ -3,6 +3,7 @@ import java.util.Properties
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
+    id("kotlin-kapt")
 }
 
 // Đọc local.properties để lấy server URL (không commit IP vào git)
@@ -106,4 +107,13 @@ dependencies {
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
     implementation("io.coil-kt:coil-compose:2.7.0")
+
+    // Location services for GPS coordinates
+    implementation("com.google.android.gms:play-services-location:21.2.0")
+
+    // Room - local chat message cache
+    val roomVersion = "2.6.1"
+    implementation("androidx.room:room-runtime:$roomVersion")
+    implementation("androidx.room:room-ktx:$roomVersion")
+    kapt("androidx.room:room-compiler:$roomVersion")
 }
