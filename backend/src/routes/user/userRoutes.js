@@ -44,6 +44,11 @@ import {
   sendConversationMessage,
   markConversationRead,
 } from "../../controllers/user/conversationController.js";
+import {
+  acceptMatchRequestHandler,
+  createMatchRequest,
+  rejectMatchRequestHandler,
+} from "../../controllers/user/matchmakingController.js";
 
 const r = Router();
 
@@ -65,6 +70,9 @@ r.post("/bookings/batch", requireAuth, createBatchBookings);
 r.post("/bookings", requireAuth, createBooking);
 r.get("/bookings/:id", requireAuth, getBooking);
 r.put("/bookings/:id", updateBooking);
+r.post("/match-posts/:id/requests", requireAuth, createMatchRequest);
+r.post("/match-requests/:id/accept", requireAuth, acceptMatchRequestHandler);
+r.post("/match-requests/:id/reject", requireAuth, rejectMatchRequestHandler);
 
 r.post(
   "/reviews/upload",

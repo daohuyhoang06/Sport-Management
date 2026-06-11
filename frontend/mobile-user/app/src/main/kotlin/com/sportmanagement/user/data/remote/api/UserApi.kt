@@ -4,6 +4,7 @@ import com.sportmanagement.user.data.remote.dto.UserFieldDto
 import com.sportmanagement.user.data.remote.dto.UserProfileDto
 import com.sportmanagement.user.data.remote.dto.UserStatDto
 import com.sportmanagement.user.domain.model.BookingScheduleData
+import com.sportmanagement.user.domain.model.MatchPostPreview
 import com.sportmanagement.user.domain.model.BookingSubCourt
 import com.sportmanagement.user.domain.model.BookingTimeGridData
 import com.sportmanagement.user.domain.model.BookingTimeRange
@@ -27,6 +28,18 @@ data class CreateBookingRequest(
     val customerPhone: String?
 )
 
+data class FindOpponentPayload(
+    val teamName: String,
+    val playerCount: Int,
+    val level: String,
+    val description: String
+)
+
+data class MatchRequestResultDto(
+    val matchRequestId: Int,
+    val status: String
+)
+
 data class CreateBookingResponse(
     val bookingId: Int,
     val courtId: Int?,
@@ -37,6 +50,27 @@ data class CreateBookingResponse(
 data class CreateBatchBookingResponse(
     val booking: CreateBookingResponse,
     val pendingHoldSeconds: Int
+)
+
+data class FieldReviewDto(
+    val reviewId: Int,
+    val fieldId: Int,
+    val customerName: String,
+    val customerAvatarUrl: String,
+    val rating: Int,
+    val comment: String,
+    val createdAt: String,
+    val imageUrls: List<String>
+)
+
+data class FieldReviewStatsDto(
+    val averageRating: Double,
+    val totalReviews: Int,
+    val fiveStar: Int,
+    val fourStar: Int,
+    val threeStar: Int,
+    val twoStar: Int,
+    val oneStar: Int
 )
 
 class UserApi(
@@ -161,6 +195,25 @@ class UserApi(
                 BookingTimeRange(b.optString("courtId"), b.optString("startTime"), b.optString("endTime"))
             }
 
+            val matchPostsArray = gridObj.optJSONArray("matchPosts") ?: JSONArray()
+            val matchPosts = List(matchPostsArray.length()) { i ->
+                val row = matchPostsArray.getJSONObject(i)
+                MatchPostPreview(
+                    matchPostId = row.optInt("matchPostId"),
+                    bookingId = row.optInt("bookingId"),
+                    fieldId = row.optInt("fieldId"),
+                    courtId = row.optString("courtId"),
+                    startTime = row.optString("startTime"),
+                    endTime = row.optString("endTime"),
+                    teamName = row.optString("teamName"),
+                    playerCount = row.optInt("playerCount"),
+                    level = row.optString("level"),
+                    levelLabel = row.optString("levelLabel"),
+                    description = row.optString("description"),
+                    status = row.optString("status")
+                )
+            }
+
             BookingScheduleData(
                 selectedDate = obj.optString("selectedDate"),
                 grid = BookingTimeGridData(
@@ -170,7 +223,8 @@ class UserApi(
                     minBookingMinutes = gridObj.optInt("minBookingMinutes", 60),
                     courts = courts,
                     bookedSlots = bookedSlots,
-                    blockedSlots = blockedSlots
+                    blockedSlots = blockedSlots,
+                    matchPosts = matchPosts
                 ),
                 pricePerHour = obj.optInt("pricePerHour"),
                 estimatedPrice = obj.optString("estimatedPrice")
@@ -180,9 +234,45 @@ class UserApi(
         }
     }
 
+    suspend fun getFieldReviews(fieldId: Int): List<FieldReviewDto> = withContext(Dispatchers.IO) {
+        val endpoint = "$baseUrl/api/user/reviews?field_id=$fieldId"
+        val array = readJsonArray(endpoint)
+        List(array.length()) { index ->
+            val item = array.optJSONObject(index) ?: JSONObject()
+            val imagesArray = item.optJSONArray("images") ?: JSONArray()
+            FieldReviewDto(
+                reviewId = item.optInt("review_id"),
+                fieldId = item.optInt("field_id"),
+                customerName = item.optString("customer_name"),
+                customerAvatarUrl = resolveMediaUrl(item.optString("customer_avatar_url")),
+                rating = item.optInt("rating"),
+                comment = item.optString("comment"),
+                createdAt = item.optString("created_at"),
+                imageUrls = List(imagesArray.length()) { imageIndex ->
+                    resolveMediaUrl(imagesArray.optString(imageIndex))
+                }.filter { it.isNotBlank() }
+            )
+        }
+    }
+
+    suspend fun getFieldReviewStats(fieldId: Int): FieldReviewStatsDto = withContext(Dispatchers.IO) {
+        val endpoint = "$baseUrl/api/user/reviews/stats/$fieldId"
+        val root = readJsonObject(endpoint)
+        FieldReviewStatsDto(
+            averageRating = root.optDouble("average_rating", 0.0).takeIf { it.isFinite() } ?: 0.0,
+            totalReviews = root.optInt("total_reviews", 0),
+            fiveStar = root.optInt("five_star", 0),
+            fourStar = root.optInt("four_star", 0),
+            threeStar = root.optInt("three_star", 0),
+            twoStar = root.optInt("two_star", 0),
+            oneStar = root.optInt("one_star", 0)
+        )
+    }
+
     suspend fun createBooking(
         token: String,
-        request: CreateBookingRequest
+        request: CreateBookingRequest,
+        findOpponent: FindOpponentPayload? = null
     ): CreateBookingResponse = withContext(Dispatchers.IO) {
         val endpoint = "$baseUrl/api/user/bookings"
         val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
@@ -205,6 +295,18 @@ class UserApi(
                 request.note?.takeIf { it.isNotBlank() }?.let { put("note", it) }
                 request.customerName?.takeIf { it.isNotBlank() }?.let { put("customer_name", it) }
                 request.customerPhone?.takeIf { it.isNotBlank() }?.let { put("customer_phone", it) }
+                findOpponent?.let {
+                    put(
+                        "find_opponent",
+                        JSONObject().apply {
+                            put("enabled", true)
+                            put("team_name", it.teamName)
+                            put("player_count", it.playerCount)
+                            put("level", it.level)
+                            put("description", it.description)
+                        }
+                    )
+                }
             }.toString()
 
             connection.outputStream.use { stream ->
@@ -241,7 +343,8 @@ class UserApi(
         requests: List<CreateBookingRequest>,
         note: String?,
         customerName: String?,
-        customerPhone: String?
+        customerPhone: String?,
+        findOpponent: FindOpponentPayload? = null
     ): CreateBatchBookingResponse = withContext(Dispatchers.IO) {
         val endpoint = "$baseUrl/api/user/bookings/batch"
         val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
@@ -273,6 +376,18 @@ class UserApi(
                 note?.takeIf { it.isNotBlank() }?.let { put("note", it) }
                 customerName?.takeIf { it.isNotBlank() }?.let { put("customer_name", it) }
                 customerPhone?.takeIf { it.isNotBlank() }?.let { put("customer_phone", it) }
+                findOpponent?.let {
+                    put(
+                        "find_opponent",
+                        JSONObject().apply {
+                            put("enabled", true)
+                            put("team_name", it.teamName)
+                            put("player_count", it.playerCount)
+                            put("level", it.level)
+                            put("description", it.description)
+                        }
+                    )
+                }
             }.toString()
 
             connection.outputStream.use { stream ->
@@ -310,6 +425,31 @@ class UserApi(
         }
     }
 
+    suspend fun submitMatchRequest(
+        token: String,
+        matchPostId: Int,
+        teamName: String,
+        playerCount: Int,
+        level: String,
+        message: String
+    ): MatchRequestResultDto = withContext(Dispatchers.IO) {
+        val root = postJsonWithResponse(
+            "$baseUrl/api/user/match-posts/$matchPostId/requests",
+            token,
+            JSONObject().apply {
+                put("team_name", teamName)
+                put("player_count", playerCount)
+                put("level", level)
+                put("message", message)
+            }
+        )
+        val data = root.optJSONObject("data") ?: JSONObject()
+        MatchRequestResultDto(
+            matchRequestId = data.optInt("match_request_id"),
+            status = data.optString("status")
+        )
+    }
+
     private suspend fun getFields(
         latitude: Double? = null,
         longitude: Double? = null,
@@ -326,10 +466,71 @@ class UserApi(
         readFieldArray(endpoint)
     }
 
+    private fun postJsonWithResponse(
+        endpoint: String,
+        token: String,
+        body: JSONObject
+    ): JSONObject {
+        val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
+            requestMethod = "POST"
+            connectTimeout = 30_000
+            readTimeout = 30_000
+            doOutput = true
+            setRequestProperty("Accept", "application/json")
+            setRequestProperty("Content-Type", "application/json")
+            setRequestProperty("Authorization", "Bearer $token")
+        }
+
+        return try {
+            connection.outputStream.use { stream ->
+                stream.write(body.toString().toByteArray(Charsets.UTF_8))
+            }
+
+            val responseCode = connection.responseCode
+            val responseText = if (responseCode in 200..299) {
+                connection.inputStream.bufferedReader().use { it.readText() }
+            } else {
+                connection.errorStream?.bufferedReader()?.use { it.readText() }.orEmpty()
+            }
+
+            if (responseCode !in 200..299) {
+                throw IOException(parseApiError(responseText) ?: "HTTP $responseCode")
+            }
+
+            JSONObject(responseText)
+        } finally {
+            connection.disconnect()
+        }
+    }
+
     private fun readFieldArray(
         endpoint: String,
         token: String? = null
     ): List<UserFieldDto> {
+        val array = readJsonArray(endpoint, token)
+        return List(array.length()) { idx -> array.getJSONObject(idx).toFieldDto() }
+    }
+
+    private fun readJsonArray(
+        endpoint: String,
+        token: String? = null
+    ): JSONArray {
+        val responseText = readJsonResponse(endpoint, token)
+        return JSONArray(responseText)
+    }
+
+    private fun readJsonObject(
+        endpoint: String,
+        token: String? = null
+    ): JSONObject {
+        val responseText = readJsonResponse(endpoint, token)
+        return JSONObject(responseText)
+    }
+
+    private fun readJsonResponse(
+        endpoint: String,
+        token: String? = null
+    ): String {
         val connection = (URL(endpoint).openConnection() as HttpURLConnection).apply {
             requestMethod = "GET"
             connectTimeout = 30_000
@@ -352,11 +553,19 @@ class UserApi(
                 throw IOException("HTTP $responseCode")
             }
 
-            val array = JSONArray(responseText)
-            List(array.length()) { idx -> array.getJSONObject(idx).toFieldDto() }
+            responseText
         } finally {
             connection.disconnect()
         }
+    }
+
+    private fun resolveMediaUrl(value: String): String {
+        val trimmed = value.trim()
+        if (trimmed.isBlank() || trimmed.equals("null", ignoreCase = true)) return ""
+        if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+            return trimmed
+        }
+        return "$baseUrl${if (trimmed.startsWith("/")) trimmed else "/$trimmed"}"
     }
 
     private fun writeFavorite(

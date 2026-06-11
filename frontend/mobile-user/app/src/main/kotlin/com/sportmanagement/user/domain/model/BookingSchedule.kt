@@ -6,6 +6,7 @@ package com.sportmanagement.user.domain.model
 enum class SlotStatus {
     AVAILABLE,
     BOOKED,
+    FIND_OPPONENT,
     LOCKED,
     EVENT,
     SELECTED,
@@ -29,6 +30,21 @@ data class BookingTimeRange(
     val endTime: String
 )
 
+data class MatchPostPreview(
+    val matchPostId: Int,
+    val bookingId: Int,
+    val fieldId: Int,
+    val courtId: String,
+    val startTime: String,
+    val endTime: String,
+    val teamName: String,
+    val playerCount: Int,
+    val level: String,
+    val levelLabel: String,
+    val description: String,
+    val status: String
+)
+
 /**
  * Dynamic grid configuration for the booking screen.
  */
@@ -39,7 +55,8 @@ data class BookingTimeGridData(
     val minBookingMinutes: Int = 60,
     val courts: List<BookingSubCourt> = emptyList(),
     val bookedSlots: List<BookingTimeRange> = emptyList(),
-    val blockedSlots: List<BookingTimeRange> = emptyList()
+    val blockedSlots: List<BookingTimeRange> = emptyList(),
+    val matchPosts: List<MatchPostPreview> = emptyList()
 )
 
 /**

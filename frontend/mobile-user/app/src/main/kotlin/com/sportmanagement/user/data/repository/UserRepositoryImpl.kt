@@ -10,6 +10,8 @@ import com.sportmanagement.user.data.remote.api.AuthSessionDto
 import com.sportmanagement.user.data.remote.api.UpdateProfileRequestDto
 import com.sportmanagement.user.data.remote.mapper.UserMapper.toDomain
 import com.sportmanagement.user.domain.model.BookingScheduleData
+import com.sportmanagement.user.domain.model.FieldReview
+import com.sportmanagement.user.domain.model.FieldReviewStats
 import com.sportmanagement.user.domain.model.HomeSearchFilterOptions
 import com.sportmanagement.user.domain.model.HomeSearchProvinceOption
 import com.sportmanagement.user.domain.model.SportCategory
@@ -350,6 +352,39 @@ class UserRepositoryImpl(
         return runCatching {
             api.getFieldGrid(fieldId, date)
         }.getOrDefault(BookingScheduleData(selectedDate = date))
+    }
+
+    override suspend fun getFieldReviews(fieldId: Int): List<FieldReview> {
+        return runCatching {
+            api.getFieldReviews(fieldId).map { review ->
+                FieldReview(
+                    reviewId = review.reviewId,
+                    fieldId = review.fieldId,
+                    customerName = review.customerName,
+                    customerAvatarUrl = review.customerAvatarUrl,
+                    rating = review.rating,
+                    comment = review.comment,
+                    createdAt = review.createdAt,
+                    imageUrls = review.imageUrls
+                )
+            }
+        }.getOrDefault(emptyList())
+    }
+
+    override suspend fun getFieldReviewStats(fieldId: Int): FieldReviewStats {
+        return runCatching {
+            api.getFieldReviewStats(fieldId).let { stats ->
+                FieldReviewStats(
+                    averageRating = stats.averageRating,
+                    totalReviews = stats.totalReviews,
+                    fiveStar = stats.fiveStar,
+                    fourStar = stats.fourStar,
+                    threeStar = stats.threeStar,
+                    twoStar = stats.twoStar,
+                    oneStar = stats.oneStar
+                )
+            }
+        }.getOrDefault(FieldReviewStats())
     }
 
     override suspend fun getHomeSearchFilterOptions(): HomeSearchFilterOptions {

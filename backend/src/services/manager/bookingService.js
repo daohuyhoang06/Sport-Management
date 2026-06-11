@@ -181,6 +181,20 @@ export const createBookingService = async (managerId, data) => {
   );
   if (!field) throw new Error('Field không tồn tại hoặc không có quyền');
 
+  const [[blockedConflict]] = await sequelize.query(
+    `SELECT slot_id
+     FROM field_blocked_slots
+     WHERE field_id = ?
+       AND block_date = DATE(?)
+       AND start_time < TIME(?)
+       AND end_time > TIME(?)
+     LIMIT 1`,
+    { replacements: [field_id, start_time, end_time, start_time] }
+  );
+  if (blockedConflict) {
+    throw new Error('Khung giờ này đã bị khóa bởi quản lý');
+  }
+
   // Tìm customer theo phone (nếu có)
   let customerId = null;
   if (customer_phone) {
@@ -207,7 +221,7 @@ export const createBookingService = async (managerId, data) => {
     { replacements: [field_id, court_id ?? null, customerId, managerId, start_time, end_time, finalPrice ?? null, note ?? null] }
   );
 
-  const newBookingId = result;
+  const newBookingId = result?.insertId || result;
 
   // Ghi history
   await sequelize.query(

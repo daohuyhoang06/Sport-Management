@@ -89,6 +89,7 @@ import coil.request.ImageRequest
 import com.sportmanagement.user.BuildConfig
 import com.sportmanagement.user.R
 import com.sportmanagement.user.data.remote.api.CreateBookingRequest
+import com.sportmanagement.user.data.remote.api.FindOpponentPayload
 import com.sportmanagement.user.data.remote.api.MomoPaymentApi
 import com.sportmanagement.user.data.remote.api.MomoPaymentResponse
 import com.sportmanagement.user.data.remote.api.UserApi
@@ -137,6 +138,7 @@ fun BookingPaymentScreen(
     userName: String,
     userPhone: String,
     bookingNote: String,
+    findOpponentDraft: FindOpponentDraft? = null,
     incomingMomoPaymentReturn: MomoPaymentReturn?,
     onMomoPaymentReturnConsumed: () -> Unit,
     onBackClick: () -> Unit,
@@ -259,7 +261,15 @@ fun BookingPaymentScreen(
                     requests = createRequests,
                     note = bookingNote,
                     customerName = userName,
-                    customerPhone = userPhone
+                    customerPhone = userPhone,
+                    findOpponent = findOpponentDraft?.let {
+                        FindOpponentPayload(
+                            teamName = it.teamName,
+                            playerCount = it.playerCount,
+                            level = it.level,
+                            description = it.description
+                        )
+                    }
                 )
                 val createdBookingId = batchResult.booking.bookingId
                 if (createdBookingId <= 0) {
