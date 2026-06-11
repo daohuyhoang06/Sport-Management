@@ -64,6 +64,7 @@ import com.sportmanagement.user.domain.model.FieldDetailPolicy
 import com.sportmanagement.user.domain.model.FieldDetailService
 import com.sportmanagement.user.domain.model.SportIconType
 import com.sportmanagement.user.domain.model.mockFieldDetail
+import com.sportmanagement.user.ui.components.isGeneratedFieldAvatarUrl
 import com.sportmanagement.user.ui.components.sportFieldDrawableRes
 import com.sportmanagement.user.ui.theme.SportUserTheme
 import java.text.Normalizer
@@ -232,7 +233,9 @@ private fun FieldHeroSection(
     val allImages = remember(detail.cardImageUrl, detail.avatarImageUrl, detail.galleryUrls) {
         buildList {
             add(detail.cardImageUrl)
-            add(detail.avatarImageUrl)
+            if (!isGeneratedFieldAvatarUrl(detail.avatarImageUrl)) {
+                add(detail.avatarImageUrl)
+            }
             addAll(detail.galleryUrls)
         }
             .map { it.trim() }

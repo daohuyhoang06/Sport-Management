@@ -5,6 +5,7 @@ import {
   listBookingSlotsByBookingIds,
   mapBookingSlotsByBookingId,
 } from "../bookingSlotService.js";
+import { sendNotificationPush } from "./pushNotificationService.js";
 
 const REMINDER_TYPE = "booking_reminder";
 const URGENT_REMINDER_TYPE = "booking_reminder_urgent";
@@ -12,7 +13,7 @@ const REMINDER_TITLE = "Sắp đến giờ thi đấu";
 const URGENT_REMINDER_TITLE = "Sắp đến giờ thi đấu!";
 const DEFAULT_FIELD_NAME = "Sân thể thao";
 const VN_TIME_ZONE = "Asia/Ho_Chi_Minh";
-const LOOKAHEAD_MINUTES = 15;
+const LOOKAHEAD_MINUTES = 60;
 const VALID_REMINDER_STATUSES = ["confirmed", "approved", "completed", "paid"];
 const REMINDER_METADATA = JSON.stringify({ icon: REMINDER_TYPE });
 const URGENT_REMINDER_METADATA = JSON.stringify({ icon: URGENT_REMINDER_TYPE });
@@ -114,10 +115,10 @@ const diffMinutes = (startTime, now) =>
 
 const resolveReminderType = (booking, now) => {
   const remainingMinutes = diffMinutes(booking.reminder_start_time, now);
-  if (remainingMinutes > 10 && remainingMinutes <= 15) {
+  if (remainingMinutes > 15 && remainingMinutes <= 60) {
     return REMINDER_TYPE;
   }
-  if (remainingMinutes > 0 && remainingMinutes <= 10) {
+  if (remainingMinutes > 0 && remainingMinutes <= 15) {
     return URGENT_REMINDER_TYPE;
   }
   return null;
@@ -246,7 +247,22 @@ export const createUpcomingBookingReminderNotifications = async (
       },
     );
 
-    created += Number(result?.affectedRows || 0);
+    const affectedRows = Number(result?.affectedRows || 0);
+    created += affectedRows;
+
+    if (affectedRows > 0) {
+      await sendNotificationPush({
+        userId,
+        type: reminderType,
+        title: isUrgent ? URGENT_REMINDER_TITLE : REMINDER_TITLE,
+        subtitle,
+        content: buildReminderContent(booking, slots, now),
+        targetType: "booking",
+        targetId: bookingId,
+        bookingId,
+        fieldId: Number.isInteger(fieldId) ? fieldId : null,
+      });
+    }
   }
 
   return { created, checked: bookings.length };

@@ -5,8 +5,12 @@ import android.net.Uri
 import android.webkit.MimeTypeMap
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.ChatBubble
+import androidx.compose.material.icons.outlined.CheckCircle
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.EventAvailable
 import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.ui.graphics.Color
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -1071,10 +1075,35 @@ class InboxViewModel(
             else -> null
         }
 
-        val icon = when (category) {
-            InboxCategoryType.Booking -> Icons.Outlined.EventAvailable
-            InboxCategoryType.Message -> Icons.Outlined.ChatBubble
-            else -> Icons.Outlined.Notifications
+        val icon = when (normalizedType) {
+            "match_request_received" -> Icons.Outlined.Person
+            "match_request_accepted" -> Icons.Outlined.CheckCircle
+            "match_request_rejected" -> Icons.Outlined.Close
+            "booking_reminder" -> Icons.Outlined.Schedule
+            "booking_reminder_urgent" -> Icons.Outlined.EventAvailable
+            else -> when (category) {
+                InboxCategoryType.Booking -> Icons.Outlined.EventAvailable
+                InboxCategoryType.Message -> Icons.Outlined.ChatBubble
+                else -> Icons.Outlined.Notifications
+            }
+        }
+
+        val iconBackground = when (normalizedType) {
+            "match_request_received" -> Color(0x1AF59E0B)
+            "match_request_accepted" -> Color(0x1A16A34A)
+            "match_request_rejected" -> Color(0x1ADC2626)
+            "booking_reminder" -> Color(0x1A2563EB)
+            "booking_reminder_urgent" -> Color(0x1AF97316)
+            else -> Color(0x1A3F8CFF)
+        }
+
+        val iconTint = when (normalizedType) {
+            "match_request_received" -> Color(0xFFD97706)
+            "match_request_accepted" -> Color(0xFF16A34A)
+            "match_request_rejected" -> Color(0xFFDC2626)
+            "booking_reminder" -> Color(0xFF2563EB)
+            "booking_reminder_urgent" -> Color(0xFFF97316)
+            else -> Color(0xFF3F8CFF)
         }
 
         return NotificationItem(
@@ -1098,8 +1127,8 @@ class InboxViewModel(
             conversationInfo = conversationInfo,
             detailInfo = detailInfo,
             icon = icon,
-            iconBackground = Color(0x1A3F8CFF),
-            iconTint = Color(0xFF3F8CFF)
+            iconBackground = iconBackground,
+            iconTint = iconTint
         )
     }
 

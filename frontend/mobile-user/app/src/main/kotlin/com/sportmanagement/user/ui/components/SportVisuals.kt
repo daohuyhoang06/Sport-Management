@@ -12,6 +12,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -51,8 +53,12 @@ fun SportMarkerIcon(
 fun SportCircleAvatar(
     iconType: SportIconType,
     size: Dp = 44.dp,
-    iconSize: Dp = 20.dp
+    iconSize: Dp = 25.dp,
+    iconSizePx: Int? = null
 ) {
+    val density = LocalDensity.current
+    val resolvedIconSize = iconSizePx?.let { with(density) { it.toDp() } } ?: iconSize
+
     Box(
         modifier = Modifier
             .size(size)
@@ -63,7 +69,8 @@ fun SportCircleAvatar(
         Image(
             painter = painterResource(id = sportIconDrawableRes(iconType)),
             contentDescription = null,
-            modifier = Modifier.size(iconSize)
+            modifier = Modifier.size(resolvedIconSize),
+            contentScale = ContentScale.Fit
         )
     }
 }
@@ -76,6 +83,14 @@ fun sportIconDrawableRes(type: SportIconType): Int {
         SportIconType.BADMINTON -> R.drawable.badminton_25
         SportIconType.VOLLEYBALL -> R.drawable.volleyball_25
     }
+}
+
+fun isGeneratedFieldAvatarUrl(url: String): Boolean {
+    val trimmed = url.trim()
+    if (trimmed.isBlank()) return false
+
+    return trimmed.contains("/images/fields/", ignoreCase = true) &&
+        Regex("""-avatar\.(png|jpe?g|webp)$""", RegexOption.IGNORE_CASE).containsMatchIn(trimmed)
 }
 
 fun sportMarkerBaseDrawableRes(type: SportIconType): Int {

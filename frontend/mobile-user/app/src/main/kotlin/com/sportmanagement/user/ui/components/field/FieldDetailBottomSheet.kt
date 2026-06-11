@@ -102,6 +102,7 @@ import com.sportmanagement.user.domain.model.UserField
 import com.sportmanagement.user.ui.components.booking.bookingCardTitleStyle
 import com.sportmanagement.user.ui.components.SportCircleAvatar
 import com.sportmanagement.user.ui.components.SportMarkerIcon
+import com.sportmanagement.user.ui.components.isGeneratedFieldAvatarUrl
 import com.sportmanagement.user.ui.components.home.HomeVenueTitleText
 import com.sportmanagement.user.ui.components.sportAvatarBackgroundColor
 import com.sportmanagement.user.ui.components.sportFieldDrawableRes
@@ -275,7 +276,7 @@ fun FieldDetailBottomSheet(
                                     FieldDetailAvatar(
                                         field = field,
                                         size = 52.dp,
-                                        iconSize = 26.dp
+                                        iconSize = 38.dp
                                     )
                                     Spacer(Modifier.width(10.dp))
                                     Column(modifier = Modifier.weight(1f)) {
@@ -456,9 +457,11 @@ private fun FieldDetailHeaderImage(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
-    val remoteImageUrl = field.cardImageUrl.trim()
-        .ifBlank { field.avatarImageUrl.trim() }
-        .ifBlank { field.imageUrl.trim() }
+    val remoteImageUrl = listOf(
+        field.cardImageUrl.trim(),
+        field.avatarImageUrl.trim().takeIf { !isGeneratedFieldAvatarUrl(it) }.orEmpty(),
+        field.imageUrl.trim().takeIf { !isGeneratedFieldAvatarUrl(it) }.orEmpty()
+    ).firstOrNull { it.isNotBlank() }.orEmpty()
     val fallbackPainter = painterResource(id = sportFieldDrawableRes(field.sportIconType))
     val shouldLoadRemoteImage =
         remoteImageUrl.isNotBlank() &&
@@ -499,7 +502,8 @@ private fun FieldDetailAvatar(
     val remoteAvatarUrl = field.avatarImageUrl.trim()
     val shouldLoadRemoteImage =
         remoteAvatarUrl.isNotBlank() &&
-            !remoteAvatarUrl.endsWith("placeholder.svg", ignoreCase = true)
+            !remoteAvatarUrl.endsWith("placeholder.svg", ignoreCase = true) &&
+            !isGeneratedFieldAvatarUrl(remoteAvatarUrl)
     val imageSizePx = with(density) { size.roundToPx() }
 
     if (shouldLoadRemoteImage) {

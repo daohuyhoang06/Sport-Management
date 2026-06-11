@@ -1,5 +1,6 @@
 import sequelize from "../../config/database.js";
 import { ACTIVE_BOOKING_STATUS_CONDITION } from "../bookingSlotService.js";
+import { sendNotificationPush } from "./pushNotificationService.js";
 
 const MATCH_LOG_PREFIX = "[matchmaking]";
 
@@ -196,7 +197,7 @@ const insertNotification = async ({
   metadata = null,
   transaction = null,
 }) => {
-  await sequelize.query(
+  const [result] = await sequelize.query(
     `INSERT INTO notifications
       (user_id, type, section, title, subtitle, content, target_type, target_id, booking_id, field_id, is_read, metadata, created_at, updated_at)
      VALUES (?, ?, 'activity', ?, ?, ?, ?, ?, ?, ?, 0, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
@@ -216,6 +217,38 @@ const insertNotification = async ({
       transaction,
     },
   );
+
+  if (Number(result?.affectedRows || 0) <= 0) {
+    return;
+  }
+
+  const sendPush = () =>
+    sendNotificationPush({
+      userId,
+      type,
+      title,
+      subtitle,
+      content,
+      targetType,
+      targetId,
+      bookingId,
+      fieldId,
+    });
+
+  if (transaction?.afterCommit) {
+    transaction.afterCommit(() => {
+      sendPush().catch((error) => {
+        console.warn(`${MATCH_LOG_PREFIX} push notification failed`, {
+          type,
+          userId,
+          error: error.message,
+        });
+      });
+    });
+    return;
+  }
+
+  await sendPush();
 };
 
 const getMatchPostForAction = async ({

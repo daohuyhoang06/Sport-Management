@@ -43,6 +43,7 @@ import com.sportmanagement.user.domain.model.SportIconType
 import com.sportmanagement.user.domain.model.UserField
 import com.sportmanagement.user.domain.model.VenueCardType
 import com.sportmanagement.user.ui.components.SportCircleAvatar
+import com.sportmanagement.user.ui.components.isGeneratedFieldAvatarUrl
 import com.sportmanagement.user.ui.components.sportAvatarBackgroundColor
 import com.sportmanagement.user.ui.components.sportIconDrawableRes
 import com.sportmanagement.user.ui.components.sportFieldDrawableRes
@@ -144,7 +145,7 @@ private fun LargeVenueCard(
                     FieldCardAvatar(
                         field = field,
                         size = 40.dp,
-                        iconSize = 16.dp
+                        iconSize = 34.dp
                     )
 
                     Column(modifier = Modifier.weight(1f)) {
@@ -216,7 +217,7 @@ private fun SmallHorizontalCard(
                 FieldCardAvatar(
                     field = field,
                     size = 40.dp,
-                    iconSize = 16.dp
+                    iconSize = 34.dp
                 )
                 Spacer(Modifier.width(10.dp))
 
@@ -268,8 +269,11 @@ private fun VenueCardImage(
     modifier: Modifier = Modifier
 ) {
     val fallbackPainter = painterResource(id = sportFieldDrawableRes(field.sportIconType))
-    val remoteImageUrl = field.cardImageUrl.trim().ifBlank { field.avatarImageUrl.trim() }
-        .ifBlank { field.imageUrl.trim() }
+    val remoteImageUrl = listOf(
+        field.cardImageUrl.trim(),
+        field.avatarImageUrl.trim().takeIf { !isGeneratedFieldAvatarUrl(it) }.orEmpty(),
+        field.imageUrl.trim().takeIf { !isGeneratedFieldAvatarUrl(it) }.orEmpty()
+    ).firstOrNull { it.isNotBlank() }.orEmpty()
     val shouldLoadRemoteImage =
         remoteImageUrl.isNotBlank() &&
             !remoteImageUrl.endsWith("placeholder.svg", ignoreCase = true)
@@ -303,7 +307,8 @@ private fun FieldCardAvatar(
     val remoteAvatarUrl = field.avatarImageUrl.trim()
     val shouldLoadRemoteImage =
         remoteAvatarUrl.isNotBlank() &&
-            !remoteAvatarUrl.endsWith("placeholder.svg", ignoreCase = true)
+            !remoteAvatarUrl.endsWith("placeholder.svg", ignoreCase = true) &&
+            !isGeneratedFieldAvatarUrl(remoteAvatarUrl)
 
     if (shouldLoadRemoteImage) {
         AsyncImage(
@@ -363,7 +368,7 @@ private fun SmallNoImageCard(
                     .padding(start = 12.dp, end = 12.dp, top = 42.dp, bottom = 12.dp),
                 verticalAlignment = Alignment.Top
             ) {
-                SportCircleAvatar(iconType = field.sportIconType, size = 40.dp, iconSize = 16.dp)
+                SportCircleAvatar(iconType = field.sportIconType, size = 40.dp, iconSize = 34.dp)
 
                 Spacer(Modifier.width(12.dp))
 

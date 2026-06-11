@@ -49,6 +49,10 @@ import {
   createMatchRequest,
   rejectMatchRequestHandler,
 } from "../../controllers/user/matchmakingController.js";
+import {
+  registerMyDeviceToken,
+  unregisterMyDeviceToken,
+} from "../../controllers/user/deviceTokenController.js";
 
 const r = Router();
 
@@ -86,6 +90,8 @@ r.post("/reviews", requireAuth, createReview);
 r.get("/reviews/stats/:field_id", getReviewStats);
 
 r.get("/notifications", requireAuth, listNotifications);
+r.post("/device-tokens", requireAuth, registerMyDeviceToken);
+r.delete("/device-tokens", requireAuth, unregisterMyDeviceToken);
 r.get("/notifications/:id", requireAuth, getNotificationDetail);
 r.patch("/notifications/read-all", requireAuth, markAllNotificationsRead);
 r.post("/notifications/read-all", requireAuth, markAllNotificationsRead);

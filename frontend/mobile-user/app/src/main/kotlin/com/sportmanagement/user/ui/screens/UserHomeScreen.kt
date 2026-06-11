@@ -347,7 +347,7 @@ fun UserHomeScreen(
                 if (shouldShowSearchEmptyState) {
                     item {
                         Text(
-                            text = "Khong tim thay san phu hop",
+                            text = "Không tìm thấy sân phù hợp",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)

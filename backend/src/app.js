@@ -152,7 +152,7 @@ setInterval(async () => {
   }
 }, 30 * 1000);
 
-// Create in-app reminders for user bookings starting within the next 15 minutes.
+// Create reminders for user bookings starting within the next 60 minutes.
 startUpcomingBookingReminderJob({
   intervalMs: 60 * 1000,
   runImmediately: true,

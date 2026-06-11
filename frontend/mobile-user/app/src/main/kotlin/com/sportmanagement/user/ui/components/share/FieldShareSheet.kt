@@ -174,7 +174,6 @@ private fun ShareHeroCard(
             val contentPadding = if (ultraCompact) 14.dp else 16.dp
             val avatarContainerSize = if (ultraCompact) 42.dp else if (compact) 46.dp else 54.dp
             val avatarSize = if (ultraCompact) 32.dp else if (compact) 36.dp else 42.dp
-            val avatarIconSize = if (ultraCompact) 17.dp else if (compact) 19.dp else 22.dp
             val titleStyle = when {
                 ultraCompact -> MaterialTheme.typography.titleLarge
                 compact -> MaterialTheme.typography.headlineSmall
@@ -221,7 +220,7 @@ private fun ShareHeroCard(
                         SportCircleAvatar(
                             iconType = field.sportIconType,
                             size = avatarSize,
-                            iconSize = avatarIconSize
+                            iconSize = 32.dp
                         )
                     }
                 }

@@ -1,5 +1,6 @@
 import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
+import { getMessaging } from "firebase-admin/messaging";
 
 const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID;
 const FIREBASE_CLIENT_EMAIL = process.env.FIREBASE_CLIENT_EMAIL;
@@ -14,19 +15,19 @@ const normalizePrivateKey = (key) => key.replace(/\\n/g, "\n");
 
 export const isFirebaseAuthEnabled = () => hasFirebaseAdminConfig();
 
-export const getFirebaseAuth = () => {
+const getFirebaseApp = () => {
   if (!hasFirebaseAdminConfig()) {
     if (!warnedMissingConfig) {
       warnedMissingConfig = true;
       console.warn(
-        "Firebase Auth disabled: missing FIREBASE_PROJECT_ID/FIREBASE_CLIENT_EMAIL/FIREBASE_PRIVATE_KEY",
+        "Firebase disabled: missing FIREBASE_PROJECT_ID/FIREBASE_CLIENT_EMAIL/FIREBASE_PRIVATE_KEY",
       );
     }
     return null;
   }
 
   if (!getApps().length) {
-    initializeApp({
+    return initializeApp({
       credential: cert({
         projectId: FIREBASE_PROJECT_ID,
         clientEmail: FIREBASE_CLIENT_EMAIL,
@@ -35,6 +36,16 @@ export const getFirebaseAuth = () => {
     });
   }
 
-  return getAuth();
+  return getApps()[0];
+};
+
+export const getFirebaseAuth = () => {
+  const app = getFirebaseApp();
+  return app ? getAuth(app) : null;
+};
+
+export const getFirebaseMessaging = () => {
+  const app = getFirebaseApp();
+  return app ? getMessaging(app) : null;
 };
 

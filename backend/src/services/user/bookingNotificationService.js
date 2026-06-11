@@ -4,6 +4,7 @@ import {
   listBookingSlotsByBookingIds,
   mapBookingSlotsByBookingId,
 } from "../bookingSlotService.js";
+import { sendNotificationPush } from "./pushNotificationService.js";
 
 const BOOKING_SUCCESS_TITLE = "\u0110\u1eb7t s\u00e2n th\u00e0nh c\u00f4ng";
 const REVIEW_REMINDER_TITLE = "\u0110\u1ebfn l\u00fac \u0111\u00e1nh gi\u00e1 s\u00e2n";
@@ -43,17 +44,20 @@ export const ensureBookingSuccessNotifications = async (bookingIds) => {
     const slotSummary = buildBookingSlotSummary(slotMap.get(bookingId) || [], {
       fallback: booking.field_name || DEFAULT_FIELD_NAME,
     });
+    const title = `${BOOKING_SUCCESS_TITLE} - ${booking.field_name || DEFAULT_FIELD_NAME}`;
+    const subtitle = `Mã đặt sân #B${bookingId}`;
+    const content = `Sân: ${booking.field_name || DEFAULT_FIELD_NAME}. Khung giờ:\n${slotSummary}`;
 
-    await sequelize.query(
+    const [result] = await sequelize.query(
       `INSERT IGNORE INTO notifications
         (user_id, type, section, title, subtitle, content, target_type, target_id, booking_id, field_id, is_read, metadata, created_at, updated_at)
        VALUES (?, 'booking_success', 'priority', ?, ?, ?, 'booking', ?, ?, ?, 0, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
       {
         replacements: [
           booking.customer_id,
-          `${BOOKING_SUCCESS_TITLE} - ${booking.field_name || DEFAULT_FIELD_NAME}`,
-          `Mã đặt sân #B${bookingId}`,
-          `Sân: ${booking.field_name || DEFAULT_FIELD_NAME}. Khung giờ:\n${slotSummary}`,
+          title,
+          subtitle,
+          content,
           bookingId,
           bookingId,
           booking.field_id,
@@ -61,6 +65,20 @@ export const ensureBookingSuccessNotifications = async (bookingIds) => {
         ],
       },
     );
+
+    if (Number(result?.affectedRows || 0) > 0) {
+      await sendNotificationPush({
+        userId: Number(booking.customer_id),
+        type: "booking_success",
+        title,
+        subtitle,
+        content,
+        targetType: "booking",
+        targetId: bookingId,
+        bookingId,
+        fieldId: Number(booking.field_id),
+      });
+    }
   }
 };
 

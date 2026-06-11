@@ -86,6 +86,8 @@ dependencies {
     implementation("com.google.android.gms:play-services-maps:20.0.0")
     implementation("com.google.android.gms:play-services-location:21.3.0")
     implementation("androidx.compose.material3:material3:1.4.0")
+    implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
+    implementation("com.google.firebase:firebase-messaging")
 
     // Compose BOM (Quản lý phiên bản tập trung)
     val composeBom = platform("androidx.compose:compose-bom:2024.06.00")

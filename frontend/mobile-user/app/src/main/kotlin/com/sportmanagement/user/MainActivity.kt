@@ -1,14 +1,19 @@
 package com.sportmanagement.user
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.core.content.ContextCompat
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.sportmanagement.user.push.PushNotificationRegistrar
 import com.sportmanagement.user.ui.UserApp
 import com.sportmanagement.user.ui.share.FieldShareLink
 import com.sportmanagement.user.ui.theme.SportUserTheme
@@ -26,6 +31,8 @@ class MainActivity : ComponentActivity() {
         pendingDeepLinkFieldId = parseFieldIdFromIntent(intent)
         pendingMomoPaymentReturn = parseMomoPaymentReturnFromIntent(intent)
         showReviewDemoUi = intent?.getBooleanExtra(EXTRA_SHOW_REVIEW_DEMO_UI, false) == true
+        requestNotificationPermissionIfNeeded()
+        PushNotificationRegistrar.registerCurrentToken(applicationContext)
 
         try {
             enableEdgeToEdge(
@@ -63,7 +70,7 @@ class MainActivity : ComponentActivity() {
         setIntent(intent)
         pendingDeepLinkFieldId = parseFieldIdFromIntent(intent)
         pendingMomoPaymentReturn = parseMomoPaymentReturnFromIntent(intent)
-        showReviewDemoUi = intent?.getBooleanExtra(EXTRA_SHOW_REVIEW_DEMO_UI, false) == true
+        showReviewDemoUi = intent.getBooleanExtra(EXTRA_SHOW_REVIEW_DEMO_UI, false)
     }
 
     private fun parseFieldIdFromIntent(intent: Intent?): Int? {
@@ -76,7 +83,25 @@ class MainActivity : ComponentActivity() {
         return FieldShareLink.parseMomoPaymentReturn(intent?.data)
     }
 
+    private fun requestNotificationPermissionIfNeeded() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
+        if (
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+        ) {
+            return
+        }
+
+        requestPermissions(
+            arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+            REQUEST_POST_NOTIFICATIONS
+        )
+    }
+
     companion object {
         const val EXTRA_SHOW_REVIEW_DEMO_UI = "show_review_demo_ui"
+        private const val REQUEST_POST_NOTIFICATIONS = 1001
     }
 }

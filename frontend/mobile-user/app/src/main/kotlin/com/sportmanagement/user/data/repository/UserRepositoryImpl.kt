@@ -21,6 +21,7 @@ import com.sportmanagement.user.domain.model.UserProfile
 import com.sportmanagement.user.domain.model.UserStat
 import com.sportmanagement.user.domain.repository.UserRepository
 import com.sportmanagement.user.domain.model.VenueCardType
+import com.sportmanagement.user.push.PushNotificationRegistrar
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -656,6 +657,7 @@ class UserRepositoryImpl(
             putString(AUTH_PROFILE_KEY, session.user.toJson().toString())
         }?.apply()
         savePreferredSportTypeKeys(session.user.favoriteSportKeys)
+        appContext?.let { PushNotificationRegistrar.registerCurrentToken(it) }
     }
 
     private fun getAuthToken(): String? =
