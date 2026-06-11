@@ -7,7 +7,7 @@ plugins {
 }
 
 android {
-    val mobileApiHost = (project.findProperty("MOBILE_API_HOST") as String?) ?: "192.168.55.127"
+    val mobileApiHost = (project.findProperty("MOBILE_API_HOST") as String?) ?: "127.0.0.1"
     val mobileApiPort = (project.findProperty("MOBILE_API_PORT") as String?) ?: "5000"
     val shareWebBaseUrl = (project.findProperty("SHARE_WEB_BASE_URL") as String?) ?: "https://sport-management.vn"
     val paymentSandboxAutoComplete =
