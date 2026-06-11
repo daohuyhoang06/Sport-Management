@@ -63,10 +63,15 @@ module.exports = {
       },
     });
 
-    await queryInterface.addIndex('field_blocked_slots', ['field_id']);
-    await queryInterface.addIndex('field_blocked_slots', ['court_id']);
-    await queryInterface.addIndex('field_blocked_slots', ['block_date']);
-    await queryInterface.addIndex('field_blocked_slots', ['field_id', 'block_date']);
+    await queryInterface.addIndex('field_blocked_slots', ['court_id'], {
+      name: 'idx_field_blocked_slots_court_id',
+    });
+    await queryInterface.addIndex('field_blocked_slots', ['block_date'], {
+      name: 'idx_field_blocked_slots_block_date',
+    });
+    await queryInterface.addIndex('field_blocked_slots', ['field_id', 'block_date'], {
+      name: 'idx_field_blocked_slots_field_date',
+    });
   },
 
   async down(queryInterface) {
