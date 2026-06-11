@@ -22,8 +22,8 @@ adb reverse tcp:5000 tcp:5000
 Ghi chu:
 
 - App lay URL backend tu `BuildConfig.API_BASE_URL`.
-- Mac dinh app goi `http://127.0.0.1:5000`, phu hop khi da `adb reverse`.
-- Neu muon doi host/port khi build, dung:
+- Emulator Android mac dinh goi `http://10.0.2.2:5000`.
+- Neu chay tren dien thoai that, dung `adb reverse tcp:5000 tcp:5000` hoac override host bang:
 
 ```bash
 ./gradlew assembleDebug -PMOBILE_API_HOST=192.168.1.10 -PMOBILE_API_PORT=5000

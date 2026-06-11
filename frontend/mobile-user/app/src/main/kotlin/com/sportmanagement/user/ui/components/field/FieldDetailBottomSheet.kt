@@ -6,6 +6,7 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -50,6 +51,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -89,7 +91,11 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.window.Dialog
+import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
 import com.sportmanagement.user.R
+import com.sportmanagement.user.domain.model.FieldReview
+import com.sportmanagement.user.domain.model.FieldReviewStats
 import com.sportmanagement.user.domain.model.SportIconType
 import com.sportmanagement.user.domain.model.UserField
 import com.sportmanagement.user.ui.components.booking.bookingCardTitleStyle
@@ -120,18 +126,14 @@ private val sheetTabRes = listOf(
     R.string.field_detail_tab_reviews
 )
 
-private data class SampleReviewEntry(
-    val author: String,
-    val comment: String,
-    val rating: Int,
-    val imageResIds: List<Int>
-)
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FieldDetailBottomSheet(
     field: UserField,
     isFavorite: Boolean,
+    reviewStats: FieldReviewStats? = null,
+    reviews: List<FieldReview> = emptyList(),
+    isReviewLoading: Boolean = false,
     onDismissRequest: () -> Unit,
     onFavoriteClick: () -> Unit,
     onBookClick: (UserField) -> Unit
@@ -147,28 +149,11 @@ fun FieldDetailBottomSheet(
     var ratingBadgeHeightPx by remember { mutableIntStateOf(0) }
     val bookingLink = remember(field.fieldId, field.name) { bookingLinkFor(field) }
     val hotline = remember(field.name) { context.getString(R.string.field_detail_default_hotline) }
-    val sampleReviews = listOf(
-        SampleReviewEntry(
-            author = stringResource(R.string.field_detail_review_user_1_name),
-            comment = stringResource(R.string.field_detail_review_user_1_comment),
-            rating = 5,
-            imageResIds = listOf(R.drawable.field_football)
-        ),
-        SampleReviewEntry(
-            author = stringResource(R.string.field_detail_review_user_2_name),
-            comment = stringResource(R.string.field_detail_review_user_2_comment),
-            rating = 5,
-            imageResIds = listOf(R.drawable.field_football, R.drawable.field_football)
-        ),
-        SampleReviewEntry(
-            author = stringResource(R.string.field_detail_review_user_3_name),
-            comment = stringResource(R.string.field_detail_review_user_3_comment),
-            rating = 5,
-            imageResIds = listOf(R.drawable.field_football)
-        )
-    )
     val headerImageHeight = 232.dp
     val infoCardOverlap = 28.dp
+    val resolvedReviewMetrics = remember(reviewStats, reviews, field.rating) {
+        resolveFieldReviewMetrics(reviewStats, reviews, field.rating)
+    }
     val ratingBadgeOffsetY = remember(ratingBadgeHeightPx, density) {
         val badgeHeightDp = with(density) { ratingBadgeHeightPx.toDp() }
         val cardTopBoundaryY = headerImageHeight - infoCardOverlap
@@ -353,7 +338,10 @@ fun FieldDetailBottomSheet(
                                 )
                                 Spacer(Modifier.width(6.dp))
                                 Text(
-                                    text = ratingLabel(field.rating, sampleReviews.size),
+                                    text = ratingLabel(
+                                        averageRating = resolvedReviewMetrics.averageRating,
+                                        reviewCount = resolvedReviewMetrics.reviewCount
+                                    ),
                                     style = MaterialTheme.typography.labelLarge,
                                     color = colors.onPrimary,
                                     fontWeight = FontWeight.SemiBold
@@ -428,7 +416,8 @@ fun FieldDetailBottomSheet(
                         3 -> PolicyTabContent()
                         else -> ReviewTabContent(
                             fieldSportType = field.sportIconType,
-                            sampleReviews = sampleReviews
+                            reviews = reviews,
+                            isLoading = isReviewLoading
                         )
                     }
                 }
@@ -685,7 +674,8 @@ private fun PolicyTabContent() {
 @Composable
 private fun ReviewTabContent(
     fieldSportType: SportIconType,
-    sampleReviews: List<SampleReviewEntry>
+    reviews: List<FieldReview>,
+    isLoading: Boolean
 ) {
     val colors = MaterialTheme.colorScheme
     Card(
@@ -698,17 +688,42 @@ private fun ReviewTabContent(
                 .padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            HorizontalDivider(color = colors.outlineVariant.copy(alpha = 0.5f))
-            sampleReviews.forEachIndexed { index, review ->
-                ReviewItemWithDrawableImages(
-                    author = review.author,
-                    comment = review.comment,
-                    rating = review.rating,
-                    imageResIds = review.imageResIds,
-                    avatarSportType = fieldSportType
-                )
-                if (index != sampleReviews.lastIndex) {
-                    HorizontalDivider(color = colors.outlineVariant.copy(alpha = 0.45f))
+            when {
+                isLoading && reviews.isEmpty() -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 20.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(strokeWidth = 2.dp)
+                    }
+                }
+
+                reviews.isEmpty() -> {
+                    Text(
+                        text = "Chưa có đánh giá",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = colors.onSurfaceVariant
+                    )
+                }
+
+                else -> {
+                    HorizontalDivider(color = colors.outlineVariant.copy(alpha = 0.5f))
+                    reviews.forEachIndexed { index, review ->
+                        ReviewItemWithRemoteImages(
+                            author = review.customerName.ifBlank { "Người chơi" },
+                            avatarUrl = review.customerAvatarUrl,
+                            comment = review.comment,
+                            createdAt = review.createdAt,
+                            rating = review.rating,
+                            imageUrls = review.imageUrls,
+                            avatarSportType = fieldSportType
+                        )
+                        if (index != reviews.lastIndex) {
+                            HorizontalDivider(color = colors.outlineVariant.copy(alpha = 0.45f))
+                        }
+                    }
                 }
             }
         }
@@ -775,26 +790,37 @@ private fun OnlineBookingLinkCard(
 }
 
 @Composable
-private fun ReviewItemWithDrawableImages(
+private fun ReviewItemWithRemoteImages(
     author: String,
+    avatarUrl: String,
     comment: String,
+    createdAt: String,
     rating: Int,
-    imageResIds: List<Int>,
+    imageUrls: List<String>,
     avatarSportType: SportIconType
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            SportCircleAvatar(
-                iconType = avatarSportType,
-                size = 36.dp,
-                iconSize = 18.dp
+            ReviewAvatar(
+                avatarUrl = avatarUrl,
+                author = author
             )
             Spacer(Modifier.width(8.dp))
-            Text(
-                text = author,
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold
-            )
+            Column {
+                Text(
+                    text = author,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold
+                )
+                val reviewTimeLabel = remember(createdAt) { formatReviewCreatedAt(createdAt) }
+                if (reviewTimeLabel.isNotBlank()) {
+                    Text(
+                        text = reviewTimeLabel,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
         }
 
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -813,14 +839,14 @@ private fun ReviewItemWithDrawableImages(
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        if (imageResIds.isNotEmpty()) {
+        if (imageUrls.isNotEmpty()) {
             Row(
                 modifier = Modifier.horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                imageResIds.forEach { imageRes ->
-                    Image(
-                        painter = painterResource(id = imageRes),
+                imageUrls.forEach { imageUrl ->
+                    AsyncImage(
+                        model = imageUrl,
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier
@@ -844,6 +870,63 @@ private fun StarRating(rating: Int, iconSize: androidx.compose.ui.unit.Dp = 14.d
                 modifier = Modifier.size(iconSize)
             )
         }
+    }
+}
+
+@Composable
+private fun ReviewAvatar(
+    avatarUrl: String,
+    author: String
+) {
+    val normalizedAvatarUrl = avatarUrl.trim()
+    if (
+        normalizedAvatarUrl.isBlank() ||
+        normalizedAvatarUrl.equals("null", ignoreCase = true) ||
+        normalizedAvatarUrl.endsWith("/null", ignoreCase = true) ||
+        normalizedAvatarUrl.endsWith("/undefined", ignoreCase = true)
+    ) {
+        DefaultReviewAvatar(author)
+        return
+    }
+
+    SubcomposeAsyncImage(
+        model = normalizedAvatarUrl,
+        contentDescription = author,
+        modifier = Modifier
+            .size(36.dp)
+            .clip(CircleShape),
+        contentScale = ContentScale.Crop,
+        error = {
+            DefaultReviewAvatar(author)
+        },
+        loading = {
+            DefaultReviewAvatar(author)
+        }
+    )
+}
+
+@Composable
+private fun DefaultReviewAvatar(author: String) {
+    Box(
+        modifier = Modifier
+            .size(36.dp)
+            .background(
+                MaterialTheme.colorScheme.surface.copy(alpha = 0.92f),
+                CircleShape
+            )
+            .border(
+                1.dp,
+                MaterialTheme.colorScheme.outlineVariant,
+                CircleShape
+            ),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = Icons.Default.Person,
+            contentDescription = author,
+            tint = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.size(18.dp)
+        )
     }
 }
 
@@ -873,14 +956,44 @@ private fun sportAccentOnColor(type: SportIconType): Color {
 }
 
 private fun ratingLabel(
-    rating: String,
+    averageRating: Double,
     reviewCount: Int
 ): String {
-    return if (rating.isBlank() || rating == "0" || rating == "0.0" || reviewCount <= 0) {
+    return if (averageRating <= 0.0 || reviewCount <= 0) {
         "Chưa có đánh giá"
     } else {
-        "$rating ($reviewCount đánh giá)"
+        "${formatFieldRating(averageRating)} ($reviewCount đánh giá)"
     }
+}
+
+private fun formatReviewCreatedAt(value: String): String {
+    val trimmed = value.trim()
+    if (trimmed.isBlank()) {
+        return ""
+    }
+
+    val candidates = listOf(
+        "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'" to "dd/MM/yyyy HH:mm",
+        "yyyy-MM-dd'T'HH:mm:ss'Z'" to "dd/MM/yyyy HH:mm",
+        "yyyy-MM-dd HH:mm:ss" to "dd/MM/yyyy HH:mm",
+        "yyyy-MM-dd'T'HH:mm:ss.SSSXXX" to "dd/MM/yyyy HH:mm",
+        "yyyy-MM-dd'T'HH:mm:ssXXX" to "dd/MM/yyyy HH:mm"
+    )
+
+    candidates.forEach { (inputPattern, outputPattern) ->
+        runCatching {
+            val inputFormat = java.text.SimpleDateFormat(inputPattern, Locale.getDefault()).apply {
+                timeZone = java.util.TimeZone.getTimeZone("UTC")
+            }
+            val outputFormat = java.text.SimpleDateFormat(outputPattern, Locale("vi", "VN"))
+            val parsed = inputFormat.parse(trimmed)
+            if (parsed != null) {
+                return outputFormat.format(parsed)
+            }
+        }
+    }
+
+    return trimmed
 }
 
 private fun bookingLinkFor(field: UserField): String {

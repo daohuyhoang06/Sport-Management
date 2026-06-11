@@ -6,6 +6,9 @@ import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import coil.compose.AsyncImage
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -44,6 +47,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.ChatBubble
 import androidx.compose.material.icons.outlined.CameraAlt
@@ -138,6 +142,10 @@ fun InboxScreen(
     sections: List<NotificationSectionData>,
     isLoading: Boolean = false,
     errorMessage: String? = null,
+    selectedCategory: InboxCategoryType? = null,
+    selectedActivityTab: ActivityInboxTab = ActivityInboxTab.Upcoming,
+    onSelectedCategoryChange: (InboxCategoryType?) -> Unit = {},
+    onSelectedActivityTabChange: (ActivityInboxTab) -> Unit = {},
     onRefresh: () -> Unit = {},
     onMarkAllRead: () -> Unit = {},
     onNotificationOpened: (Int?) -> Unit = {},
@@ -146,8 +154,6 @@ fun InboxScreen(
     onNotificationSelected: (NotificationItem) -> Unit
 ) {
     val layoutDirection = LocalLayoutDirection.current
-    var selectedCategory by rememberSaveable { mutableStateOf<InboxCategoryType?>(null) }
-    var selectedActivityTab by rememberSaveable { mutableStateOf(ActivityInboxTab.Upcoming) }
     val filteredSections = sections.mapNotNull { section ->
         val filteredItems = section.items.filter { item ->
             val matchesCategory = selectedCategory == null || item.category == selectedCategory
@@ -191,9 +197,10 @@ fun InboxScreen(
                     categories = quickActions,
                     selectedCategory = selectedCategory,
                     onCategorySelected = { category ->
-                        selectedCategory = if (selectedCategory == category) null else category
+                        val next = if (selectedCategory == category) null else category
+                        onSelectedCategoryChange(next)
                         if (category == InboxCategoryType.Activity) {
-                            selectedActivityTab = ActivityInboxTab.Upcoming
+                            onSelectedActivityTabChange(ActivityInboxTab.Match)
                         }
                     },
                     modifier = Modifier
@@ -251,7 +258,9 @@ fun InboxScreen(
             item {
                 ActivityInboxTabs(
                     selectedTab = selectedActivityTab,
-                    onTabSelected = { selectedActivityTab = it },
+                    onTabSelected = { tab ->
+                        onSelectedActivityTabChange(tab)
+                    },
                     modifier = Modifier.padding(horizontal = AppScreenHorizontalPadding)
                 )
                 Spacer(Modifier.height(InboxSectionGap))
@@ -265,6 +274,10 @@ fun InboxScreen(
                     onMarkAllClick = onMarkAllRead,
                     onItemClick = { item ->
                         when {
+                            isReviewNotificationItem(item) && item.bookingInfo != null -> {
+                                onNotificationOpened(item.bookingInfo.notificationId ?: item.id)
+                                onBookingSelected(item.bookingInfo)
+                            }
                             isReminderNotificationItem(item) && item.bookingInfo != null -> {
                                 onNotificationOpened(item.bookingInfo.notificationId ?: item.id)
                                 onBookingSelected(item.bookingInfo)
@@ -554,12 +567,15 @@ fun NotificationCard(item: NotificationItem, onClick: () -> Unit) {
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
     ) {
+        val isMatchItem = isMatchNotificationItem(item)
+        val isReminderItem = isReminderNotificationItem(item)
+        val isReviewItem = isReviewNotificationItem(item)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 12.dp),
+                .padding(horizontal = 14.dp, vertical = if (isMatchItem) 10.dp else 12.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.Top
+            verticalAlignment = if (isMatchItem) Alignment.CenterVertically else Alignment.Top
         ) {
             Box(
                 modifier = Modifier
@@ -578,14 +594,22 @@ fun NotificationCard(item: NotificationItem, onClick: () -> Unit) {
             Column(modifier = Modifier.weight(1f)) {
                 val subtitleLooksSecondary = looksLikeBookingCodePreview(item.subtitle)
                 val isMessageItem = item.category == InboxCategoryType.Message
-                val subtitleStyle =
-                    if (subtitleLooksSecondary) MaterialTheme.typography.bodySmall
-                    else MaterialTheme.typography.bodyMedium
+                val subtitleStyle = when {
+                    isMatchItem -> MaterialTheme.typography.bodySmall
+                    isReminderItem -> MaterialTheme.typography.bodySmall
+                    isReviewItem -> MaterialTheme.typography.bodySmall
+                    subtitleLooksSecondary -> MaterialTheme.typography.bodySmall
+                    else -> MaterialTheme.typography.bodyMedium
+                }
                 val subtitleWeight =
-                    if (subtitleLooksSecondary || isMessageItem) FontWeight.Normal else FontWeight.Medium
-                val subtitleColor =
-                    if (subtitleLooksSecondary) MaterialTheme.colorScheme.onSurfaceVariant
-                    else MaterialTheme.colorScheme.onSurface
+                    if (isMatchItem || isReminderItem || isReviewItem || subtitleLooksSecondary || isMessageItem) FontWeight.Normal else FontWeight.Medium
+                val subtitleColor = when {
+                    isMatchItem -> MaterialTheme.colorScheme.onSurfaceVariant
+                    isReminderItem -> MaterialTheme.colorScheme.onSurfaceVariant
+                    isReviewItem -> MaterialTheme.colorScheme.onSurfaceVariant
+                    subtitleLooksSecondary -> MaterialTheme.colorScheme.onSurfaceVariant
+                    else -> MaterialTheme.colorScheme.onSurface
+                }
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -609,20 +633,34 @@ fun NotificationCard(item: NotificationItem, onClick: () -> Unit) {
                     )
                 }
 
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(if (isMatchItem) 2.dp else 4.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.Top
+                    verticalAlignment = if (isMatchItem) Alignment.CenterVertically else Alignment.Top
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = item.subtitle,
-                            style = subtitleStyle,
-                            fontWeight = subtitleWeight,
-                            color = subtitleColor
-                        )
-                        if (item.detail.isNotBlank()) {
+                        if (isReviewItem) {
+                            reviewNotificationSummaryLines(item).forEachIndexed { index, line ->
+                                if (index > 0) {
+                                    Spacer(Modifier.height(2.dp))
+                                }
+                                Text(
+                                    text = line,
+                                    style = subtitleStyle,
+                                    fontWeight = subtitleWeight,
+                                    color = subtitleColor
+                                )
+                            }
+                        } else {
+                            Text(
+                                text = item.subtitle,
+                                style = subtitleStyle,
+                                fontWeight = subtitleWeight,
+                                color = subtitleColor
+                            )
+                        }
+                        if (item.detail.isNotBlank() && !isReminderItem && !isReviewItem) {
                             Spacer(Modifier.height(3.dp))
                             Text(
                                 text = item.detail,
@@ -687,8 +725,46 @@ private fun NotificationBadge(value: String, modifier: Modifier = Modifier) {
 private fun looksLikeBookingCodePreview(text: String): Boolean {
     val normalized = text.trim()
     return normalized.contains("#B", ignoreCase = true) ||
-        normalized.contains("Mã đặt sân", ignoreCase = true) ||
+    normalized.contains("Mã đặt sân", ignoreCase = true) ||
         normalized.contains("Booking #B", ignoreCase = true)
+}
+
+private fun reviewNotificationSummary(item: NotificationItem): String {
+    return reviewNotificationSummaryLines(item).joinToString(". ")
+}
+
+private fun reviewNotificationSummaryLines(item: NotificationItem): List<String> {
+    val fieldName = item.bookingInfo?.fieldName
+        ?.takeIf { it.isNotBlank() }
+        ?: item.title.ifBlank { item.subtitle }
+
+    return buildList {
+        add("Bạn vừa thi đấu xong tại $fieldName")
+        add("Hãy để lại đánh giá của bạn")
+    }
+}
+
+private fun sanitizeReviewSummaryText(text: String): String {
+    return text
+        .replace(Regex("(?i)\\bbooking\\b"), "")
+        .replace(Regex("(?i)booking\\s*#?[A-Z]*\\d+"), "")
+        .replace(Regex("(?i)đã\\s+kết\\s+thúc"), "")
+        .replace(Regex("(?i)#?b\\d+"), "")
+        .replace(Regex("(?i)hãy\\s+để\\s+lại\\s+đánh\\s+giá\\s+của\\s+bạn"), "")
+        .replace(Regex("(?i)khung giờ"), "")
+        .replace(Regex("\\b\\d{1,2}:\\d{2}(?:\\s*(?:AM|PM))?\\b"), "")
+        .replace("?", "")
+        .replace(Regex("\\s+"), " ")
+        .replace(Regex("\\s+([.,;:])"), "$1")
+        .trim()
+}
+
+private fun splitReviewSummaryText(text: String): List<String> {
+    if (text.isBlank()) return emptyList()
+    return text
+        .split(Regex("[\\n\\r]+|(?<=[.!?])\\s+|\\s*;\\s*|\\s*,\\s*"))
+        .map { it.trim() }
+        .filter { it.isNotBlank() }
 }
 
 @Composable
@@ -732,7 +808,7 @@ private fun NotificationDetailSheet(item: NotificationItem, modifier: Modifier =
                     )
                     Spacer(Modifier.height(2.dp))
                     Text(
-                        text = "${item.timeLabel} • ${item.subtitle}",
+                        text = "${item.timeLabel} - ${item.subtitle}",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -783,11 +859,6 @@ private fun NotificationDetailSheet(item: NotificationItem, modifier: Modifier =
                 }
             }
         } else {
-            Text(
-                text = item.subtitle,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface
-            )
             if (item.detail.isNotBlank()) {
                 Spacer(Modifier.height(6.dp))
                 Text(
@@ -955,13 +1026,13 @@ private fun BookingHighlightCard(info: BookingInfo) {
             }
             Column {
                 Text(
-                    text = "Đơn đặt sân của bạn đã được xác nhận",
+                        text = "Đơn đặt sân của bạn đã được xác nhận",
                     style = MaterialTheme.typography.bodyMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.primary
                 )
                 Text(
-                    text = "Sân sẽ sẵn sàng đón bạn theo lịch hẹn.",
+                        text = "Sân sẽ sẵn sàng đón bạn theo lịch hẹn.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -1102,9 +1173,43 @@ data class BookingInfo(
     val fieldId: Int? = null,
     val bookingId: Int? = null,
     val notificationId: Int? = null,
-    val focusVenueInfo: Boolean = false
+    val canReview: Boolean = false,
+    val reviewSubmitted: Boolean = false,
+    val reviewId: Int? = null,
+    val reviewRating: Int? = null,
+    val reviewComment: String = "",
+    val matchPost: BookingMatchPostInfo? = null,
+    val matchRequests: List<BookingMatchRequestInfo> = emptyList(),
+    val focusVenueInfo: Boolean = false,
+    val reviewFocusOnly: Boolean = false
 )
 
+@Immutable
+data class BookingMatchPostInfo(
+    val matchPostId: Int,
+    val ownerUserId: Int,
+    val ownerUsername: String,
+    val teamName: String,
+    val playerCount: Int,
+    val level: String,
+    val levelLabel: String,
+    val description: String,
+    val status: String
+)
+
+@Immutable
+data class BookingMatchRequestInfo(
+    val matchRequestId: Int,
+    val requesterUserId: Int?,
+    val requesterUsername: String,
+    val teamName: String,
+    val playerCount: Int,
+    val level: String,
+    val levelLabel: String,
+    val message: String,
+    val status: String,
+    val createdAt: String
+)
 @Immutable
 data class ConversationInfo(
     val fieldName: String,
@@ -1113,7 +1218,8 @@ data class ConversationInfo(
     val avatarRes: Int,
     val conversationId: Int? = null,
     val fieldId: Int? = null,
-    val bookingId: Int? = null
+    val bookingId: Int? = null,
+    val peerUserId: Int? = null
 )
 
 sealed class NotificationDetailInfo {
@@ -1155,6 +1261,56 @@ sealed class NotificationDetailInfo {
         val features: List<String>,
         val timeText: String
     ) : NotificationDetailInfo()
+
+    data class MatchRequestNotice(
+        val title: String,
+        val subtitle: String,
+        val notificationId: Int? = null,
+        val bookingId: Int? = null,
+        val fieldId: Int? = null,
+        val matchRequestId: Int? = null,
+        val peerUserId: Int? = null,
+        val requesterUserId: Int? = null,
+        val fieldName: String,
+        val address: String,
+        val timeRange: String,
+        val dateLabel: String,
+        val bookingCode: String,
+        val hostTeamName: String,
+        val requesterTeamName: String,
+        val requesterAccountName: String,
+        val requesterPlayerCount: Int,
+        val requesterLevelLabel: String,
+        val requesterMessage: String,
+        val requestStatus: String,
+        val canRespond: Boolean,
+        val timeText: String
+    ) : NotificationDetailInfo()
+
+    data class MatchSuccessNotice(
+        val title: String,
+        val subtitle: String,
+        val notificationId: Int? = null,
+        val bookingId: Int? = null,
+        val fieldId: Int? = null,
+        val requesterUserId: Int? = null,
+        val fieldName: String,
+        val address: String,
+        val timeRange: String,
+        val dateLabel: String,
+        val bookingCode: String,
+        val checkInCode: String,
+        val shareUrl: String,
+        val hostTeamName: String,
+        val requesterTeamName: String,
+        val ownerUsername: String,
+        val requesterAccountName: String,
+        val requesterPlayerCount: Int,
+        val requesterLevelLabel: String,
+        val requesterMessage: String,
+        val requestStatus: String,
+        val timeText: String
+    ) : NotificationDetailInfo()
 }
 
 @Immutable
@@ -1174,7 +1330,8 @@ enum class InboxCategoryType {
     Support
 }
 
-private enum class ActivityInboxTab(val title: String) {
+enum class ActivityInboxTab(val title: String) {
+    Match("Hẹn đấu"),
     Upcoming("Sắp diễn ra"),
     Review("Cần đánh giá")
 }
@@ -1191,9 +1348,17 @@ private fun activityTabMatches(
     tab: ActivityInboxTab
 ): Boolean {
     return when (tab) {
+        ActivityInboxTab.Match -> isMatchNotificationItem(item)
         ActivityInboxTab.Upcoming -> isReminderNotificationItem(item)
         ActivityInboxTab.Review -> isReviewNotificationItem(item)
     }
+}
+
+private fun isMatchNotificationItem(item: NotificationItem): Boolean {
+    val normalized = item.type?.lowercase().orEmpty()
+    return normalized == "match_request_received" ||
+        normalized == "match_request_accepted" ||
+        normalized == "match_request_rejected"
 }
 
 private fun isReminderNotificationItem(item: NotificationItem): Boolean {
@@ -1206,6 +1371,7 @@ private fun isReminderNotificationItem(item: NotificationItem): Boolean {
 private fun isReviewNotificationItem(item: NotificationItem): Boolean {
     val normalized = item.type?.lowercase().orEmpty()
     return normalized == "review_request" ||
+        normalized == "review_reminder" ||
         normalized == "booking_completed" ||
         normalized == "field_review_request"
 }
@@ -1265,7 +1431,7 @@ private fun inboxSections(): List<NotificationSectionData> {
     val priorityItems = listOf(
         NotificationItem(
             title = "Đặt sân thành công",
-            subtitle = "Sân Mỹ Đình Mini • 18:00 hôm nay",
+            subtitle = "Sân Mỹ Đình Mini ? 18:00 hôm nay",
             detail = "Booking #B123456 đã được xác nhận.",
             longDetail = "Bạn có thể đến sân trước 10 phút để hoàn tất thủ tục nhận sân.",
             timeLabel = "10:30",
@@ -1292,7 +1458,7 @@ private fun inboxSections(): List<NotificationSectionData> {
         NotificationItem(
             title = "Sắp đến giờ thi đấu",
             subtitle = "Còn 1 giờ nữa tới lịch đặt sân",
-            detail = "Sân Hoàng Mai • 17:00 hôm nay",
+            detail = "Sân Hoàng Mai ? 17:00 hôm nay",
             longDetail = "Bạn vui lòng có mặt đúng giờ để tránh mất lượt đặt sân.",
             timeLabel = "15:00",
             unread = true,
@@ -1388,7 +1554,7 @@ private fun inboxSections(): List<NotificationSectionData> {
             detail = "",
             longDetail = "Trong thời gian bảo trì, một số tính năng đặt sân có thể tạm thời gián đoạn.",
             timeLabel = "18/05/2026",
-            category = InboxCategoryType.Support,
+            category = InboxCategoryType.Activity,
             detailInfo = NotificationDetailInfo.SystemNotice(
                 title = "Thông báo hệ thống",
                 subtitle = "Cập nhật tính năng mới",
@@ -1398,7 +1564,7 @@ private fun inboxSections(): List<NotificationSectionData> {
                     "Nhắc lịch trước trận đấu",
                     "Chat trực tiếp với chủ sân"
                 ),
-                timeText = "23/05/2026 • 09:00"
+                timeText = "23/05/2026 ? 09:00"
             ),
             icon = Icons.Outlined.Notifications,
             iconBackground = infoTint.copy(alpha = 0.08f),
@@ -1429,16 +1595,38 @@ private fun inboxSections(): List<NotificationSectionData> {
 @Composable
 fun BookingDetailScreen(
     info: BookingInfo,
+    isSubmittingReview: Boolean = false,
+    reviewSubmissionError: String? = null,
+    reviewSubmissionSuccessMessage: String? = null,
+    processingMatchRequestId: Int? = null,
+    matchRequestActionError: String? = null,
+    matchRequestActionSuccessMessage: String? = null,
     onBackClick: () -> Unit,
-    onOpenChat: (ConversationInfo) -> Unit
+    onSubmitReview: (Int, String, String?) -> Unit = { _, _, _ -> },
+    onReviewFeedbackConsumed: () -> Unit = {},
+    onAcceptMatchRequest: (Int) -> Unit = {},
+    onRejectMatchRequest: (Int) -> Unit = {},
+    onMatchRequestFeedbackConsumed: () -> Unit = {},
+    onOpenChat: (ConversationInfo) -> Unit,
+    autoOpenReviewSheet: Boolean = false
 ) {
     val context = LocalContext.current
     var showContactSheet by remember { mutableStateOf(false) }
+    var showReviewSheet by remember { mutableStateOf(false) }
+    var reviewRating by rememberSaveable(info.bookingId) { mutableStateOf(info.reviewRating ?: 0) }
+    var reviewComment by rememberSaveable(info.bookingId) { mutableStateOf(info.reviewComment) }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val reviewSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val screenBackground = MaterialTheme.colorScheme.background
     val contentScrollState = rememberScrollState()
     val reminderFocusOffset = with(LocalDensity.current) { 92.dp.roundToPx() }
     val qrBitmap = rememberQrBitmap(info.shareUrl)
+    var reviewImageUri by rememberSaveable(info.bookingId) { mutableStateOf<String?>(null) }
+    val reviewImagePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        reviewImageUri = uri?.toString()
+    }
     val shareText = remember(info) {
         buildString {
             append("Hóa đơn & QR Check-in")
@@ -1457,7 +1645,7 @@ fun BookingDetailScreen(
                 append(
                     listOf(info.paymentMethod, info.totalAmount)
                         .filter { it.isNotBlank() }
-                        .joinToString(" • ")
+                        .joinToString(" ? ")
                         .let { "Thanh toán: $it" }
                 )
             }
@@ -1466,6 +1654,41 @@ fun BookingDetailScreen(
                 append('\n')
                 append(info.shareUrl)
             }
+        }
+    }
+
+    LaunchedEffect(reviewSubmissionSuccessMessage) {
+        if (!reviewSubmissionSuccessMessage.isNullOrBlank()) {
+            showReviewSheet = false
+            reviewImageUri = null
+            Toast.makeText(context, reviewSubmissionSuccessMessage, Toast.LENGTH_SHORT).show()
+            onReviewFeedbackConsumed()
+        }
+    }
+
+    LaunchedEffect(autoOpenReviewSheet, info.bookingId) {
+        if (
+            autoOpenReviewSheet &&
+            info.canReview &&
+            !info.reviewSubmitted &&
+            !info.reviewFocusOnly &&
+            info.statusCode != "expired"
+        ) {
+            showReviewSheet = true
+        }
+    }
+
+    LaunchedEffect(matchRequestActionSuccessMessage) {
+        if (!matchRequestActionSuccessMessage.isNullOrBlank()) {
+            Toast.makeText(context, matchRequestActionSuccessMessage, Toast.LENGTH_SHORT).show()
+            onMatchRequestFeedbackConsumed()
+        }
+    }
+
+    LaunchedEffect(matchRequestActionError) {
+        if (!matchRequestActionError.isNullOrBlank()) {
+            Toast.makeText(context, matchRequestActionError, Toast.LENGTH_SHORT).show()
+            onMatchRequestFeedbackConsumed()
         }
     }
 
@@ -1486,6 +1709,8 @@ fun BookingDetailScreen(
         ) {
             BookingDetailTopBar(
                 onBackClick = onBackClick,
+                title = if (info.reviewFocusOnly) "Đánh giá sân" else stringResource(R.string.inbox_booking_detail_title),
+                showShare = !info.reviewFocusOnly,
                 onShareClick = {
                     try {
                         context.startActivity(
@@ -1506,67 +1731,98 @@ fun BookingDetailScreen(
                     }
                 }
             )
-        BookingDetailContent(
-            info = info,
-            onShareQr = {
-                if (qrBitmap == null || info.shareUrl.isBlank()) {
-                    Toast.makeText(
-                        context,
-                        "QR check-in chưa sẵn sàng",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                } else {
-                    runCatching { shareQrBitmap(context, qrBitmap, info.bookingCode) }
-                        .onFailure {
+            if (info.reviewFocusOnly) {
+                ReviewDetailContent(
+                    info = info,
+                    rating = reviewRating,
+                    comment = reviewComment,
+                    selectedImageUri = reviewImageUri,
+                    isSubmitting = isSubmittingReview,
+                    errorMessage = reviewSubmissionError,
+                    hasSubmitted = info.reviewSubmitted,
+                    onRatingSelected = { reviewRating = it },
+                    onCommentChanged = { reviewComment = it },
+                    onPickImage = { reviewImagePickerLauncher.launch("image/*") },
+                    onRemoveImage = { reviewImageUri = null },
+                    onSubmitClick = {
+                        onSubmitReview(reviewRating, reviewComment, reviewImageUri)
+                    },
+                    modifier = Modifier
+                        .weight(1f)
+                        .verticalScroll(contentScrollState)
+                        .padding(horizontal = AppScreenHorizontalPadding, vertical = 12.dp)
+                )
+            } else {
+                BookingDetailContent(
+                    info = info,
+                    onReviewClick = {
+                        reviewRating = info.reviewRating ?: 0
+                        reviewComment = info.reviewComment
+                        showReviewSheet = true
+                        onReviewFeedbackConsumed()
+                    },
+                    onShareQr = {
+                        if (qrBitmap == null || info.shareUrl.isBlank()) {
                             Toast.makeText(
                                 context,
-                                "Không thể chia sẻ QR lúc này",
+                                "QR check-in chưa sẵn sàng",
                                 Toast.LENGTH_SHORT
                             ).show()
+                        } else {
+                            runCatching { shareQrBitmap(context, qrBitmap, info.bookingCode) }
+                                .onFailure {
+                                    Toast.makeText(
+                                        context,
+                                        "Không thể chia sẻ QR lúc này",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
                         }
-                }
-            },
-            onDownloadQr = {
-                if (qrBitmap == null || info.shareUrl.isBlank()) {
-                    Toast.makeText(
-                        context,
-                        "QR check-in chưa sẵn sàng",
-                        Toast.LENGTH_SHORT
-                    ).show()
-                } else {
-                    runCatching { saveQrBitmap(context, qrBitmap, info.bookingCode) }
-                        .onSuccess {
+                    },
+                    onDownloadQr = {
+                        if (qrBitmap == null || info.shareUrl.isBlank()) {
                             Toast.makeText(
                                 context,
-                                "Đã tải QR xuống máy",
+                                "QR check-in chưa sẵn sàng",
                                 Toast.LENGTH_SHORT
                             ).show()
+                        } else {
+                            runCatching { saveQrBitmap(context, qrBitmap, info.bookingCode) }
+                                .onSuccess {
+                                    Toast.makeText(
+                                        context,
+                                        "Đang tải QR xuống máy",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                                .onFailure {
+                                    Toast.makeText(
+                                        context,
+                                        "Không thể tải QR xuống",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
                         }
-                        .onFailure {
-                            Toast.makeText(
-                                context,
-                                "Không thể tải QR xuống",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
-                }
-            },
-            modifier = Modifier
-                .weight(1f)
-                .verticalScroll(contentScrollState)
-                    .padding(horizontal = AppScreenHorizontalPadding, vertical = 12.dp)
-            )
-        }
+                    },
+                    processingMatchRequestId = processingMatchRequestId,
+                    onAcceptMatchRequest = onAcceptMatchRequest,
+                    onRejectMatchRequest = onRejectMatchRequest,
+                    modifier = Modifier
+                        .weight(1f)
+                        .verticalScroll(contentScrollState)
+                        .padding(horizontal = AppScreenHorizontalPadding, vertical = 12.dp)
+                )
 
-        BookingDetailBottomActions(
-            onDirectionsClick = {
-                val geoUri = Uri.parse("geo:0,0?q=${Uri.encode(info.address)}")
-                val intent = Intent(Intent.ACTION_VIEW, geoUri)
-                context.startActivity(intent)
-            },
-            onContactClick = { showContactSheet = true },
-            modifier = Modifier.align(Alignment.BottomCenter)
-        )
+                BookingDetailBottomActions(
+                    onDirectionsClick = {
+                        val geoUri = Uri.parse("geo:0,0?q=${Uri.encode(info.address)}")
+                        val intent = Intent(Intent.ACTION_VIEW, geoUri)
+                        context.startActivity(intent)
+                    },
+                    onContactClick = { showContactSheet = true }
+                )
+            }
+        }
 
         if (showContactSheet) {
             val ownerPhone = info.ownerPhone.trim()
@@ -1604,12 +1860,43 @@ fun BookingDetailScreen(
                 )
             }
         }
+
+        if (showReviewSheet && info.statusCode != "expired") {
+            ModalBottomSheet(
+                onDismissRequest = {
+                    showReviewSheet = false
+                    onReviewFeedbackConsumed()
+                },
+                sheetState = reviewSheetState,
+                dragHandle = { BottomSheetDefaults.DragHandle() },
+                shape = RoundedCornerShape(topStart = AppSheetTopCornerRadius, topEnd = AppSheetTopCornerRadius)
+            ) {
+                ReviewBookingSheet(
+                    rating = reviewRating,
+                    comment = reviewComment,
+                    isSubmitting = isSubmittingReview,
+                    errorMessage = reviewSubmissionError,
+                    hasSubmitted = info.reviewSubmitted,
+                    onRatingSelected = { reviewRating = it },
+                    onCommentChanged = { reviewComment = it },
+                    onCloseClick = {
+                        showReviewSheet = false
+                        onReviewFeedbackConsumed()
+                    },
+                    onSubmitClick = {
+                        onSubmitReview(reviewRating, reviewComment, null)
+                    }
+                )
+            }
+        }
     }
 }
 
 @Composable
 private fun BookingDetailTopBar(
     onBackClick: () -> Unit,
+    title: String,
+    showShare: Boolean,
     onShareClick: () -> Unit
 ) {
     Row(
@@ -1627,18 +1914,22 @@ private fun BookingDetailTopBar(
             )
         }
         Text(
-            text = stringResource(R.string.inbox_booking_detail_title),
+            text = title,
             style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.weight(1f),
             color = MaterialTheme.colorScheme.onSurface
         )
-        IconButton(onClick = onShareClick) {
-            Icon(
-                imageVector = Icons.Default.Share,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+        if (showShare) {
+            IconButton(onClick = onShareClick) {
+                Icon(
+                    imageVector = Icons.Default.Share,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        } else {
+            Spacer(modifier = Modifier.size(48.dp))
         }
     }
 }
@@ -1646,8 +1937,12 @@ private fun BookingDetailTopBar(
 @Composable
 private fun BookingDetailContent(
     info: BookingInfo,
+    onReviewClick: () -> Unit,
     onShareQr: () -> Unit,
     onDownloadQr: () -> Unit,
+    processingMatchRequestId: Int?,
+    onAcceptMatchRequest: (Int) -> Unit,
+    onRejectMatchRequest: (Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(modifier = modifier) {
@@ -1660,11 +1955,58 @@ private fun BookingDetailContent(
         BookerInfoCard(info)
         Spacer(Modifier.height(12.dp))
         BookingOwnerNoteCard(note = info.ownerNote)
+        if ((info.canReview || info.reviewSubmitted) && info.statusCode != "expired") {
+            Spacer(Modifier.height(12.dp))
+            ReviewBookingCard(
+                info = info,
+                onReviewClick = onReviewClick
+            )
+        }
+        if (info.matchPost != null) {
+            Spacer(Modifier.height(12.dp))
+            MatchPostInfoCard(post = info.matchPost)
+        }
         Spacer(Modifier.height(16.dp))
         BookingCheckInCard(
             info = info,
             onShareQr = onShareQr,
             onDownloadQr = onDownloadQr
+        )
+        Spacer(Modifier.height(140.dp))
+    }
+}
+
+@Composable
+private fun ReviewDetailContent(
+    info: BookingInfo,
+    rating: Int,
+    comment: String,
+    selectedImageUri: String?,
+    isSubmitting: Boolean,
+    errorMessage: String?,
+    hasSubmitted: Boolean,
+    onRatingSelected: (Int) -> Unit,
+    onCommentChanged: (String) -> Unit,
+    onPickImage: () -> Unit,
+    onRemoveImage: () -> Unit,
+    onSubmitClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier) {
+        VenueInfoCard(info)
+        Spacer(Modifier.height(12.dp))
+        ReviewInlineCard(
+            rating = rating,
+            comment = comment,
+            selectedImageUri = selectedImageUri,
+            isSubmitting = isSubmitting,
+            errorMessage = errorMessage,
+            hasSubmitted = hasSubmitted,
+            onRatingSelected = onRatingSelected,
+            onCommentChanged = onCommentChanged,
+            onPickImage = onPickImage,
+            onRemoveImage = onRemoveImage,
+            onSubmitClick = onSubmitClick
         )
         Spacer(Modifier.height(140.dp))
     }
@@ -1955,6 +2297,537 @@ private fun BookingOwnerNoteCard(note: String) {
 }
 
 @Composable
+private fun MatchPostInfoCard(post: BookingMatchPostInfo) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(AppCardCornerRadius),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            SectionHeader(
+                title = "Bài tìm đối thủ",
+                icon = Icons.Outlined.Search
+            )
+            Spacer(Modifier.height(10.dp))
+            BookingDetailRow(label = "Tên đội", value = post.teamName)
+            BookingDetailRow(label = "Số lượng", value = "${post.playerCount} người")
+            BookingDetailRow(label = "Trình độ", value = post.levelLabel)
+            if (post.description.isNotBlank()) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = post.description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Spacer(Modifier.height(8.dp))
+            BookingDetailRow(label = "Trạng thái", value = post.status)
+        }
+    }
+}
+
+@Composable
+private fun MatchRequestsCard(
+    requests: List<BookingMatchRequestInfo>,
+    processingMatchRequestId: Int?,
+    onAcceptMatchRequest: (Int) -> Unit,
+    onRejectMatchRequest: (Int) -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(AppCardCornerRadius),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            SectionHeader(
+                title = "Yêu cầu ghép trận",
+                icon = Icons.Outlined.Notifications
+            )
+            Spacer(Modifier.height(10.dp))
+            requests.forEachIndexed { index, request ->
+                MatchRequestItem(
+                    request = request,
+                    isProcessing = processingMatchRequestId == request.matchRequestId,
+                    onAccept = { onAcceptMatchRequest(request.matchRequestId) },
+                    onReject = { onRejectMatchRequest(request.matchRequestId) }
+                )
+                if (index != requests.lastIndex) {
+                    Spacer(Modifier.height(12.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MatchRequestItem(
+    request: BookingMatchRequestInfo,
+    isProcessing: Boolean,
+    onAccept: () -> Unit,
+    onReject: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(AppCardCornerRadius),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            BookingDetailRow(label = "Tên đội", value = request.teamName)
+            BookingDetailRow(label = "Số lượng", value = "${request.playerCount} người")
+            BookingDetailRow(label = "Trạng thái", value = request.status)
+            if (request.message.isNotBlank()) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = request.message,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            if (request.status.equals("PENDING", ignoreCase = true)) {
+                Spacer(Modifier.height(10.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = onReject,
+                        modifier = Modifier.weight(1f),
+                        enabled = !isProcessing,
+                        shape = RoundedCornerShape(AppCtaCornerRadius)
+                    ) {
+                        Text(if (isProcessing) "Đang xử lý..." else "Từ chối")
+                    }
+                    Button(
+                        onClick = onAccept,
+                        modifier = Modifier.weight(1f),
+                        enabled = !isProcessing,
+                        shape = RoundedCornerShape(AppCtaCornerRadius)
+                    ) {
+                        Text(if (isProcessing) "Đang xử lý..." else "Chấp nhận")
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReviewBookingCard(
+    info: BookingInfo,
+    onReviewClick: () -> Unit
+) {
+    val hasSubmitted = info.reviewSubmitted
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(AppCardCornerRadius),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            SectionHeader(
+                title = if (hasSubmitted) "Đánh giá của bạn" else "Đánh giá sân",
+                icon = Icons.Default.Star
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = if (hasSubmitted) {
+                    "Cảm ơn bạn đã để lại đánh giá cho booking ${info.bookingCode}."
+                } else {
+                    "Booking ${info.bookingCode} đã kết thúc. Hãy chia sẻ trải nghiệm sân để giúp người dùng khác."
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            if (hasSubmitted && info.reviewRating != null) {
+                Spacer(Modifier.height(12.dp))
+                ReviewStars(
+                    rating = info.reviewRating,
+                    onRatingSelected = null
+                )
+            }
+            if (hasSubmitted && info.reviewComment.isNotBlank()) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = info.reviewComment,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+            if (info.canReview && info.statusCode != "expired") {
+                Spacer(Modifier.height(12.dp))
+                Button(
+                    onClick = onReviewClick,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(AppCtaCornerRadius),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                ) {
+                    Text(
+                        text = "Đánh giá ngay",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReviewInlineCard(
+    rating: Int,
+    comment: String,
+    selectedImageUri: String?,
+    isSubmitting: Boolean,
+    errorMessage: String?,
+    hasSubmitted: Boolean,
+    onRatingSelected: (Int) -> Unit,
+    onCommentChanged: (String) -> Unit,
+    onPickImage: () -> Unit,
+    onRemoveImage: () -> Unit,
+    onSubmitClick: () -> Unit
+) {
+    val canSubmit = !hasSubmitted && rating in 1..5 && comment.trim().isNotBlank() && !isSubmitting
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(AppCardCornerRadius),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            SectionHeader(
+                title = "Đánh giá sân",
+                icon = Icons.Default.Star
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = "Chất lượng sân của bạn thế nào?",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Spacer(Modifier.height(10.dp))
+            ReviewStars(
+                rating = rating,
+                onRatingSelected = if (hasSubmitted || isSubmitting) null else onRatingSelected
+            )
+            Spacer(Modifier.height(12.dp))
+            TextField(
+                value = comment,
+                onValueChange = onCommentChanged,
+                enabled = !hasSubmitted && !isSubmitting,
+                minLines = 4,
+                maxLines = 5,
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = {
+                    Text(
+                        text = "Viết cảm nhận của bạn về mặt sân, dịch vụ, ánh sáng...",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            )
+            Spacer(Modifier.height(12.dp))
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(enabled = !hasSubmitted && !isSubmitting) {
+                        onPickImage()
+                    },
+                shape = RoundedCornerShape(AppCardCornerRadius),
+                color = MaterialTheme.colorScheme.surfaceContainerLow
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.CameraAlt,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Thêm ảnh",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "Bạn có thể bổ sung ảnh đánh giá ở bước này.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+
+            if (selectedImageUri != null) {
+                Spacer(Modifier.height(10.dp))
+                Box(
+                    modifier = Modifier
+                        .size(80.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp))
+                ) {
+                    AsyncImage(
+                        model = selectedImageUri,
+                        contentDescription = null,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                    IconButton(
+                        onClick = onRemoveImage,
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .size(20.dp)
+                            .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                            .padding(2.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Close,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(10.dp)
+                        )
+                    }
+                }
+            }
+
+            if (!errorMessage.isNullOrBlank()) {
+                Spacer(Modifier.height(10.dp))
+                Text(
+                    text = errorMessage,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+
+            Spacer(Modifier.height(14.dp))
+            Button(
+                onClick = onSubmitClick,
+                enabled = canSubmit,
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(AppCtaCornerRadius),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                )
+            ) {
+                Text(
+                    text = if (isSubmitting) "Đang gửi..." else if (hasSubmitted) "Đã gửi đánh giá" else "Gửi đánh giá",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ReviewBookingSheet(
+    rating: Int,
+    comment: String,
+    isSubmitting: Boolean,
+    errorMessage: String?,
+    hasSubmitted: Boolean,
+    onRatingSelected: (Int) -> Unit,
+    onCommentChanged: (String) -> Unit,
+    onCloseClick: () -> Unit,
+    onSubmitClick: () -> Unit
+) {
+    val canSubmit = !hasSubmitted && rating in 1..5 && comment.trim().isNotBlank() && !isSubmitting
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .imePadding()
+            .padding(horizontal = AppScreenHorizontalPadding, vertical = 12.dp)
+    ) {
+        Box(modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = "Đánh giá sân",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.align(Alignment.Center)
+            )
+            IconButton(
+                onClick = onCloseClick,
+                modifier = Modifier.align(Alignment.CenterEnd)
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.Close,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+        Text(
+            text = "Chất lượng sân của bạn thế nào?",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        Spacer(Modifier.height(10.dp))
+        ReviewStars(
+            rating = rating,
+            onRatingSelected = onRatingSelected
+        )
+        Spacer(Modifier.height(12.dp))
+        TextField(
+            value = comment,
+            onValueChange = onCommentChanged,
+            enabled = !hasSubmitted && !isSubmitting,
+            minLines = 4,
+            maxLines = 5,
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = {
+                Text(
+                    text = "Viết cảm nhận của bạn về mặt sân, dịch vụ, ánh sáng...",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+        )
+        Spacer(Modifier.height(12.dp))
+        var selectedImageUri by rememberSaveable { mutableStateOf<String?>(null) }
+        val imagePickerLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.GetContent()
+        ) { uri ->
+            selectedImageUri = uri?.toString()
+        }
+
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(enabled = !hasSubmitted && !isSubmitting) {
+                    imagePickerLauncher.launch("image/*")
+                },
+            shape = RoundedCornerShape(AppCardCornerRadius),
+            color = MaterialTheme.colorScheme.surfaceContainerLow
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.CameraAlt,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Thêm ảnh",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Bạn có thể bổ sung ảnh đánh giá ở bước này.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+
+        if (selectedImageUri != null) {
+            Spacer(Modifier.height(10.dp))
+            Box(
+                modifier = Modifier
+                    .size(80.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(8.dp))
+            ) {
+                AsyncImage(
+                    model = selectedImageUri,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+                IconButton(
+                    onClick = { selectedImageUri = null },
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .size(20.dp)
+                        .background(Color.Black.copy(alpha = 0.5f), CircleShape)
+                        .padding(2.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Close,
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(10.dp)
+                    )
+                }
+            }
+        }
+        if (!errorMessage.isNullOrBlank()) {
+            Spacer(Modifier.height(10.dp))
+            Text(
+                text = errorMessage,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error
+            )
+        }
+        Spacer(Modifier.height(14.dp))
+        Button(
+            onClick = onSubmitClick,
+            enabled = canSubmit,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(AppCtaCornerRadius),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            )
+        ) {
+            Text(
+                text = if (isSubmitting) "Đang gửi..." else "Gửi đánh giá",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+    }
+}
+
+@Composable
+private fun ReviewStars(
+    rating: Int,
+    onRatingSelected: ((Int) -> Unit)?
+) {
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        repeat(5) { index ->
+            val filled = index < rating
+            Icon(
+                imageVector = Icons.Default.Star,
+                contentDescription = null,
+                tint = if (filled) Color(0xFFE59C00) else Color(0xFFD6DCE5),
+                modifier = Modifier
+                    .size(28.dp)
+                    .then(
+                        if (onRatingSelected != null) {
+                            Modifier.clickable { onRatingSelected(index + 1) }
+                        } else {
+                            Modifier
+                        }
+                    )
+            )
+        }
+    }
+}
+
+@Composable
 private fun BookingDetailBottomActions(
     onDirectionsClick: () -> Unit,
     onContactClick: () -> Unit,
@@ -2127,7 +3000,12 @@ fun NotificationDetailScreen(
     info: NotificationDetailInfo,
     onBackClick: () -> Unit,
     onOpenChat: (ConversationInfo) -> Unit,
-    onPromotionAction: () -> Unit
+    onPromotionAction: () -> Unit,
+    processingMatchRequestId: Int? = null,
+    matchRequestActionError: String? = null,
+    matchRequestActionSuccessMessage: String? = null,
+    onAcceptMatchRequest: (Int) -> Unit = {},
+    onRejectMatchRequest: (Int) -> Unit = {}
 ) {
     val context = LocalContext.current
     var showContactSheet by remember { mutableStateOf(false) }
@@ -2143,10 +3021,17 @@ fun NotificationDetailScreen(
             NotificationDetailTopBar(onBackClick = onBackClick)
             NotificationDetailContent(
                 info = info,
+                matchRequestActionError = matchRequestActionError,
+                matchRequestActionSuccessMessage = matchRequestActionSuccessMessage,
                 modifier = Modifier
                     .weight(1f)
                     .verticalScroll(rememberScrollState())
-                    .padding(horizontal = AppScreenHorizontalPadding, vertical = 12.dp)
+                    .padding(
+                        start = AppScreenHorizontalPadding,
+                        end = AppScreenHorizontalPadding,
+                        top = 12.dp,
+                        bottom = 156.dp
+                    )
             )
         }
 
@@ -2162,6 +3047,38 @@ fun NotificationDetailScreen(
                 NotificationDetailBottomAction(
                     label = stringResource(R.string.inbox_promo_action),
                     onClick = onPromotionAction,
+                    modifier = Modifier.align(Alignment.BottomCenter)
+                )
+            }
+            is NotificationDetailInfo.MatchRequestNotice -> {
+                val matchRequestId = info.matchRequestId
+                val canContactPeer =
+                    info.requestStatus.equals("ACCEPTED", ignoreCase = true) &&
+                        info.peerUserId != null &&
+                        info.bookingId != null
+
+                if (canContactPeer) {
+                    NotificationDetailBottomAction(
+                        label = "Liên hệ đối phương",
+                        onClick = {
+                            onOpenChat(info.toPeerConversationInfo())
+                        },
+                        modifier = Modifier.align(Alignment.BottomCenter)
+                    )
+                } else if (!info.requestStatus.equals("ACCEPTED", ignoreCase = true)) {
+                    MatchRequestBottomActions(
+                        canRespond = info.canRespond && matchRequestId != null,
+                        isProcessing = processingMatchRequestId == matchRequestId,
+                        onAccept = { if (matchRequestId != null) onAcceptMatchRequest(matchRequestId) },
+                        onReject = { if (matchRequestId != null) onRejectMatchRequest(matchRequestId) },
+                        modifier = Modifier.align(Alignment.BottomCenter)
+                    )
+                }
+            }
+            is NotificationDetailInfo.MatchSuccessNotice -> {
+                NotificationDetailBottomAction(
+                    label = "Liên hệ đối phương",
+                    onClick = { onOpenChat(info.toPeerConversationInfo()) },
                     modifier = Modifier.align(Alignment.BottomCenter)
                 )
             }
@@ -2239,8 +3156,12 @@ private fun NotificationDetailTopBar(onBackClick: () -> Unit) {
 @Composable
 private fun NotificationDetailContent(
     info: NotificationDetailInfo,
+    matchRequestActionError: String? = null,
+    matchRequestActionSuccessMessage: String? = null,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+
     Column(modifier = modifier) {
         when (info) {
             is NotificationDetailInfo.UpcomingMatch -> {
@@ -2286,6 +3207,88 @@ private fun NotificationDetailContent(
                 Spacer(Modifier.height(12.dp))
                 SystemNoticeContentCard(info)
                 Spacer(Modifier.height(24.dp))
+            }
+            is NotificationDetailInfo.MatchRequestNotice -> {
+                NotificationBannerCard(
+                    title = info.title,
+                    subtitle = info.subtitle,
+                    backgroundColor = Color(0xFFE6F4EA),
+                    icon = Icons.Outlined.EventAvailable,
+                    iconTint = Color(0xFF2E7D32)
+                )
+                Spacer(Modifier.height(12.dp))
+                MatchRequestFieldCard(info)
+                Spacer(Modifier.height(12.dp))
+                MatchRequestScheduleCard(info)
+                Spacer(Modifier.height(12.dp))
+                MatchRequestTeamsCard(info)
+                Spacer(Modifier.height(12.dp))
+                MatchRequestTimeCard(info)
+                Spacer(Modifier.height(84.dp))
+            }
+            is NotificationDetailInfo.MatchSuccessNotice -> {
+                NotificationBannerCard(
+                    title = info.title,
+                    subtitle = info.subtitle,
+                    backgroundColor = Color(0xFFE6F4EA),
+                    icon = Icons.Outlined.EventAvailable,
+                    iconTint = Color(0xFF2E7D32)
+                )
+                Spacer(Modifier.height(12.dp))
+                val matchRequestLike = info.toMatchRequestNotice()
+                val qrBitmap = rememberQrBitmap(info.shareUrl)
+                MatchRequestFieldCard(matchRequestLike)
+                Spacer(Modifier.height(12.dp))
+                MatchRequestScheduleCard(matchRequestLike)
+                Spacer(Modifier.height(12.dp))
+                MatchSuccessCheckInCard(
+                    info = info,
+                    qrBitmap = qrBitmap,
+                    onShareQr = {
+                        if (qrBitmap == null || info.shareUrl.isBlank()) {
+                            Toast.makeText(
+                                context,
+                                "QR check-in chưa sẵn sàng",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        } else {
+                            runCatching { shareQrBitmap(context, qrBitmap, info.bookingCode) }
+                                .onFailure {
+                                    Toast.makeText(
+                                        context,
+                                        "Không thể chia sẻ QR lúc này",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                        }
+                    },
+                    onDownloadQr = {
+                        if (qrBitmap == null || info.shareUrl.isBlank()) {
+                            Toast.makeText(
+                                context,
+                                "QR check-in chưa sẵn sàng",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        } else {
+                            runCatching { saveQrBitmap(context, qrBitmap, info.bookingCode) }
+                                .onSuccess {
+                                    Toast.makeText(
+                                        context,
+                                        "Đã tải QR xuống máy",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                                .onFailure {
+                                    Toast.makeText(
+                                        context,
+                                        "Không thể tải QR xuống",
+                                        Toast.LENGTH_SHORT
+                                    ).show()
+                                }
+                        }
+                    }
+                )
+                Spacer(Modifier.height(84.dp))
             }
         }
     }
@@ -2591,6 +3594,261 @@ private fun SystemIllustrationCard() {
 }
 
 @Composable
+private fun MatchRequestFieldCard(info: NotificationDetailInfo.MatchRequestNotice) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(AppCardCornerRadius),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            SectionHeader(title = "Thông tin sân", icon = Icons.Outlined.Place)
+            Spacer(Modifier.height(10.dp))
+            Text(
+                text = info.fieldName.ifBlank { "Sân đang cập nhật" },
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            if (info.address.isNotBlank()) {
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = info.address,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MatchRequestScheduleCard(info: NotificationDetailInfo.MatchRequestNotice) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(AppCardCornerRadius),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            SectionHeader(title = "Slot đặt sân", icon = Icons.Outlined.Schedule)
+            Spacer(Modifier.height(10.dp))
+            BookingDetailRow(label = "Khung giờ", value = info.timeRange.ifBlank { "Đang cập nhật" })
+            BookingDetailRow(label = "Ngày", value = info.dateLabel.ifBlank { "Đang cập nhật" })
+            BookingDetailRow(label = "Mã booking", value = info.bookingCode.ifBlank { "Đang cập nhật" })
+        }
+    }
+}
+
+@Composable
+private fun MatchRequestTeamsCard(info: NotificationDetailInfo.MatchRequestNotice) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(AppCardCornerRadius),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            SectionHeader(title = "Thông tin đội ghép trận", icon = Icons.Outlined.Person)
+            Spacer(Modifier.height(10.dp))
+            BookingDetailRow(label = "Đội ghép trận", value = info.requesterTeamName.ifBlank { "Đang cập nhật" })
+            BookingDetailRow(
+                label = "Số lượng người",
+                value = if (info.requesterPlayerCount > 0) "${info.requesterPlayerCount} người" else "Đang cập nhật"
+            )
+            BookingDetailRow(
+                label = "Lời nhắn",
+                value = info.requesterMessage.ifBlank { "Không có lời nhắn" }
+            )
+            BookingDetailRow(
+                label = "User gửi yêu cầu",
+                value = info.requesterAccountName.ifBlank { "Đang cập nhật" }
+            )
+        }
+    }
+}
+
+private fun NotificationDetailInfo.MatchRequestNotice.toPeerConversationInfo(): ConversationInfo {
+    val conversationTitle = requesterAccountName
+        .ifBlank { requesterTeamName }
+        .ifBlank { hostTeamName }
+        .ifBlank { "Hội thoại" }
+
+    return ConversationInfo(
+        fieldName = conversationTitle,
+        statusLabel = "Đang hoạt động",
+        phoneNumber = "",
+        avatarRes = R.drawable.field_football,
+        fieldId = fieldId,
+        bookingId = bookingId,
+        peerUserId = peerUserId
+    )
+}
+
+private fun NotificationDetailInfo.MatchSuccessNotice.toPeerConversationInfo(): ConversationInfo {
+    val conversationTitle = ownerUsername
+        .ifBlank { requesterAccountName }
+        .ifBlank { "Hội thoại" }
+
+    return ConversationInfo(
+        fieldName = conversationTitle,
+        statusLabel = "Đang hoạt động",
+        phoneNumber = "",
+        avatarRes = R.drawable.field_football,
+        fieldId = fieldId,
+        bookingId = bookingId,
+        peerUserId = requesterUserId
+    )
+}
+
+@Composable
+private fun MatchRequestTimeCard(info: NotificationDetailInfo.MatchRequestNotice) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(AppCardCornerRadius),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            SectionHeader(title = "Thời gian gửi yêu cầu", icon = Icons.Outlined.Schedule)
+            Spacer(Modifier.height(10.dp))
+            BookingDetailRow(label = "Thời gian", value = info.timeText.ifBlank { "Đang cập nhật" })
+        }
+    }
+}
+
+@Composable
+private fun MatchSuccessCheckInCard(
+    info: NotificationDetailInfo.MatchSuccessNotice,
+    qrBitmap: Bitmap?,
+    onShareQr: () -> Unit,
+    onDownloadQr: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(AppCardCornerRadius),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            SectionHeader(
+                title = "QR Check-in",
+                icon = Icons.Outlined.EventAvailable
+            )
+            Spacer(Modifier.height(10.dp))
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center
+            ) {
+                Box(
+                    modifier = Modifier
+                        .background(
+                            MaterialTheme.colorScheme.surfaceContainerLow,
+                            RoundedCornerShape(AppCardCornerRadius)
+                        )
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (qrBitmap != null) {
+                        Image(
+                            bitmap = qrBitmap.asImageBitmap(),
+                            contentDescription = "QR check-in",
+                            modifier = Modifier.size(196.dp)
+                        )
+                    } else {
+                        Text(
+                            text = "Đang tạo QR...",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+            if (info.shareUrl.isNotBlank()) {
+                Spacer(Modifier.height(12.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = onShareQr,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(AppCtaCornerRadius),
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.dp,
+                            MaterialTheme.colorScheme.primary
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Share,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = "Chia sẻ",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    Button(
+                        onClick = onDownloadQr,
+                        modifier = Modifier.weight(1f),
+                        shape = RoundedCornerShape(AppCtaCornerRadius),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.ContentCopy,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onPrimary,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = "Tải xuống",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun NotificationDetailInfo.MatchSuccessNotice.toMatchRequestNotice(): NotificationDetailInfo.MatchRequestNotice {
+    return NotificationDetailInfo.MatchRequestNotice(
+        title = title,
+        subtitle = subtitle,
+        notificationId = notificationId,
+        bookingId = bookingId,
+        fieldId = fieldId,
+        matchRequestId = null,
+        requesterUserId = requesterUserId,
+        fieldName = fieldName,
+        address = address,
+        timeRange = timeRange,
+        dateLabel = dateLabel,
+        bookingCode = bookingCode,
+        hostTeamName = hostTeamName,
+        requesterTeamName = requesterTeamName,
+        requesterAccountName = requesterAccountName,
+        requesterPlayerCount = requesterPlayerCount,
+        requesterLevelLabel = requesterLevelLabel,
+        requesterMessage = requesterMessage,
+        requestStatus = requestStatus,
+        canRespond = false,
+        timeText = timeText,
+        peerUserId = requesterUserId
+    )
+}
+
+@Composable
 private fun SystemNoticeContentCard(info: NotificationDetailInfo.SystemNotice) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -2626,13 +3884,70 @@ private fun SystemNoticeContentCard(info: NotificationDetailInfo.SystemNotice) {
                 Spacer(Modifier.height(6.dp))
             }
             Spacer(Modifier.height(12.dp))
-            SectionHeader(title = "Thời gian", icon = Icons.Outlined.Schedule)
+            SectionHeader(title = "Th?i gian", icon = Icons.Outlined.Schedule)
             Spacer(Modifier.height(8.dp))
             Text(
                 text = info.timeText,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+        }
+    }
+}
+
+@Composable
+private fun MatchRequestBottomActions(
+    canRespond: Boolean,
+    isProcessing: Boolean,
+    onAccept: () -> Unit,
+    onReject: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        color = Color.White,
+        tonalElevation = 4.dp,
+        shadowElevation = 12.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(horizontal = AppScreenHorizontalPadding, vertical = 12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            OutlinedButton(
+                onClick = onReject,
+                enabled = canRespond && !isProcessing,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(AppCtaWideHeight),
+                shape = RoundedCornerShape(AppCtaCornerRadius)
+            ) {
+                Text(
+                    text = if (isProcessing) "Đang xử lý..." else "Từ chối",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+            Button(
+                onClick = onAccept,
+                enabled = canRespond && !isProcessing,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(AppCtaWideHeight),
+                shape = RoundedCornerShape(AppCtaCornerRadius),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                )
+            ) {
+                Text(
+                    text = if (isProcessing) "Đang xử lý..." else "Chấp nhận",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
         }
     }
 }
@@ -2646,7 +3961,7 @@ private fun NotificationDetailBottomAction(
     Surface(
         modifier = modifier
             .fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surface,
+        color = Color.White,
         tonalElevation = 4.dp,
         shadowElevation = 12.dp
     ) {

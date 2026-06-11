@@ -1,9 +1,10 @@
-﻿package com.sportmanagement.user.data.remote.api
+package com.sportmanagement.user.data.remote.api
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
+import java.io.DataOutputStream
 import java.io.IOException
 import java.net.HttpURLConnection
 import java.net.URL
@@ -36,7 +37,8 @@ data class NotificationDto(
     val targetType: String?,
     val targetId: Int?,
     val bookingId: Int?,
-    val fieldId: Int?
+    val fieldId: Int?,
+    val peerUserId: Int?
 )
 
 data class ConversationMessageDto(
@@ -95,7 +97,45 @@ data class BookingDetailDto(
     val fieldAddress: String,
     val fieldAvatar: String?,
     val ownerName: String,
-    val ownerPhone: String
+    val ownerPhone: String,
+    val canReview: Boolean,
+    val reviewSubmitted: Boolean,
+    val reviewId: Int?,
+    val reviewRating: Int?,
+    val reviewComment: String,
+    val matchPost: BookingMatchPostDto?,
+    val matchRequests: List<BookingMatchRequestDto>
+)
+
+data class ReviewSubmissionDto(
+    val reviewId: Int,
+    val rating: Int,
+    val comment: String
+)
+
+data class BookingMatchPostDto(
+    val matchPostId: Int,
+    val ownerUserId: Int,
+    val ownerUsername: String,
+    val teamName: String,
+    val playerCount: Int,
+    val level: String,
+    val levelLabel: String,
+    val description: String,
+    val status: String
+)
+
+data class BookingMatchRequestDto(
+    val matchRequestId: Int,
+    val requesterUserId: Int,
+    val requesterUsername: String,
+    val teamName: String,
+    val playerCount: Int,
+    val level: String,
+    val levelLabel: String,
+    val message: String,
+    val status: String,
+    val createdAt: String
 )
 
 class InboxApi(
@@ -150,15 +190,15 @@ class InboxApi(
         data.toNotificationDto()
     }
 
-    suspend fun markNotificationRead(token: String, id: Int) {
+    suspend fun markNotificationRead(token: String, id: Int) = withContext(Dispatchers.IO) {
         postJsonWithoutBody("$baseUrl/api/user/notifications/$id/read", token)
     }
 
-    suspend fun markBookingNotificationsRead(token: String, bookingId: Int) {
+    suspend fun markBookingNotificationsRead(token: String, bookingId: Int) = withContext(Dispatchers.IO) {
         postJsonWithoutBody("$baseUrl/api/user/notifications/booking/$bookingId/read", token)
     }
 
-    suspend fun markAllNotificationsRead(token: String) {
+    suspend fun markAllNotificationsRead(token: String) = withContext(Dispatchers.IO) {
         postJsonWithoutBody("$baseUrl/api/user/notifications/read-all", token)
     }
 
@@ -186,7 +226,6 @@ class InboxApi(
             paymentStatus = data.optString("paymentStatus"),
             transactionId = data.optString("transactionId"),
             orderId = data.optString("orderId"),
-
             ownerNote = data.optString("ownerNote"),
             checkInCode = data.optString("checkInCode"),
             shareUrl = data.optString("shareUrl"),
@@ -197,8 +236,123 @@ class InboxApi(
             fieldAddress = field.optString("address"),
             fieldAvatar = field.optString("avatar").takeIf { it.isNotBlank() },
             ownerName = field.optString("ownerName"),
-            ownerPhone = field.optString("ownerPhone")
+            ownerPhone = field.optString("ownerPhone"),
+            canReview = data.optBoolean("canReview", false),
+            reviewSubmitted = data.optBoolean("reviewSubmitted", false),
+            reviewId = data.optIntOrNull("reviewId"),
+            reviewRating = data.optIntOrNull("reviewRating"),
+            reviewComment = data.optString("reviewComment"),
+            matchPost = data.optJSONObject("matchPost")?.let { row ->
+                BookingMatchPostDto(
+                    matchPostId = row.optInt("matchPostId"),
+                    ownerUserId = row.optInt("ownerUserId"),
+                    ownerUsername = row.optString("ownerUsername"),
+                    teamName = row.optString("teamName"),
+                    playerCount = row.optInt("playerCount"),
+                    level = row.optString("level"),
+                    levelLabel = row.optString("levelLabel"),
+                    description = row.optString("description"),
+                    status = row.optString("status")
+                )
+            },
+            matchRequests = (data.optJSONArray("matchRequests") ?: JSONArray()).let { items ->
+                List(items.length()) { index ->
+                    val row = items.optJSONObject(index) ?: JSONObject()
+                    BookingMatchRequestDto(
+                        matchRequestId = row.optInt("matchRequestId"),
+                        requesterUserId = row.optInt("requesterUserId"),
+                        requesterUsername = row.optString("requesterUsername"),
+                        teamName = row.optString("teamName"),
+                        playerCount = row.optInt("playerCount"),
+                        level = row.optString("level"),
+                        levelLabel = row.optString("levelLabel"),
+                        message = row.optString("message"),
+                        status = row.optString("status"),
+                        createdAt = row.optString("createdAt")
+                    )
+                }
+            }
         )
+    }
+
+    suspend fun submitBookingReview(
+        token: String,
+        bookingId: Int,
+        fieldId: Int,
+        rating: Int,
+        comment: String,
+        images: List<String> = emptyList()
+    ): ReviewSubmissionDto = withContext(Dispatchers.IO) {
+        val body = JSONObject()
+            .put("booking_id", bookingId)
+            .put("field_id", fieldId)
+            .put("rating", rating)
+            .put("comment", comment)
+        if (images.isNotEmpty()) {
+            body.put("images", JSONArray(images))
+        }
+
+        val root = postJsonWithResponse("$baseUrl/api/user/reviews", token, body)
+        val review = root.optJSONObject("review") ?: root.optJSONObject("data") ?: JSONObject()
+        ReviewSubmissionDto(
+            reviewId = review.optInt("review_id"),
+            rating = review.optInt("rating", rating),
+            comment = review.optString("comment", comment)
+        )
+    }
+
+    suspend fun uploadReviewImage(
+        token: String,
+        imageBytes: ByteArray,
+        fileName: String,
+        mimeType: String
+    ): List<String> = withContext(Dispatchers.IO) {
+        val boundary = "----SportManagementBoundary${System.currentTimeMillis()}"
+        val connection = (URL("$baseUrl/api/user/reviews/upload").openConnection() as HttpURLConnection).apply {
+            requestMethod = "POST"
+            connectTimeout = 30_000
+            readTimeout = 30_000
+            doOutput = true
+            setRequestProperty("Accept", "application/json")
+            setRequestProperty("Authorization", "Bearer $token")
+            setRequestProperty("Content-Type", "multipart/form-data; boundary=$boundary")
+        }
+
+        try {
+            DataOutputStream(connection.outputStream).use { output ->
+                output.writeBytes("--$boundary\r\n")
+                output.writeBytes(
+                    "Content-Disposition: form-data; name=\"images\"; filename=\"$fileName\"\r\n"
+                )
+                output.writeBytes("Content-Type: $mimeType\r\n\r\n")
+                output.write(imageBytes)
+                output.writeBytes("\r\n")
+                output.writeBytes("--$boundary--\r\n")
+                output.flush()
+            }
+
+            val responseCode = connection.responseCode
+            val responseText = readResponseBody(connection, responseCode)
+            if (responseCode !in 200..299) {
+                throw IOException(readApiErrorMessage(responseCode, responseText))
+            }
+
+            val root = JSONObject(responseText)
+            val images = root.optJSONArray("images")
+                ?: root.optJSONObject("data")?.optJSONArray("images")
+                ?: JSONArray()
+            List(images.length()) { index -> images.optString(index) }
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+    suspend fun acceptMatchRequest(token: String, matchRequestId: Int) = withContext(Dispatchers.IO) {
+        postJsonWithoutBody("$baseUrl/api/user/match-requests/$matchRequestId/accept", token)
+    }
+
+    suspend fun rejectMatchRequest(token: String, matchRequestId: Int) = withContext(Dispatchers.IO) {
+        postJsonWithoutBody("$baseUrl/api/user/match-requests/$matchRequestId/reject", token)
     }
 
     suspend fun getConversations(token: String): List<ConversationListItemDto> = withContext(Dispatchers.IO) {
@@ -223,11 +377,13 @@ class InboxApi(
     suspend fun createConversation(
         token: String,
         fieldId: Int?,
-        bookingId: Int?
+        bookingId: Int?,
+        peerUserId: Int? = null
     ): CreateConversationResultDto = withContext(Dispatchers.IO) {
         val body = JSONObject()
         fieldId?.let { body.put("fieldId", it) }
         bookingId?.let { body.put("bookingId", it) }
+        peerUserId?.let { body.put("peerUserId", it) }
 
         val root = postJsonWithResponse("$baseUrl/api/user/conversations", token, body)
         val data = root.optJSONObject("data") ?: JSONObject()
@@ -277,7 +433,7 @@ class InboxApi(
         )
     }
 
-    suspend fun markConversationRead(token: String, conversationId: Int) {
+    suspend fun markConversationRead(token: String, conversationId: Int) = withContext(Dispatchers.IO) {
         postJsonWithoutBody("$baseUrl/api/user/conversations/$conversationId/read", token)
     }
 
@@ -294,8 +450,19 @@ class InboxApi(
             targetType = optString("targetType").takeIf { it.isNotBlank() },
             targetId = optIntOrNull("targetId"),
             bookingId = optIntOrNull("bookingId"),
-            fieldId = optIntOrNull("fieldId")
+            fieldId = optIntOrNull("fieldId"),
+            peerUserId = optMetadataInt("peerUserId")
         )
+    }
+
+    private fun JSONObject.optMetadataInt(key: String): Int? {
+        val metadataValue = opt("metadata")
+        val metadata = when (metadataValue) {
+            is JSONObject -> metadataValue
+            is String -> runCatching { JSONObject(metadataValue) }.getOrNull()
+            else -> null
+        } ?: return null
+        return metadata.optIntOrNull(key)
     }
 
     private fun getJson(endpoint: String, token: String): JSONObject {
@@ -341,8 +508,9 @@ class InboxApi(
     }
 
     private fun postJsonWithoutBody(endpoint: String, token: String) {
-        val connection = createConnection(endpoint, "POST", token)
+        val connection = createConnection(endpoint, "POST", token).apply { doOutput = true }
         try {
+            connection.outputStream.bufferedWriter().use { it.write("{}") }
             val responseCode = connection.responseCode
             val responseText = readResponseBody(connection, responseCode)
             if (responseCode !in 200..299) {

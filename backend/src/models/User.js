@@ -17,11 +17,11 @@ const Person = sequelize.define(
       field: "full_name",
       validate: {
         notEmpty: {
-          msg: "TÃªn khÃ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng",
+          msg: "Tên không được để trống",
         },
         len: {
           args: [2, 50],
-          msg: "TÃªn pháº£i tá»« 2-50 kÃ½ tá»±",
+          msg: "Tên phải từ 2-50 ký tự",
         },
       },
     },
@@ -36,7 +36,7 @@ const Person = sequelize.define(
       validate: {
         isIn: {
           args: [["male", "female", "other", null]],
-          msg: "Giá»›i tÃ­nh khÃ´ng há»£p lá»‡",
+          msg: "Giới tính không hợp lệ",
         },
       },
     },
@@ -50,7 +50,7 @@ const Person = sequelize.define(
       unique: true,
       validate: {
         isEmail: {
-          msg: "Email khÃ´ng há»£p lá»‡",
+          msg: "Email không hợp lệ",
         },
       },
     },
@@ -60,7 +60,7 @@ const Person = sequelize.define(
       validate: {
         is: {
           args: /^[0-9]{10}$/,
-          msg: "Sá»‘ Ä‘iá»‡n thoáº¡i pháº£i cÃ³ 10 chá»¯ sá»‘",
+          msg: "Số điện thoại phải có 10 chữ số",
         },
       },
     },
@@ -70,11 +70,11 @@ const Person = sequelize.define(
       unique: true,
       validate: {
         notEmpty: {
-          msg: "Username khÃ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng",
+          msg: "Username không được để trống",
         },
         len: {
           args: [3, 45],
-          msg: "Username pháº£i tá»« 3-45 kÃ½ tá»±",
+          msg: "Username phải từ 3-45 ký tự",
         },
       },
     },
@@ -83,11 +83,11 @@ const Person = sequelize.define(
       allowNull: false,
       validate: {
         notEmpty: {
-          msg: "Máº­t kháº©u khÃ´ng Ä‘Æ°á»£c Ä‘á»ƒ trá»‘ng",
+          msg: "Mật khẩu không được để trống",
         },
         len: {
           args: [6, 255],
-          msg: "Máº­t kháº©u pháº£i cÃ³ Ã­t nháº¥t 6 kÃ½ tá»±",
+          msg: "Mật khẩu phải có ít nhất 6 ký tự",
         },
       },
     },
@@ -98,7 +98,7 @@ const Person = sequelize.define(
       validate: {
         isIn: {
           args: [["user", "staff", "manager", "admin"]],
-          msg: "Role khÃ´ng há»£p lá»‡",
+          msg: "Role không hợp lệ",
         },
       },
     },
@@ -109,7 +109,7 @@ const Person = sequelize.define(
       validate: {
         isIn: {
           args: [["active", "inactive", "banned"]],
-          msg: "Status khÃ´ng há»£p lá»‡",
+          msg: "Status không hợp lệ",
         },
       },
     },

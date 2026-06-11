@@ -4,6 +4,48 @@ import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const CUSTOMER_NAME_SQL = "COALESCE(p.person_name, p.username, '')";
+
+const parseReviewImages = (value) => {
+  if (Array.isArray(value)) {
+    return value.filter((item) => typeof item === 'string' && item.trim());
+  }
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (!trimmed) {
+      return [];
+    }
+    try {
+      const parsed = JSON.parse(trimmed);
+      return Array.isArray(parsed)
+        ? parsed.filter((item) => typeof item === 'string' && item.trim())
+        : [];
+    } catch (_error) {
+      return [];
+    }
+  }
+  return [];
+};
+
+const resolvePublicAssetUrl = (req, assetPath) => {
+  if (!assetPath || typeof assetPath !== 'string') {
+    return null;
+  }
+  if (/^https?:\/\//i.test(assetPath)) {
+    return assetPath;
+  }
+  const normalizedPath = assetPath.startsWith('/') ? assetPath : `/${assetPath}`;
+  if (!req) {
+    return normalizedPath;
+  }
+  return `${req.protocol}://${req.get('host')}${normalizedPath}`;
+};
+
+const serializeReview = (req, review) => ({
+  ...review,
+  customer_avatar_url: resolvePublicAssetUrl(req, review.customer_avatar_url),
+  images: parseReviewImages(review.images).map((item) => resolvePublicAssetUrl(req, item)),
+});
 
 // POST /api/user/reviews/upload - Upload images only
 export const uploadImages = async (req, res) => {
@@ -47,7 +89,8 @@ export const getReviews = async (req, res) => {
         r.comment,
         r.images,
         r.created_at,
-        p.name as customer_name
+        ${CUSTOMER_NAME_SQL} as customer_name,
+        p.avatar_url as customer_avatar_url
       FROM reviews r
       LEFT JOIN person p ON r.customer_id = p.person_id
       WHERE r.field_id = ?
@@ -56,10 +99,7 @@ export const getReviews = async (req, res) => {
     );
 
     // MySQL JSON column is already parsed, just ensure it's an array
-    const reviewsWithParsedImages = reviews.map(review => ({
-      ...review,
-      images: Array.isArray(review.images) ? review.images : []
-    }));
+    const reviewsWithParsedImages = reviews.map((review) => serializeReview(req, review));
 
     res.json(reviewsWithParsedImages);
   } catch (err) {
@@ -130,7 +170,8 @@ export const createReview = async (req, res) => {
         r.comment,
         r.images,
         r.created_at,
-        p.name as customer_name
+        ${CUSTOMER_NAME_SQL} as customer_name,
+        p.avatar_url as customer_avatar_url
       FROM reviews r
       LEFT JOIN person p ON r.customer_id = p.person_id
       WHERE r.review_id = ?
@@ -142,10 +183,7 @@ export const createReview = async (req, res) => {
 
     res.status(201).json({ 
       message: 'Review created successfully', 
-      review: review ? {
-        ...review,
-        images: Array.isArray(review.images) ? review.images : []
-      } : null
+      review: review ? serializeReview(req, review) : null
     });
   } catch (err) {
     console.error('createReview error:', err);

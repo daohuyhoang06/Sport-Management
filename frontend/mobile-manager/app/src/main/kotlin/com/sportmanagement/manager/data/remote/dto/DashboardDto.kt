@@ -11,7 +11,9 @@ data class DashboardStatsDto(
     val rejectedBookings: Int = 0,
     val todayBookings: Int = 0,
     val totalRevenue: Double = 0.0,
-    val monthlyRevenue: Double = 0.0
+    val monthlyRevenue: Double = 0.0,
+    val topFieldName: String? = null,
+    val topFieldRevenue: Double? = null
 )
 
 data class MonthlyRevenueDto(

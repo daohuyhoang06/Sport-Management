@@ -1,33 +1,56 @@
 package com.sportmanagement.manager.ui.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sportmanagement.manager.data.AppContainer
 import com.sportmanagement.manager.data.mapper.toBookingItem
 import com.sportmanagement.manager.data.mapper.toHistoryEvent
 import com.sportmanagement.manager.data.remote.dto.CreateBookingRequest
+import com.sportmanagement.manager.ui.state.buildWeekDayChips
+import com.sportmanagement.manager.ui.state.currentWeekStartIso
 import com.sportmanagement.manager.domain.model.BookingItem
 import com.sportmanagement.manager.domain.model.BookingStatus
 import com.sportmanagement.manager.ui.state.BookingsUiState
-import com.sportmanagement.manager.ui.state.DayChipData
 import com.sportmanagement.manager.ui.state.PitchFilterData
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Date
+import java.util.Locale
 
 class BookingsViewModel : ViewModel() {
+    private val apiDateFmt = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+
     private val _uiState = MutableStateFlow(BookingsUiState())
     val uiState: StateFlow<BookingsUiState> = _uiState.asStateFlow()
 
     init {
-        loadBookings()
+        loadPitchFilters()
+        selectDate(todayIso())
     }
 
-    fun loadBookings(status: String? = null) {
+    fun loadPitchFilters() {
+        viewModelScope.launch {
+            AppContainer.fieldRepository.getFields().onSuccess { fields ->
+                val filters = mutableListOf(PitchFilterData("Tất cả", isSelected = true))
+                fields.forEach { field -> filters.add(PitchFilterData(field.fieldName, isSelected = false)) }
+                _uiState.value = _uiState.value.copy(pitchFilters = filters)
+            }
+        }
+    }
+
+    fun loadBookings(status: String? = null, startDate: String? = null, endDate: String? = null) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
-            AppContainer.bookingRepository.getBookings(status = status).fold(
+            AppContainer.bookingRepository.getBookings(
+                status = status,
+                startDate = startDate,
+                endDate = endDate
+            ).fold(
                 onSuccess = { dtos ->
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
@@ -42,11 +65,28 @@ class BookingsViewModel : ViewModel() {
     }
 
     fun onDaySelected(index: Int) {
-        _uiState.value = _uiState.value.copy(
-            dayChips = _uiState.value.dayChips.mapIndexed { i, chip ->
-                chip.copy(isSelected = i == index)
-            }
-        )
+        val selectedDate = _uiState.value.dayChips.getOrNull(index)?.isoDate ?: return
+        selectDate(selectedDate)
+    }
+
+    fun onPreviousWeek() {
+        val selectedDate = shiftDateIso(_uiState.value.selectedDate, -7) ?: return
+        selectDate(selectedDate)
+    }
+
+    fun onNextWeek() {
+        val selectedDate = shiftDateIso(_uiState.value.selectedDate, 7) ?: return
+        selectDate(selectedDate)
+    }
+
+    fun onCalendarDateSelected(dateMillis: Long) {
+        selectDate(formatDateIso(dateMillis))
+    }
+
+    fun showTodaySchedule() {
+        val t = todayIso()
+        Log.d("BookingsViewModel", "showTodaySchedule called, todayIso=$t")
+        selectDate(t)
     }
 
     fun onPitchFilterSelected(index: Int) {
@@ -80,14 +120,6 @@ class BookingsViewModel : ViewModel() {
     fun onSaveNewBooking() {
         val s = _uiState.value
         if (s.newBookingDate.isBlank() || s.newBookingStart.isBlank() || s.newBookingEnd.isBlank()) return
-
-        // Tìm field_id từ pitch filter đang chọn (nếu có), hoặc lấy field đầu tiên
-        val fieldIdStr = s.pitchFilters.firstOrNull { it.isSelected && it.label != "Tất cả" }?.label
-        // Nếu không có field cụ thể, lấy field đầu tiên từ danh sách booking
-        val firstFieldId = s.bookings.firstOrNull()?.let {
-            // Try to extract from booking
-            null
-        }
 
         viewModelScope.launch {
             // Cần field_id — lấy field đầu tiên của manager
@@ -135,8 +167,6 @@ class BookingsViewModel : ViewModel() {
     }
 
     fun onRequestCancel(bookingId: String) {
-        val booking = _uiState.value.bookings.firstOrNull { it.id == bookingId }
-            ?: _uiState.value.selectedBooking?.takeIf { it.id == bookingId }
         _uiState.value = _uiState.value.copy(
             showCancelDialog = true,
             cancelTargetId = bookingId,
@@ -316,5 +346,44 @@ class BookingsViewModel : ViewModel() {
             bookings = updated,
             selectedBooking = selectedUpdated
         )
+    }
+
+    private fun selectDate(dateIso: String) {
+        val weekStartDate = startOfWeekIso(dateIso)
+        Log.d("BookingsViewModel", "selectDate called, dateIso=$dateIso, weekStartDate=$weekStartDate")
+        _uiState.value = _uiState.value.copy(
+            visibleWeekStartDate = weekStartDate,
+            selectedDate = dateIso,
+            dayChips = buildWeekDayChips(weekStartDate, dateIso)
+        )
+        Log.d("BookingsViewModel", "loading bookings for $dateIso")
+        loadBookings(startDate = dateIso, endDate = dateIso)
+    }
+
+    private fun todayIso(): String = apiDateFmt.format(Date())
+
+    private fun formatDateIso(dateMillis: Long): String = apiDateFmt.format(Date(dateMillis))
+
+    private fun shiftDateIso(dateIso: String, days: Int): String? {
+        val date = runCatching { apiDateFmt.parse(dateIso) }.getOrNull() ?: return null
+        val calendar = Calendar.getInstance().apply { time = date }
+        calendar.add(Calendar.DAY_OF_MONTH, days)
+        return apiDateFmt.format(calendar.time)
+    }
+
+    private fun startOfWeekIso(dateIso: String): String {
+        val date = runCatching { apiDateFmt.parse(dateIso) }.getOrNull() ?: Date()
+        val calendar = Calendar.getInstance().apply {
+            time = date
+            firstDayOfWeek = Calendar.MONDAY
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        while (calendar.get(Calendar.DAY_OF_WEEK) != Calendar.MONDAY) {
+            calendar.add(Calendar.DAY_OF_MONTH, -1)
+        }
+        return apiDateFmt.format(calendar.time)
     }
 }

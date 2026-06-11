@@ -19,11 +19,13 @@ import org.osmdroid.config.Configuration
 class MainActivity : ComponentActivity() {
     private var pendingDeepLinkFieldId by mutableStateOf<Int?>(null)
     private var pendingMomoPaymentReturn by mutableStateOf<FieldShareLink.MomoPaymentReturn?>(null)
+    private var showReviewDemoUi by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         pendingDeepLinkFieldId = parseFieldIdFromIntent(intent)
         pendingMomoPaymentReturn = parseMomoPaymentReturnFromIntent(intent)
+        showReviewDemoUi = intent?.getBooleanExtra(EXTRA_SHOW_REVIEW_DEMO_UI, false) == true
 
         try {
             enableEdgeToEdge(
@@ -49,7 +51,8 @@ class MainActivity : ComponentActivity() {
                     incomingDeepLinkFieldId = pendingDeepLinkFieldId,
                     onDeepLinkConsumed = { pendingDeepLinkFieldId = null },
                     incomingMomoPaymentReturn = pendingMomoPaymentReturn,
-                    onMomoPaymentReturnConsumed = { pendingMomoPaymentReturn = null }
+                    onMomoPaymentReturnConsumed = { pendingMomoPaymentReturn = null },
+                    showReviewDemoUi = showReviewDemoUi
                 )
             }
         }
@@ -60,6 +63,7 @@ class MainActivity : ComponentActivity() {
         setIntent(intent)
         pendingDeepLinkFieldId = parseFieldIdFromIntent(intent)
         pendingMomoPaymentReturn = parseMomoPaymentReturnFromIntent(intent)
+        showReviewDemoUi = intent?.getBooleanExtra(EXTRA_SHOW_REVIEW_DEMO_UI, false) == true
     }
 
     private fun parseFieldIdFromIntent(intent: Intent?): Int? {
@@ -70,5 +74,9 @@ class MainActivity : ComponentActivity() {
         intent: Intent?
     ): FieldShareLink.MomoPaymentReturn? {
         return FieldShareLink.parseMomoPaymentReturn(intent?.data)
+    }
+
+    companion object {
+        const val EXTRA_SHOW_REVIEW_DEMO_UI = "show_review_demo_ui"
     }
 }

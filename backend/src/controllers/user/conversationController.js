@@ -8,7 +8,7 @@ const getFieldById = async (fieldId) => {
   return rows?.[0] || null;
 };
 
-const getBookingById = async (bookingId, userId) => {
+const getOwnedBookingById = async (bookingId, userId) => {
   const [rows] = await sequelize.query(
     "SELECT booking_id, field_id FROM bookings WHERE booking_id = ? AND customer_id = ? LIMIT 1",
     { replacements: [bookingId, userId] },
@@ -16,16 +16,30 @@ const getBookingById = async (bookingId, userId) => {
   return rows?.[0] || null;
 };
 
-const findConversation = async ({ userId, managerId, fieldId, bookingId }) => {
+const getMatchedPeerContext = async ({ bookingId, currentUserId, peerUserId }) => {
   const [rows] = await sequelize.query(
-    `SELECT chat_id, user_id, manager_id, field_id, booking_id
-     FROM chats
-     WHERE user_id = ?
-       AND manager_id = ?
-       AND field_id <=> ?
-       AND booking_id <=> ?
+    `SELECT
+      mp.booking_id,
+      mp.owner_user_id,
+      mp.matched_user_id
+     FROM match_posts mp
+     WHERE mp.booking_id = ?
+       AND mp.status = 'MATCHED'
+       AND mp.matched_user_id IS NOT NULL
+       AND (
+         (mp.owner_user_id = ? AND mp.matched_user_id = ?)
+         OR (mp.owner_user_id = ? AND mp.matched_user_id = ?)
+       )
      LIMIT 1`,
-    { replacements: [userId, managerId, fieldId ?? null, bookingId ?? null] },
+    {
+      replacements: [
+        bookingId,
+        currentUserId,
+        peerUserId,
+        peerUserId,
+        currentUserId,
+      ],
+    },
   );
   return rows?.[0] || null;
 };
@@ -44,16 +58,157 @@ const findConversationForField = async ({ userId, managerId, fieldId }) => {
   return rows?.[0] || null;
 };
 
+const findConversationForBooking = async ({
+  participantA,
+  participantB,
+  bookingId,
+  fieldId,
+}) => {
+  const [rows] = await sequelize.query(
+    `SELECT chat_id, user_id, manager_id, field_id, booking_id
+     FROM chats
+     WHERE booking_id <=> ?
+       AND field_id <=> ?
+       AND (
+         (user_id = ? AND manager_id = ?)
+         OR (user_id = ? AND manager_id = ?)
+       )
+     ORDER BY COALESCE(last_message_at, updated_at, created_at) DESC, chat_id DESC
+     LIMIT 1`,
+    {
+      replacements: [
+        bookingId ?? null,
+        fieldId ?? null,
+        participantA,
+        participantB,
+        participantB,
+        participantA,
+      ],
+    },
+  );
+  return rows?.[0] || null;
+};
+
+const findAnyPeerConversationBetweenUsers = async ({ participantA, participantB }) => {
+  const [rows] = await sequelize.query(
+    `SELECT chat_id, user_id, manager_id, field_id, booking_id
+     FROM chats
+     WHERE field_id IS NULL
+       AND booking_id IS NOT NULL
+       AND (
+         (user_id = ? AND manager_id = ?)
+         OR (user_id = ? AND manager_id = ?)
+       )
+     ORDER BY COALESCE(last_message_at, updated_at, created_at) DESC, chat_id DESC
+     LIMIT 1`,
+    {
+      replacements: [
+        participantA,
+        participantB,
+        participantB,
+        participantA,
+      ],
+    },
+  );
+  return rows?.[0] || null;
+};
+
+const mapConversationRowForList = (row) => {
+  const title = (row.display_title || "").trim();
+  const ownerName = (row.counterpart_username || row.counterpart_name || "").trim();
+  const phone =
+    row.is_peer_chat
+      ? row.counterpart_phone || null
+      : row.field_phone || row.counterpart_phone || null;
+
+  return {
+    conversationId: row.chat_id,
+    fieldId: row.field_id,
+    fieldName: title || ownerName || null,
+    fieldAvatar: row.card_image_url || row.avatar_image_url || null,
+    ownerName: ownerName || null,
+    ownerPhone: phone,
+    isOnline: false,
+    lastMessage: row.last_message || row.last_message_text || null,
+    lastMessageTime:
+      row.last_message_at || row.last_message_time || row.updated_at,
+    unreadCount: Number(row.unread_count || 0),
+    updatedAt: row.updated_at,
+  };
+};
+
 // POST /api/user/conversations
 export const createConversation = async (req, res) => {
   try {
     const userId = req.user?.id;
-    const { fieldId, bookingId } = req.body || {};
+    const { fieldId, bookingId, peerUserId } = req.body || {};
 
     if (!userId) {
       return res.status(401).json({
         success: false,
         message: "Unauthorized",
+      });
+    }
+
+    const resolvedPeerUserId = peerUserId ? Number(peerUserId) : null;
+    let resolvedFieldId = fieldId ? Number(fieldId) : null;
+    let resolvedBookingId = bookingId ? Number(bookingId) : null;
+
+    if (resolvedPeerUserId) {
+      if (!resolvedBookingId) {
+        return res.status(400).json({
+          success: false,
+          message: "bookingId is required for peer conversation",
+        });
+      }
+
+      const matchedContext = await getMatchedPeerContext({
+        bookingId: resolvedBookingId,
+        currentUserId: Number(userId),
+        peerUserId: resolvedPeerUserId,
+      });
+
+      if (!matchedContext) {
+        return res.status(403).json({
+          success: false,
+          message: "You cannot create a peer conversation for this match",
+        });
+      }
+
+      const existingPeerConversation = await findAnyPeerConversationBetweenUsers({
+        participantA: Number(userId),
+        participantB: resolvedPeerUserId,
+      });
+
+      if (existingPeerConversation) {
+        return res.json({
+          success: true,
+          data: {
+            conversationId: existingPeerConversation.chat_id,
+            fieldId: existingPeerConversation.field_id,
+            bookingId: existingPeerConversation.booking_id,
+          },
+        });
+      }
+
+      const [result] = await sequelize.query(
+        `INSERT INTO chats
+          (user_id, manager_id, field_id, booking_id, created_at, updated_at)
+         VALUES (?, ?, NULL, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
+        {
+          replacements: [Number(userId), resolvedPeerUserId, resolvedBookingId],
+        },
+      );
+
+      const conversationId = result?.insertId || result;
+
+      return res.json({
+        success: true,
+        data: {
+          conversationId,
+          fieldId: null,
+          bookingId: resolvedBookingId,
+        },
       });
     }
 
@@ -64,11 +219,8 @@ export const createConversation = async (req, res) => {
       });
     }
 
-    let resolvedFieldId = fieldId ? Number(fieldId) : null;
-    let resolvedBookingId = bookingId ? Number(bookingId) : null;
-
     if (resolvedBookingId) {
-      const booking = await getBookingById(resolvedBookingId, userId);
+      const booking = await getOwnedBookingById(resolvedBookingId, userId);
       if (!booking) {
         return res.status(404).json({
           success: false,
@@ -102,7 +254,7 @@ export const createConversation = async (req, res) => {
     const managerId = Number(field.manager_id);
 
     const existingForField = await findConversationForField({
-      userId,
+      userId: Number(userId),
       managerId,
       fieldId: resolvedFieldId,
     });
@@ -118,11 +270,11 @@ export const createConversation = async (req, res) => {
       });
     }
 
-    const existing = await findConversation({
-      userId,
-      managerId,
-      fieldId: resolvedFieldId,
+    const existing = await findConversationForBooking({
+      participantA: Number(userId),
+      participantB: managerId,
       bookingId: resolvedBookingId,
+      fieldId: resolvedFieldId,
     });
 
     if (existing) {
@@ -140,7 +292,7 @@ export const createConversation = async (req, res) => {
       `INSERT INTO chats
         (user_id, manager_id, field_id, booking_id, created_at, updated_at)
        VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
-      { replacements: [userId, managerId, resolvedFieldId, resolvedBookingId] },
+      { replacements: [Number(userId), managerId, resolvedFieldId, resolvedBookingId] },
     );
 
     const conversationId = result?.insertId || result;
@@ -187,64 +339,85 @@ export const listConversations = async (req, res) => {
         f.avatar_image_url,
         f.card_image_url,
         f.phone AS field_phone,
-        m.person_name AS owner_name,
-        m.phone AS owner_phone,
+        cp.person_name AS counterpart_name,
+        cp.username AS counterpart_username,
+        cp.phone AS counterpart_phone,
+        (c.field_id IS NULL AND c.booking_id IS NOT NULL) AS is_peer_chat,
+        CASE
+          WHEN c.field_id IS NULL AND c.booking_id IS NOT NULL THEN COALESCE(cp.username, cp.person_name)
+          ELSE f.field_name
+        END AS display_title,
         (
           SELECT message_text
-          FROM messages
-          WHERE chat_id = c.chat_id
-          ORDER BY created_at DESC
+          FROM messages m2
+          INNER JOIN chats c3 ON m2.chat_id = c3.chat_id
+          WHERE c3.field_id <=> c.field_id
+            AND (
+              (c3.user_id = c.user_id AND c3.manager_id = c.manager_id)
+              OR (c3.user_id = c.manager_id AND c3.manager_id = c.user_id)
+            )
+          ORDER BY m2.created_at DESC
           LIMIT 1
         ) AS last_message_text,
         (
-          SELECT created_at
-          FROM messages
-          WHERE chat_id = c.chat_id
-          ORDER BY created_at DESC
+          SELECT m2.created_at
+          FROM messages m2
+          INNER JOIN chats c3 ON m2.chat_id = c3.chat_id
+          WHERE c3.field_id <=> c.field_id
+            AND (
+              (c3.user_id = c.user_id AND c3.manager_id = c.manager_id)
+              OR (c3.user_id = c.manager_id AND c3.manager_id = c.user_id)
+            )
+          ORDER BY m2.created_at DESC
           LIMIT 1
         ) AS last_message_time,
         (
           SELECT COUNT(*)
-          FROM messages
-          WHERE chat_id = c.chat_id
-            AND sender_id != ?
-            AND is_read = 0
+          FROM messages m2
+          INNER JOIN chats c3 ON m2.chat_id = c3.chat_id
+          WHERE c3.field_id <=> c.field_id
+            AND (
+              (c3.user_id = c.user_id AND c3.manager_id = c.manager_id)
+              OR (c3.user_id = c.manager_id AND c3.manager_id = c.user_id)
+            )
+            AND m2.sender_id != ?
+            AND m2.is_read = 0
         ) AS unread_count
       FROM chats c
       LEFT JOIN fields f ON c.field_id = f.field_id
-      LEFT JOIN person m ON c.manager_id = m.person_id
-      WHERE c.user_id = ?
+      LEFT JOIN person cp
+        ON cp.person_id = CASE
+          WHEN c.user_id = ? THEN c.manager_id
+          ELSE c.user_id
+        END
+      WHERE ? IN (c.user_id, c.manager_id)
         AND c.chat_id = (
           SELECT c2.chat_id
           FROM chats c2
-          WHERE c2.user_id = c.user_id
-            AND c2.manager_id = c.manager_id
+          WHERE ? IN (c2.user_id, c2.manager_id)
+            AND (
+              (c2.user_id = c.user_id AND c2.manager_id = c.manager_id)
+              OR (c2.user_id = c.manager_id AND c2.manager_id = c.user_id)
+            )
             AND c2.field_id <=> c.field_id
+            AND (c.field_id IS NULL OR c2.booking_id <=> c.booking_id)
           ORDER BY COALESCE(c2.last_message_at, c2.updated_at, c2.created_at) DESC, c2.chat_id DESC
           LIMIT 1
         )
       ORDER BY COALESCE(c.last_message_at, c.updated_at) DESC`,
-      { replacements: [userId, userId] },
+      {
+        replacements: [
+          Number(userId),
+          Number(userId),
+          Number(userId),
+          Number(userId),
+        ],
+      },
     );
-
-    const items = rows.map((row) => ({
-      conversationId: row.chat_id,
-      fieldId: row.field_id,
-      fieldName: row.field_name || null,
-      fieldAvatar: row.card_image_url || row.avatar_image_url || null,
-      ownerName: row.owner_name || null,
-      ownerPhone: row.field_phone || row.owner_phone || null,
-      isOnline: false,
-      lastMessage: row.last_message || row.last_message_text || null,
-      lastMessageTime:
-        row.last_message_at || row.last_message_time || row.updated_at,
-      unreadCount: Number(row.unread_count || 0),
-      updatedAt: row.updated_at,
-    }));
 
     return res.json({
       success: true,
-      data: items,
+      data: rows.map(mapConversationRowForList),
     });
   } catch (error) {
     console.error("listConversations error:", error);
@@ -279,20 +452,31 @@ export const getConversationMessages = async (req, res) => {
     const [conversations] = await sequelize.query(
       `SELECT
         c.chat_id,
+        c.user_id,
+        c.manager_id,
         c.field_id,
         c.booking_id,
         f.field_name,
         f.avatar_image_url,
         f.card_image_url,
         f.phone AS field_phone,
-        m.person_name AS owner_name,
-        m.phone AS owner_phone
+        cp.person_name AS counterpart_name,
+        cp.username AS counterpart_username,
+        cp.phone AS counterpart_phone,
+        (c.field_id IS NULL AND c.booking_id IS NOT NULL) AS is_peer_chat
       FROM chats c
       LEFT JOIN fields f ON c.field_id = f.field_id
-      LEFT JOIN person m ON c.manager_id = m.person_id
-      WHERE c.chat_id = ? AND c.user_id = ?
+      LEFT JOIN person cp
+        ON cp.person_id = CASE
+          WHEN c.user_id = ? THEN c.manager_id
+          ELSE c.user_id
+        END
+      WHERE c.chat_id = ?
+        AND ? IN (c.user_id, c.manager_id)
       LIMIT 1`,
-      { replacements: [conversationId, userId] },
+      {
+        replacements: [Number(userId), conversationId, Number(userId)],
+      },
     );
 
     const conversation = conversations?.[0];
@@ -301,6 +485,30 @@ export const getConversationMessages = async (req, res) => {
         success: false,
         message: "Conversation not found",
       });
+    }
+
+    let chatIdsToFetch = [conversationId];
+    if (conversation.field_id === null) {
+      const [peerChats] = await sequelize.query(
+        `SELECT chat_id 
+         FROM chats 
+         WHERE field_id IS NULL 
+           AND (
+             (user_id = ? AND manager_id = ?)
+             OR (user_id = ? AND manager_id = ?)
+           )`,
+        {
+          replacements: [
+            conversation.user_id,
+            conversation.manager_id,
+            conversation.manager_id,
+            conversation.user_id,
+          ],
+        }
+      );
+      if (peerChats && peerChats.length > 0) {
+        chatIdsToFetch = peerChats.map(r => r.chat_id);
+      }
     }
 
     const [messages] = await sequelize.query(
@@ -315,32 +523,35 @@ export const getConversationMessages = async (req, res) => {
         m.metadata,
         m.created_at
       FROM messages m
-      WHERE m.chat_id = ?
+      WHERE m.chat_id IN (?)
       ORDER BY m.created_at ASC`,
-      { replacements: [conversationId] },
+      { replacements: [chatIdsToFetch] },
     );
 
     await sequelize.query(
       `UPDATE messages
        SET is_read = 1, updated_at = CURRENT_TIMESTAMP
-       WHERE chat_id = ? AND sender_id != ? AND is_read = 0`,
-      { replacements: [conversationId, userId] },
+       WHERE chat_id IN (?) AND sender_id != ? AND is_read = 0`,
+      { replacements: [chatIdsToFetch, Number(userId)] },
     );
 
-    const fieldAvatar =
-      conversation.card_image_url || conversation.avatar_image_url || null;
-    const ownerPhone =
-      conversation.field_phone || conversation.owner_phone || null;
+    const title = conversation.is_peer_chat
+      ? conversation.counterpart_username || conversation.counterpart_name || "Hội thoại"
+      : conversation.field_name || conversation.counterpart_name || "Hội thoại";
+    const phone = conversation.is_peer_chat
+      ? conversation.counterpart_phone || null
+      : conversation.field_phone || conversation.counterpart_phone || null;
 
-    res.json({
+    return res.json({
       success: true,
       data: {
         conversation: {
           conversationId: conversation.chat_id,
-          fieldName: conversation.field_name || null,
-          fieldAvatar,
-          ownerName: conversation.owner_name || null,
-          ownerPhone,
+          fieldName: title,
+          fieldAvatar:
+            conversation.card_image_url || conversation.avatar_image_url || null,
+          ownerName: conversation.counterpart_username || conversation.counterpart_name || null,
+          ownerPhone: phone,
           isOnline: false,
         },
         messages: messages.map((row) => ({
@@ -352,7 +563,7 @@ export const getConversationMessages = async (req, res) => {
           imageUrl: row.image_url || null,
           metadata: row.metadata || null,
           createdAt: row.created_at,
-          isMine: row.sender_id === userId,
+          isMine: Number(row.sender_id) === Number(userId),
         })),
       },
     });
@@ -398,8 +609,12 @@ export const sendConversationMessage = async (req, res) => {
     }
 
     const [conversations] = await sequelize.query(
-      "SELECT chat_id FROM chats WHERE chat_id = ? AND user_id = ? LIMIT 1",
-      { replacements: [conversationId, userId] },
+      `SELECT chat_id, user_id, manager_id
+       FROM chats
+       WHERE chat_id = ?
+         AND ? IN (user_id, manager_id)
+       LIMIT 1`,
+      { replacements: [conversationId, Number(userId)] },
     );
 
     const conversation = conversations?.[0];
@@ -417,7 +632,7 @@ export const sendConversationMessage = async (req, res) => {
       {
         replacements: [
           conversationId,
-          userId,
+          Number(userId),
           "user",
           resolvedType,
           trimmedContent || null,
@@ -428,12 +643,22 @@ export const sendConversationMessage = async (req, res) => {
       },
     );
 
+    const isPrimaryParticipant = Number(conversation.user_id) === Number(userId);
+
     await sequelize.query(
       `UPDATE chats
        SET last_message = ?, last_message_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP,
-           owner_unread_count = owner_unread_count + 1
+           user_unread_count = user_unread_count + ?,
+           owner_unread_count = owner_unread_count + ?
        WHERE chat_id = ?`,
-      { replacements: [trimmedContent || "", conversationId] },
+      {
+        replacements: [
+          trimmedContent || "",
+          isPrimaryParticipant ? 0 : 1,
+          isPrimaryParticipant ? 1 : 0,
+          conversationId,
+        ],
+      },
     );
 
     const messageId = insertResult?.insertId || insertResult;
@@ -442,7 +667,7 @@ export const sendConversationMessage = async (req, res) => {
       success: true,
       data: {
         messageId,
-        senderId: userId,
+        senderId: Number(userId),
         senderType: "user",
         messageType: resolvedType,
         content: trimmedContent,
@@ -483,29 +708,63 @@ export const markConversationRead = async (req, res) => {
     }
 
     const [conversations] = await sequelize.query(
-      "SELECT chat_id FROM chats WHERE chat_id = ? AND user_id = ? LIMIT 1",
-      { replacements: [conversationId, userId] },
+      `SELECT chat_id, user_id, manager_id, field_id
+       FROM chats
+       WHERE chat_id = ?
+         AND ? IN (user_id, manager_id)
+       LIMIT 1`,
+      { replacements: [conversationId, Number(userId)] },
     );
 
-    if (!conversations?.[0]) {
+    const conversation = conversations?.[0];
+    if (!conversation) {
       return res.status(404).json({
         success: false,
         message: "Conversation not found",
       });
     }
 
+    let chatIdsToUpdate = [conversationId];
+    if (conversation.field_id === null) {
+      const [peerChats] = await sequelize.query(
+        `SELECT chat_id 
+         FROM chats 
+         WHERE field_id IS NULL 
+           AND (
+             (user_id = ? AND manager_id = ?)
+             OR (user_id = ? AND manager_id = ?)
+           )`,
+        {
+          replacements: [
+            conversation.user_id,
+            conversation.manager_id,
+            conversation.manager_id,
+            conversation.user_id,
+          ],
+        }
+      );
+      if (peerChats && peerChats.length > 0) {
+        chatIdsToUpdate = peerChats.map(r => r.chat_id);
+      }
+    }
+
     await sequelize.query(
       `UPDATE messages
        SET is_read = 1, updated_at = CURRENT_TIMESTAMP
-       WHERE chat_id = ? AND sender_id != ? AND is_read = 0`,
-      { replacements: [conversationId, userId] },
+       WHERE chat_id IN (?) AND sender_id != ? AND is_read = 0`,
+      { replacements: [chatIdsToUpdate, Number(userId)] },
     );
+
+    const unreadColumn =
+      Number(conversation.user_id) === Number(userId)
+        ? "user_unread_count"
+        : "owner_unread_count";
 
     await sequelize.query(
       `UPDATE chats
-       SET user_unread_count = 0, updated_at = CURRENT_TIMESTAMP
-       WHERE chat_id = ?`,
-      { replacements: [conversationId] },
+       SET ${unreadColumn} = 0, updated_at = CURRENT_TIMESTAMP
+       WHERE chat_id IN (?)`,
+      { replacements: [chatIdsToUpdate] },
     );
 
     return res.json({

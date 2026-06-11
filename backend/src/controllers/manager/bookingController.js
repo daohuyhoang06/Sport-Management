@@ -2,12 +2,46 @@ import {
   getManagerBookingsService,
   getManagerBookingByIdService,
   updateBookingStatusService,
+  createBookingService,
+  getBookingHistoryService,
 } from "../../services/manager/bookingService.js";
 import {
   buildBookingShareResponse,
   getBookingShareDetailByCheckInCode,
   markBookingCheckedInByCode,
 } from "../../services/bookingShareService.js";
+
+/**
+ * Manager tạo booking mới
+ * POST /api/manager/bookings
+ */
+export const createBooking = async (req, res) => {
+  try {
+    const managerId = req.user.id;
+    const booking = await createBookingService(managerId, req.body);
+    res.status(201).json({ success: true, data: booking });
+  } catch (err) {
+    console.error("Error creating booking:", err);
+    const status = err.message.includes('quyền') ? 403 : 400;
+    res.status(status).json({ message: err.message });
+  }
+};
+
+/**
+ * Lấy lịch sử trạng thái của booking
+ * GET /api/manager/bookings/:id/history
+ */
+export const getBookingHistory = async (req, res) => {
+  try {
+    const managerId = req.user.id;
+    const { id } = req.params;
+    const history = await getBookingHistoryService(managerId, id);
+    res.json({ success: true, data: history });
+  } catch (err) {
+    console.error("Error fetching booking history:", err);
+    res.status(500).json({ message: 'Server error', error: err.message });
+  }
+};
 
 /**
  * Get all bookings for manager's fields
