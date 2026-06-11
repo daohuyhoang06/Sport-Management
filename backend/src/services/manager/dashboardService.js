@@ -51,6 +51,18 @@ export const getDashboardStatsService = async (managerId) => {
       AND b.status IN ('confirmed', 'completed')
     `, { replacements: [managerId] });
 
+    // Get top performing field by revenue
+    const [topFieldData] = await sequelize.query(`
+      SELECT f.field_name, COALESCE(SUM(b.price), 0) as revenue
+      FROM fields f
+      LEFT JOIN bookings b ON b.field_id = f.field_id
+        AND b.status IN ('confirmed', 'completed')
+      WHERE f.manager_id = ?
+      GROUP BY f.field_id, f.field_name
+      ORDER BY revenue DESC
+      LIMIT 1
+    `, { replacements: [managerId] });
+
     return {
       totalFields: Number(fieldStats[0].totalfields) || 0,
       activeFields: Number(fieldStats[0].activefields) || 0,
@@ -62,7 +74,9 @@ export const getDashboardStatsService = async (managerId) => {
       rejectedBookings: Number(bookingStats[0].rejectedbookings) || 0,
       todayBookings: Number(todayStats[0].todaybookings) || 0,
       totalRevenue: parseFloat(revenueStats[0].totalrevenue) || 0,
-      monthlyRevenue: parseFloat(revenueStats[0].monthlyrevenue) || 0
+      monthlyRevenue: parseFloat(revenueStats[0].monthlyrevenue) || 0,
+      topFieldName: topFieldData[0]?.field_name || null,
+      topFieldRevenue: parseFloat(topFieldData[0]?.revenue) || 0
     };
   } catch (error) {
     console.error('Error in getDashboardStatsService:', error);
@@ -98,6 +112,41 @@ export const getRevenueByDateRangeService = async (managerId, startDate, endDate
     return bookings;
   } catch (error) {
     console.error('Error in getRevenueByDateRangeService:', error);
+    throw error;
+  }
+};
+
+/**
+ * Get upcoming bookings for manager's fields (pending/confirmed, future start_time)
+ */
+export const getUpcomingBookingsService = async (managerId, limit = 5) => {
+  try {
+    const [bookings] = await sequelize.query(`
+      SELECT
+        b.booking_id,
+        b.start_time,
+        b.end_time,
+        b.price,
+        b.status,
+        b.note,
+        p.person_name as customer_name,
+        p.phone as customer_phone,
+        f.field_name,
+        fc.court_code,
+        fc.court_name
+      FROM bookings b
+      INNER JOIN fields f ON b.field_id = f.field_id
+      LEFT JOIN field_courts fc ON b.court_id = fc.court_id
+      LEFT JOIN person p ON b.customer_id = p.person_id
+      WHERE f.manager_id = ?
+        AND b.status IN ('pending', 'confirmed', 'approved')
+        AND b.start_time > NOW()
+      ORDER BY b.start_time ASC
+      LIMIT ?
+    `, { replacements: [managerId, limit] });
+    return bookings;
+  } catch (error) {
+    console.error('Error in getUpcomingBookingsService:', error);
     throw error;
   }
 };

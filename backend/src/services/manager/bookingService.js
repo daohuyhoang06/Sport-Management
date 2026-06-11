@@ -37,10 +37,11 @@ export const getManagerBookingsService = async (managerId, filters = {}) => {
 
     const [bookings] = await sequelize.query(
       `
-      SELECT 
+      SELECT
         b.booking_id,
         b.field_id,
         b.customer_id,
+        b.court_id,
         b.start_time,
         b.end_time,
         b.status,
@@ -50,10 +51,13 @@ export const getManagerBookingsService = async (managerId, filters = {}) => {
         f.location,
         p.person_name as customer_name,
         p.email as customer_email,
-        p.phone as customer_phone
+        p.phone as customer_phone,
+        fc.court_code,
+        fc.court_name
       FROM bookings b
       INNER JOIN fields f ON b.field_id = f.field_id
       LEFT JOIN person p ON b.customer_id = p.person_id
+      LEFT JOIN field_courts fc ON b.court_id = fc.court_id
       ${whereClause}
       ORDER BY b.booking_id DESC
     `,
@@ -74,10 +78,11 @@ export const getManagerBookingByIdService = async (managerId, bookingId) => {
   try {
     const [bookings] = await sequelize.query(
       `
-      SELECT 
+      SELECT
         b.booking_id,
         b.field_id,
         b.customer_id,
+        b.court_id,
         b.start_time,
         b.end_time,
         b.status,
@@ -88,10 +93,13 @@ export const getManagerBookingByIdService = async (managerId, bookingId) => {
         f.manager_id,
         p.person_name as customer_name,
         p.email as customer_email,
-        p.phone as customer_phone
+        p.phone as customer_phone,
+        fc.court_code,
+        fc.court_name
       FROM bookings b
       INNER JOIN fields f ON b.field_id = f.field_id
       LEFT JOIN person p ON b.customer_id = p.person_id
+      LEFT JOIN field_courts fc ON b.court_id = fc.court_id
       WHERE b.booking_id = ? AND f.manager_id = ?
     `,
       { replacements: [bookingId, managerId] },

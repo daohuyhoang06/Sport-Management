@@ -16,14 +16,15 @@ import {
   createBlockedSlot,
   deleteBlockedSlot,
 } from "../../controllers/manager/blockedSlotController.js";
-import { 
-  getAllFields, 
+import {
+  getAllFields,
   getFieldById,
   createField,
   updateField,
   deleteField,
   updateFieldStatus,
-  getFieldStats
+  getFieldStats,
+  uploadFieldImageController
 } from "../../controllers/manager/fieldController.js";
 import {
   createFieldCourt,
@@ -44,8 +45,10 @@ import {
 import {
   getDashboardStats,
   getRevenueByDateRange,
-  getMonthlyRevenue
+  getMonthlyRevenue,
+  getUpcomingBookings
 } from "../../controllers/manager/dashboardController.js";
+import { getProfile, updateProfile } from "../../controllers/manager/profileController.js";
 import { requireAuth } from "../../middleware/authMiddleware.js";
 import { requireRole } from "../../middleware/roleMiddleware.js";
 
@@ -55,8 +58,13 @@ const r = Router();
 r.use(requireAuth);
 r.use(requireRole('manager'));
 
+// Profile
+r.get('/profile', getProfile);
+r.put('/profile', updateProfile);
+
 // Dashboard routes
 r.get('/dashboard/stats', getDashboardStats);
+r.get('/dashboard/upcoming', getUpcomingBookings);
 r.get('/dashboard/revenue', getRevenueByDateRange);
 r.get('/dashboard/monthly-revenue', getMonthlyRevenue);
 
@@ -71,6 +79,9 @@ r.put('/bookings/:id/approve', approveBooking);
 r.put('/bookings/:id/reject', rejectBooking);
 r.put('/bookings/:id/complete', completeBooking);
 r.put('/bookings/:id/cancel', cancelBooking);
+
+// Field image upload
+r.post('/upload/field-image', uploadFieldImageController);
 
 // Field management
 r.get('/fields', getAllFields);

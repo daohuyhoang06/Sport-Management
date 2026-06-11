@@ -68,6 +68,29 @@ export const uploadAvatarImage = multer({
   fileFilter,
 }).single("avatar");
 
+// Field image upload
+const fieldImageUploadDir = path.join(__dirname, "../../public/uploads/fields");
+if (!fs.existsSync(fieldImageUploadDir)) {
+  fs.mkdirSync(fieldImageUploadDir, { recursive: true });
+}
+
+const fieldImageStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, fieldImageUploadDir);
+  },
+  filename: function (req, file, cb) {
+    const managerId = req.user?.id || "unknown";
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, `field-${managerId}-${uniqueSuffix}${path.extname(file.originalname)}`);
+  },
+});
+
+export const uploadFieldImage = multer({
+  storage: fieldImageStorage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter,
+}).single("image");
+
 // Middleware to handle multer errors
 export const handleUploadErrors = (err, req, res, next) => {
   if (err instanceof multer.MulterError) {

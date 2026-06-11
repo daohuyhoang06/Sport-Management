@@ -1,7 +1,8 @@
 import {
   getDashboardStatsService,
   getRevenueByDateRangeService,
-  getMonthlyRevenueStatsService
+  getMonthlyRevenueStatsService,
+  getUpcomingBookingsService
 } from '../../services/manager/dashboardService.js';
 
 /**
@@ -48,6 +49,22 @@ export const getRevenueByDateRange = async (req, res) => {
       message: 'Server error when fetching revenue data',
       error: error.message 
     });
+  }
+};
+
+/**
+ * Get upcoming bookings for manager
+ * GET /api/manager/dashboard/upcoming?limit=5
+ */
+export const getUpcomingBookings = async (req, res) => {
+  try {
+    const managerId = req.user.id;
+    const limit = parseInt(req.query.limit) || 5;
+    const bookings = await getUpcomingBookingsService(managerId, limit);
+    res.json(bookings);
+  } catch (error) {
+    console.error('Error in getUpcomingBookings:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 };
 

@@ -7,6 +7,7 @@ import {
   updateFieldService,
   updateFieldStatusService,
 } from "../../services/manager/fieldService.js";
+import { uploadFieldImage, handleUploadErrors } from "../../middleware/upload.js";
 
 const isBlank = (value) =>
   value === undefined || value === null || String(value).trim().length === 0;
@@ -256,4 +257,22 @@ export const getFieldStats = async (req, res) => {
       message: error.message || "Loi khi lay thong ke san",
     });
   }
+};
+
+/**
+ * Upload field image
+ * POST /api/manager/upload/field-image
+ */
+export const uploadFieldImageController = (req, res) => {
+  uploadFieldImage(req, res, (err) => {
+    if (err) {
+      return handleUploadErrors(err, req, res, () => {});
+    }
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: "Khong co file anh" });
+    }
+    const baseUrl = `${req.protocol}://${req.get("host")}`;
+    const url = `${baseUrl}/uploads/fields/${req.file.filename}`;
+    res.json({ success: true, url });
+  });
 };
