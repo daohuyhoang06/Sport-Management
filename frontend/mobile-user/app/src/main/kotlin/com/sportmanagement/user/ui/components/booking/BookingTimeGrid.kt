@@ -31,6 +31,7 @@ import com.sportmanagement.user.domain.model.BookingSubCourt
 import com.sportmanagement.user.domain.model.BookingTimeGridData
 import com.sportmanagement.user.domain.model.BookingTimeGridSupport
 import com.sportmanagement.user.domain.model.BookingTimeRange
+import com.sportmanagement.user.domain.model.MatchPostPreview
 import com.sportmanagement.user.domain.model.SlotStatus
 import kotlinx.coroutines.delay
 import java.util.Calendar
@@ -43,6 +44,7 @@ fun BookingTimeGrid(
     selectedSlots: List<BookingTimeRange>,
     selectedDate: String,
     onSlotClick: (courtId: String, startTime: String, endTime: String) -> Unit,
+    onMatchPostClick: (MatchPostPreview) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val horizontalScroll = rememberScrollState()
@@ -103,7 +105,8 @@ fun BookingTimeGrid(
                 leftLabelWidth = leftLabelWidth,
                 borderColor = borderColor,
                 horizontalScroll = horizontalScroll,
-                onSlotClick = onSlotClick
+                onSlotClick = onSlotClick,
+                onMatchPostClick = onMatchPostClick
             )
         }
     }
@@ -181,7 +184,8 @@ private fun BookingTimeGridRow(
     leftLabelWidth: Dp,
     borderColor: Color,
     horizontalScroll: ScrollState,
-    onSlotClick: (courtId: String, startTime: String, endTime: String) -> Unit
+    onSlotClick: (courtId: String, startTime: String, endTime: String) -> Unit,
+    onMatchPostClick: (MatchPostPreview) -> Unit
 ) {
     Row(
         modifier = Modifier
@@ -235,6 +239,8 @@ private fun BookingTimeGridRow(
                                         clickRange.endTime
                                     )
                                 }
+                            } ?: cellState.matchPost?.let { matchPost ->
+                                Modifier.clickable { onMatchPostClick(matchPost) }
                             } ?: Modifier
                         ),
                     iconSize = bookingCellWidth * 0.36f,
@@ -249,6 +255,7 @@ private fun BookingTimeGridRow(
 private data class GridCellState(
     val status: SlotStatus,
     val clickRange: BookingTimeRange? = null,
+    val matchPost: MatchPostPreview? = null,
     val showSelectionIcon: Boolean = false
 )
 
@@ -273,6 +280,27 @@ private fun resolveBookingBlockState(
         startTime = BookingTimeGridSupport.formatMinutesAsTime(slotStart),
         endTime = BookingTimeGridSupport.formatMinutesAsTime(requestedEnd)
     )
+
+    val matchingPost = gridData.matchPosts.firstOrNull { post ->
+        post.courtId == courtId &&
+            BookingTimeGridSupport.rangeOverlaps(
+                BookingTimeRange(
+                    courtId = post.courtId,
+                    startTime = post.startTime,
+                    endTime = post.endTime
+                ),
+                requestedRange
+            )
+    }
+    if (matchingPost != null) {
+        if (isPastSlot(selectedDate, currentDateText, slotStart, currentTimeMinutes)) {
+            return GridCellState(status = SlotStatus.BOOKED)
+        }
+        return GridCellState(
+            status = SlotStatus.FIND_OPPONENT,
+            matchPost = matchingPost
+        )
+    }
 
     val overlapsBookedRange = gridData.bookedSlots.any { slot ->
         slot.courtId == courtId &&
@@ -312,7 +340,7 @@ private fun resolveBookingBlockState(
     )
 }
 
-private fun shouldLockByTime(
+private fun isPastSlot(
     selectedDate: String,
     currentDateText: String,
     slotStart: Int,
@@ -324,6 +352,15 @@ private fun shouldLockByTime(
         selectedDate > currentDateText -> false
         else -> slotStart < currentTimeMinutes
     }
+}
+
+private fun shouldLockByTime(
+    selectedDate: String,
+    currentDateText: String,
+    slotStart: Int,
+    currentTimeMinutes: Int
+): Boolean {
+    return isPastSlot(selectedDate, currentDateText, slotStart, currentTimeMinutes)
 }
 
 private fun generateBookingSlotStarts(

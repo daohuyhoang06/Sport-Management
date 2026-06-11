@@ -208,8 +208,7 @@ internal fun HomeRatingChip(
     rating: String,
     modifier: Modifier = Modifier
 ) {
-    val numericRating = rating.toDoubleOrNull()
-    if (numericRating == null || numericRating <= 0.0) return
+    val numericRating = rating.toDoubleOrNull() ?: 0.0
 
     Surface(
         modifier = modifier,

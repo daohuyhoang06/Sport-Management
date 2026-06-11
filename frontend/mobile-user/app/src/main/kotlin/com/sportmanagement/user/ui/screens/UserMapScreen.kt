@@ -67,6 +67,8 @@ import com.google.android.gms.location.Priority
 import com.google.android.gms.tasks.CancellationTokenSource
 import com.sportmanagement.user.R
 import com.sportmanagement.user.domain.model.SportCategory
+import com.sportmanagement.user.domain.model.FieldReview
+import com.sportmanagement.user.domain.model.FieldReviewStats
 import com.sportmanagement.user.domain.model.SportIconType
 import com.sportmanagement.user.domain.model.UserField
 import com.sportmanagement.user.ui.components.SportMarkerIcon
@@ -107,6 +109,9 @@ fun UserMapScreen(
     sportCategories: List<SportCategory>,
     nearby: List<UserField>,
     favoriteFields: List<UserField> = emptyList(),
+    fieldReviewStatsByFieldId: Map<Int, FieldReviewStats> = emptyMap(),
+    fieldReviewsByFieldId: Map<Int, List<FieldReview>> = emptyMap(),
+    loadingFieldReviewIds: Set<Int> = emptySet(),
     searchResults: List<UserField> = emptyList(),
     recentSearches: List<String> = emptyList(),
     isSearchLoading: Boolean = false,
@@ -120,7 +125,8 @@ fun UserMapScreen(
     onCurrentLocationDetected: (Double, Double) -> Unit = { _, _ -> },
     onBookFieldClick: (UserField) -> Unit = {},
     onFavoriteFieldClick: (UserField, Boolean) -> Unit = { _, _ -> },
-    onShareFieldClick: (UserField) -> Unit = {}
+    onShareFieldClick: (UserField) -> Unit = {},
+    onFieldDetailOpened: (Int) -> Unit = {}
 ) {
     val context = LocalContext.current
     ensureMapLibreInitialized(context)
@@ -351,6 +357,10 @@ fun UserMapScreen(
             map.animateCamera(CameraUpdateFactory.newLatLngZoom(target, 17.6))
             true
         }
+    }
+
+    LaunchedEffect(selectedFieldForDetail?.fieldId) {
+        selectedFieldForDetail?.fieldId?.takeIf { it > 0 }?.let(onFieldDetailOpened)
     }
 
     val jumpToField: (UserField) -> Unit = { field ->
@@ -694,6 +704,9 @@ fun UserMapScreen(
             FieldDetailBottomSheet(
                 field = field,
                 isFavorite = field.fieldId in favoriteFieldIds,
+                reviewStats = fieldReviewStatsByFieldId[field.fieldId],
+                reviews = fieldReviewsByFieldId[field.fieldId].orEmpty(),
+                isReviewLoading = field.fieldId in loadingFieldReviewIds,
                 onDismissRequest = { selectedFieldForDetail = null },
                 onFavoriteClick = {
                     onFavoriteFieldClick(field, field.fieldId !in favoriteFieldIds)

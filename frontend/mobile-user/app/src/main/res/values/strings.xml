@@ -128,6 +128,7 @@
     <string name="booking_calendar_content_description">Chọn ngày</string>
     <string name="booking_status_available">Trống</string>
     <string name="booking_status_booked">Đã đặt</string>
+    <string name="booking_status_find_opponent">Tìm đối thủ</string>
     <string name="booking_status_locked">Khóa</string>
     <string name="booking_status_event">Sự kiện</string>
     <string name="booking_view_field_and_price">Xem sân &amp; bảng giá</string>
@@ -278,6 +279,7 @@
     <string name="share_sheet_facebook">Facebook</string>
     <string name="share_sheet_gmail">Gmail</string>
     <string name="share_sheet_more">More</string>
+
     <string name="share_text_prefix">Chia sẻ từ %1$s</string>
     <string name="share_text_field_label">Sân: %1$s</string>
     <string name="share_text_location_label">Địa chỉ: %1$s</string>
