@@ -19,7 +19,10 @@ data class UserField(
     val region: String = "",
     val province: String = "",
     val district: String = "",
-    val distanceKm: Double? = null
+    val contactPhone: String = "",
+    val distanceKm: Double? = null,
+    val avatarImageUrl: String = "",
+    val cardImageUrl: String = ""
 )
 
 enum class VenueCardType {

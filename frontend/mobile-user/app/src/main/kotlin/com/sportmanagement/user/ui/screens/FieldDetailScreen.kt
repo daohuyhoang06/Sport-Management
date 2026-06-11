@@ -51,6 +51,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -61,8 +62,11 @@ import com.sportmanagement.user.domain.model.FieldDetail
 import com.sportmanagement.user.domain.model.FieldDetailCourt
 import com.sportmanagement.user.domain.model.FieldDetailPolicy
 import com.sportmanagement.user.domain.model.FieldDetailService
+import com.sportmanagement.user.domain.model.SportIconType
 import com.sportmanagement.user.domain.model.mockFieldDetail
+import com.sportmanagement.user.ui.components.sportFieldDrawableRes
 import com.sportmanagement.user.ui.theme.SportUserTheme
+import java.text.Normalizer
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -225,28 +229,46 @@ private fun FieldHeroSection(
     onBackClick: () -> Unit
 ) {
     val context = LocalContext.current
-    val allImages = remember(detail.avatarImageUrl, detail.galleryUrls) {
+    val allImages = remember(detail.cardImageUrl, detail.avatarImageUrl, detail.galleryUrls) {
         buildList {
+            add(detail.cardImageUrl)
             add(detail.avatarImageUrl)
             addAll(detail.galleryUrls)
-        }.distinct()
+        }
+            .map { it.trim() }
+            .filter { it.isNotBlank() && !it.endsWith("placeholder.svg", ignoreCase = true) }
+            .distinct()
     }
+    val heroImageUrl = allImages.getOrNull(selectedGalleryIndex) ?: allImages.firstOrNull()
+    val fallbackPainter = painterResource(id = sportFieldDrawableRes(detail.resolveSportIconType()))
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(280.dp)
     ) {
-        AsyncImage(
-            model = ImageRequest.Builder(context)
-                .data(allImages.getOrElse(selectedGalleryIndex) { detail.avatarImageUrl })
-                .size(1080, 560)
-                .crossfade(false)
-                .build(),
-            contentDescription = detail.name,
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop
-        )
+        if (heroImageUrl != null) {
+            AsyncImage(
+                model = ImageRequest.Builder(context)
+                    .data(heroImageUrl)
+                    .size(1080, 560)
+                    .crossfade(false)
+                    .build(),
+                contentDescription = detail.name,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop,
+                placeholder = fallbackPainter,
+                error = fallbackPainter,
+                fallback = fallbackPainter
+            )
+        } else {
+            androidx.compose.foundation.Image(
+                painter = fallbackPainter,
+                contentDescription = detail.name,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+        }
 
         Box(
             modifier = Modifier
@@ -349,6 +371,20 @@ private fun FieldHeroSection(
                 }
             }
         }
+    }
+}
+
+private fun FieldDetail.resolveSportIconType(): SportIconType {
+    val normalized = Normalizer.normalize(sportType.trim(), Normalizer.Form.NFD)
+        .replace("\\p{Mn}+".toRegex(), "")
+        .uppercase(Locale.ROOT)
+    return when (normalized) {
+        "FOOTBALL", "BONG DA" -> SportIconType.FOOTBALL
+        "TENNIS" -> SportIconType.TENNIS
+        "BADMINTON", "CAU LONG" -> SportIconType.BADMINTON
+        "VOLLEYBALL", "BONG CHUYEN" -> SportIconType.VOLLEYBALL
+        "PICKLEBALL" -> SportIconType.PICKLEBALL
+        else -> SportIconType.FOOTBALL
     }
 }
 

@@ -271,8 +271,7 @@ export const uploadFieldImageController = (req, res) => {
     if (!req.file) {
       return res.status(400).json({ success: false, message: "Khong co file anh" });
     }
-    const baseUrl = `${req.protocol}://${req.get("host")}`;
-    const url = `${baseUrl}/uploads/fields/${req.file.filename}`;
+    const url = `/uploads/fields/${req.file.filename}`;
     res.json({ success: true, url });
   });
 };

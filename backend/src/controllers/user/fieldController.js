@@ -484,7 +484,9 @@ export const mapFieldRowToListPayload = (row) => {
   const tags = parseTags(row.tags_csv);
   const sportName = row.sport_name || "";
   const sportIconType = SPORT_NAME_TO_ICON[sportName] || "FOOTBALL";
-  const image = row.card_image_url || row.avatar_image_url || DEFAULT_IMAGE_URL;
+  const avatarImageUrl = row.avatar_image_url || null;
+  const cardImageUrl = row.card_image_url || null;
+  const image = cardImageUrl || avatarImageUrl || DEFAULT_IMAGE_URL;
   const distanceKm =
     row.distance_km === null || row.distance_km === undefined
       ? null
@@ -509,11 +511,16 @@ export const mapFieldRowToListPayload = (row) => {
     is_pro_league: Boolean(row.featured),
     availability: row.availability_note || "",
     card_type: row.card_type || "LARGE_IMAGE",
+    avatar_image_url: avatarImageUrl,
+    card_image_url: cardImageUrl,
     tags,
     facilities: tags,
     region: row.region || "",
     province: row.province || "",
     district: row.district || "",
+    contact_phone: row.owner_phone || row.phone || "",
+    owner_phone: row.owner_phone || "",
+    phone: row.phone || "",
     distance_km: distanceKm,
     distance: formatDistanceLabel(distanceKm),
     hours: hoursLabel,
@@ -652,12 +659,14 @@ const queryFieldList = async (query, options = {}) => {
       f.region,
       f.province,
       f.district,
+      mgr.phone AS owner_phone,
       ${distanceSql} AS distance_km,
       st.sport_name,
       COALESCE(f.display_rating, AVG(r.rating), 0) AS rating_value,
       COUNT(DISTINCT r.review_id) AS review_count,
       GROUP_CONCAT(DISTINCT ft.tag_name ORDER BY ft.sort_order SEPARATOR '|||') AS tags_csv
     FROM fields f
+    LEFT JOIN person mgr ON mgr.person_id = f.manager_id
     LEFT JOIN sport_types st ON st.sport_id = f.sport_id
     LEFT JOIN reviews r ON r.field_id = f.field_id
     LEFT JOIN field_tags ft ON ft.field_id = f.field_id
@@ -666,7 +675,7 @@ const queryFieldList = async (query, options = {}) => {
       f.field_id, f.field_name, f.location, f.status, f.latitude, f.longitude,
       f.open_time, f.close_time, f.slot_price, f.avatar_image_url, f.card_image_url,
       f.sport_id, f.display_rating, f.featured, f.availability_note, f.card_type,
-      f.region, f.province, f.district, st.sport_name
+      f.region, f.province, f.district, mgr.phone, st.sport_name
     ${havingClauses.length > 0 ? `HAVING ${havingClauses.join(" AND ")}` : ""}
     ORDER BY ${orderBy}
     LIMIT ? OFFSET ?
@@ -786,11 +795,13 @@ export const getField = async (req, res) => {
         f.region,
         f.province,
         f.district,
+        mgr.phone AS owner_phone,
         ${distanceSql} AS distance_km,
         st.sport_name,
         COALESCE(f.display_rating, AVG(r.rating), 0) AS rating_value,
         COUNT(DISTINCT r.review_id) AS review_count
       FROM fields f
+      LEFT JOIN person mgr ON mgr.person_id = f.manager_id
       LEFT JOIN sport_types st ON st.sport_id = f.sport_id
       LEFT JOIN reviews r ON r.field_id = f.field_id
       WHERE f.field_id = ?
@@ -798,7 +809,7 @@ export const getField = async (req, res) => {
         f.field_id, f.manager_id, f.field_name, f.location, f.status, f.latitude, f.longitude,
         f.phone, f.open_time, f.close_time, f.slot_minutes, f.slot_price, f.avatar_image_url,
         f.card_image_url, f.sport_id, f.display_rating, f.featured, f.availability_note,
-        f.card_type, f.region, f.province, f.district, st.sport_name
+        f.card_type, f.region, f.province, f.district, mgr.phone, st.sport_name
       LIMIT 1
       `,
       { replacements: [...distanceReplacements, id] },
@@ -874,7 +885,7 @@ export const getField = async (req, res) => {
     const data = {
       ...mapped,
       manager_id: fieldRow.manager_id,
-      phone: fieldRow.phone,
+      phone: fieldRow.owner_phone || fieldRow.phone || "",
       slot_minutes: fieldRow.slot_minutes,
       images,
       services,
@@ -927,7 +938,7 @@ export const getFieldGrid = async (req, res) => {
     const gridCourts =
       courts.length > 0
         ? courts
-        : [{ court_id: "default", court_name: fieldRow.field_name || "San" }];
+        : [{ court_id: "default", court_name: "San 1" }];
 
     const formatTime = (timeStr) =>
       timeStr ? String(timeStr).substring(0, 5) : "";
@@ -1002,7 +1013,7 @@ export const getFieldGrid = async (req, res) => {
 
       blockedSlots.push(
         ...lockedStarts.flatMap((slotStart) =>
-          courts.map((court) => ({
+          gridCourts.map((court) => ({
             courtId: String(court.court_id),
             startTime: `${String(Math.floor(slotStart / 60)).padStart(2, "0")}:${String(slotStart % 60).padStart(2, "0")}`,
             endTime: `${String(Math.floor((slotStart + blockMinutes) / 60)).padStart(2, "0")}:${String((slotStart + blockMinutes) % 60).padStart(2, "0")}`,
@@ -1016,7 +1027,7 @@ export const getFieldGrid = async (req, res) => {
       const endStr = formatDbTimeLabel(row.end_time);
       const targetCourts = row.court_id
         ? [String(row.court_id)]
-        : courts.map((court) => String(court.court_id));
+        : gridCourts.map((court) => String(court.court_id));
 
       blockedSlots.push(
         ...targetCourts.map((courtId) => ({

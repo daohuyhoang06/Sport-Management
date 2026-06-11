@@ -180,7 +180,14 @@ class UserApi(
             val courtsArray = gridObj.optJSONArray("courts") ?: JSONArray()
             val courts = List(courtsArray.length()) { i ->
                 val c = courtsArray.getJSONObject(i)
-                BookingSubCourt(c.optString("id"), c.optString("name"))
+                val courtId = c.optString("id")
+                val rawCourtName = c.optString("name").trim()
+                val courtName = when {
+                    courtId.equals("default", ignoreCase = true) -> "S\u00E2n 1"
+                    rawCourtName.isNotBlank() -> rawCourtName
+                    else -> courtId
+                }
+                BookingSubCourt(courtId, courtName)
             }
 
             val bookedArray = gridObj.optJSONArray("bookedSlots") ?: JSONArray()
@@ -456,14 +463,23 @@ class UserApi(
         page: Int = 1,
         limit: Int = 5
     ): List<UserFieldDto> = withContext(Dispatchers.IO) {
-        if (latitude == null || longitude == null) {
-            return@withContext emptyList()
-        }
         val safePage = if (page < 1) 1 else page
         val safeLimit = limit.coerceIn(1, 100)
-        val endpoint = "$baseUrl/api/user/fields/nearby?lat=$latitude&lng=$longitude&page=$safePage&limit=$safeLimit"
+        val defaultEndpoint = "$baseUrl/api/user/fields?page=$safePage&limit=$safeLimit"
 
-        readFieldArray(endpoint)
+        if (latitude == null || longitude == null) {
+            return@withContext readFieldArray(defaultEndpoint)
+        }
+
+        val nearbyEndpoint =
+            "$baseUrl/api/user/fields/nearby?lat=$latitude&lng=$longitude&page=$safePage&limit=$safeLimit"
+
+        val nearbyFields = runCatching { readFieldArray(nearbyEndpoint) }.getOrDefault(emptyList())
+        if (nearbyFields.isNotEmpty()) {
+            return@withContext nearbyFields
+        }
+
+        readFieldArray(defaultEndpoint)
     }
 
     private fun postJsonWithResponse(
@@ -559,8 +575,8 @@ class UserApi(
         }
     }
 
-    private fun resolveMediaUrl(value: String): String {
-        val trimmed = value.trim()
+    private fun resolveMediaUrl(value: String?): String {
+        val trimmed = value?.trim().orEmpty()
         if (trimmed.isBlank() || trimmed.equals("null", ignoreCase = true)) return ""
         if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
             return trimmed
@@ -612,14 +628,23 @@ class UserApi(
             distanceKm = optDoubleOrNull("distance_km"),
             distance = optStringOrNull("distance"),
             hours = optStringOrNull("hours") ?: optStringOrNull("openTime"),
-            imageUrl = optStringOrNull("imageUrl") ?: optStringOrNull("image"),
+            imageUrl = resolveMediaUrl(optStringOrNull("imageUrl") ?: optStringOrNull("image")),
             isProLeague = optBooleanOrNull("is_pro_league") ?: optBooleanOrNull("isProLeague"),
             tags = tags,
             availability = optStringOrNull("availability"),
             cardType = optStringOrNull("card_type") ?: optStringOrNull("cardType"),
             region = optStringOrNull("region"),
             province = optStringOrNull("province"),
-            district = optStringOrNull("district")
+            district = optStringOrNull("district"),
+            contactPhone = optStringOrNull("contact_phone")
+                ?: optStringOrNull("owner_phone")
+                ?: optStringOrNull("phone"),
+            avatarImageUrl = resolveMediaUrl(
+                optStringOrNull("avatar_image_url") ?: optStringOrNull("avatarImageUrl")
+            ),
+            cardImageUrl = resolveMediaUrl(
+                optStringOrNull("card_image_url") ?: optStringOrNull("cardImageUrl")
+            )
         )
     }
 

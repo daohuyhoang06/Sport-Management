@@ -650,7 +650,9 @@ class InboxViewModel(
                         ConversationMessageUi(
                             id = it.messageId,
                             text = it.content,
-                            time = formatTime(it.createdAt),
+                            time = formatConversationMessageTime(it.createdAt),
+                            dateLabel = formatConversationDate(it.createdAt),
+                            sortTimestamp = parseConversationTimestamp(it.createdAt),
                             isUser = it.isMine
                         )
                     }
@@ -705,9 +707,14 @@ class InboxViewModel(
                         conversationMessages = (current + ConversationMessageUi(
                             id = sent.messageId,
                             text = sent.content,
-                            time = formatTime(sent.createdAt),
+                            time = formatConversationMessageTime(sent.createdAt),
+                            dateLabel = formatConversationDate(sent.createdAt),
+                            sortTimestamp = parseConversationTimestamp(sent.createdAt),
                             isUser = true
-                        )).sortedBy { it.id }
+                        )).sortedWith(
+                            compareBy<ConversationMessageUi> { it.sortTimestamp }
+                                .thenBy { it.id }
+                        )
                     )
                     loadConversation(conversation)
                 }
@@ -1112,6 +1119,53 @@ class InboxViewModel(
             val ldt = LocalDateTime.parse(raw, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
             ldt.atZone(ZoneOffset.UTC).withZoneSameInstant(zone).format(timePattern)
         }.getOrDefault(raw)
+    }
+
+    private fun formatConversationMessageTime(raw: String): String {
+        val zone = ZoneId.of("Asia/Ho_Chi_Minh")
+        val timePattern = DateTimeFormatter.ofPattern("HH:mm")
+
+        return runCatching {
+            val odt = OffsetDateTime.parse(raw)
+            odt.atZoneSameInstant(zone).format(timePattern)
+        }.recoverCatching {
+            val ldt = LocalDateTime.parse(raw)
+            ldt.atZone(zone).format(timePattern)
+        }.recoverCatching {
+            val ldt = LocalDateTime.parse(raw, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+            ldt.atZone(ZoneOffset.UTC).withZoneSameInstant(zone).format(timePattern)
+        }.getOrDefault(raw)
+    }
+
+    private fun formatConversationDate(raw: String): String {
+        val zone = ZoneId.of("Asia/Ho_Chi_Minh")
+        val datePattern = DateTimeFormatter.ofPattern("dd/MM/yyyy")
+
+        return runCatching {
+            val odt = OffsetDateTime.parse(raw)
+            odt.atZoneSameInstant(zone).format(datePattern)
+        }.recoverCatching {
+            val ldt = LocalDateTime.parse(raw)
+            ldt.atZone(zone).format(datePattern)
+        }.recoverCatching {
+            val ldt = LocalDateTime.parse(raw, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+            ldt.atZone(ZoneOffset.UTC).withZoneSameInstant(zone).format(datePattern)
+        }.getOrDefault(raw)
+    }
+
+    private fun parseConversationTimestamp(raw: String): Long {
+        val zone = ZoneId.of("Asia/Ho_Chi_Minh")
+
+        return runCatching {
+            OffsetDateTime.parse(raw).toInstant().toEpochMilli()
+        }.recoverCatching {
+            LocalDateTime.parse(raw).atZone(zone).toInstant().toEpochMilli()
+        }.recoverCatching {
+            LocalDateTime.parse(raw, DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
+                .atZone(ZoneOffset.UTC)
+                .toInstant()
+                .toEpochMilli()
+        }.getOrDefault(Long.MAX_VALUE)
     }
 
     private fun BookingDetailDto.toBookingInfo(

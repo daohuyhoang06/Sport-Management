@@ -92,6 +92,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.window.Dialog
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
 import coil.compose.SubcomposeAsyncImage
 import com.sportmanagement.user.R
 import com.sportmanagement.user.domain.model.FieldReview
@@ -102,6 +103,9 @@ import com.sportmanagement.user.ui.components.booking.bookingCardTitleStyle
 import com.sportmanagement.user.ui.components.SportCircleAvatar
 import com.sportmanagement.user.ui.components.SportMarkerIcon
 import com.sportmanagement.user.ui.components.home.HomeVenueTitleText
+import com.sportmanagement.user.ui.components.sportAvatarBackgroundColor
+import com.sportmanagement.user.ui.components.sportFieldDrawableRes
+import com.sportmanagement.user.ui.components.sportIconDrawableRes
 import com.sportmanagement.user.ui.share.FieldShareLink
 import com.sportmanagement.user.ui.theme.AppBadgeCornerRadius
 import com.sportmanagement.user.ui.theme.AppCardCornerRadius
@@ -148,7 +152,11 @@ fun FieldDetailBottomSheet(
     var previewImage by remember { mutableStateOf<Int?>(null) }
     var ratingBadgeHeightPx by remember { mutableIntStateOf(0) }
     val bookingLink = remember(field.fieldId, field.name) { bookingLinkFor(field) }
-    val hotline = remember(field.name) { context.getString(R.string.field_detail_default_hotline) }
+    val hotline = remember(field.contactPhone) {
+        field.contactPhone.trim().ifBlank {
+            context.getString(R.string.field_detail_default_hotline)
+        }
+    }
     val headerImageHeight = 232.dp
     val infoCardOverlap = 28.dp
     val resolvedReviewMetrics = remember(reviewStats, reviews, field.rating) {
@@ -183,11 +191,9 @@ fun FieldDetailBottomSheet(
                                 .height(headerImageHeight)
                                 .clip(RoundedCornerShape(topStart = AppInputCornerRadius, topEnd = AppInputCornerRadius))
                         ) {
-                            Image(
-                                painter = painterResource(id = R.drawable.field_football),
-                                contentDescription = field.name,
-                                modifier = Modifier.fillMaxSize(),
-                                contentScale = ContentScale.Crop
+                            FieldDetailHeaderImage(
+                                field = field,
+                                modifier = Modifier.fillMaxSize()
                             )
                             Box(
                                 modifier = Modifier
@@ -266,8 +272,8 @@ fun FieldDetailBottomSheet(
                                 verticalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
                                 Row(verticalAlignment = Alignment.Top) {
-                                    SportCircleAvatar(
-                                        iconType = field.sportIconType,
+                                    FieldDetailAvatar(
+                                        field = field,
                                         size = 52.dp,
                                         iconSize = 26.dp
                                     )
@@ -441,6 +447,84 @@ fun FieldDetailBottomSheet(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun FieldDetailHeaderImage(
+    field: UserField,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val remoteImageUrl = field.cardImageUrl.trim()
+        .ifBlank { field.avatarImageUrl.trim() }
+        .ifBlank { field.imageUrl.trim() }
+    val fallbackPainter = painterResource(id = sportFieldDrawableRes(field.sportIconType))
+    val shouldLoadRemoteImage =
+        remoteImageUrl.isNotBlank() &&
+            !remoteImageUrl.endsWith("placeholder.svg", ignoreCase = true)
+
+    if (shouldLoadRemoteImage) {
+        AsyncImage(
+            model = ImageRequest.Builder(context)
+                .data(remoteImageUrl)
+                .size(1080, 560)
+                .crossfade(false)
+                .build(),
+            contentDescription = field.name,
+            modifier = modifier,
+            contentScale = ContentScale.Crop,
+            placeholder = fallbackPainter,
+            error = fallbackPainter,
+            fallback = fallbackPainter
+        )
+    } else {
+        Image(
+            painter = fallbackPainter,
+            contentDescription = field.name,
+            modifier = modifier,
+            contentScale = ContentScale.Crop
+        )
+    }
+}
+
+@Composable
+private fun FieldDetailAvatar(
+    field: UserField,
+    size: androidx.compose.ui.unit.Dp,
+    iconSize: androidx.compose.ui.unit.Dp
+) {
+    val context = LocalContext.current
+    val density = LocalDensity.current
+    val remoteAvatarUrl = field.avatarImageUrl.trim()
+    val shouldLoadRemoteImage =
+        remoteAvatarUrl.isNotBlank() &&
+            !remoteAvatarUrl.endsWith("placeholder.svg", ignoreCase = true)
+    val imageSizePx = with(density) { size.roundToPx() }
+
+    if (shouldLoadRemoteImage) {
+        AsyncImage(
+            model = ImageRequest.Builder(context)
+                .data(remoteAvatarUrl)
+                .size(imageSizePx, imageSizePx)
+                .crossfade(false)
+                .build(),
+            contentDescription = null,
+            modifier = Modifier
+                .size(size)
+                .clip(CircleShape)
+                .background(sportAvatarBackgroundColor(field.sportIconType)),
+            contentScale = ContentScale.Crop,
+            placeholder = painterResource(id = sportIconDrawableRes(field.sportIconType)),
+            error = painterResource(id = sportIconDrawableRes(field.sportIconType)),
+            fallback = painterResource(id = sportIconDrawableRes(field.sportIconType))
+        )
+    } else {
+        SportCircleAvatar(
+            iconType = field.sportIconType,
+            size = size,
+            iconSize = iconSize
+        )
     }
 }
 

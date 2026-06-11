@@ -352,12 +352,33 @@ export const uploadFieldImagesService = async (field_id, images) => {
 
   const imageRecords = images.map((imageUrl, index) => ({
     field_id: field_id,
-    image_url: imageUrl,
+    image_url: normalizeMediaPath(imageUrl),
     is_primary: index === 0, // First image is primary
   }));
 
   const createdImages = await FieldImage.bulkCreate(imageRecords);
   return createdImages;
+};
+
+const normalizeMediaPath = (value) => {
+  if (value === undefined || value === null) {
+    return value;
+  }
+  if (typeof value !== "string") {
+    return value;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  try {
+    const parsed = new URL(trimmed);
+    return `${parsed.pathname}${parsed.search}${parsed.hash}` || null;
+  } catch (_error) {
+    return trimmed;
+  }
 };
 
 /**

@@ -128,6 +128,9 @@ import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
 import java.io.File
 import java.io.FileOutputStream
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 private val InboxSectionGap = AppFieldHorizontalPadding
 private val InboxMenuContentGap = 28.dp
@@ -4003,9 +4006,18 @@ fun ConversationScreen(
     val context = LocalContext.current
     val screenBackground = MaterialTheme.colorScheme.background
     val listState = rememberLazyListState()
-    val sortedMessages = remember(messages) { messages.sortedBy { it.id } }
+    val sortedMessages = remember(messages) {
+        messages.sortedWith(
+            compareBy<ConversationMessageUi> { it.sortTimestamp }
+                .thenBy { it.id }
+        )
+    }
+    val todayDateLabel = remember {
+        LocalDate.now(ZoneId.of("Asia/Ho_Chi_Minh"))
+            .format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+    }
     val bottomAnchorIndex =
-        1 + sortedMessages.size +
+        sortedMessages.size +
             (if (isLoading) 1 else 0) +
             (if (!errorMessage.isNullOrBlank()) 1 else 0)
 
@@ -4040,18 +4052,6 @@ fun ConversationScreen(
             contentPadding = PaddingValues(bottom = 8.dp, top = 12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.Bottom)
         ) {
-            item {
-                Text(
-                    text = "Hôm nay",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-                    textAlign = TextAlign.Center
-                )
-            }
-
             if (isLoading) {
                 item {
                     Text(
@@ -4071,7 +4071,18 @@ fun ConversationScreen(
             }
 
             items(sortedMessages.size, key = { index -> sortedMessages[index].id }) { index ->
-                ConversationMessageBubble(sortedMessages[index])
+                val message = sortedMessages[index]
+                val previousDateLabel = sortedMessages.getOrNull(index - 1)?.dateLabel
+                val shouldShowDateSeparator =
+                    index == 0 || message.dateLabel != previousDateLabel
+
+                if (shouldShowDateSeparator) {
+                    ConversationDateSeparator(
+                        label = if (message.dateLabel == todayDateLabel) "Hôm nay" else message.dateLabel
+                    )
+                }
+
+                ConversationMessageBubble(message)
             }
 
             item(key = "conversation-bottom-anchor") {
@@ -4167,8 +4178,23 @@ data class ConversationMessageUi(
     val id: Int,
     val text: String,
     val time: String,
+    val dateLabel: String,
+    val sortTimestamp: Long,
     val isUser: Boolean
 )
+
+@Composable
+private fun ConversationDateSeparator(label: String) {
+    Text(
+        text = label,
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        textAlign = TextAlign.Center
+    )
+}
 
 @Composable
 private fun ConversationMessageBubble(message: ConversationMessageUi) {

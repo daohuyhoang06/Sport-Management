@@ -28,14 +28,17 @@ object UserMapper {
         distanceKm = distanceKm,
         distance = distance ?: "",
         hours = hours ?: "00:00 - 24:00",
-        imageUrl = imageUrl ?: "",
+        imageUrl = imageUrl ?: cardImageUrl ?: avatarImageUrl ?: "",
         isProLeague = isProLeague ?: false,
         tags = tags ?: emptyList(),
         availability = availability ?: "",
         cardType = cardType?.toVenueCardType() ?: VenueCardType.LARGE_IMAGE,
         region = region ?: "",
         province = province ?: "",
-        district = district ?: ""
+        district = district ?: "",
+        contactPhone = contactPhone ?: "",
+        avatarImageUrl = avatarImageUrl ?: "",
+        cardImageUrl = cardImageUrl ?: ""
     )
 
     fun SportCategoryDto.toDomain(): SportCategory = SportCategory(

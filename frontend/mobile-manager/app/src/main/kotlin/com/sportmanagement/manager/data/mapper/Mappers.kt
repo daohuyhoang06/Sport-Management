@@ -9,6 +9,7 @@ import com.sportmanagement.manager.data.remote.dto.FieldCourtDto
 import com.sportmanagement.manager.data.remote.dto.FieldDto
 import com.sportmanagement.manager.data.remote.dto.FieldPolicyDto
 import com.sportmanagement.manager.data.remote.dto.FieldServiceDto
+import com.sportmanagement.manager.data.remote.NetworkClient
 import com.sportmanagement.manager.domain.model.BlockType
 import com.sportmanagement.manager.domain.model.BlockedSlot
 import com.sportmanagement.manager.domain.model.BookingCustomer
@@ -40,7 +41,7 @@ fun FieldDto.toPitch(): Pitch = Pitch(
     name = fieldName,
     location = location ?: "",
     pricePerHour = slotPrice?.toLong() ?: 0L,
-    imageUrl = avatarImageUrl ?: cardImageUrl ?: "",
+    imageUrl = resolveMediaUrl(cardImageUrl) ?: resolveMediaUrl(avatarImageUrl) ?: "",
     status = when (status.lowercase()) {
         "active"      -> PitchStatus.ACTIVE
         "maintenance" -> PitchStatus.MAINTENANCE
@@ -77,9 +78,9 @@ fun FieldDto.toPitchDetail(
         "maintenance" -> PitchStatus.MAINTENANCE
         else          -> PitchStatus.LOCKED
     },
-    avatarImageUrl = avatarImageUrl ?: cardImageUrl ?: "",
-    cardImageUrl = cardImageUrl ?: avatarImageUrl ?: "",
-    galleryUrls = listOfNotNull(avatarImageUrl, cardImageUrl).distinct(),
+    avatarImageUrl = resolveMediaUrl(avatarImageUrl) ?: resolveMediaUrl(cardImageUrl) ?: "",
+    cardImageUrl = resolveMediaUrl(cardImageUrl) ?: resolveMediaUrl(avatarImageUrl) ?: "",
+    galleryUrls = listOfNotNull(resolveMediaUrl(avatarImageUrl), resolveMediaUrl(cardImageUrl)).distinct(),
     rating = 0f,
     bookingCount = 0,
     scheduleConfig = FieldScheduleConfig(
@@ -209,6 +210,14 @@ private fun durationMinutes(start: String?, end: String?): Int {
     val s = parseIso(start) ?: return 0
     val e = parseIso(end) ?: return 0
     return ((e.time - s.time) / 60_000).toInt().coerceAtLeast(0)
+}
+
+private fun resolveMediaUrl(value: String?): String? {
+    val trimmed = value?.trim().orEmpty()
+    if (trimmed.isBlank() || trimmed.equals("null", ignoreCase = true)) return null
+    if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return trimmed
+    val base = NetworkClient.BASE_URL.trimEnd('/')
+    return "$base${if (trimmed.startsWith("/")) trimmed else "/$trimmed"}"
 }
 
 fun BookingDto.toBookingItem(): BookingItem {

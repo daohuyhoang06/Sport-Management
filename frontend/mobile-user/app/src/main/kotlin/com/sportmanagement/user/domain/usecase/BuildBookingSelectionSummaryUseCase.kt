@@ -14,12 +14,12 @@ class BuildBookingSelectionSummaryUseCase {
     ): BookingSelectionSummary? {
         if (selectedSlots.isEmpty()) return null
 
-        val courtNamesById = scheduleData.grid.courts.associate { it.id to it.name }
+        val courtNamesById = scheduleData.grid.courts.associate { it.id to resolveCourtName(it.id, it.name) }
         val ranges = selectedSlots
             .distinct()
             .sortedWith(
                 compareBy(
-                    { courtNamesById[it.courtId] ?: it.courtId },
+                    { courtNamesById[it.courtId] ?: resolveCourtName(it.courtId, null) },
                     { BookingTimeGridSupport.parseTimeToMinutes(it.startTime) }
                 )
             )
@@ -27,7 +27,7 @@ class BuildBookingSelectionSummaryUseCase {
                 val totalMinutes = BookingTimeGridSupport.rangeDurationMinutes(range)
                 BookingSelectedRangeSummary(
                     courtId = range.courtId,
-                    courtName = courtNamesById[range.courtId] ?: range.courtId,
+                    courtName = courtNamesById[range.courtId] ?: resolveCourtName(range.courtId, null),
                     startTimeLabel = range.startTime,
                     endTimeLabel = range.endTime,
                     totalMinutes = totalMinutes,
@@ -63,6 +63,16 @@ class BuildBookingSelectionSummaryUseCase {
         val digits = value.filter { it.isDigit() }
         if (digits.isEmpty()) return null
         return digits.toIntOrNull()
+    }
+
+    private fun resolveCourtName(courtId: String, rawName: String?): String {
+        val name = rawName?.trim().orEmpty()
+        if (name.isNotBlank()) return name
+        return if (courtId.equals("default", ignoreCase = true) || courtId.isBlank()) {
+            "S\u00E2n 1"
+        } else {
+            courtId
+        }
     }
 
     companion object {

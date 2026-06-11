@@ -690,7 +690,10 @@ private fun List<UserField>.toJsonArray(): JSONArray {
             .put("region", field.region)
             .put("province", field.province)
             .put("district", field.district)
+            .put("contactPhone", field.contactPhone)
             .put("distanceKm", field.distanceKm)
+            .put("avatarImageUrl", field.avatarImageUrl)
+            .put("cardImageUrl", field.cardImageUrl)
         val tagsArray = JSONArray()
         field.tags.forEach { tagsArray.put(it) }
         item.put("tags", tagsArray)
@@ -732,7 +735,10 @@ private fun JSONObject.toUserField(): UserField {
         region = optString("region"),
         province = optString("province"),
         district = optString("district"),
-        distanceKm = if (has("distanceKm") && !isNull("distanceKm")) optDouble("distanceKm") else null
+        contactPhone = optSanitizedString("contactPhone"),
+        distanceKm = if (has("distanceKm") && !isNull("distanceKm")) optDouble("distanceKm") else null,
+        avatarImageUrl = optSanitizedString("avatarImageUrl"),
+        cardImageUrl = optSanitizedString("cardImageUrl")
     )
 }
 

@@ -38,10 +38,13 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import com.sportmanagement.user.domain.model.SportIconType
 import com.sportmanagement.user.domain.model.UserField
 import com.sportmanagement.user.domain.model.VenueCardType
 import com.sportmanagement.user.ui.components.SportCircleAvatar
+import com.sportmanagement.user.ui.components.sportAvatarBackgroundColor
+import com.sportmanagement.user.ui.components.sportIconDrawableRes
 import com.sportmanagement.user.ui.components.sportFieldDrawableRes
 import com.sportmanagement.user.R
 import com.sportmanagement.user.ui.theme.AppHomeVenueCornerRadius
@@ -89,11 +92,10 @@ private fun LargeVenueCard(
                     .fillMaxWidth()
                     .aspectRatio(16f / 7.4f)
             ) {
-                Image(
-                    painter = painterResource(id = sportFieldDrawableRes(field.sportIconType)),
+                VenueCardImage(
+                    field = field,
                     contentDescription = field.name,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop
+                    modifier = Modifier.fillMaxSize()
                 )
 
                 Row(
@@ -139,7 +141,11 @@ private fun LargeVenueCard(
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalAlignment = Alignment.Top
                 ) {
-                    SportCircleAvatar(iconType = field.sportIconType)
+                    FieldCardAvatar(
+                        field = field,
+                        size = 40.dp,
+                        iconSize = 16.dp
+                    )
 
                     Column(modifier = Modifier.weight(1f)) {
                         HomeVenueTitleText(text = field.name)
@@ -197,21 +203,20 @@ private fun SmallHorizontalCard(
                     .padding(start = 12.dp, end = 12.dp, top = 42.dp, bottom = 12.dp),
                 verticalAlignment = Alignment.Top
             ) {
-                Image(
-                    painter = painterResource(id = sportFieldDrawableRes(field.sportIconType)),
+                VenueCardImage(
+                    field = field,
                     contentDescription = field.name,
                     modifier = Modifier
                         .size(90.dp)
-                        .clip(RoundedCornerShape(AppMediaCornerRadius)),
-                    contentScale = ContentScale.Crop
+                        .clip(RoundedCornerShape(AppMediaCornerRadius))
                 )
 
                 Spacer(Modifier.width(12.dp))
 
-                SportCircleAvatar(
-                    iconType = field.sportIconType,
-                    size = 48.dp,
-                    iconSize = 24.dp
+                FieldCardAvatar(
+                    field = field,
+                    size = 40.dp,
+                    iconSize = 16.dp
                 )
                 Spacer(Modifier.width(10.dp))
 
@@ -257,6 +262,72 @@ private fun SmallHorizontalCard(
 }
 
 @Composable
+private fun VenueCardImage(
+    field: UserField,
+    contentDescription: String?,
+    modifier: Modifier = Modifier
+) {
+    val fallbackPainter = painterResource(id = sportFieldDrawableRes(field.sportIconType))
+    val remoteImageUrl = field.cardImageUrl.trim().ifBlank { field.avatarImageUrl.trim() }
+        .ifBlank { field.imageUrl.trim() }
+    val shouldLoadRemoteImage =
+        remoteImageUrl.isNotBlank() &&
+            !remoteImageUrl.endsWith("placeholder.svg", ignoreCase = true)
+
+    if (shouldLoadRemoteImage) {
+        AsyncImage(
+            model = remoteImageUrl,
+            contentDescription = contentDescription,
+            modifier = modifier,
+            contentScale = ContentScale.Crop,
+            placeholder = fallbackPainter,
+            error = fallbackPainter,
+            fallback = fallbackPainter
+        )
+    } else {
+        Image(
+            painter = fallbackPainter,
+            contentDescription = contentDescription,
+            modifier = modifier,
+            contentScale = ContentScale.Crop
+        )
+    }
+}
+
+@Composable
+private fun FieldCardAvatar(
+    field: UserField,
+    size: androidx.compose.ui.unit.Dp,
+    iconSize: androidx.compose.ui.unit.Dp
+) {
+    val remoteAvatarUrl = field.avatarImageUrl.trim()
+    val shouldLoadRemoteImage =
+        remoteAvatarUrl.isNotBlank() &&
+            !remoteAvatarUrl.endsWith("placeholder.svg", ignoreCase = true)
+
+    if (shouldLoadRemoteImage) {
+        AsyncImage(
+            model = remoteAvatarUrl,
+            contentDescription = null,
+            modifier = Modifier
+                .size(size)
+                .clip(CircleShape)
+                .background(sportAvatarBackgroundColor(field.sportIconType)),
+            contentScale = ContentScale.Crop,
+            placeholder = painterResource(id = sportIconDrawableRes(field.sportIconType)),
+            error = painterResource(id = sportIconDrawableRes(field.sportIconType)),
+            fallback = painterResource(id = sportIconDrawableRes(field.sportIconType))
+        )
+    } else {
+        SportCircleAvatar(
+            iconType = field.sportIconType,
+            size = size,
+            iconSize = iconSize
+        )
+    }
+}
+
+@Composable
 private fun SmallNoImageCard(
     field: UserField,
     displayRating: String,
@@ -292,7 +363,7 @@ private fun SmallNoImageCard(
                     .padding(start = 12.dp, end = 12.dp, top = 42.dp, bottom = 12.dp),
                 verticalAlignment = Alignment.Top
             ) {
-                SportCircleAvatar(iconType = field.sportIconType, size = 60.dp, iconSize = 30.dp)
+                SportCircleAvatar(iconType = field.sportIconType, size = 40.dp, iconSize = 16.dp)
 
                 Spacer(Modifier.width(12.dp))
 

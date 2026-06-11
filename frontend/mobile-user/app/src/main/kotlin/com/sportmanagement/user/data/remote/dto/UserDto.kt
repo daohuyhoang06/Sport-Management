@@ -24,7 +24,10 @@ data class UserFieldDto(
     val cardType: String? = null,
     val region: String? = null,
     val province: String? = null,
-    val district: String? = null
+    val district: String? = null,
+    val contactPhone: String? = null,
+    val avatarImageUrl: String? = null,
+    val cardImageUrl: String? = null
 )
 
 data class SportCategoryDto(

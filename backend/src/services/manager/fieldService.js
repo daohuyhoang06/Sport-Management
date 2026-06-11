@@ -7,6 +7,28 @@ const normalizeNullableValue = (value) => {
   return value;
 };
 
+const normalizeMediaPath = (value) => {
+  const normalized = normalizeNullableValue(value);
+  if (normalized === undefined || normalized === null) {
+    return normalized;
+  }
+  if (typeof normalized !== "string") {
+    return normalized;
+  }
+
+  const trimmed = normalized.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  try {
+    const parsed = new URL(trimmed);
+    return `${parsed.pathname}${parsed.search}${parsed.hash}` || null;
+  } catch (_error) {
+    return trimmed;
+  }
+};
+
 const getSportTypeById = async (sportId) => {
   const [[sportType]] = await sequelize.query(
     "SELECT sport_id FROM sport_types WHERE sport_id = ? LIMIT 1",
@@ -102,8 +124,8 @@ export const createFieldService = async (managerId, fieldData) => {
           normalizeNullableValue(close_time) ?? null,
           normalizeNullableValue(slot_price) ?? null,
           slot_minutes || 60,
-          normalizeNullableValue(avatar_image_url) ?? null,
-          normalizeNullableValue(card_image_url) ?? null,
+          normalizeMediaPath(avatar_image_url) ?? null,
+          normalizeMediaPath(card_image_url) ?? null,
           status,
           managerId,
           sport_id,
@@ -204,11 +226,11 @@ export const updateFieldService = async (managerId, field_id, fieldData) => {
     }
     if (avatar_image_url !== undefined) {
       updates.push("avatar_image_url = ?");
-      params.push(normalizeNullableValue(avatar_image_url));
+      params.push(normalizeMediaPath(avatar_image_url));
     }
     if (card_image_url !== undefined) {
       updates.push("card_image_url = ?");
-      params.push(normalizeNullableValue(card_image_url));
+      params.push(normalizeMediaPath(card_image_url));
     }
     if (status !== undefined) {
       updates.push("status = ?");
