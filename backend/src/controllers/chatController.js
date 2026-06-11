@@ -93,16 +93,17 @@ export const sendMessage = async (req, res) => {
   try {
     const senderId = req.user.id;
     const { chatId } = req.params;
-    const { message } = req.body;
+    const { content, message } = req.body;
+    const text = (content || message || '').trim();
 
-    if (!message || !message.trim()) {
+    if (!text) {
       return res.status(400).json({
         success: false,
         message: 'Tin nhắn không được để trống'
       });
     }
 
-    const newMessage = await sendMessageService(chatId, senderId, message.trim());
+    const newMessage = await sendMessageService(chatId, senderId, text);
 
     res.json({
       success: true,
