@@ -75,6 +75,20 @@ export const getAvailableSlots = async (field_id, dateOrDates) => {
       },
     );
 
+    const blockedSlots = await sequelize.query(
+      `SELECT
+        block_date,
+        start_time,
+        end_time
+       FROM field_blocked_slots
+       WHERE field_id = ?
+         AND block_date BETWEEN DATE(?) AND DATE(?)`,
+      {
+        replacements: [field_id, startOfDay, endOfDay],
+        type: sequelize.QueryTypes.SELECT,
+      },
+    );
+
     // Group results by date
     const slotsByDate = {};
 
@@ -128,6 +142,11 @@ export const getAvailableSlots = async (field_id, dateOrDates) => {
         return bTime >= dayStart && bTime < dayEnd;
       });
 
+      const dayBlockedSlots = blockedSlots.filter((slot) => {
+        const blockDate = String(slot.block_date || "").slice(0, 10);
+        return blockDate === dateKey;
+      });
+
       // Mark slots as booked if there's any overlap
       slots.forEach((slot) => {
         const slotStart = new Date(slot.start_time);
@@ -141,9 +160,23 @@ export const getAvailableSlots = async (field_id, dateOrDates) => {
           return slotStart < bookingEnd && slotEnd > bookingStart;
         });
 
+        const isBlocked = dayBlockedSlots.some((blocked) => {
+          const blockedStart = new Date(
+            `${dateKey}T${String(blocked.start_time).slice(0, 8)}`,
+          );
+          const blockedEnd = new Date(
+            `${dateKey}T${String(blocked.end_time).slice(0, 8)}`,
+          );
+          return slotStart < blockedEnd && slotEnd > blockedStart;
+        });
+
         const isActive = slot.is_available !== false;
-        slot.available = isActive && !isBooked;
-        slot.booking_status = isBooked ? "booked" : "available";
+        slot.available = isActive && !isBooked && !isBlocked;
+        slot.booking_status = isBlocked
+          ? "blocked"
+          : isBooked
+            ? "booked"
+            : "available";
       });
 
       slotsByDate[dateKey] = slots;
@@ -183,6 +216,26 @@ function getShiftLabel(datetime) {
 export const checkSlotAvailability = async (field_id, startTime, endTime) => {
   try {
     await releaseExpiredPendingBookings();
+
+    const blockedSlots = await sequelize.query(
+      `SELECT slot_id
+       FROM field_blocked_slots
+       WHERE field_id = ?
+         AND block_date = DATE(?)
+         AND start_time < TIME(?)
+         AND end_time > TIME(?)`,
+      {
+        replacements: [field_id, startTime, endTime, startTime],
+        type: sequelize.QueryTypes.SELECT,
+      },
+    );
+
+    if (blockedSlots && blockedSlots.length > 0) {
+      return {
+        available: false,
+        reason: "Khung gio nay da bi khoa boi quan ly",
+      };
+    }
 
     // Check field_schedules if this time is marked as unavailable
     const scheduleConflict = await FieldSchedule.findOne({
