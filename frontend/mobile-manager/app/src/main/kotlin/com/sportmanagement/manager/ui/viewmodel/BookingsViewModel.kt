@@ -137,18 +137,23 @@ class BookingsViewModel : ViewModel() {
                 note = s.newBookingNotes.ifBlank { null }
             )
             AppContainer.bookingRepository.createBooking(request).fold(
-                onSuccess = { dto ->
-                    val newBooking = dto.toBookingItem()
+                onSuccess = {
+                    // Reset form, close sheet, then reload from API for the booking's date
                     _uiState.value = _uiState.value.copy(
                         showAddBooking = false,
-                        bookings = listOf(newBooking) + _uiState.value.bookings,
+                        newBookingDate = "",
+                        newBookingStart = "",
+                        newBookingEnd = "",
                         newBookingCourtId = null,
                         newBookingCourtCode = "",
                         newBookingCustomerName = "",
                         newBookingCustomerPhone = "",
                         newBookingDeposit = "",
-                        newBookingNotes = ""
+                        newBookingNotes = "",
+                        newBookingBookedRanges = emptyList()
                     )
+                    // Navigate the calendar to the booking date and reload list from server
+                    selectDate(isoDate)
                 },
                 onFailure = { e ->
                     _uiState.value = _uiState.value.copy(error = e.message)

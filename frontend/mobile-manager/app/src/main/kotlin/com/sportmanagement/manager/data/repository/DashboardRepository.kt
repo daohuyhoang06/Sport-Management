@@ -3,6 +3,7 @@ package com.sportmanagement.manager.data.repository
 import com.sportmanagement.manager.data.remote.api.DashboardApiService
 import com.sportmanagement.manager.data.remote.dto.DashboardStatsDto
 import com.sportmanagement.manager.data.remote.dto.MonthlyRevenueDto
+import com.sportmanagement.manager.data.remote.dto.RevenueTrendPointDto
 
 class DashboardRepository(private val api: DashboardApiService) {
 
@@ -21,6 +22,15 @@ class DashboardRepository(private val api: DashboardApiService) {
             Result.success(response.body() ?: emptyList())
         } else {
             Result.failure(Exception("Lỗi tải doanh thu"))
+        }
+    }
+
+    suspend fun getRevenueTrend(period: String): Result<List<RevenueTrendPointDto>> = safeCall {
+        val response = api.getRevenueTrend(period)
+        if (response.isSuccessful) {
+            Result.success(response.body() ?: emptyList())
+        } else {
+            Result.failure(Exception("Lỗi tải xu hướng doanh thu"))
         }
     }
 

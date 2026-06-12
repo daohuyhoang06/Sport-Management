@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.sportmanagement.manager.data.AppContainer
 import com.sportmanagement.manager.data.mapper.toBlockedSlot
+import com.sportmanagement.manager.data.mapper.toBookingItem
 import com.sportmanagement.manager.data.mapper.toCourt
 import com.sportmanagement.manager.data.mapper.toFieldPolicy
 import com.sportmanagement.manager.data.mapper.toFieldService
@@ -294,5 +295,38 @@ class PitchDetailViewModel : ViewModel() {
 
     fun onFieldStatusChange(status: PitchStatus) {
         _uiState.update { it.copy(pitchDetail = it.pitchDetail.copy(status = status)) }
+    }
+
+    // ── Booking history ────────────────────────────────────────────────────────
+
+    fun loadBookingHistory(fieldId: Int, showLoading: Boolean = true) {
+        if (fieldId <= 0) return
+        viewModelScope.launch {
+            if (showLoading) _uiState.update { it.copy(isLoadingHistory = true, historyError = null) }
+            val filter = _uiState.value.historyStatusFilter.takeIf { it != "all" }
+            AppContainer.bookingRepository.getBookings(fieldId = fieldId, status = filter)
+                .onSuccess { list ->
+                    _uiState.update { it.copy(
+                        isLoadingHistory = false,
+                        bookingHistory = list.map { dto -> dto.toBookingItem() }
+                    ) }
+                }
+                .onFailure { e ->
+                    _uiState.update { it.copy(isLoadingHistory = false, historyError = e.message) }
+                }
+        }
+    }
+
+    fun onHistoryFilterChange(filter: String) {
+        val fieldId = _uiState.value.pitchDetail.id.toIntOrNull() ?: return
+        if (fieldId <= 0) return
+        _uiState.update { it.copy(historyStatusFilter = filter) }
+        loadBookingHistory(fieldId, showLoading = true)
+    }
+
+    fun refreshBookingHistory() {
+        val fieldId = _uiState.value.pitchDetail.id.toIntOrNull() ?: return
+        if (fieldId <= 0) return
+        loadBookingHistory(fieldId, showLoading = false)
     }
 }

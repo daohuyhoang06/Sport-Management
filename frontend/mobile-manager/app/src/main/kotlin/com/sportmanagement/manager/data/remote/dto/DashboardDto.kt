@@ -10,8 +10,11 @@ data class DashboardStatsDto(
     val cancelledBookings: Int = 0,
     val rejectedBookings: Int = 0,
     val todayBookings: Int = 0,
+    val todayOccupancyPercent: Int = 0,
     val totalRevenue: Double = 0.0,
     val monthlyRevenue: Double = 0.0,
+    val todayRevenue: Double = 0.0,
+    val yesterdayRevenue: Double = 0.0,
     val topFieldName: String? = null,
     val topFieldRevenue: Double? = null
 )
@@ -20,4 +23,9 @@ data class MonthlyRevenueDto(
     val month: Int,
     val revenue: Double,
     val bookings: Int
+)
+
+data class RevenueTrendPointDto(
+    val label: String,
+    val revenue: Double
 )

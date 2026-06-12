@@ -151,8 +151,15 @@ fun AddFieldScreen(
     fun validate(): Boolean {
         fieldNameError = if (fieldName.isBlank()) "Vui lòng nhập tên sân" else null
         locationError  = if (location.isBlank()) "Vui lòng nhập địa chỉ" else null
-        priceError     = if (slotPriceText.isNotBlank() && slotPriceText.toDoubleOrNull() == null)
-            "Giá không hợp lệ" else null
+        priceError = when {
+            selectedStatus == "active" && slotPriceText.isBlank() ->
+                "Vui lòng nhập giá slot khi sân đang hoạt động"
+            slotPriceText.isNotBlank() && slotPriceText.toDoubleOrNull() == null ->
+                "Giá không hợp lệ"
+            slotPriceText.isNotBlank() && (slotPriceText.toDoubleOrNull() ?: 0.0) <= 0 ->
+                "Giá phải lớn hơn 0"
+            else -> null
+        }
         return fieldNameError == null && locationError == null && priceError == null
     }
 
