@@ -4,6 +4,8 @@ import com.sportmanagement.manager.data.remote.dto.ChatListResponse
 import com.sportmanagement.manager.data.remote.dto.ChatMessagesResponse
 import com.sportmanagement.manager.data.remote.dto.SendMessageRequest
 import com.sportmanagement.manager.data.remote.dto.SendMessageResponse
+import com.sportmanagement.manager.data.remote.dto.StartChatRequest
+import com.sportmanagement.manager.data.remote.dto.StartChatResponse
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.GET
@@ -23,4 +25,7 @@ interface ChatApiService {
         @Path("chatId") chatId: Int,
         @Body request: SendMessageRequest
     ): Response<SendMessageResponse>
+
+    @POST("api/manager/chat/start")
+    suspend fun startManagerChat(@Body request: StartChatRequest): Response<StartChatResponse>
 }

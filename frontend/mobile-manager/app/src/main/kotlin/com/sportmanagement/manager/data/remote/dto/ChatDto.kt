@@ -65,3 +65,18 @@ data class ChatMessagesResponse(
     val success: Boolean?,
     val data: List<ChatMessageDto>?
 )
+
+data class StartChatRequest(
+    @SerializedName("userId") val userId: Int
+)
+
+data class StartChatData(
+    @SerializedName("chat_id") val chatId: Int,
+    @SerializedName("user_id") val userId: Int?,
+    @SerializedName("manager_id") val managerId: Int?
+)
+
+data class StartChatResponse(
+    val success: Boolean?,
+    val data: StartChatData?
+)

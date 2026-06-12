@@ -99,8 +99,17 @@ fun FieldServiceDto.toFieldService(): FieldService = FieldService(
     id = id.toString(),
     fieldId = fieldId.toString(),
     serviceName = serviceName,
-    isFree = isFree,
-    price = price.toLong()
+    isFree = when (isFree) {
+        is Boolean -> isFree
+        is Number  -> isFree.toInt() != 0
+        is String  -> isFree == "1" || isFree.equals("true", ignoreCase = true)
+        else       -> false
+    },
+    price = when (price) {
+        is Number -> price.toLong()
+        is String -> price.toDoubleOrNull()?.toLong() ?: 0L
+        else      -> 0L
+    }
 )
 
 fun FieldPolicyDto.toFieldPolicy(): FieldPolicy = FieldPolicy(
@@ -111,12 +120,24 @@ fun FieldPolicyDto.toFieldPolicy(): FieldPolicy = FieldPolicy(
     content = content
 )
 
-fun FieldServiceDto.toServiceDetailItem(): ServiceDetailItem = ServiceDetailItem(
+fun FieldServiceDto.toServiceDetailItem(): ServiceDetailItem {
+    val resolvedFree = when (isFree) {
+        is Boolean -> isFree
+        is Number  -> isFree.toInt() != 0
+        is String  -> isFree == "1" || isFree.equals("true", ignoreCase = true)
+        else       -> false
+    }
+    val resolvedPrice = when (price) {
+        is Number -> price.toLong()
+        is String -> price.toDoubleOrNull()?.toLong() ?: 0L
+        else      -> 0L
+    }
+    return ServiceDetailItem(
     id = id.toString(),
     name = serviceName,
     category = ServiceCategory.OTHER,
-    price = price.toLong(),
-    stock = if (isFree) -1 else 0,
+    price = resolvedPrice,
+    stock = if (resolvedFree) -1 else 0,
     maxStock = -1,
     status = ServiceItemStatus.AVAILABLE,
     isActive = true,
@@ -125,6 +146,7 @@ fun FieldServiceDto.toServiceDetailItem(): ServiceDetailItem = ServiceDetailItem
     revenue = 0L,
     stockTransactions = emptyList()
 )
+}
 
 // ── Chat ───────────────────────────────────────────────────────────────────────
 
@@ -152,13 +174,11 @@ fun ChatMessageDto.toChatMessage(currentUserId: Int): ChatMessage = ChatMessage(
 
 private fun formatChatTime(raw: String?): String {
     if (raw == null) return ""
-    return runCatching {
-        val date = isoFmt.parse(raw) ?: isoFmtAlt.parse(raw) ?: return@runCatching raw
-        val now = java.util.Date()
-        val diffMs = now.time - date.time
-        val diffDays = diffMs / (1000 * 60 * 60 * 24)
-        if (diffDays < 1) chatTimeFmt.format(date) else chatDateTimeFmt.format(date)
-    }.getOrDefault(raw)
+    val date = parseIso(raw) ?: return raw
+    val now = java.util.Date()
+    val diffMs = now.time - date.time
+    val diffDays = diffMs / (1000 * 60 * 60 * 24)
+    return if (diffDays < 1) chatTimeFmt.format(date) else chatDateTimeFmt.format(date)
 }
 
 fun BlockedSlotDto.toBlockedSlot(): BlockedSlot = BlockedSlot(
@@ -251,6 +271,7 @@ fun BookingDto.toBookingItem(): BookingItem {
         depositPaid = 0L,
         status = bookingStatus,
         isPaid = bookingStatus == BookingStatus.COMPLETED,
-        notes = note ?: ""
+        notes = note ?: "",
+        isManagerCreated = managerCreated != null && managerCreated != 0 && managerCreated != false
     )
 }

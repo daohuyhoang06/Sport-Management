@@ -7,6 +7,7 @@ import com.sportmanagement.manager.data.remote.api.ChatApiService
 import com.sportmanagement.manager.data.remote.dto.ChatListDto
 import com.sportmanagement.manager.data.remote.dto.ChatMessageDto
 import com.sportmanagement.manager.data.remote.dto.SendMessageRequest
+import com.sportmanagement.manager.data.remote.dto.StartChatRequest
 
 class ChatRepository(
     private val api: ChatApiService,
@@ -61,6 +62,31 @@ class ChatRepository(
                 Result.success(data)
             } else {
                 Result.failure(Exception("Lỗi tải tin nhắn (${response.code()})"))
+            }
+        } catch (e: Exception) {
+            Result.failure(Exception("Không thể kết nối đến máy chủ"))
+        }
+    }
+
+    suspend fun getOrCreateChatWith(userId: Int): Result<ChatListDto> {
+        return try {
+            val response = api.startManagerChat(StartChatRequest(userId))
+            if (response.isSuccessful) {
+                val data = response.body()?.data
+                    ?: return Result.failure(Exception("Không thể khởi tạo chat"))
+                Result.success(ChatListDto(
+                    chatId = data.chatId,
+                    customerId = userId,
+                    managerId = data.managerId,
+                    customerName = null,
+                    customerPhone = null,
+                    customerAvatar = null,
+                    lastMessage = null,
+                    lastMessageTime = null,
+                    unreadCount = 0
+                ))
+            } else {
+                Result.failure(Exception("Lỗi khởi tạo chat (${response.code()})"))
             }
         } catch (e: Exception) {
             Result.failure(Exception("Không thể kết nối đến máy chủ"))

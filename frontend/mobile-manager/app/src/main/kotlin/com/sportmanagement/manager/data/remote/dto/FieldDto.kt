@@ -52,6 +52,12 @@ data class CreateFieldRequest(
 
 data class UpdateFieldStatusRequest(val status: String)
 
+data class UpdateBasicInfoRequest(
+    @SerializedName("field_name") val fieldName: String?,
+    val location: String?,
+    val phone: String?
+)
+
 // POST /api/manager/upload/field-image → {success, url}
 data class UploadImageResponse(
     val success: Boolean,
@@ -79,19 +85,43 @@ data class CreateCourtRequest(
     val status: String = "active"
 )
 
+data class UpdateCourtRequest(val status: String)
+
+data class BookedRangeDto(
+    @SerializedName("start_time") val startTime: String,
+    @SerializedName("end_time")   val endTime: String
+)
+
+data class AvailabilityResponse(
+    val success: Boolean?,
+    val data: List<BookedRangeDto>?
+)
+
+data class CreateServiceRequest(
+    @SerializedName("service_name") val serviceName: String,
+    @SerializedName("is_free") val isFree: Boolean,
+    val price: Long = 0
+)
+
 // Services
 data class FieldServiceDto(
     val id: Int,
     @SerializedName("field_id") val fieldId: Int,
     @SerializedName("service_name") val serviceName: String,
     val description: String?,
-    @SerializedName("is_free") val isFree: Boolean,
-    val price: Double
+    @SerializedName("is_free") val isFree: Any,  // MySQL returns 0/1 or true/false
+    val price: Any  // MySQL DECIMAL returns as String e.g. "15000.00"
 )
 
 data class ServicesResponse(
     val success: Boolean?,
     val data: List<FieldServiceDto>?
+)
+
+data class CreatePolicyRequest(
+    val title: String,
+    val content: String,
+    @SerializedName("policy_type") val policyType: String
 )
 
 // Policies

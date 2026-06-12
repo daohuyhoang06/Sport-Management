@@ -126,14 +126,26 @@ fun ManagerApp(dashboardViewModel: DashboardViewModel = viewModel()) {
     var selectedPitch by remember { mutableStateOf<Pitch?>(null) }
     var showProfile by remember { mutableStateOf(false) }
 
+    // Collect one-shot navigation events emitted by openChatWithUser.
+    // Using a Channel instead of watching selectedConversation avoids
+    // race conditions between two separate StateFlow updates.
+    LaunchedEffect(Unit) {
+        messagesViewModel.openChatEvent.collect { conv ->
+            messagesViewModel.onConversationClick(conv)  // sets selectedConversation
+            bookingsViewModel.onBackFromDetail()          // clears selectedBooking
+            selectedTab = ManagerTab.Messages
+        }
+    }
+
     BackHandler {
         when {
             showProfile -> showProfile = false
             pitchesState.showAddField -> pitchesViewModel.onToggleAddField()
             selectedPitch != null -> selectedPitch = null
+            // Thread opened from booking detail: back goes to booking detail (clear thread first)
+            messagesState.selectedConversation != null -> messagesViewModel.onBackFromThread()
             bookingsState.selectedBooking != null -> bookingsViewModel.onBackFromDetail()
             bookingsState.showAddBooking -> bookingsViewModel.onToggleAddBooking()
-            messagesState.selectedConversation != null -> messagesViewModel.onBackFromThread()
             selectedTab != previousTab -> {
                 val currentTab = selectedTab
                 selectedTab = previousTab
@@ -164,9 +176,10 @@ fun ManagerApp(dashboardViewModel: DashboardViewModel = viewModel()) {
             )
             return
         }
-        bookingsState.selectedBooking != null -> {
+        bookingsState.selectedBooking != null && messagesState.selectedConversation == null -> {
             BookingDetailScreen(
                 booking = bookingsState.selectedBooking!!,
+                isStartingChat = messagesState.isStartingChat,
                 onBackClick = { bookingsViewModel.onBackFromDetail() },
                 onConfirm = { bookingsViewModel.onConfirmBooking(it) },
                 onCancel = { bookingsViewModel.onRequestCancel(it) },
@@ -174,13 +187,20 @@ fun ManagerApp(dashboardViewModel: DashboardViewModel = viewModel()) {
                 onPaymentConfirm = { bookingsViewModel.onRequestPayment(it) },
                 onMessageCustomer = {
                     bookingsState.selectedBooking?.let { booking ->
-                        val conv = messagesState.conversations.firstOrNull {
-                            it.customerPhone == booking.customer.phone
-                        }
-                        if (conv != null) {
-                            bookingsViewModel.onBackFromDetail()
-                            selectedTab = ManagerTab.Messages
-                            messagesViewModel.onConversationClick(conv)
+                        val custId = booking.customer.id.toIntOrNull()
+                        if (custId != null && custId > 0) {
+                            // Always go through backend: handles both new and existing chats
+                            messagesViewModel.openChatWithUser(
+                                userId = custId,
+                                customerName = booking.customer.name,
+                                customerPhone = booking.customer.phone.takeIf { it.isNotBlank() }
+                            )
+                        } else {
+                            // Fallback for bookings without a linked user account: match by phone
+                            val conv = messagesState.conversations.firstOrNull { c ->
+                                c.customerPhone.isNotBlank() && c.customerPhone == booking.customer.phone
+                            }
+                            conv?.let { messagesViewModel.onConversationClick(it) }
                         }
                     }
                 }
@@ -222,10 +242,12 @@ fun ManagerApp(dashboardViewModel: DashboardViewModel = viewModel()) {
             AddBookingScreen(
                 uiState = bookingsState,
                 onBackClick = { bookingsViewModel.onToggleAddBooking() },
-                onCourtCodeChanged = bookingsViewModel::onNewBookingCourtChanged,
+                onFieldSelected = bookingsViewModel::onNewBookingFieldSelected,
+                onCourtSelected = { courtId, courtCode ->
+                    bookingsViewModel.onNewBookingCourtSelected(courtId, courtCode)
+                },
                 onDateChanged = bookingsViewModel::onNewBookingDateChanged,
-                onStartChanged = bookingsViewModel::onNewBookingStartChanged,
-                onEndChanged = bookingsViewModel::onNewBookingEndChanged,
+                onTimeSlotTapped = bookingsViewModel::onTimeSlotTapped,
                 onCustomerNameChanged = bookingsViewModel::onNewBookingCustomerNameChanged,
                 onCustomerPhoneChanged = bookingsViewModel::onNewBookingCustomerPhoneChanged,
                 onDepositChanged = bookingsViewModel::onNewBookingDepositChanged,

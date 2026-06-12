@@ -38,7 +38,8 @@ data class BookingItem(
     val paymentMethod: String = "Tiền mặt",
     val notes: String = "",
     val showLive: Boolean = false,
-    val cancelReason: String = ""
+    val cancelReason: String = "",
+    val isManagerCreated: Boolean = false
 )
 
 data class BookingHistoryEvent(

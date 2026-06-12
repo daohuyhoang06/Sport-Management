@@ -57,6 +57,9 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -64,6 +67,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -110,13 +114,22 @@ fun PitchDetailScreen(
     viewModel: PitchDetailViewModel = viewModel()
 ) {
     // Load dữ liệu thật từ API mỗi khi mở một field khác
-    androidx.compose.runtime.LaunchedEffect(fieldId) {
+    LaunchedEffect(fieldId) {
         viewModel.loadField(fieldId.toIntOrNull() ?: 0)
     }
     val uiState by viewModel.uiState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(uiState.error) {
+        val msg = uiState.error
+        if (!msg.isNullOrBlank()) {
+            snackbarHostState.showSnackbar(msg)
+        }
+    }
 
     Scaffold(
         modifier = modifier,
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = {
@@ -157,6 +170,16 @@ fun PitchDetailScreen(
             when (uiState.selectedTab) {
                 PitchDetailTab.OVERVIEW -> OverviewTab(
                     detail = uiState.pitchDetail,
+                    showEditDialog = uiState.showEditBasicInfoDialog,
+                    editName = uiState.editFieldName,
+                    editLocation = uiState.editLocation,
+                    editPhone = uiState.editPhone,
+                    onOpenEdit = viewModel::onOpenEditBasicInfoDialog,
+                    onCloseEdit = viewModel::onCloseEditBasicInfoDialog,
+                    onNameChange = viewModel::onEditFieldNameChange,
+                    onLocationChange = viewModel::onEditLocationChange,
+                    onPhoneChange = viewModel::onEditPhoneChange,
+                    onSaveEdit = viewModel::onSaveBasicInfo,
                     onStatusChange = viewModel::onFieldStatusChange
                 )
                 PitchDetailTab.COURTS -> CourtsTab(
@@ -278,6 +301,16 @@ private fun PitchDetailTabRow(
 @Composable
 private fun OverviewTab(
     detail: PitchDetail,
+    showEditDialog: Boolean,
+    editName: String,
+    editLocation: String,
+    editPhone: String,
+    onOpenEdit: () -> Unit,
+    onCloseEdit: () -> Unit,
+    onNameChange: (String) -> Unit,
+    onLocationChange: (String) -> Unit,
+    onPhoneChange: (String) -> Unit,
+    onSaveEdit: () -> Unit,
     onStatusChange: (PitchStatus) -> Unit
 ) {
     LazyColumn(
@@ -357,12 +390,26 @@ private fun OverviewTab(
         item {
             InfoCard {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    SectionTitle("Thông tin cơ bản")
-                    InfoRow(Icons.Filled.LocationOn, "Địa chỉ", detail.location)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        SectionTitle("Thông tin cơ bản")
+                        IconButton(onClick = onOpenEdit) {
+                            Icon(
+                                Icons.Filled.Edit,
+                                contentDescription = "Chỉnh sửa",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                    InfoRow(Icons.Filled.LocationOn, "Địa chỉ", detail.location.ifBlank { "Chưa cập nhật" })
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                    InfoRow(Icons.Filled.Phone, "Hotline", detail.phone)
+                    InfoRow(Icons.Filled.Phone, "Hotline", detail.phone.ifBlank { "Chưa cập nhật" })
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                    InfoRow(Icons.Filled.Star, "Loại sân", detail.sportType)
+                    InfoRow(Icons.Filled.Star, "Loại sân", detail.sportType.ifBlank { "Chưa cập nhật" })
                 }
             }
         }
@@ -444,6 +491,46 @@ private fun OverviewTab(
         }
 
         item { Spacer(Modifier.height(32.dp)) }
+    }
+
+    if (showEditDialog) {
+        AlertDialog(
+            onDismissRequest = onCloseEdit,
+            title = { Text("Chỉnh sửa thông tin sân") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    OutlinedTextField(
+                        value = editName,
+                        onValueChange = onNameChange,
+                        label = { Text("Tên sân") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = editLocation,
+                        onValueChange = onLocationChange,
+                        label = { Text("Địa chỉ") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = editPhone,
+                        onValueChange = onPhoneChange,
+                        label = { Text("Hotline") },
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = onSaveEdit,
+                    enabled = editName.isNotBlank() && editLocation.isNotBlank()
+                ) { Text("Lưu") }
+            },
+            dismissButton = { TextButton(onClick = onCloseEdit) { Text("Hủy") } }
+        )
     }
 }
 
@@ -1141,7 +1228,8 @@ private fun ServicesTab(
                 }
             },
             confirmButton = {
-                Button(onClick = onAdd, enabled = newName.isNotBlank()) { Text("Thêm") }
+                val priceValid = newIsFree || (newPrice.toLongOrNull() ?: 0L) > 0L
+                Button(onClick = onAdd, enabled = newName.isNotBlank() && priceValid) { Text("Thêm") }
             },
             dismissButton = { TextButton(onClick = onToggleDialog) { Text("Hủy") } }
         )

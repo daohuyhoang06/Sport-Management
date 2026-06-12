@@ -18,13 +18,15 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
@@ -33,18 +35,22 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -56,31 +62,54 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sportmanagement.manager.ui.state.BookingsUiState
+import java.util.Calendar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddBookingScreen(
     uiState: BookingsUiState,
     onBackClick: () -> Unit,
-    onCourtCodeChanged: (String) -> Unit,
+    onFieldSelected: (Int) -> Unit,
+    onCourtSelected: (courtId: Int, courtCode: String) -> Unit,
     onDateChanged: (String) -> Unit,
-    onStartChanged: (String) -> Unit,
-    onEndChanged: (String) -> Unit,
+    onTimeSlotTapped: (String) -> Unit,
     onCustomerNameChanged: (String) -> Unit,
     onCustomerPhoneChanged: (String) -> Unit,
     onDepositChanged: (String) -> Unit,
     onNotesChanged: (String) -> Unit,
     onSave: () -> Unit
 ) {
-    val courts = listOf("A1", "A2", "B1", "B2", "C1")
-    val timeSlots = listOf("06:00", "07:00", "07:30", "08:00", "09:00",
-        "10:00", "14:00", "15:00", "15:30", "16:00",
-        "17:00", "17:30", "18:00", "18:30", "19:00", "20:00", "21:00")
-    var selectedStartSlot by remember { mutableIntStateOf(10) }
-    var selectedEndSlot by remember { mutableIntStateOf(12) }
+    var showDatePicker by remember { mutableStateOf(false) }
+    val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = System.currentTimeMillis()
+    )
+
+    if (showDatePicker) {
+        DatePickerDialog(
+            onDismissRequest = { showDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        val cal = Calendar.getInstance().apply { timeInMillis = millis }
+                        val day = "%02d".format(cal.get(Calendar.DAY_OF_MONTH))
+                        val month = "%02d".format(cal.get(Calendar.MONTH) + 1)
+                        val year = cal.get(Calendar.YEAR)
+                        onDateChanged("$day/$month/$year")
+                    }
+                    showDatePicker = false
+                }) { Text("Chọn") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePicker = false }) { Text("Hủy") }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -113,39 +142,89 @@ fun AddBookingScreen(
         ) {
             item {
                 FormSectionCard(title = "CHỌN SÂN", icon = Icons.Filled.SportsSoccer) {
+                    // Field selector — only shown when manager has multiple fields
+                    if (uiState.newBookingFields.size > 1) {
+                        Text(
+                            text = "Cơ sở sân",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.outline
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            items(uiState.newBookingFields) { field ->
+                                val isSelected = field.fieldId == uiState.newBookingSelectedFieldId
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(
+                                            if (isSelected) MaterialTheme.colorScheme.primary
+                                            else MaterialTheme.colorScheme.surfaceContainerLowest
+                                        )
+                                        .border(
+                                            1.dp,
+                                            if (isSelected) MaterialTheme.colorScheme.primary
+                                            else MaterialTheme.colorScheme.outlineVariant,
+                                            RoundedCornerShape(10.dp)
+                                        )
+                                        .clickable { onFieldSelected(field.fieldId) }
+                                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = field.fieldName,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                        fontSize = 13.sp,
+                                        color = if (isSelected) Color.White
+                                        else MaterialTheme.colorScheme.onBackground
+                                    )
+                                }
+                            }
+                        }
+                        Spacer(Modifier.height(12.dp))
+                    }
+
                     Text(
                         text = "Sân con",
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.outline
                     )
                     Spacer(Modifier.height(8.dp))
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        items(courts) { court ->
-                            val isSelected = court == uiState.newBookingCourtCode
-                            Box(
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(10.dp))
-                                    .background(
-                                        if (isSelected) MaterialTheme.colorScheme.primary
-                                        else MaterialTheme.colorScheme.surfaceContainerLowest
+                    if (uiState.newBookingCourts.isEmpty()) {
+                        Text(
+                            text = if (uiState.newBookingSelectedFieldId == null) "Đang tải..."
+                                   else "Không có sân con nào",
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.outline
+                        )
+                    } else {
+                        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            items(uiState.newBookingCourts) { court ->
+                                val isSelected = court.courtId == uiState.newBookingCourtId
+                                Box(
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(
+                                            if (isSelected) MaterialTheme.colorScheme.primary
+                                            else MaterialTheme.colorScheme.surfaceContainerLowest
+                                        )
+                                        .border(
+                                            1.dp,
+                                            if (isSelected) MaterialTheme.colorScheme.primary
+                                            else MaterialTheme.colorScheme.outlineVariant,
+                                            RoundedCornerShape(10.dp)
+                                        )
+                                        .clickable { onCourtSelected(court.courtId, court.courtCode) }
+                                        .padding(horizontal = 18.dp, vertical = 10.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = court.courtCode,
+                                        fontWeight = FontWeight.Bold,
+                                        fontSize = 14.sp,
+                                        color = if (isSelected) Color.White
+                                        else MaterialTheme.colorScheme.onBackground
                                     )
-                                    .border(
-                                        1.dp,
-                                        if (isSelected) MaterialTheme.colorScheme.primary
-                                        else MaterialTheme.colorScheme.outlineVariant,
-                                        RoundedCornerShape(10.dp)
-                                    )
-                                    .clickable { onCourtCodeChanged(court) }
-                                    .padding(horizontal = 18.dp, vertical = 10.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = court,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 14.sp,
-                                    color = if (isSelected) Color.White
-                                    else MaterialTheme.colorScheme.onBackground
-                                )
+                                }
                             }
                         }
                     }
@@ -154,68 +233,132 @@ fun AddBookingScreen(
 
             item {
                 FormSectionCard(title = "THỜI GIAN", icon = Icons.Filled.CalendarMonth) {
-                    OutlinedTextField(
-                        value = uiState.newBookingDate,
-                        onValueChange = onDateChanged,
-                        label = { Text("Ngày (dd/mm/yyyy)") },
-                        modifier = Modifier.fillMaxWidth(),
-                        leadingIcon = {
+                    // Date picker button
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.surfaceContainerLowest)
+                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp))
+                            .clickable { showDatePicker = true }
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
                             Icon(
                                 Icons.Filled.CalendarMonth,
                                 contentDescription = null,
-                                modifier = Modifier.size(18.dp)
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
                             )
-                        },
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = Color.White,
-                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerLowest
-                        )
-                    )
-                    Spacer(Modifier.height(12.dp))
-                    Text(
-                        text = "Khung giờ bắt đầu",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.outline
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        itemsIndexed(timeSlots) { index, slot ->
-                            val isSelected = index == selectedStartSlot
-                            TimeSlotChip(
-                                time = slot,
-                                isSelected = isSelected,
-                                onClick = {
-                                    selectedStartSlot = index
-                                    onStartChanged(slot)
-                                    if (index >= selectedEndSlot) {
-                                        val nextIdx = minOf(index + 2, timeSlots.lastIndex)
-                                        selectedEndSlot = nextIdx
-                                        onEndChanged(timeSlots[nextIdx])
-                                    }
-                                }
+                            Text(
+                                text = if (uiState.newBookingDate.isBlank()) "Chọn ngày" else uiState.newBookingDate,
+                                color = if (uiState.newBookingDate.isBlank())
+                                    MaterialTheme.colorScheme.outline
+                                else MaterialTheme.colorScheme.onBackground,
+                                fontSize = 15.sp
                             )
                         }
+                        Icon(
+                            Icons.Filled.ArrowDropDown,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.outline
+                        )
                     }
-                    Spacer(Modifier.height(12.dp))
-                    Text(
-                        text = "Khung giờ kết thúc",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.outline
-                    )
+
+                    Spacer(Modifier.height(16.dp))
+
+                    // Slot selection hint
+                    val startMin = if (uiState.newBookingStart.isNotBlank())
+                        timeToMinutes(uiState.newBookingStart) else -1
+                    val endMin = if (uiState.newBookingEnd.isNotBlank())
+                        timeToMinutes(uiState.newBookingEnd) else -1
+                    val maxEnd = if (startMin >= 0 && endMin < 0)
+                        slotMaxEndMin(startMin, uiState.newBookingBookedRanges) else 22 * 60
+
+                    val phaseHint = when {
+                        uiState.newBookingStart.isBlank() -> "Chọn giờ bắt đầu"
+                        uiState.newBookingEnd.isBlank() ->
+                            "Chọn giờ kết thúc (trước ${slotFormatMinutes(maxEnd)})"
+                        else -> "Đã chọn: ${uiState.newBookingStart} – ${uiState.newBookingEnd}"
+                    }
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        Icon(
+                            Icons.Filled.AccessTime,
+                            contentDescription = null,
+                            tint = if (uiState.newBookingEnd.isNotBlank())
+                                MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.outline,
+                            modifier = Modifier.size(15.dp)
+                        )
+                        Text(
+                            text = phaseHint,
+                            fontSize = 12.sp,
+                            color = if (uiState.newBookingEnd.isNotBlank())
+                                MaterialTheme.colorScheme.primary
+                            else MaterialTheme.colorScheme.outline,
+                            fontWeight = if (uiState.newBookingEnd.isNotBlank())
+                                FontWeight.SemiBold else FontWeight.Normal
+                        )
+                    }
+
                     Spacer(Modifier.height(8.dp))
-                    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        itemsIndexed(timeSlots) { index, slot ->
-                            val isSelected = index == selectedEndSlot
-                            val enabled = index > selectedStartSlot
-                            TimeSlotChip(
-                                time = slot,
-                                isSelected = isSelected,
-                                enabled = enabled,
-                                onClick = {
-                                    selectedEndSlot = index
-                                    onEndChanged(slot)
+
+                    // Loading indicator
+                    if (uiState.newBookingIsLoadingSlots) {
+                        LinearProgressIndicator(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                        )
+                    }
+
+                    // Legend
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    ) {
+                        LegendDot(color = MaterialTheme.colorScheme.errorContainer, label = "Đã đặt")
+                        LegendDot(color = MaterialTheme.colorScheme.primary, label = "Chọn")
+                        LegendDot(color = MaterialTheme.colorScheme.primaryContainer, label = "Trong khung")
+                    }
+
+                    // 4-column slot grid
+                    val slotRows = ALL_TIME_SLOTS.chunked(4)
+                    Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                        slotRows.forEach { rowSlots ->
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(5.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                rowSlots.forEach { slot ->
+                                    val slotMin = timeToMinutes(slot)
+                                    val booked = isSlotBooked(slot, uiState.newBookingBookedRanges)
+                                    val isStart = slot == uiState.newBookingStart
+                                    val inRange = startMin >= 0 && endMin >= 0 &&
+                                        slotMin > startMin && slotMin < endMin
+                                    val disabledByRule = !isStart && !booked &&
+                                        startMin >= 0 && endMin < 0 &&
+                                        (slotMin <= startMin || slotMin > maxEnd)
+                                    SlotCell(
+                                        time = slot,
+                                        isStart = isStart,
+                                        inRange = inRange,
+                                        booked = booked,
+                                        disabled = disabledByRule,
+                                        onClick = { onTimeSlotTapped(slot) },
+                                        modifier = Modifier.weight(1f)
+                                    )
                                 }
-                            )
+                                repeat(4 - rowSlots.size) { Spacer(Modifier.weight(1f)) }
+                            }
                         }
                     }
                 }
@@ -256,9 +399,11 @@ fun AddBookingScreen(
 
             item {
                 FormSectionCard(title = "THANH TOÁN", icon = Icons.Filled.Payments) {
-                    val startIdx = timeSlots.indexOf(uiState.newBookingStart).takeIf { it >= 0 } ?: 0
-                    val endIdx = timeSlots.indexOf(uiState.newBookingEnd).takeIf { it >= 0 } ?: 0
-                    val durationH = if (endIdx > startIdx) (endIdx - startIdx) * 0.5 else 1.5
+                    val durationH = if (uiState.newBookingStart.isNotBlank() && uiState.newBookingEnd.isNotBlank()) {
+                        val sMin = timeToMinutes(uiState.newBookingStart)
+                        val eMin = timeToMinutes(uiState.newBookingEnd)
+                        if (eMin > sMin) (eMin - sMin) / 60.0 else 0.0
+                    } else 0.0
                     val pricePerHour = 300_000L
                     val total = (pricePerHour * durationH).toLong()
 
@@ -315,7 +460,12 @@ fun AddBookingScreen(
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary
                     ),
-                    enabled = uiState.newBookingCustomerName.isNotBlank() &&
+                    enabled = uiState.newBookingSelectedFieldId != null &&
+                        uiState.newBookingCourtId != null &&
+                        uiState.newBookingDate.isNotBlank() &&
+                        uiState.newBookingStart.isNotBlank() &&
+                        uiState.newBookingEnd.isNotBlank() &&
+                        uiState.newBookingCustomerName.isNotBlank() &&
                         uiState.newBookingCustomerPhone.isNotBlank()
                 ) {
                     Text(
@@ -332,44 +482,65 @@ fun AddBookingScreen(
 }
 
 @Composable
-private fun TimeSlotChip(
+private fun SlotCell(
     time: String,
-    isSelected: Boolean,
-    enabled: Boolean = true,
-    onClick: () -> Unit
+    isStart: Boolean,
+    inRange: Boolean,
+    booked: Boolean,
+    disabled: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
+    val bgColor = when {
+        isStart -> MaterialTheme.colorScheme.primary
+        inRange -> MaterialTheme.colorScheme.primaryContainer
+        booked -> MaterialTheme.colorScheme.errorContainer
+        disabled -> MaterialTheme.colorScheme.surfaceContainer
+        else -> MaterialTheme.colorScheme.surfaceContainerLowest
+    }
+    val textColor = when {
+        isStart -> Color.White
+        booked -> MaterialTheme.colorScheme.error
+        disabled -> MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)
+        inRange -> MaterialTheme.colorScheme.onPrimaryContainer
+        else -> MaterialTheme.colorScheme.onBackground
+    }
+    val borderColor = when {
+        isStart -> MaterialTheme.colorScheme.primary
+        inRange -> MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
+        booked -> MaterialTheme.colorScheme.error.copy(alpha = 0.4f)
+        else -> MaterialTheme.colorScheme.outlineVariant
+    }
+    val canTap = !booked && !disabled
     Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(
-                when {
-                    isSelected -> MaterialTheme.colorScheme.primary
-                    !enabled -> MaterialTheme.colorScheme.surfaceContainerLowest
-                    else -> Color.White
-                }
-            )
-            .border(
-                1.dp,
-                when {
-                    isSelected -> MaterialTheme.colorScheme.primary
-                    !enabled -> MaterialTheme.colorScheme.surfaceContainer
-                    else -> MaterialTheme.colorScheme.outlineVariant
-                },
-                RoundedCornerShape(8.dp)
-            )
-            .then(if (enabled) Modifier.clickable { onClick() } else Modifier)
-            .padding(horizontal = 12.dp, vertical = 8.dp)
+        modifier = modifier
+            .clip(RoundedCornerShape(7.dp))
+            .background(bgColor)
+            .border(1.dp, borderColor, RoundedCornerShape(7.dp))
+            .then(if (canTap) Modifier.clickable { onClick() } else Modifier)
+            .padding(vertical = 9.dp),
+        contentAlignment = Alignment.Center
     ) {
         Text(
             text = time,
-            fontSize = 13.sp,
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-            color = when {
-                isSelected -> Color.White
-                !enabled -> MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
-                else -> MaterialTheme.colorScheme.onBackground
-            }
+            fontSize = 11.sp,
+            fontWeight = if (isStart) FontWeight.Bold else FontWeight.Normal,
+            color = textColor,
+            textAlign = TextAlign.Center
         )
+    }
+}
+
+@Composable
+private fun LegendDot(color: Color, label: String) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        Box(
+            modifier = Modifier
+                .size(10.dp)
+                .clip(CircleShape)
+                .background(color)
+        )
+        Text(text = label, fontSize = 10.sp, color = MaterialTheme.colorScheme.outline)
     }
 }
 
@@ -437,6 +608,31 @@ private fun PriceLine(
         )
     }
 }
+
+private val ALL_TIME_SLOTS: List<String> = buildList {
+    var minutes = 6 * 60
+    while (minutes <= 22 * 60) {
+        add("%02d:%02d".format(minutes / 60, minutes % 60))
+        minutes += 30
+    }
+}
+
+private fun timeToMinutes(time: String): Int {
+    val parts = time.split(":")
+    return (parts.getOrNull(0)?.toIntOrNull() ?: 0) * 60 + (parts.getOrNull(1)?.toIntOrNull() ?: 0)
+}
+
+private fun isSlotBooked(slotTime: String, ranges: List<Pair<Int, Int>>): Boolean {
+    val m = timeToMinutes(slotTime)
+    val end = m + 30
+    return ranges.any { (bs, be) -> m < be && end > bs }
+}
+
+private fun slotMaxEndMin(startMin: Int, ranges: List<Pair<Int, Int>>): Int =
+    ranges.filter { (bs, _) -> bs > startMin }.minOfOrNull { (bs, _) -> bs } ?: (22 * 60)
+
+private fun slotFormatMinutes(totalMin: Int): String =
+    "%02d:%02d".format(totalMin / 60, totalMin % 60)
 
 private fun formatVndFmt(amount: Long): String =
     java.text.NumberFormat.getNumberInstance(java.util.Locale("vi", "VN")).format(amount)

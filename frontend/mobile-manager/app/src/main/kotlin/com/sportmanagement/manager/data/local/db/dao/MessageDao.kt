@@ -9,7 +9,7 @@ import com.sportmanagement.manager.data.local.db.entity.MessageEntity
 @Dao
 interface MessageDao {
 
-    @Query("SELECT * FROM chat_messages WHERE chatId = :chatId ORDER BY sentAt ASC")
+    @Query("SELECT * FROM chat_messages WHERE chatId = :chatId ORDER BY sentAt ASC, messageId ASC")
     suspend fun getMessages(chatId: Int): List<MessageEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)

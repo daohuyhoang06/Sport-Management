@@ -10,16 +10,23 @@ import com.sportmanagement.manager.domain.model.ConversationItem
 import com.sportmanagement.manager.domain.model.MessageStatus
 import com.sportmanagement.manager.ui.state.MessagesUiState
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 class MessagesViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(MessagesUiState())
     val uiState: StateFlow<MessagesUiState> = _uiState.asStateFlow()
+
+    // One-shot event: navigate to this conversation from outside (e.g. booking detail → chat)
+    private val _openChatEvent = Channel<ConversationItem>(Channel.BUFFERED)
+    val openChatEvent: Flow<ConversationItem> = _openChatEvent.receiveAsFlow()
 
     private var pollingJob: Job? = null
 
@@ -108,6 +115,15 @@ class MessagesViewModel : ViewModel() {
             val map = _uiState.value.chatMessages.toMutableMap()
             map[chatKey] = merged
             _uiState.value = _uiState.value.copy(chatMessages = map)
+            // New messages from customer → refresh conversation list so it reorders to top
+            val confirmedExisting = existing.count { !it.id.startsWith("temp_") }
+            if (freshMsgs.size > confirmedExisting) {
+                AppContainer.chatRepository.getChatList().onSuccess { convDtos ->
+                    _uiState.value = _uiState.value.copy(
+                        conversations = convDtos.map { it.toConversationItem() }
+                    )
+                }
+            }
         }
     }
 
@@ -248,6 +264,35 @@ class MessagesViewModel : ViewModel() {
                         chatMessages = updatedMap,
                         isSendingMessage = false
                     )
+                }
+            )
+        }
+    }
+
+    // ── Open / create chat with a user (from booking detail) ─────────────────
+
+    fun openChatWithUser(userId: Int, customerName: String, customerPhone: String?) {
+        _uiState.value = _uiState.value.copy(isStartingChat = true)
+        viewModelScope.launch {
+            AppContainer.chatRepository.getOrCreateChatWith(userId).fold(
+                onSuccess = { chatDto ->
+                    val conv = ConversationItem(
+                        id = chatDto.chatId.toString(),
+                        customerName = chatDto.customerName ?: customerName,
+                        customerPhone = chatDto.customerPhone ?: customerPhone ?: "",
+                        customerAvatarUrl = chatDto.customerAvatar,
+                        isOnline = false,
+                        lastMessage = chatDto.lastMessage ?: "",
+                        lastMessageTime = "",
+                        unreadCount = 0
+                    )
+                    _uiState.value = _uiState.value.copy(isStartingChat = false)
+                    // Emit one-shot event; ManagerApp collects it and handles navigation
+                    _openChatEvent.trySend(conv)
+                    loadConversations()
+                },
+                onFailure = { e ->
+                    _uiState.value = _uiState.value.copy(isStartingChat = false, error = e.message)
                 }
             )
         }

@@ -48,6 +48,7 @@ data class BookingHistoryResponse(
 data class CreateBookingRequest(
     @SerializedName("field_id")       val fieldId: Int,
     @SerializedName("court_id")       val courtId: Int? = null,
+    @SerializedName("customer_name")  val customerName: String? = null,
     @SerializedName("customer_phone") val customerPhone: String? = null,
     @SerializedName("start_time")     val startTime: String,
     @SerializedName("end_time")       val endTime: String,

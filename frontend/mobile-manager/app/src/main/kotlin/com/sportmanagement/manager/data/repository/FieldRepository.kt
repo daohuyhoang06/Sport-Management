@@ -3,7 +3,13 @@ package com.sportmanagement.manager.data.repository
 import com.sportmanagement.manager.data.remote.api.FieldApiService
 import com.sportmanagement.manager.data.remote.dto.BlockedSlotDto
 import com.sportmanagement.manager.data.remote.dto.CreateBlockedSlotRequest
+import com.sportmanagement.manager.data.remote.dto.CreateCourtRequest
+import com.sportmanagement.manager.data.remote.dto.CreatePolicyRequest
+import com.sportmanagement.manager.data.remote.dto.CreateServiceRequest
+import com.sportmanagement.manager.data.remote.dto.BookedRangeDto
 import com.sportmanagement.manager.data.remote.dto.FieldCourtDto
+import com.sportmanagement.manager.data.remote.dto.UpdateBasicInfoRequest
+import com.sportmanagement.manager.data.remote.dto.UpdateCourtRequest
 import com.sportmanagement.manager.data.remote.dto.FieldDto
 import com.sportmanagement.manager.data.remote.dto.FieldPolicyDto
 import com.sportmanagement.manager.data.remote.dto.FieldServiceDto
@@ -43,6 +49,12 @@ class FieldRepository(private val api: FieldApiService) {
         }
     }
 
+    suspend fun updateBasicInfo(id: Int, request: UpdateBasicInfoRequest): Result<Unit> = safeCall {
+        val response = api.patchField(id, request)
+        if (response.isSuccessful) Result.success(Unit)
+        else Result.failure(Exception("Cập nhật thông tin thất bại (${response.code()})"))
+    }
+
     suspend fun updateFieldStatus(id: Int, status: String): Result<Unit> = safeCall {
         val response = api.updateFieldStatus(id, UpdateFieldStatusRequest(status))
         if (response.isSuccessful) Result.success(Unit)
@@ -64,6 +76,33 @@ class FieldRepository(private val api: FieldApiService) {
         }
     }
 
+    suspend fun getCourtAvailability(fieldId: Int, courtId: Int, date: String): Result<List<BookedRangeDto>> = safeCall {
+        val response = api.getCourtAvailability(fieldId, courtId, date)
+        if (response.isSuccessful) {
+            Result.success(response.body()?.data ?: emptyList())
+        } else {
+            Result.failure(Exception("Lỗi tải lịch đặt sân"))
+        }
+    }
+
+    suspend fun createCourt(fieldId: Int, request: CreateCourtRequest): Result<Unit> = safeCall {
+        val response = api.createCourt(fieldId, request)
+        if (response.isSuccessful) Result.success(Unit)
+        else Result.failure(Exception("Tạo sân con thất bại (${response.code()})"))
+    }
+
+    suspend fun updateCourt(fieldId: Int, courtId: Int, request: UpdateCourtRequest): Result<Unit> = safeCall {
+        val response = api.updateCourt(fieldId, courtId, request)
+        if (response.isSuccessful) Result.success(Unit)
+        else Result.failure(Exception("Cập nhật sân con thất bại (${response.code()})"))
+    }
+
+    suspend fun deleteCourt(fieldId: Int, courtId: Int): Result<Unit> = safeCall {
+        val response = api.deleteCourt(fieldId, courtId)
+        if (response.isSuccessful) Result.success(Unit)
+        else Result.failure(Exception("Xóa sân con thất bại (${response.code()})"))
+    }
+
     suspend fun getServices(fieldId: Int): Result<List<FieldServiceDto>> = safeCall {
         val response = api.getServices(fieldId)
         if (response.isSuccessful) {
@@ -73,6 +112,18 @@ class FieldRepository(private val api: FieldApiService) {
         }
     }
 
+    suspend fun createService(fieldId: Int, request: CreateServiceRequest): Result<Unit> = safeCall {
+        val response = api.createService(fieldId, request)
+        if (response.isSuccessful) Result.success(Unit)
+        else Result.failure(Exception("Tạo dịch vụ thất bại (${response.code()})"))
+    }
+
+    suspend fun deleteService(fieldId: Int, serviceId: Int): Result<Unit> = safeCall {
+        val response = api.deleteService(fieldId, serviceId)
+        if (response.isSuccessful) Result.success(Unit)
+        else Result.failure(Exception("Xóa dịch vụ thất bại (${response.code()})"))
+    }
+
     suspend fun getPolicies(fieldId: Int): Result<List<FieldPolicyDto>> = safeCall {
         val response = api.getPolicies(fieldId)
         if (response.isSuccessful) {
@@ -80,6 +131,18 @@ class FieldRepository(private val api: FieldApiService) {
         } else {
             Result.failure(Exception("Lỗi tải chính sách"))
         }
+    }
+
+    suspend fun createPolicy(fieldId: Int, request: CreatePolicyRequest): Result<Unit> = safeCall {
+        val response = api.createPolicy(fieldId, request)
+        if (response.isSuccessful) Result.success(Unit)
+        else Result.failure(Exception("Tạo chính sách thất bại (${response.code()})"))
+    }
+
+    suspend fun deletePolicy(fieldId: Int, policyId: Int): Result<Unit> = safeCall {
+        val response = api.deletePolicy(fieldId, policyId)
+        if (response.isSuccessful) Result.success(Unit)
+        else Result.failure(Exception("Xóa chính sách thất bại (${response.code()})"))
     }
 
     suspend fun getBlockedSlots(fieldId: Int): Result<List<BlockedSlotDto>> = safeCall {
