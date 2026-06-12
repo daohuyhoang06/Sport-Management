@@ -9,8 +9,7 @@ const normalizeBoolean = (value) => {
 };
 
 const normalizeNullableText = (value) => {
-  if (value === undefined) return undefined;
-  if (value === null) return null;
+  if (value === undefined || value === null) return null;
   const trimmed = String(value).trim();
   return trimmed.length > 0 ? trimmed : null;
 };

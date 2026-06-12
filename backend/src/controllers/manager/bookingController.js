@@ -4,6 +4,7 @@ import {
   updateBookingStatusService,
   createBookingService,
   getBookingHistoryService,
+  getCourtAvailabilityService,
 } from "../../services/manager/bookingService.js";
 import {
   buildBookingShareResponse,
@@ -193,6 +194,24 @@ export const getBookingByCheckInCode = async (req, res) => {
   } catch (err) {
     console.error("Error fetching booking by check-in code:", err);
     return res.status(500).json({ message: "Server error", error: err.message });
+  }
+};
+
+/**
+ * Lấy khung giờ đã đặt của sân con theo ngày
+ * GET /api/manager/fields/:fieldId/courts/:courtId/availability?date=YYYY-MM-DD
+ */
+export const getCourtAvailability = async (req, res) => {
+  try {
+    const managerId = req.user.id;
+    const { fieldId, courtId } = req.params;
+    const { date } = req.query;
+    if (!date) return res.status(400).json({ message: 'Thiếu tham số date' });
+    const data = await getCourtAvailabilityService(managerId, fieldId, courtId, date);
+    res.json({ success: true, data });
+  } catch (err) {
+    console.error('Error fetching availability:', err);
+    res.status(500).json({ message: err.message });
   }
 };
 

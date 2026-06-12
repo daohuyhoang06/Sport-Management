@@ -119,6 +119,27 @@ export const sendMessage = async (req, res) => {
 };
 
 /**
+ * Manager gets or creates a chat with a specific user
+ * POST /api/manager/chat/start
+ */
+export const managerStartChat = async (req, res) => {
+  try {
+    const managerId = req.user.id;
+    const { userId } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({ success: false, message: 'userId là bắt buộc' });
+    }
+
+    const chat = await getOrCreateChatService(Number(userId), managerId);
+    res.json({ success: true, data: chat });
+  } catch (error) {
+    console.error('Error in managerStartChat:', error);
+    res.status(500).json({ success: false, message: error.message || 'Lỗi server khi tạo chat' });
+  }
+};
+
+/**
  * Get available managers
  * GET /api/chat/managers
  */
