@@ -49,6 +49,7 @@ import com.sportmanagement.user.domain.model.FieldReview
 import com.sportmanagement.user.domain.model.FieldReviewStats
 import com.sportmanagement.user.domain.model.SportCategory
 import com.sportmanagement.user.domain.model.UserField
+import com.sportmanagement.user.domain.model.UserFieldDetailData
 import com.sportmanagement.user.ui.components.field.formatFieldRating
 import com.sportmanagement.user.ui.components.field.resolveFieldReviewMetrics
 import com.sportmanagement.user.ui.components.field.FieldDetailBottomSheet
@@ -67,6 +68,7 @@ fun UserHomeScreen(
     fieldReviewStatsByFieldId: Map<Int, FieldReviewStats>,
     fieldReviewsByFieldId: Map<Int, List<FieldReview>>,
     loadingFieldReviewIds: Set<Int>,
+    fieldDetailDataByFieldId: Map<Int, UserFieldDetailData> = emptyMap(),
     sportCategories: List<SportCategory>,
     userName: String,
     userAvatarUrl: String,
@@ -381,6 +383,7 @@ fun UserHomeScreen(
                 reviewStats = fieldReviewStatsByFieldId[selectedField.fieldId],
                 reviews = fieldReviewsByFieldId[selectedField.fieldId].orEmpty(),
                 isReviewLoading = selectedField.fieldId in loadingFieldReviewIds,
+                fieldDetailData = fieldDetailDataByFieldId[selectedField.fieldId],
                 onDismissRequest = { selectedFieldForDetail = null },
                 onFavoriteClick = {
                     onFavoriteFieldClick(selectedField, selectedField.fieldId !in favoriteFieldIds)

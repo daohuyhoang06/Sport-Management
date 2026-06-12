@@ -12,6 +12,7 @@ import com.sportmanagement.user.data.remote.mapper.UserMapper.toDomain
 import com.sportmanagement.user.domain.model.BookingScheduleData
 import com.sportmanagement.user.domain.model.FieldReview
 import com.sportmanagement.user.domain.model.FieldReviewStats
+import com.sportmanagement.user.domain.model.UserFieldDetailData
 import com.sportmanagement.user.domain.model.HomeSearchFilterOptions
 import com.sportmanagement.user.domain.model.HomeSearchProvinceOption
 import com.sportmanagement.user.domain.model.SportCategory
@@ -24,6 +25,9 @@ import com.sportmanagement.user.domain.model.VenueCardType
 import com.sportmanagement.user.push.PushNotificationRegistrar
 import org.json.JSONArray
 import org.json.JSONObject
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class UserRepositoryImpl(
     private val appContext: Context? = null,
@@ -386,6 +390,18 @@ class UserRepositoryImpl(
                 )
             }
         }.getOrDefault(FieldReviewStats())
+    }
+
+    override suspend fun getFieldDetail(fieldId: Int): UserFieldDetailData {
+        return runCatching {
+            val detail = api.getFieldDetail(fieldId)
+            val today = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
+            val courtCount = runCatching {
+                api.getFieldGrid(fieldId, today).grid.courts.size
+            }.getOrNull()?.takeIf { it > 0 }
+
+            detail.copy(courtCount = courtCount)
+        }.getOrDefault(UserFieldDetailData(fieldId = fieldId))
     }
 
     override suspend fun getHomeSearchFilterOptions(): HomeSearchFilterOptions {

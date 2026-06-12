@@ -11,6 +11,7 @@ import com.sportmanagement.user.domain.model.HomeSearchFilterOptions
 import com.sportmanagement.user.domain.model.SportCategory
 import com.sportmanagement.user.domain.model.SportIconType
 import com.sportmanagement.user.domain.model.UserField
+import com.sportmanagement.user.domain.model.UserFieldDetailData
 import com.sportmanagement.user.domain.model.UserProfile
 import com.sportmanagement.user.domain.model.UserStat
 import com.sportmanagement.user.domain.repository.UserRepository
@@ -228,6 +229,10 @@ class UserViewModel(
                 authError = null,
                 profile = UserUiState().profile,
                 favoriteFields = emptyList(),
+                fieldReviewsByFieldId = emptyMap(),
+                fieldReviewStatsByFieldId = emptyMap(),
+                fieldDetailsByFieldId = emptyMap(),
+                loadingFieldReviewIds = emptySet(),
                 homeFields = applyHomeSearchCriteria(current.activeHomeSearchCriteria),
                 nearbyFields = filterFieldsByPreferredSports(allNearbyFields),
                 fieldSearchResults = filterFieldsByPreferredSports(current.fieldSearchResults),
@@ -327,7 +332,8 @@ class UserViewModel(
         val state = _uiState.value
         val hasCachedReviews = state.fieldReviewsByFieldId.containsKey(fieldId)
         val hasCachedStats = state.fieldReviewStatsByFieldId.containsKey(fieldId)
-        if (!force && hasCachedReviews && hasCachedStats) return
+        val hasCachedDetail = state.fieldDetailsByFieldId.containsKey(fieldId)
+        if (!force && hasCachedReviews && hasCachedStats && hasCachedDetail) return
         if (fieldId in state.loadingFieldReviewIds) return
 
         _uiState.update { current ->
@@ -337,10 +343,18 @@ class UserViewModel(
         }
 
         viewModelScope.launch {
-            val (reviews, stats) = supervisorScope {
+            val (reviews, stats, detail) = supervisorScope {
                 val reviewsDeferred = async { repository.getFieldReviews(fieldId) }
                 val statsDeferred = async { repository.getFieldReviewStats(fieldId) }
-                reviewsDeferred.await() to statsDeferred.await()
+                val detailDeferred = async {
+                    runCatching { repository.getFieldDetail(fieldId) }
+                        .getOrDefault(UserFieldDetailData(fieldId = fieldId))
+                }
+                Triple(
+                    reviewsDeferred.await(),
+                    statsDeferred.await(),
+                    detailDeferred.await()
+                )
             }
             val normalizedStats = stats.withReviewFallback(reviews)
             val normalizedRating = formatAverageRating(normalizedStats.averageRating)
@@ -353,6 +367,7 @@ class UserViewModel(
                     favoriteFields = patchFieldRating(current.favoriteFields, fieldId, normalizedRating),
                     fieldReviewsByFieldId = current.fieldReviewsByFieldId + (fieldId to reviews),
                     fieldReviewStatsByFieldId = current.fieldReviewStatsByFieldId + (fieldId to normalizedStats),
+                    fieldDetailsByFieldId = current.fieldDetailsByFieldId + (fieldId to detail),
                     loadingFieldReviewIds = current.loadingFieldReviewIds - fieldId
                 )
             }

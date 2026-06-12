@@ -71,6 +71,7 @@ import com.sportmanagement.user.domain.model.FieldReview
 import com.sportmanagement.user.domain.model.FieldReviewStats
 import com.sportmanagement.user.domain.model.SportIconType
 import com.sportmanagement.user.domain.model.UserField
+import com.sportmanagement.user.domain.model.UserFieldDetailData
 import com.sportmanagement.user.ui.components.SportMarkerIcon
 import com.sportmanagement.user.ui.components.sportIconDrawableRes
 import com.sportmanagement.user.ui.components.sportMarkerBaseDrawableRes
@@ -112,6 +113,7 @@ fun UserMapScreen(
     fieldReviewStatsByFieldId: Map<Int, FieldReviewStats> = emptyMap(),
     fieldReviewsByFieldId: Map<Int, List<FieldReview>> = emptyMap(),
     loadingFieldReviewIds: Set<Int> = emptySet(),
+    fieldDetailDataByFieldId: Map<Int, UserFieldDetailData> = emptyMap(),
     searchResults: List<UserField> = emptyList(),
     recentSearches: List<String> = emptyList(),
     isSearchLoading: Boolean = false,
@@ -707,6 +709,7 @@ fun UserMapScreen(
                 reviewStats = fieldReviewStatsByFieldId[field.fieldId],
                 reviews = fieldReviewsByFieldId[field.fieldId].orEmpty(),
                 isReviewLoading = field.fieldId in loadingFieldReviewIds,
+                fieldDetailData = fieldDetailDataByFieldId[field.fieldId],
                 onDismissRequest = { selectedFieldForDetail = null },
                 onFavoriteClick = {
                     onFavoriteFieldClick(field, field.fieldId !in favoriteFieldIds)

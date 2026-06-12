@@ -255,6 +255,7 @@
     <string name="field_detail_tab_reviews">Đánh giá</string>
 
     <string name="field_detail_default_hotline">0333 838 389</string>
+    <string name="field_detail_contact_label">Liên hệ</string>
     <string name="field_detail_open_map">Mở bản đồ</string>
     <string name="field_detail_hours_format">%1$s • %2$s</string>
     <string name="field_detail_hotline_format">Liên hệ: %1$s</string>
@@ -307,6 +308,10 @@
     <string name="field_detail_service_parking">Gửi xe</string>
     <string name="field_detail_service_changing_room">Phòng thay đồ</string>
     <string name="field_detail_service_coach">Huấn luyện viên</string>
+    <string name="field_detail_service_price_format">%1$s</string>
+    <string name="field_detail_empty_services">Chưa có dịch vụ công khai</string>
+    <string name="field_detail_empty_gallery">Chưa có hình ảnh công khai</string>
+    <string name="field_detail_empty_policies">Chưa có điều khoản và quy định công khai</string>
 
     <string name="field_detail_policy_1">Khách đến trước giờ đặt sân ít nhất 10 phút.</string>
     <string name="field_detail_policy_2">Hủy lịch trước 2 giờ để được hoàn cọc.</string>

@@ -37,6 +37,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Directions
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
@@ -95,10 +96,13 @@ import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import coil.compose.SubcomposeAsyncImage
 import com.sportmanagement.user.R
+import com.sportmanagement.user.domain.model.FieldDetailPolicy
+import com.sportmanagement.user.domain.model.FieldDetailService
 import com.sportmanagement.user.domain.model.FieldReview
 import com.sportmanagement.user.domain.model.FieldReviewStats
 import com.sportmanagement.user.domain.model.SportIconType
 import com.sportmanagement.user.domain.model.UserField
+import com.sportmanagement.user.domain.model.UserFieldDetailData
 import com.sportmanagement.user.ui.components.booking.bookingCardTitleStyle
 import com.sportmanagement.user.ui.components.SportCircleAvatar
 import com.sportmanagement.user.ui.components.SportMarkerIcon
@@ -121,6 +125,7 @@ import com.sportmanagement.user.ui.theme.AppSheetTopCornerRadius
 import com.sportmanagement.user.ui.theme.AppOnCtaAmber
 import kotlinx.coroutines.launch
 import java.text.Normalizer
+import java.text.NumberFormat
 import java.util.Locale
 
 private val sheetTabRes = listOf(
@@ -139,6 +144,7 @@ fun FieldDetailBottomSheet(
     reviewStats: FieldReviewStats? = null,
     reviews: List<FieldReview> = emptyList(),
     isReviewLoading: Boolean = false,
+    fieldDetailData: UserFieldDetailData? = null,
     onDismissRequest: () -> Unit,
     onFavoriteClick: () -> Unit,
     onBookClick: (UserField) -> Unit
@@ -150,15 +156,29 @@ fun FieldDetailBottomSheet(
     val sheetState = rememberModalBottomSheetState()
     val scope = rememberCoroutineScope()
     var selectedTab by rememberSaveable(field.name) { mutableIntStateOf(0) }
-    var previewImage by remember { mutableStateOf<Int?>(null) }
+    var previewImageUrl by remember { mutableStateOf<String?>(null) }
     var ratingBadgeHeightPx by remember { mutableIntStateOf(0) }
     val bookingLink = remember(field.fieldId, field.name) { bookingLinkFor(field) }
-    val hotline = remember(field.phone, field.contactPhone) {
-        field.phone.trim().ifBlank {
-            field.contactPhone.trim()
+    val resolvedDetailData = remember(field.fieldId, fieldDetailData) {
+        fieldDetailData?.takeIf { it.fieldId == field.fieldId }
+    }
+    val hotline = remember(field.phone, resolvedDetailData) {
+        resolvedDetailData?.phone?.trim().orEmpty().ifBlank {
+            field.phone.trim()
         }.ifBlank {
             context.getString(R.string.field_detail_default_hotline)
         }
+    }
+    val galleryUrls = remember(field, resolvedDetailData) {
+        buildList {
+            addAll(resolvedDetailData?.galleryUrls.orEmpty())
+            add(field.cardImageUrl)
+            add(field.avatarImageUrl)
+            add(field.imageUrl)
+        }
+            .map { it.trim() }
+            .filter { it.isNotBlank() && !it.endsWith("placeholder.svg", ignoreCase = true) }
+            .distinct()
     }
     val headerImageHeight = 232.dp
     val infoCardOverlap = 28.dp
@@ -196,6 +216,7 @@ fun FieldDetailBottomSheet(
                         ) {
                             FieldDetailHeaderImage(
                                 field = field,
+                                extraImageUrls = galleryUrls,
                                 modifier = Modifier.fillMaxSize()
                             )
                             Box(
@@ -406,7 +427,7 @@ fun FieldDetailBottomSheet(
                 ) {
                     when (selectedTab) {
                         0 -> Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            InfoTabContent(field)
+                            InfoTabContent(field, resolvedDetailData, hotline)
                             OnlineBookingLinkCard(
                                 bookingLink = bookingLink,
                                 onCopyLink = {
@@ -420,9 +441,12 @@ fun FieldDetailBottomSheet(
                                 onOpenLink = { openExternalUrl(context, bookingLink) }
                             )
                         }
-                        1 -> ServiceTabContent()
-                        2 -> GalleryTabContent(onPreview = { previewImage = it })
-                        3 -> PolicyTabContent()
+                        1 -> ServiceTabContent(field, resolvedDetailData)
+                        2 -> GalleryTabContent(
+                            galleryUrls = galleryUrls,
+                            onPreview = { previewImageUrl = it }
+                        )
+                        3 -> PolicyTabContent(resolvedDetailData)
                         else -> ReviewTabContent(
                             fieldSportType = field.sportIconType,
                             reviews = reviews,
@@ -433,16 +457,19 @@ fun FieldDetailBottomSheet(
             }
         }
 
-        previewImage?.let { imageRes ->
-            Dialog(onDismissRequest = { previewImage = null }) {
+        previewImageUrl?.let { imageUrl ->
+            Dialog(onDismissRequest = { previewImageUrl = null }) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(AppCardCornerRadius))
                         .background(Color.Black)
                 ) {
-                    Image(
-                        painter = painterResource(id = imageRes),
+                    AsyncImage(
+                        model = ImageRequest.Builder(context)
+                            .data(imageUrl)
+                            .crossfade(false)
+                            .build(),
                         contentDescription = null,
                         modifier = Modifier.fillMaxWidth(),
                         contentScale = ContentScale.Crop
@@ -456,10 +483,12 @@ fun FieldDetailBottomSheet(
 @Composable
 private fun FieldDetailHeaderImage(
     field: UserField,
+    extraImageUrls: List<String> = emptyList(),
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
     val remoteImageUrl = listOf(
+        *extraImageUrls.toTypedArray(),
         field.cardImageUrl.trim(),
         field.avatarImageUrl.trim().takeIf { !isGeneratedFieldAvatarUrl(it) }.orEmpty(),
         field.imageUrl.trim().takeIf { !isGeneratedFieldAvatarUrl(it) }.orEmpty()
@@ -629,15 +658,25 @@ private fun InfoLine(
 }
 
 @Composable
-private fun InfoTabContent(field: UserField) {
+private fun InfoTabContent(
+    field: UserField,
+    detailData: UserFieldDetailData?,
+    hotline: String
+) {
     val colors = MaterialTheme.colorScheme
-    val infoItems = listOf(
-        stringResource(R.string.field_detail_info_sport) to stringResource(sportLabelRes(field.sportIconType)),
-        stringResource(R.string.field_detail_info_surface_type) to stringResource(R.string.field_detail_info_surface_value),
-        stringResource(R.string.field_detail_info_court_count) to stringResource(R.string.field_detail_info_court_count_value),
-        stringResource(R.string.field_detail_info_capacity) to stringResource(R.string.field_detail_info_capacity_value),
-        stringResource(R.string.field_detail_info_amenities) to stringResource(R.string.field_detail_info_amenities_value)
-    )
+    val infoItems = buildList {
+        add(stringResource(R.string.field_detail_info_sport) to stringResource(sportLabelRes(field.sportIconType)))
+        add("Địa chỉ" to field.location)
+        add(stringResource(R.string.field_detail_contact_label) to hotline)
+        add("Giờ hoạt động" to field.hours)
+        if (field.price.isNotBlank()) {
+            add("Giá tham khảo" to field.price)
+        }
+        detailData?.courtCount?.takeIf { it > 0 }?.let { add("Số lượng sân" to "$it sân") }
+        detailData?.availabilityNote?.trim()?.takeIf { it.isNotBlank() }?.let {
+            add("Ghi chú vận hành" to it)
+        }
+    }
     Card(
         shape = RoundedCornerShape(AppCardCornerRadius),
         colors = CardDefaults.cardColors(containerColor = colors.surfaceContainerLowest)
@@ -651,7 +690,7 @@ private fun InfoTabContent(field: UserField) {
             infoItems.forEach { (label, value) ->
                 Row(modifier = Modifier.fillMaxWidth()) {
                     Text(
-                        text = stringResource(R.string.field_detail_label_with_colon, label),
+                        text = "$label:",
                         modifier = Modifier.widthIn(min = 120.dp),
                         style = MaterialTheme.typography.bodyMedium,
                         color = colors.onSurfaceVariant,
@@ -669,16 +708,17 @@ private fun InfoTabContent(field: UserField) {
 }
 
 @Composable
-private fun ServiceTabContent() {
+private fun ServiceTabContent(
+    field: UserField,
+    detailData: UserFieldDetailData?
+) {
     val colors = MaterialTheme.colorScheme
-    val services = listOf(
-        stringResource(R.string.field_detail_service_racket_rental) to Icons.Default.SportsTennis,
-        stringResource(R.string.field_detail_service_ball_shuttle_rental) to Icons.Default.SportsSoccer,
-        stringResource(R.string.field_detail_service_drinks) to Icons.Default.Star,
-        stringResource(R.string.field_detail_service_parking) to Icons.Default.Directions,
-        stringResource(R.string.field_detail_service_changing_room) to Icons.Default.Person,
-        stringResource(R.string.field_detail_service_coach) to Icons.Default.Person
-    )
+    val services = remember(field.tags, detailData) {
+        val remoteServices = detailData?.services.orEmpty().takeIf { it.isNotEmpty() }
+        remoteServices ?: field.tags.mapNotNull { tag ->
+            tag.trim().takeIf { it.isNotBlank() }?.let { FieldDetailService(it, true) }
+        }
+    }
     Card(
         shape = RoundedCornerShape(AppCardCornerRadius),
         colors = CardDefaults.cardColors(containerColor = colors.surfaceContainerLowest)
@@ -689,19 +729,39 @@ private fun ServiceTabContent() {
                 .padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            services.forEach { (name, icon) ->
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = null,
-                        tint = colors.primary
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = name,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = colors.onSurface
-                    )
+            if (services.isEmpty()) {
+                Text(
+                    text = stringResource(R.string.field_detail_empty_services),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = colors.onSurfaceVariant
+                )
+            } else {
+                services.forEach { service ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = serviceIcon(service.serviceName),
+                            contentDescription = null,
+                            tint = colors.primary
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = service.serviceName,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = colors.onSurface
+                            )
+                            if (!service.isFree) {
+                                Text(
+                                    text = stringResource(
+                                        R.string.field_detail_service_price_format,
+                                        formatVnd(service.price)
+                                    ),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = colors.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -709,22 +769,37 @@ private fun ServiceTabContent() {
 }
 
 @Composable
-private fun GalleryTabContent(onPreview: (Int) -> Unit) {
-    val gallery = listOf(
-        R.drawable.field_football,
-        R.drawable.field_football,
-        R.drawable.field_football,
-        R.drawable.field_football
-    )
+private fun GalleryTabContent(
+    galleryUrls: List<String>,
+    onPreview: (String) -> Unit
+) {
+    val colors = MaterialTheme.colorScheme
+    if (galleryUrls.isEmpty()) {
+        Card(
+            shape = RoundedCornerShape(AppCardCornerRadius),
+            colors = CardDefaults.cardColors(containerColor = colors.surfaceContainerLowest)
+        ) {
+            Text(
+                text = stringResource(R.string.field_detail_empty_gallery),
+                style = MaterialTheme.typography.bodyMedium,
+                color = colors.onSurfaceVariant,
+                modifier = Modifier.padding(12.dp)
+            )
+        }
+        return
+    }
     LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        items(gallery) { imageRes ->
-            Image(
-                painter = painterResource(id = imageRes),
+        items(galleryUrls) { imageUrl ->
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(imageUrl)
+                    .crossfade(false)
+                    .build(),
                 contentDescription = null,
                 modifier = Modifier
                     .size(width = 200.dp, height = 120.dp)
                     .clip(RoundedCornerShape(AppMediaCornerRadius))
-                    .clickable { onPreview(imageRes) },
+                    .clickable { onPreview(imageUrl) },
                 contentScale = ContentScale.Crop
             )
         }
@@ -732,14 +807,18 @@ private fun GalleryTabContent(onPreview: (Int) -> Unit) {
 }
 
 @Composable
-private fun PolicyTabContent() {
+private fun PolicyTabContent(detailData: UserFieldDetailData?) {
     val colors = MaterialTheme.colorScheme
-    val policies = listOf(
-        stringResource(R.string.field_detail_policy_1),
-        stringResource(R.string.field_detail_policy_2),
-        stringResource(R.string.field_detail_policy_3),
-        stringResource(R.string.field_detail_policy_4)
-    )
+    val policies = remember(detailData) {
+        val remotePolicies = detailData?.policies.orEmpty().takeIf { it.isNotEmpty() }
+        remotePolicies ?: detailData?.availabilityNote
+            ?.trim()
+            ?.takeIf { it.isNotBlank() }
+            ?.let {
+                listOf(FieldDetailPolicy("availability", "Ghi chú vận hành", it))
+            }
+            .orEmpty()
+    }
     Card(
         shape = RoundedCornerShape(AppCardCornerRadius),
         colors = CardDefaults.cardColors(containerColor = colors.surfaceContainerLowest)
@@ -750,12 +829,28 @@ private fun PolicyTabContent() {
                 .padding(12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            policies.forEach { line ->
+            if (policies.isEmpty()) {
                 Text(
-                    text = stringResource(R.string.field_detail_bullet_line, line),
+                    text = stringResource(R.string.field_detail_empty_policies),
                     style = MaterialTheme.typography.bodyMedium,
                     color = colors.onSurfaceVariant
                 )
+            } else {
+                policies.forEach { policy ->
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            text = policy.title,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colors.onSurface,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = policy.content,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = colors.onSurfaceVariant
+                        )
+                    }
+                }
             }
         }
     }
@@ -1018,6 +1113,24 @@ private fun DefaultReviewAvatar(author: String) {
             modifier = Modifier.size(18.dp)
         )
     }
+}
+
+private fun serviceIcon(serviceName: String): androidx.compose.ui.graphics.vector.ImageVector {
+    val normalized = serviceName.lowercase(Locale("vi", "VN"))
+    return when {
+        normalized.contains("parking") || normalized.contains("gửi xe") || normalized.contains("do xe") -> Icons.Default.Directions
+        normalized.contains("nước") || normalized.contains("drink") || normalized.contains("uống") -> Icons.Default.Star
+        normalized.contains("vợt") || normalized.contains("racket") || normalized.contains("cầu") || normalized.contains("bóng") -> Icons.Default.SportsTennis
+        normalized.contains("huấn luyện") || normalized.contains("coach") || normalized.contains("trainer") -> Icons.Default.Person
+        normalized.contains("thay đồ") || normalized.contains("locker") || normalized.contains("changing") -> Icons.Default.Person
+        else -> Icons.Default.CheckCircle
+    }
+}
+
+private fun formatVnd(value: Long): String {
+    if (value <= 0L) return "Miễn phí"
+    val formatter = NumberFormat.getNumberInstance(Locale("vi", "VN"))
+    return "${formatter.format(value)}đ"
 }
 
 private fun sportLabelRes(type: SportIconType): Int {

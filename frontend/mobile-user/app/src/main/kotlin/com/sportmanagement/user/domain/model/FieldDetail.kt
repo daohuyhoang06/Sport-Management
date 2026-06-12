@@ -19,6 +19,16 @@ data class FieldDetailPolicy(
     val content: String
 )
 
+data class UserFieldDetailData(
+    val fieldId: Int,
+    val phone: String = "",
+    val availabilityNote: String = "",
+    val courtCount: Int? = null,
+    val galleryUrls: List<String> = emptyList(),
+    val services: List<FieldDetailService> = emptyList(),
+    val policies: List<FieldDetailPolicy> = emptyList()
+)
+
 data class FieldDetail(
     val id: String,
     val name: String,

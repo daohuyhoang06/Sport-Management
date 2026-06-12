@@ -8,6 +8,9 @@ import com.sportmanagement.user.domain.model.MatchPostPreview
 import com.sportmanagement.user.domain.model.BookingSubCourt
 import com.sportmanagement.user.domain.model.BookingTimeGridData
 import com.sportmanagement.user.domain.model.BookingTimeRange
+import com.sportmanagement.user.domain.model.FieldDetailPolicy
+import com.sportmanagement.user.domain.model.FieldDetailService
+import com.sportmanagement.user.domain.model.UserFieldDetailData
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -273,6 +276,49 @@ class UserApi(
             threeStar = root.optInt("three_star", 0),
             twoStar = root.optInt("two_star", 0),
             oneStar = root.optInt("one_star", 0)
+        )
+    }
+
+    suspend fun getFieldDetail(fieldId: Int): UserFieldDetailData = withContext(Dispatchers.IO) {
+        val endpoint = "$baseUrl/api/user/fields/$fieldId"
+        val root = readJsonObject(endpoint)
+
+        val imagesArray = root.optJSONArray("images") ?: JSONArray()
+        val servicesArray = root.optJSONArray("services") ?: JSONArray()
+        val policiesArray = root.optJSONArray("policies") ?: JSONArray()
+
+        val galleryUrls = List(imagesArray.length()) { index ->
+            val item = imagesArray.optJSONObject(index) ?: JSONObject()
+            resolveMediaUrl(item.optString("image_url"))
+        }.filter { it.isNotBlank() }
+
+        val services = List(servicesArray.length()) { index ->
+            val item = servicesArray.optJSONObject(index) ?: JSONObject()
+            FieldDetailService(
+                serviceName = item.optString("service_name").ifBlank { item.optString("name") },
+                isFree = item.optBoolean("is_free", true),
+                price = item.optLong("price", 0L).coerceAtLeast(0L)
+            )
+        }.filter { it.serviceName.isNotBlank() }
+
+        val policies = List(policiesArray.length()) { index ->
+            val item = policiesArray.optJSONObject(index) ?: JSONObject()
+            FieldDetailPolicy(
+                policyType = item.optString("policy_type").ifBlank { item.optString("type") },
+                title = item.optString("title"),
+                content = item.optString("content")
+            )
+        }.filter { it.title.isNotBlank() || it.content.isNotBlank() }
+
+        UserFieldDetailData(
+            fieldId = root.optInt("field_id", fieldId),
+            phone = root.optString("phone"),
+            availabilityNote = root.optString("availability").ifBlank {
+                root.optString("availability_note")
+            },
+            galleryUrls = galleryUrls,
+            services = services,
+            policies = policies
         )
     }
 
@@ -638,7 +684,6 @@ class UserApi(
             district = optStringOrNull("district"),
             phone = optStringOrNull("phone"),
             contactPhone = optStringOrNull("contact_phone")
-                ?: optStringOrNull("owner_phone")
                 ?: optStringOrNull("phone"),
             avatarImageUrl = resolveMediaUrl(
                 optStringOrNull("avatar_image_url") ?: optStringOrNull("avatarImageUrl")

@@ -536,7 +536,7 @@ export const mapFieldRowToListPayload = (row) => {
     region: row.region || "",
     province: row.province || "",
     district: row.district || "",
-    contact_phone: row.phone || row.owner_phone || "",
+    contact_phone: row.phone || "",
     owner_phone: row.owner_phone || "",
     phone: row.phone || "",
     distance_km: distanceKm,
@@ -903,7 +903,7 @@ export const getField = async (req, res) => {
     const data = {
       ...mapped,
       manager_id: fieldRow.manager_id,
-      phone: fieldRow.phone || fieldRow.owner_phone || "",
+      phone: fieldRow.phone || "",
       slot_minutes: fieldRow.slot_minutes,
       images,
       services,

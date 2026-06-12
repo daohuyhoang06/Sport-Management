@@ -3,6 +3,7 @@ package com.sportmanagement.user.domain.repository
 import com.sportmanagement.user.domain.model.BookingScheduleData
 import com.sportmanagement.user.domain.model.FieldReview
 import com.sportmanagement.user.domain.model.FieldReviewStats
+import com.sportmanagement.user.domain.model.UserFieldDetailData
 import com.sportmanagement.user.domain.model.HomeSearchFilterOptions
 import com.sportmanagement.user.domain.model.SportCategory
 import com.sportmanagement.user.domain.model.UserField
@@ -152,5 +153,6 @@ interface UserRepository {
     suspend fun getFieldGrid(fieldId: Int, date: String): BookingScheduleData
     suspend fun getFieldReviews(fieldId: Int): List<FieldReview> = emptyList()
     suspend fun getFieldReviewStats(fieldId: Int): FieldReviewStats = FieldReviewStats()
+    suspend fun getFieldDetail(fieldId: Int): UserFieldDetailData = UserFieldDetailData(fieldId = fieldId)
     suspend fun getHomeSearchFilterOptions(): HomeSearchFilterOptions
 }

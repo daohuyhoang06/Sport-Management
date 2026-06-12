@@ -27,11 +27,11 @@ const OPEN_CLOSE_BY_SPORT_ICON = {
 };
 
 const TAGS_BY_SPORT_ICON = {
-  FOOTBALL: ['7 nguoi', 'Co nhan tao'],
-  VOLLEYBALL: ['Trong nha', 'San go'],
-  PICKLEBALL: ['Indoor', 'Den LED'],
-  BADMINTON: ['Tieu chuan', 'Dieu hoa'],
-  TENNIS: ['Hard court', 'Huan luyen'],
+  FOOTBALL: ['7 ng\u01b0\u1eddi', 'C\u1ecf nh\u00e2n t\u1ea1o'],
+  VOLLEYBALL: ['Trong nh\u00e0', 'S\u00e0n g\u1ed7'],
+  PICKLEBALL: ['Indoor', '\u0110\u00e8n LED'],
+  BADMINTON: ['Ti\u00eau chu\u1ea9n', '\u0110i\u1ec1u h\u00f2a'],
+  TENNIS: ['Hard court', 'Hu\u1ea5n luy\u1ec7n'],
 };
 
 const DISTANCE_BY_ORDER = [0.4, 0.8, 1.2, 2.5, 4.0, 6.5, 9.0, 14.0, 22.0];

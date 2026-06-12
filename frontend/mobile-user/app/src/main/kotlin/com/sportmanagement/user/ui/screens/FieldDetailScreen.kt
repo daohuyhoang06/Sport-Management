@@ -52,12 +52,14 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
+import com.sportmanagement.user.R
 import com.sportmanagement.user.domain.model.FieldDetail
 import com.sportmanagement.user.domain.model.FieldDetailCourt
 import com.sportmanagement.user.domain.model.FieldDetailPolicy
@@ -79,6 +81,10 @@ fun FieldDetailScreen(
     modifier: Modifier = Modifier
 ) {
     var selectedGalleryIndex by remember { mutableStateOf(0) }
+    val defaultHotline = stringResource(R.string.field_detail_default_hotline)
+    val hotline = remember(fieldDetail.phone, defaultHotline) {
+        fieldDetail.phone.trim().ifBlank { defaultHotline }
+    }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -148,7 +154,7 @@ fun FieldDetailScreen(
                         SectionTitle("Thông tin")
                         InfoRow(Icons.Filled.LocationOn, "Địa chỉ", fieldDetail.location)
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                        InfoRow(Icons.Filled.Phone, "Hotline", fieldDetail.phone)
+                        InfoRow(Icons.Filled.Phone, stringResource(R.string.field_detail_contact_label), hotline)
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                         InfoRow(Icons.Filled.Schedule, "Giờ hoạt động", fieldDetail.hours)
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
