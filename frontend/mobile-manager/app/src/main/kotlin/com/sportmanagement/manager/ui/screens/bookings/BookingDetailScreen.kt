@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Call
@@ -33,11 +34,13 @@ import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
@@ -47,6 +50,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -99,7 +103,10 @@ fun BookingDetailScreen(
     onPaymentConfirm: (String) -> Unit = {},
     onMessageCustomer: () -> Unit = {}
 ) {
+    val context = LocalContext.current
     var selectedTab by remember { mutableIntStateOf(0) }
+    var showCustomerContactSheet by remember { mutableStateOf(false) }
+    val customerContactSheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val tabs = listOf("THÔNG TIN", "KHÁCH HÀNG", "LỊCH SỬ")
 
     Column(
@@ -181,10 +188,45 @@ fun BookingDetailScreen(
         ) {
             when (selectedTab) {
                 0 -> infoTabContent(booking, onConfirm, onCancel, onEdit, onPaymentConfirm)
-                1 -> customerTabContent(booking, isStartingChat, onMessageCustomer)
+                1 -> customerTabContent(
+                    booking = booking,
+                    isStartingChat = isStartingChat,
+                    onMessageCustomer = onMessageCustomer,
+                    onCustomerContactClick = { showCustomerContactSheet = true }
+                )
                 2 -> historyTabContent(booking)
             }
             item { Spacer(Modifier.height(8.dp)) }
+        }
+
+        if (showCustomerContactSheet) {
+            ModalBottomSheet(
+                onDismissRequest = { showCustomerContactSheet = false },
+                sheetState = customerContactSheetState,
+                dragHandle = { BottomSheetDefaults.DragHandle() },
+                shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp)
+            ) {
+                CustomerContactSheetContent(
+                    booking = booking,
+                    isStartingChat = isStartingChat,
+                    onDismiss = { showCustomerContactSheet = false },
+                    onMessageCustomer = {
+                        showCustomerContactSheet = false
+                        onMessageCustomer()
+                    },
+                    onCallCustomer = {
+                        val phone = booking.customer.phone.trim()
+                        if (phone.isNotBlank()) {
+                            context.startActivity(
+                                Intent(Intent.ACTION_DIAL).apply {
+                                    data = Uri.parse("tel:$phone")
+                                }
+                            )
+                        }
+                        showCustomerContactSheet = false
+                    }
+                )
+            }
         }
     }
 }
@@ -364,11 +406,14 @@ private fun LazyListScope.infoTabContent(
 private fun LazyListScope.customerTabContent(
     booking: BookingItem,
     isStartingChat: Boolean,
-    onMessageCustomer: () -> Unit
+    onMessageCustomer: () -> Unit,
+    onCustomerContactClick: () -> Unit
 ) {
     item {
         val context = LocalContext.current
-        SectionCard {
+        SectionCard(
+            modifier = Modifier.clickable { onCustomerContactClick() }
+        ) {
             // Avatar + name row
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -528,6 +573,81 @@ private fun LazyListScope.customerTabContent(
                     value = formatVnd(booking.customer.totalSpend) + "đ"
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun CustomerContactSheetContent(
+    booking: BookingItem,
+    isStartingChat: Boolean,
+    onDismiss: () -> Unit,
+    onMessageCustomer: () -> Unit,
+    onCallCustomer: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .padding(bottom = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(
+            text = "Liên hệ khách hàng",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold
+        )
+        Text(
+            text = booking.customer.name,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        if (booking.isManagerCreated) {
+            OutlinedButton(
+                onClick = onCallCustomer,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = booking.customer.phone.isNotBlank()
+            ) {
+                Icon(Icons.Filled.Call, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("GỌI ĐIỆN")
+            }
+        } else {
+            Button(
+                onClick = onMessageCustomer,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !isStartingChat,
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+            ) {
+                if (isStartingChat) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        color = Color.White,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    Icon(Icons.Filled.Chat, contentDescription = null, modifier = Modifier.size(16.dp))
+                }
+                Spacer(Modifier.width(8.dp))
+                Text(if (isStartingChat) "Đang mở..." else "NHẮN TIN")
+            }
+
+            OutlinedButton(
+                onClick = onCallCustomer,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = booking.customer.phone.isNotBlank()
+            ) {
+                Icon(Icons.Filled.Call, contentDescription = null, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("GỌI ĐIỆN")
+            }
+        }
+
+        OutlinedButton(
+            onClick = onDismiss,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("ĐÓNG")
         }
     }
 }
@@ -695,9 +815,13 @@ private fun HistoryEventRow(event: BookingHistoryEvent, isLast: Boolean) {
 // ── Reusable components ───────────────────────────────────────────────────────
 
 @Composable
-private fun SectionCard(content: @Composable () -> Unit) {
+private fun SectionCard(
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit
+) {
     Box(
         modifier = Modifier
+            .then(modifier)
             .fillMaxWidth()
             .shadow(1.dp, RoundedCornerShape(14.dp))
             .clip(RoundedCornerShape(14.dp))

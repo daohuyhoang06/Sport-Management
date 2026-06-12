@@ -272,6 +272,6 @@ fun BookingDto.toBookingItem(): BookingItem {
         status = bookingStatus,
         isPaid = bookingStatus == BookingStatus.COMPLETED,
         notes = note ?: "",
-        isManagerCreated = managerCreated != null && managerCreated != 0 && managerCreated != false
+        isManagerCreated = managerCreated == 1
     )
 }

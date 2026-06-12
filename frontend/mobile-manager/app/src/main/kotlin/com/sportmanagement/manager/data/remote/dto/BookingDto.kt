@@ -19,7 +19,7 @@ data class BookingDto(
     @SerializedName("customer_phone") val customerPhone: String?,
     @SerializedName("court_code") val courtCode: String?,
     @SerializedName("court_name") val courtName: String?,
-    @SerializedName("manager_created") val managerCreated: Any? = null
+    @SerializedName("manager_created") val managerCreated: Int? = null
 )
 
 data class BookingActionResponse(

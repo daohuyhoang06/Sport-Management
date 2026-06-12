@@ -279,6 +279,12 @@ fun AddBookingScreen(
                         timeToMinutes(uiState.newBookingEnd) else -1
                     val maxEnd = if (startMin >= 0 && endMin < 0)
                         slotMaxEndMin(startMin, uiState.newBookingBookedRanges) else 22 * 60
+                    val availableStartSlots = remember(uiState.newBookingBookedRanges) {
+                        availableStartSlots(uiState.newBookingBookedRanges)
+                    }
+                    val availableEndSlots = remember(startMin, uiState.newBookingBookedRanges) {
+                        if (startMin >= 0) availableEndSlots(startMin, uiState.newBookingBookedRanges) else emptyList()
+                    }
 
                     val phaseHint = when {
                         uiState.newBookingStart.isBlank() -> "Chọn giờ bắt đầu"
@@ -286,28 +292,12 @@ fun AddBookingScreen(
                             "Chọn giờ kết thúc (trước ${slotFormatMinutes(maxEnd)})"
                         else -> "Đã chọn: ${uiState.newBookingStart} – ${uiState.newBookingEnd}"
                     }
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Icon(
-                            Icons.Filled.AccessTime,
-                            contentDescription = null,
-                            tint = if (uiState.newBookingEnd.isNotBlank())
-                                MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.outline,
-                            modifier = Modifier.size(15.dp)
-                        )
-                        Text(
-                            text = phaseHint,
-                            fontSize = 12.sp,
-                            color = if (uiState.newBookingEnd.isNotBlank())
-                                MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.outline,
-                            fontWeight = if (uiState.newBookingEnd.isNotBlank())
-                                FontWeight.SemiBold else FontWeight.Normal
-                        )
-                    }
+                    TimeRangeSummary(
+                        startTime = uiState.newBookingStart,
+                        endTime = uiState.newBookingEnd,
+                        phaseHint = phaseHint,
+                        maxEnd = maxEnd
+                    )
 
                     Spacer(Modifier.height(8.dp))
 
@@ -320,47 +310,36 @@ fun AddBookingScreen(
                         )
                     }
 
-                    // Legend
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    ) {
-                        LegendDot(color = MaterialTheme.colorScheme.errorContainer, label = "Đã đặt")
-                        LegendDot(color = MaterialTheme.colorScheme.primary, label = "Chọn")
-                        LegendDot(color = MaterialTheme.colorScheme.primaryContainer, label = "Trong khung")
-                    }
+                    TimeRailSection(
+                        title = "1. Chọn giờ bắt đầu",
+                        subtitle = if (uiState.newBookingDate.isBlank()) {
+                            "Chọn ngày và sân trước khi chọn giờ"
+                        } else {
+                            "Các giờ trống có thể chọn"
+                        },
+                        icon = Icons.Filled.AccessTime,
+                        chips = availableStartSlots,
+                        selectedValue = uiState.newBookingStart,
+                        emptyText = if (uiState.newBookingIsLoadingSlots) "Đang tải khung giờ..." else "Không còn giờ trống",
+                        onChipClick = onTimeSlotTapped
+                    )
 
-                    // 4-column slot grid
-                    val slotRows = ALL_TIME_SLOTS.chunked(4)
-                    Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                        slotRows.forEach { rowSlots ->
-                            Row(
-                                horizontalArrangement = Arrangement.spacedBy(5.dp),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                rowSlots.forEach { slot ->
-                                    val slotMin = timeToMinutes(slot)
-                                    val booked = isSlotBooked(slot, uiState.newBookingBookedRanges)
-                                    val isStart = slot == uiState.newBookingStart
-                                    val inRange = startMin >= 0 && endMin >= 0 &&
-                                        slotMin > startMin && slotMin < endMin
-                                    val disabledByRule = !isStart && !booked &&
-                                        startMin >= 0 && endMin < 0 &&
-                                        (slotMin <= startMin || slotMin > maxEnd)
-                                    SlotCell(
-                                        time = slot,
-                                        isStart = isStart,
-                                        inRange = inRange,
-                                        booked = booked,
-                                        disabled = disabledByRule,
-                                        onClick = { onTimeSlotTapped(slot) },
-                                        modifier = Modifier.weight(1f)
-                                    )
-                                }
-                                repeat(4 - rowSlots.size) { Spacer(Modifier.weight(1f)) }
-                            }
-                        }
-                    }
+                    Spacer(Modifier.height(12.dp))
+
+                    TimeRailSection(
+                        title = "2. Chọn giờ kết thúc",
+                        subtitle = if (uiState.newBookingStart.isBlank()) {
+                            "Chọn giờ bắt đầu trước"
+                        } else {
+                            "Kết thúc phải sau giờ bắt đầu và trước ${slotFormatMinutes(maxEnd)}"
+                        },
+                        icon = Icons.Filled.CheckCircle,
+                        chips = availableEndSlots,
+                        selectedValue = uiState.newBookingEnd,
+                        emptyText = if (uiState.newBookingStart.isBlank()) "Chưa có giờ bắt đầu" else "Không có giờ kết thúc phù hợp",
+                        enabled = uiState.newBookingStart.isNotBlank(),
+                        onChipClick = onTimeSlotTapped
+                    )
                 }
             }
 
@@ -482,51 +461,209 @@ fun AddBookingScreen(
 }
 
 @Composable
-private fun SlotCell(
-    time: String,
-    isStart: Boolean,
-    inRange: Boolean,
-    booked: Boolean,
-    disabled: Boolean,
-    onClick: () -> Unit,
+private fun TimeRangeSummary(
+    startTime: String,
+    endTime: String,
+    phaseHint: String,
+    maxEnd: Int
+) {
+    Card(
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLowest),
+        shape = RoundedCornerShape(14.dp),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Filled.AccessTime,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Text(
+                        text = phaseHint,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onBackground
+                    )
+                }
+                Text(
+                    text = if (startTime.isNotBlank() && endTime.isNotBlank())
+                        "${formatDurationLabel(startTime, endTime)}"
+                    else "Tối đa ${slotFormatMinutes(maxEnd)}",
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.outline
+                )
+            }
+
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                MiniTimeCard(
+                    label = "Bắt đầu",
+                    value = if (startTime.isBlank()) "Chưa chọn" else startTime,
+                    active = startTime.isNotBlank() && endTime.isBlank(),
+                    modifier = Modifier.weight(1f)
+                )
+                MiniTimeCard(
+                    label = "Kết thúc",
+                    value = if (endTime.isBlank()) "Chưa chọn" else endTime,
+                    active = endTime.isNotBlank(),
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MiniTimeCard(
+    label: String,
+    value: String,
+    active: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val bgColor = when {
-        isStart -> MaterialTheme.colorScheme.primary
-        inRange -> MaterialTheme.colorScheme.primaryContainer
-        booked -> MaterialTheme.colorScheme.errorContainer
-        disabled -> MaterialTheme.colorScheme.surfaceContainer
-        else -> MaterialTheme.colorScheme.surfaceContainerLowest
+    Column(
+            modifier = Modifier
+            .then(modifier)
+            .clip(RoundedCornerShape(12.dp))
+            .background(
+                if (active) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.55f)
+                else Color.White
+            )
+            .border(
+                1.dp,
+                if (active) MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
+                else MaterialTheme.colorScheme.outlineVariant,
+                RoundedCornerShape(12.dp)
+            )
+            .padding(horizontal = 12.dp, vertical = 10.dp)
+    ) {
+        Text(
+            text = label,
+            fontSize = 11.sp,
+            color = MaterialTheme.colorScheme.outline
+        )
+        Spacer(Modifier.height(2.dp))
+        Text(
+            text = value,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+            color = if (active) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground
+        )
     }
-    val textColor = when {
-        isStart -> Color.White
-        booked -> MaterialTheme.colorScheme.error
-        disabled -> MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)
-        inRange -> MaterialTheme.colorScheme.onPrimaryContainer
-        else -> MaterialTheme.colorScheme.onBackground
+}
+
+@Composable
+private fun TimeRailSection(
+    title: String,
+    subtitle: String,
+    icon: ImageVector,
+    chips: List<String>,
+    selectedValue: String,
+    emptyText: String,
+    onChipClick: (String) -> Unit,
+    enabled: Boolean = true
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(18.dp)
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                Text(
+                    text = subtitle,
+                    fontSize = 11.sp,
+                    color = MaterialTheme.colorScheme.outline
+                )
+            }
+        }
+
+        if (!enabled) {
+            EmptyTimeRail(text = emptyText)
+            return
+        }
+
+        if (chips.isEmpty()) {
+            EmptyTimeRail(text = emptyText)
+            return
+        }
+
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            items(chips) { time ->
+                val isSelected = time == selectedValue
+                TimeChip(
+                    time = time,
+                    isSelected = isSelected,
+                    onClick = { onChipClick(time) }
+                )
+            }
+        }
     }
-    val borderColor = when {
-        isStart -> MaterialTheme.colorScheme.primary
-        inRange -> MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
-        booked -> MaterialTheme.colorScheme.error.copy(alpha = 0.4f)
-        else -> MaterialTheme.colorScheme.outlineVariant
-    }
-    val canTap = !booked && !disabled
+}
+
+@Composable
+private fun TimeChip(
+    time: String,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
     Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(7.dp))
-            .background(bgColor)
-            .border(1.dp, borderColor, RoundedCornerShape(7.dp))
-            .then(if (canTap) Modifier.clickable { onClick() } else Modifier)
-            .padding(vertical = 9.dp),
-        contentAlignment = Alignment.Center
+        modifier = Modifier
+            .clip(RoundedCornerShape(999.dp))
+            .background(
+                if (isSelected) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.surfaceContainerLowest
+            )
+            .border(
+                1.dp,
+                if (isSelected) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.outlineVariant,
+                RoundedCornerShape(999.dp)
+            )
+            .clickable { onClick() }
+            .padding(horizontal = 14.dp, vertical = 10.dp)
     ) {
         Text(
             text = time,
-            fontSize = 11.sp,
-            fontWeight = if (isStart) FontWeight.Bold else FontWeight.Normal,
-            color = textColor,
+            fontSize = 13.sp,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+            color = if (isSelected) Color.White else MaterialTheme.colorScheme.onBackground,
             textAlign = TextAlign.Center
+        )
+    }
+}
+
+@Composable
+private fun EmptyTimeRail(text: String) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerLowest)
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp))
+            .padding(horizontal = 14.dp, vertical = 16.dp),
+        contentAlignment = Alignment.CenterStart
+    ) {
+        Text(
+            text = text,
+            fontSize = 13.sp,
+            color = MaterialTheme.colorScheme.outline
         )
     }
 }
@@ -630,6 +767,30 @@ private fun isSlotBooked(slotTime: String, ranges: List<Pair<Int, Int>>): Boolea
 
 private fun slotMaxEndMin(startMin: Int, ranges: List<Pair<Int, Int>>): Int =
     ranges.filter { (bs, _) -> bs > startMin }.minOfOrNull { (bs, _) -> bs } ?: (22 * 60)
+
+private fun availableStartSlots(ranges: List<Pair<Int, Int>>): List<String> =
+    ALL_TIME_SLOTS.filterNot { isSlotBooked(it, ranges) }
+
+private fun availableEndSlots(startMin: Int, ranges: List<Pair<Int, Int>>): List<String> {
+    val maxEnd = slotMaxEndMin(startMin, ranges)
+    return ALL_TIME_SLOTS.filter { slot ->
+        val min = timeToMinutes(slot)
+        min > startMin && min <= maxEnd && !isSlotBooked(slot, ranges)
+    }
+}
+
+private fun formatDurationLabel(startTime: String, endTime: String): String {
+    val startMin = timeToMinutes(startTime)
+    val endMin = timeToMinutes(endTime)
+    val duration = (endMin - startMin).coerceAtLeast(0)
+    val hours = duration / 60
+    val minutes = duration % 60
+    return when {
+        hours > 0 && minutes > 0 -> "${hours}h ${minutes}p"
+        hours > 0 -> "${hours}h"
+        else -> "${minutes}p"
+    }
+}
 
 private fun slotFormatMinutes(totalMin: Int): String =
     "%02d:%02d".format(totalMin / 60, totalMin % 60)
