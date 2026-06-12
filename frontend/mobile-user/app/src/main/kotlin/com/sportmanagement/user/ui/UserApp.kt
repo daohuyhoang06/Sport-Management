@@ -296,7 +296,8 @@ fun UserApp(
         showSupportFaqScreen -> Color.Transparent
         showSettingsScreen -> Color.Transparent
         showBookingScreen || showBookingPaymentScreen || showBookingConfirmationScreen -> Color.Transparent
-        showBookingDetailScreen || showConversationScreen || showNotificationDetailScreen -> MaterialTheme.colorScheme.surface
+        showConversationScreen -> Color.White
+        showBookingDetailScreen || showNotificationDetailScreen -> MaterialTheme.colorScheme.surface
         uiState.selectedTab == UserTab.Home || uiState.selectedTab == UserTab.Map || uiState.selectedTab == UserTab.Inbox || uiState.selectedTab == UserTab.Profile -> Color.Transparent
         else -> MaterialTheme.colorScheme.surface
     }
@@ -311,7 +312,6 @@ fun UserApp(
         !showBookingConfirmationScreen &&
         !showBookingPaymentScreen &&
         !showBookingDetailScreen &&
-        !showConversationScreen &&
         !showNotificationDetailScreen &&
         !showBookingHistoryScreen &&
         uiState.selectedTab != UserTab.Home &&
