@@ -1,5 +1,6 @@
 ﻿import sequelize from "../../config/database.js";
 import bcrypt from "bcrypt";
+import { ACTIVE_BOOKING_STATUS_CONDITION } from "../bookingSlotService.js";
 
 const latestPaymentJoin = `
       LEFT JOIN payments pay ON pay.payment_id = (
@@ -14,6 +15,55 @@ const latestPaymentJoin = `
         ORDER BY p2.payment_id DESC
         LIMIT 1
       )`;
+
+const findBookingSlotConflict = async ({
+  transaction = null,
+  fieldId,
+  courtId,
+  startTime,
+  endTime,
+}) => {
+  const [slotConflicts] = await sequelize.query(
+    `SELECT bs.booking_slot_id
+     FROM booking_slots bs
+     INNER JOIN bookings b ON b.booking_id = bs.booking_id
+     WHERE bs.field_id = ?
+       AND (? IS NULL OR bs.court_id = ? OR bs.court_id IS NULL)
+       AND bs.start_time < ?
+       AND bs.end_time > ?
+       AND ${ACTIVE_BOOKING_STATUS_CONDITION}
+     LIMIT 1
+     FOR UPDATE`,
+    {
+      replacements: [fieldId, courtId, courtId, endTime, startTime],
+      transaction,
+    }
+  );
+  if (slotConflicts.length > 0) return true;
+
+  const [legacyConflicts] = await sequelize.query(
+    `SELECT b.booking_id
+     FROM bookings b
+     WHERE b.field_id = ?
+       AND (? IS NULL OR b.court_id = ? OR b.court_id IS NULL)
+       AND b.start_time < ?
+       AND b.end_time > ?
+       AND ${ACTIVE_BOOKING_STATUS_CONDITION}
+       AND NOT EXISTS (
+         SELECT 1
+         FROM booking_slots bs
+         WHERE bs.booking_id = b.booking_id
+       )
+     LIMIT 1
+     FOR UPDATE`,
+    {
+      replacements: [fieldId, courtId, courtId, endTime, startTime],
+      transaction,
+    }
+  );
+
+  return legacyConflicts.length > 0;
+};
 
 /**
  * Get all bookings for manager's fields
@@ -57,7 +107,7 @@ export const getManagerBookingsService = async (managerId, filters = {}) => {
         b.field_id,
         b.customer_id,
         b.court_id,
-        NULL AS created_at,
+        DATE_FORMAT(CONVERT_TZ(b.created_at, '+00:00', '+07:00'), '%Y-%m-%d %H:%i:%s') AS created_at,
         b.start_time,
         b.end_time,
         b.status,
@@ -109,7 +159,7 @@ export const getManagerBookingByIdService = async (managerId, bookingId) => {
         b.field_id,
         b.customer_id,
         b.court_id,
-        NULL AS created_at,
+        DATE_FORMAT(CONVERT_TZ(b.created_at, '+00:00', '+07:00'), '%Y-%m-%d %H:%i:%s') AS created_at,
         b.start_time,
         b.end_time,
         b.status,
@@ -211,72 +261,134 @@ export const createBookingService = async (managerId, data) => {
   const start_time = toMysqlDatetime(data.start_time);
   const end_time   = toMysqlDatetime(data.end_time);
 
-  // Xác nhận field thuộc manager
-  const [[field]] = await sequelize.query(
-    'SELECT field_id, slot_price, slot_minutes FROM fields WHERE field_id = ? AND manager_id = ?',
-    { replacements: [field_id, managerId] }
-  );
-  if (!field) throw new Error('Field không tồn tại hoặc không có quyền');
-
-  const [[blockedConflict]] = await sequelize.query(
-    `SELECT slot_id
-     FROM field_blocked_slots
-     WHERE field_id = ?
-       AND block_date = DATE(?)
-       AND start_time < TIME(?)
-       AND end_time > TIME(?)
-     LIMIT 1`,
-    { replacements: [field_id, start_time, end_time, start_time] }
-  );
-  if (blockedConflict) {
-    throw new Error('Khung giờ này đã bị khóa bởi quản lý');
+  if (!start_time || !end_time || new Date(end_time) <= new Date(start_time)) {
+    throw new Error('Khung giờ đặt sân không hợp lệ');
   }
 
-  // Tìm hoặc tạo customer theo phone
-  let customerId = null;
-  if (customer_phone) {
-    const [[existing]] = await sequelize.query(
-      'SELECT person_id FROM person WHERE phone = ? LIMIT 1',
-      { replacements: [customer_phone] }
-    );
-    if (existing) {
-      customerId = existing.person_id;
-    } else if (customer_name) {
-      // Tạo walk-in customer — username unique theo phone, password random (không dùng để login)
-      const fakePassword = await bcrypt.hash(`walkin_${customer_phone}_${Date.now()}`, 10);
-      const username = `walkin_${customer_phone}`;
-      const [insertPerson] = await sequelize.query(
-        `INSERT INTO person (person_name, phone, role, username, password) VALUES (?, ?, 'user', ?, ?)`,
-        { replacements: [customer_name, customer_phone, username, fakePassword] }
-      );
-      customerId = insertPerson?.insertId || insertPerson;
-    }
-  }
-
-  // Tính giá nếu không truyền vào
+  let newBookingId = null;
   let finalPrice = price;
-  if (!finalPrice && field.slot_price && start_time && end_time) {
-    const start = new Date(start_time);
-    const end = new Date(end_time);
-    const minutes = (end - start) / 60000;
-    const slots = Math.ceil(minutes / (field.slot_minutes || 60));
-    finalPrice = slots * parseFloat(field.slot_price);
-  }
 
-  const [result] = await sequelize.query(
-    `INSERT INTO bookings (field_id, court_id, customer_id, manager_id, start_time, end_time, status, price, note)
-     VALUES (?, ?, ?, ?, ?, ?, 'confirmed', ?, ?)`,
-    { replacements: [field_id, court_id ?? null, customerId, managerId, start_time, end_time, finalPrice ?? null, note ?? null] }
-  );
+  await sequelize.transaction(async (transaction) => {
+    const [[field]] = await sequelize.query(
+      `SELECT field_id, slot_price, slot_minutes
+       FROM fields
+       WHERE field_id = ? AND manager_id = ?
+       FOR UPDATE`,
+      {
+        replacements: [field_id, managerId],
+        transaction,
+      }
+    );
+    if (!field) throw new Error('Field không tồn tại hoặc không có quyền');
 
-  const newBookingId = result?.insertId || result;
+    const [[blockedConflict]] = await sequelize.query(
+      `SELECT slot_id
+       FROM field_blocked_slots
+       WHERE field_id = ?
+         AND block_date = DATE(?)
+         AND start_time < TIME(?)
+         AND end_time > TIME(?)
+       LIMIT 1
+       FOR UPDATE`,
+      {
+        replacements: [field_id, start_time, end_time, start_time],
+        transaction,
+      }
+    );
+    if (blockedConflict) {
+      throw new Error('Khung giờ này đã bị khóa bởi quản lý');
+    }
 
-  // Ghi history
-  await sequelize.query(
-    `INSERT INTO booking_history (booking_id, action, from_status, to_status, note, author)
-     VALUES (?, 'Tạo đặt sân', null, 'confirmed', ?, 'manager')`,
-    { replacements: [newBookingId, note || null] }
-  );
+    const hasBookedConflict = await findBookingSlotConflict({
+      transaction,
+      fieldId: field_id,
+      courtId: court_id ?? null,
+      startTime: start_time,
+      endTime: end_time,
+    });
+    if (hasBookedConflict) {
+      throw new Error('Khung giờ này đã có người đặt');
+    }
+
+    let customerId = null;
+    if (customer_phone) {
+      const [[existing]] = await sequelize.query(
+        'SELECT person_id FROM person WHERE phone = ? LIMIT 1',
+        {
+          replacements: [customer_phone],
+          transaction,
+        }
+      );
+      if (existing) {
+        customerId = existing.person_id;
+      } else if (customer_name) {
+        // Tạo walk-in customer — username unique theo phone, password random (không dùng để login)
+        const fakePassword = await bcrypt.hash(`walkin_${customer_phone}_${Date.now()}`, 10);
+        const username = `walkin_${customer_phone}`;
+        const [insertPerson] = await sequelize.query(
+          `INSERT INTO person (person_name, phone, role, username, password) VALUES (?, ?, 'user', ?, ?)`,
+          {
+            replacements: [customer_name, customer_phone, username, fakePassword],
+            transaction,
+          }
+        );
+        customerId = insertPerson?.insertId || insertPerson;
+      }
+    }
+
+    if (!finalPrice && field.slot_price && start_time && end_time) {
+      const start = new Date(start_time);
+      const end = new Date(end_time);
+      const minutes = (end - start) / 60000;
+      const slots = Math.ceil(minutes / (field.slot_minutes || 60));
+      finalPrice = slots * parseFloat(field.slot_price);
+    }
+
+    const [result] = await sequelize.query(
+      `INSERT INTO bookings (field_id, court_id, customer_id, manager_id, start_time, end_time, status, price, note)
+       VALUES (?, ?, ?, ?, ?, ?, 'confirmed', ?, ?)`,
+      {
+        replacements: [
+          field_id,
+          court_id ?? null,
+          customerId,
+          managerId,
+          start_time,
+          end_time,
+          finalPrice ?? null,
+          note ?? null,
+        ],
+        transaction,
+      }
+    );
+
+    newBookingId = result?.insertId || result;
+
+    await sequelize.query(
+      `INSERT INTO booking_slots (booking_id, field_id, court_id, start_time, end_time, price)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      {
+        replacements: [
+          newBookingId,
+          field_id,
+          court_id ?? null,
+          start_time,
+          end_time,
+          finalPrice ?? 0,
+        ],
+        transaction,
+      }
+    );
+
+    await sequelize.query(
+      `INSERT INTO booking_history (booking_id, action, from_status, to_status, note, author)
+       VALUES (?, 'Tạo đặt sân', null, 'confirmed', ?, 'manager')`,
+      {
+        replacements: [newBookingId, note || null],
+        transaction,
+      }
+    );
+  });
 
   const [[booking]] = await sequelize.query(
     `SELECT b.*, f.field_name, f.location,
@@ -307,14 +419,44 @@ export const getCourtAvailabilityService = async (managerId, fieldId, courtId, d
 
   const [booked] = await sequelize.query(
     `SELECT
-       TIME_FORMAT(start_time, '%H:%i') AS start_time,
-       TIME_FORMAT(end_time,   '%H:%i') AS end_time
-     FROM bookings
-     WHERE court_id = ?
-       AND DATE(start_time) = ?
-       AND status NOT IN ('cancelled', 'rejected')
-     ORDER BY start_time ASC`,
-    { replacements: [courtId, date] }
+       TIME_FORMAT(booked_ranges.start_time, '%H:%i') AS start_time,
+       TIME_FORMAT(booked_ranges.end_time,   '%H:%i') AS end_time
+     FROM (
+       SELECT bs.start_time, bs.end_time
+       FROM booking_slots bs
+       INNER JOIN bookings b ON b.booking_id = bs.booking_id
+       WHERE bs.field_id = ?
+         AND (? IS NULL OR bs.court_id = ? OR bs.court_id IS NULL)
+         AND DATE(bs.start_time) = ?
+         AND ${ACTIVE_BOOKING_STATUS_CONDITION}
+
+       UNION ALL
+
+       SELECT b.start_time, b.end_time
+       FROM bookings b
+       WHERE b.field_id = ?
+         AND (? IS NULL OR b.court_id = ? OR b.court_id IS NULL)
+         AND DATE(b.start_time) = ?
+         AND ${ACTIVE_BOOKING_STATUS_CONDITION}
+         AND NOT EXISTS (
+           SELECT 1
+           FROM booking_slots bs
+           WHERE bs.booking_id = b.booking_id
+         )
+     ) booked_ranges
+     ORDER BY booked_ranges.start_time ASC`,
+    {
+      replacements: [
+        fieldId,
+        courtId,
+        courtId,
+        date,
+        fieldId,
+        courtId,
+        courtId,
+        date,
+      ],
+    }
   );
   return booked;
 };

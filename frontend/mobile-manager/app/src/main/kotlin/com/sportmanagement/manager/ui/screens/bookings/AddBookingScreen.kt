@@ -67,6 +67,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sportmanagement.manager.ui.state.BookingsUiState
 import java.util.Calendar
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -87,6 +88,22 @@ fun AddBookingScreen(
     val datePickerState = rememberDatePickerState(
         initialSelectedDateMillis = System.currentTimeMillis()
     )
+    val selectedField = uiState.newBookingFields.firstOrNull { it.fieldId == uiState.newBookingSelectedFieldId }
+    val slotStepMinutes = remember(selectedField?.slotMinutes) {
+        normalizeSlotMinutes(selectedField?.slotMinutes)
+    }
+    val openMinutes = remember(selectedField?.openTime) {
+        parseScheduleStartMinutes(selectedField?.openTime)
+    }
+    val closeMinutes = remember(selectedField?.closeTime, openMinutes) {
+        parseScheduleEndMinutes(selectedField?.closeTime, openMinutes)
+    }
+    val allTimeSlots = remember(openMinutes, closeMinutes, slotStepMinutes) {
+        buildTimeSlots(openMinutes, closeMinutes, slotStepMinutes)
+    }
+    val minStartMinutes = remember(uiState.newBookingDate, slotStepMinutes) {
+        computeMinStartMinutes(uiState.newBookingDate, slotStepMinutes)
+    }
 
     if (showDatePicker) {
         DatePickerDialog(
@@ -278,12 +295,40 @@ fun AddBookingScreen(
                     val endMin = if (uiState.newBookingEnd.isNotBlank())
                         timeToMinutes(uiState.newBookingEnd) else -1
                     val maxEnd = if (startMin >= 0 && endMin < 0)
-                        slotMaxEndMin(startMin, uiState.newBookingBookedRanges) else 22 * 60
-                    val availableStartSlots = remember(uiState.newBookingBookedRanges) {
-                        availableStartSlots(uiState.newBookingBookedRanges)
+                        slotMaxEndMin(startMin, uiState.newBookingBookedRanges, closeMinutes) else closeMinutes
+                    val availableStartSlots = remember(
+                        uiState.newBookingBookedRanges,
+                        allTimeSlots,
+                        slotStepMinutes,
+                        closeMinutes,
+                        minStartMinutes
+                    ) {
+                        availableStartSlots(
+                            allSlots = allTimeSlots,
+                            ranges = uiState.newBookingBookedRanges,
+                            slotStepMinutes = slotStepMinutes,
+                            closeMinutes = closeMinutes,
+                            minStartMinutes = minStartMinutes
+                        )
                     }
-                    val availableEndSlots = remember(startMin, uiState.newBookingBookedRanges) {
-                        if (startMin >= 0) availableEndSlots(startMin, uiState.newBookingBookedRanges) else emptyList()
+                    val availableEndSlots = remember(
+                        startMin,
+                        uiState.newBookingBookedRanges,
+                        allTimeSlots,
+                        slotStepMinutes,
+                        closeMinutes
+                    ) {
+                        if (startMin >= 0) {
+                            availableEndSlots(
+                                startMin = startMin,
+                                allSlots = allTimeSlots,
+                                ranges = uiState.newBookingBookedRanges,
+                                slotStepMinutes = slotStepMinutes,
+                                closeMinutes = closeMinutes
+                            )
+                        } else {
+                            emptyList()
+                        }
                     }
 
                     val phaseHint = when {
@@ -746,37 +791,99 @@ private fun PriceLine(
     }
 }
 
-private val ALL_TIME_SLOTS: List<String> = buildList {
-    var minutes = 6 * 60
-    while (minutes <= 22 * 60) {
-        add("%02d:%02d".format(minutes / 60, minutes % 60))
-        minutes += 30
-    }
-}
-
 private fun timeToMinutes(time: String): Int {
     val parts = time.split(":")
     return (parts.getOrNull(0)?.toIntOrNull() ?: 0) * 60 + (parts.getOrNull(1)?.toIntOrNull() ?: 0)
 }
 
-private fun isSlotBooked(slotTime: String, ranges: List<Pair<Int, Int>>): Boolean {
-    val m = timeToMinutes(slotTime)
-    val end = m + 30
-    return ranges.any { (bs, be) -> m < be && end > bs }
+private fun normalizeSlotMinutes(slotMinutes: Int?): Int {
+    val raw = slotMinutes ?: 60
+    return if (raw > 0) raw else 60
 }
 
-private fun slotMaxEndMin(startMin: Int, ranges: List<Pair<Int, Int>>): Int =
-    ranges.filter { (bs, _) -> bs > startMin }.minOfOrNull { (bs, _) -> bs } ?: (22 * 60)
+private fun parseScheduleStartMinutes(raw: String?): Int {
+    val parsed = raw?.takeIf { it.isNotBlank() }?.let(::timeToMinutes) ?: (6 * 60)
+    return parsed.coerceIn(0, (24 * 60) - 1)
+}
 
-private fun availableStartSlots(ranges: List<Pair<Int, Int>>): List<String> =
-    ALL_TIME_SLOTS.filterNot { isSlotBooked(it, ranges) }
+private fun parseScheduleEndMinutes(raw: String?, openMinutes: Int): Int {
+    val parsed = raw?.takeIf { it.isNotBlank() }?.let(::timeToMinutes) ?: (22 * 60)
+    return if (parsed > openMinutes) parsed.coerceAtMost(24 * 60) else 22 * 60
+}
 
-private fun availableEndSlots(startMin: Int, ranges: List<Pair<Int, Int>>): List<String> {
-    val maxEnd = slotMaxEndMin(startMin, ranges)
-    return ALL_TIME_SLOTS.filter { slot ->
-        val min = timeToMinutes(slot)
-        min > startMin && min <= maxEnd && !isSlotBooked(slot, ranges)
+private fun buildTimeSlots(openMinutes: Int, closeMinutes: Int, stepMinutes: Int): List<String> {
+    if (closeMinutes <= openMinutes) return emptyList()
+    return buildList {
+        var minutes = openMinutes
+        while (minutes <= closeMinutes) {
+            add(slotFormatMinutes(minutes))
+            minutes += stepMinutes
+        }
     }
+}
+
+private fun overlapsBookedRange(
+    startMinutes: Int,
+    endMinutes: Int,
+    ranges: List<Pair<Int, Int>>
+): Boolean = ranges.any { (bookedStart, bookedEnd) ->
+    startMinutes < bookedEnd && endMinutes > bookedStart
+}
+
+private fun slotMaxEndMin(
+    startMin: Int,
+    ranges: List<Pair<Int, Int>>,
+    closeMinutes: Int
+): Int = minOf(
+    closeMinutes,
+    ranges.filter { (bookedStart, _) -> bookedStart > startMin }
+        .minOfOrNull { (bookedStart, _) -> bookedStart }
+        ?: closeMinutes
+)
+
+private fun availableStartSlots(
+    allSlots: List<String>,
+    ranges: List<Pair<Int, Int>>,
+    slotStepMinutes: Int,
+    closeMinutes: Int,
+    minStartMinutes: Int
+): List<String> = allSlots.filter { slot ->
+    val startMin = timeToMinutes(slot)
+    val endMin = startMin + slotStepMinutes
+    startMin >= minStartMinutes &&
+        endMin <= closeMinutes &&
+        !overlapsBookedRange(startMin, endMin, ranges)
+}
+
+private fun availableEndSlots(
+    startMin: Int,
+    allSlots: List<String>,
+    ranges: List<Pair<Int, Int>>,
+    slotStepMinutes: Int,
+    closeMinutes: Int
+): List<String> {
+    val maxEnd = slotMaxEndMin(startMin, ranges, closeMinutes)
+    return allSlots.filter { slot ->
+        val endMin = timeToMinutes(slot)
+        endMin >= startMin + slotStepMinutes &&
+            endMin <= maxEnd &&
+            !overlapsBookedRange(startMin, endMin, ranges)
+    }
+}
+
+private fun computeMinStartMinutes(selectedDateText: String, slotStepMinutes: Int): Int {
+    if (selectedDateText.isBlank() || selectedDateText != todayDisplayDate()) return 0
+    val calendar = Calendar.getInstance()
+    val currentMinutes = calendar.get(Calendar.HOUR_OF_DAY) * 60 + calendar.get(Calendar.MINUTE)
+    return ((currentMinutes + slotStepMinutes - 1) / slotStepMinutes) * slotStepMinutes
+}
+
+private fun todayDisplayDate(): String {
+    val calendar = Calendar.getInstance()
+    val day = calendar.get(Calendar.DAY_OF_MONTH)
+    val month = calendar.get(Calendar.MONTH) + 1
+    val year = calendar.get(Calendar.YEAR)
+    return String.format(Locale.US, "%02d/%02d/%04d", day, month, year)
 }
 
 private fun formatDurationLabel(startTime: String, endTime: String): String {

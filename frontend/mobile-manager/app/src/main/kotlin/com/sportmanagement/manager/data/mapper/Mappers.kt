@@ -275,7 +275,7 @@ private fun normalizePaymentMethodLabel(value: String?): String {
 fun BookingDto.toBookingItem(): BookingItem {
     val startDate = parseBookingDateTime(startTime)
     val endDate = parseBookingDateTime(endTime)
-    val createdAtDate = parseIso(createdAt) ?: parseBookingDateTime(createdAt)
+    val createdAtDate = parseBookingDateTime(createdAt) ?: parseIso(createdAt)
     val bookingPaymentStatus = paymentStatus.orEmpty()
     val bookingPaymentMethod = normalizePaymentMethodLabel(paymentMethod)
         .ifBlank { if (status.equals("confirmed", ignoreCase = true) && managerCreated != 1) "MoMo" else "" }
