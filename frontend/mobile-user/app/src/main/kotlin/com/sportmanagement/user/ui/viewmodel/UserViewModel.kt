@@ -88,12 +88,22 @@ class UserViewModel(
                 repository.login(identifier = identifier, password = password)
             }.onSuccess { profile ->
                 applyPreferredSports(profile.preferredSportTypeKeys)
+                val sportCategories = repository.getSportCategories()
+                homeSearchFilterOptions = repository.getHomeSearchFilterOptions()
+                val filteredSports = filterSportCategoriesByPreferred(sportCategories)
                 _uiState.update { current ->
                     current.copy(
+                        selectedTab = UserTab.Home,
                         isAuthenticated = true,
                         isAuthLoading = false,
                         authError = null,
-                        profile = profile
+                        profile = profile,
+                        homeFields = applyHomeSearchCriteria(current.activeHomeSearchCriteria),
+                        nearbyFields = filterFieldsByPreferredSports(allNearbyFields),
+                        fieldSearchResults = filterFieldsByPreferredSports(current.fieldSearchResults),
+                        sportCategories = filteredSports,
+                        mapCategories = filteredSports.map { it.name },
+                        homeSearchFilterOptions = filterHomeSearchFilterOptions(homeSearchFilterOptions)
                     )
                 }
                 refreshFavoriteFields()
@@ -118,12 +128,22 @@ class UserViewModel(
                 repository.loginWithGoogle(idToken)
             }.onSuccess { profile ->
                 applyPreferredSports(profile.preferredSportTypeKeys)
+                val sportCategories = repository.getSportCategories()
+                homeSearchFilterOptions = repository.getHomeSearchFilterOptions()
+                val filteredSports = filterSportCategoriesByPreferred(sportCategories)
                 _uiState.update { current ->
                     current.copy(
+                        selectedTab = UserTab.Home,
                         isAuthenticated = true,
                         isAuthLoading = false,
                         authError = null,
-                        profile = profile
+                        profile = profile,
+                        homeFields = applyHomeSearchCriteria(current.activeHomeSearchCriteria),
+                        nearbyFields = filterFieldsByPreferredSports(allNearbyFields),
+                        fieldSearchResults = filterFieldsByPreferredSports(current.fieldSearchResults),
+                        sportCategories = filteredSports,
+                        mapCategories = filteredSports.map { it.name },
+                        homeSearchFilterOptions = filterHomeSearchFilterOptions(homeSearchFilterOptions)
                     )
                 }
                 refreshFavoriteFields()
@@ -170,9 +190,11 @@ class UserViewModel(
                         preferredSportTypeKeys
                     }
                 )
+                homeSearchFilterOptions = repository.getHomeSearchFilterOptions()
                 _uiState.update { current ->
                     val filteredSports = filterSportCategoriesByPreferred(current.sportCategories)
                     current.copy(
+                        selectedTab = UserTab.Home,
                         isAuthenticated = true,
                         isAuthLoading = false,
                         authError = null,
@@ -198,13 +220,33 @@ class UserViewModel(
 
     fun logout() {
         repository.logout()
+        preferredSportTypes = emptySet()
         _uiState.update { current ->
             current.copy(
+                selectedTab = UserTab.Home,
                 isAuthenticated = false,
                 authError = null,
                 profile = UserUiState().profile,
-                favoriteFields = emptyList()
+                favoriteFields = emptyList(),
+                homeFields = applyHomeSearchCriteria(current.activeHomeSearchCriteria),
+                nearbyFields = filterFieldsByPreferredSports(allNearbyFields),
+                fieldSearchResults = filterFieldsByPreferredSports(current.fieldSearchResults),
+                homeSearchFilterOptions = filterHomeSearchFilterOptions(homeSearchFilterOptions)
             )
+        }
+        viewModelScope.launch {
+            val sportCategories = repository.getSportCategories()
+            homeSearchFilterOptions = repository.getHomeSearchFilterOptions()
+            _uiState.update { current ->
+                current.copy(
+                    sportCategories = sportCategories,
+                    mapCategories = sportCategories.map { it.name },
+                    homeFields = applyHomeSearchCriteria(current.activeHomeSearchCriteria),
+                    nearbyFields = filterFieldsByPreferredSports(allNearbyFields),
+                    fieldSearchResults = filterFieldsByPreferredSports(current.fieldSearchResults),
+                    homeSearchFilterOptions = filterHomeSearchFilterOptions(homeSearchFilterOptions)
+                )
+            }
         }
     }
 

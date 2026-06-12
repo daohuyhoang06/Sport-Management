@@ -23,10 +23,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -124,6 +126,9 @@ fun ChatbotOverlay(
         var localAnchorX by remember { mutableFloatStateOf(uiState.buttonAnchorX) }
         var localAnchorY by remember { mutableFloatStateOf(uiState.buttonAnchorY) }
         var isDragging by remember { mutableStateOf(false) }
+        var windowOffsetX by remember { mutableFloatStateOf(0f) }
+        var windowOffsetY by remember { mutableFloatStateOf(0f) }
+        var hasDraggedWindow by remember { mutableStateOf(false) }
 
         LaunchedEffect(uiState.buttonAnchorX, uiState.buttonAnchorY) {
             if (!isDragging) {
@@ -141,6 +146,17 @@ fun ChatbotOverlay(
 
         val buttonOffsetX = minXPx + (travelXPx * localAnchorX)
         val buttonOffsetY = minYPx + (travelYPx * localAnchorY)
+        val windowWidthPx = with(density) {
+            (maxWidth * windowWidthFraction).toPx()
+        }
+        val windowMaxHeightPx = with(density) { maxWindowHeight.toPx() }
+        val windowTravelXPx = (with(density) { maxWidth.toPx() } - windowWidthPx - (minXPx * 2f))
+            .coerceAtLeast(0f)
+        val windowTravelYPx =
+            (with(density) { maxHeight.toPx() } - windowMaxHeightPx - minYPx - with(density) { bottomPadding.toPx() })
+                .coerceAtLeast(0f)
+        val imeBottomPx = WindowInsets.ime.getBottom(density).toFloat()
+        val keyboardLiftPx = if (hasDraggedWindow) 0f else imeBottomPx
 
         AnimatedVisibility(
             visible = uiState.isWindowOpen,
@@ -158,6 +174,12 @@ fun ChatbotOverlay(
             ChatbotWindow(
                 state = uiState,
                 modifier = Modifier
+                    .offset {
+                        IntOffset(
+                            x = windowOffsetX.roundToInt(),
+                            y = (windowOffsetY - keyboardLiftPx).roundToInt()
+                        )
+                    }
                     .fillMaxWidth(windowWidthFraction)
                     .widthIn(min = maxWidth * if (isLandscape) 0.34f else 0.72f)
                     .heightIn(min = minWindowHeight, max = maxWindowHeight),
@@ -165,7 +187,12 @@ fun ChatbotOverlay(
                 onDraftChanged = onDraftChanged,
                 onSendMessage = onSendMessage,
                 onRetryMessage = onRetryMessage,
-                onDismissError = onDismissError
+                onDismissError = onDismissError,
+                onWindowDrag = { dragAmount ->
+                    hasDraggedWindow = true
+                    windowOffsetX = (windowOffsetX + dragAmount.x).coerceIn(-windowTravelXPx, 0f)
+                    windowOffsetY = (windowOffsetY + dragAmount.y).coerceIn(-windowTravelYPx, 0f)
+                }
             )
         }
 
@@ -295,11 +322,12 @@ private fun ChatbotWindow(
     onDraftChanged: (String) -> Unit,
     onSendMessage: () -> Unit,
     onRetryMessage: (String) -> Unit,
-    onDismissError: () -> Unit
+    onDismissError: () -> Unit,
+    onWindowDrag: (androidx.compose.ui.geometry.Offset) -> Unit
 ) {
     val listState = rememberLazyListState()
-    val inputMinHeight = AppCtaWideHeight - AppFieldHorizontalPadding
-    val sendButtonSize = inputMinHeight * 0.78f
+    val inputMinHeight = AppCtaWideHeight - (AppFieldHorizontalPadding / 2)
+    val sendButtonSize = inputMinHeight * 0.84f
 
     LaunchedEffect(state.messages.size, state.isLoading, state.isWindowOpen) {
         if (!state.isWindowOpen) return@LaunchedEffect
@@ -328,6 +356,12 @@ private fun ChatbotWindow(
                             colors = listOf(AppHeaderGradientStart, AppHeaderGradientEnd)
                         )
                     )
+                    .pointerInput(Unit) {
+                        detectDragGestures { change, dragAmount ->
+                            change.consume()
+                            onWindowDrag(dragAmount)
+                        }
+                    }
                     .padding(
                         horizontal = AppFieldHorizontalPadding,
                         vertical = AppFieldVerticalPadding
@@ -441,35 +475,35 @@ private fun ChatbotWindow(
                         )
                     }
 
-                    Surface(
-                        shape = RoundedCornerShape(AppSearchCornerRadius),
-                        color = MaterialTheme.colorScheme.surface,
-                        shadowElevation = 10.dp,
-                        tonalElevation = 0.dp
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .navigationBarsPadding(),
+                        horizontalArrangement = Arrangement.spacedBy(AppCompactCornerRadius * 1.5f),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(
+                        Surface(
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .defaultMinSize(
-                                    minHeight = inputMinHeight
-                                )
-                                .padding(
-                                    start = AppFieldHorizontalPadding,
-                                    end = AppCompactCornerRadius * 2,
-                                    top = AppCompactCornerRadius,
-                                    bottom = AppCompactCornerRadius
-                                ),
-                            horizontalArrangement = Arrangement.spacedBy(AppCompactCornerRadius),
-                            verticalAlignment = Alignment.CenterVertically
+                                .weight(1f)
+                                .defaultMinSize(minHeight = inputMinHeight),
+                            shape = RoundedCornerShape(AppSearchCornerRadius),
+                            color = MaterialTheme.colorScheme.surface,
+                            shadowElevation = 10.dp,
+                            tonalElevation = 0.dp
                         ) {
                             Box(
-                                modifier = Modifier.weight(1f),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(
+                                        horizontal = AppFieldHorizontalPadding,
+                                        vertical = AppCompactCornerRadius
+                                    ),
                                 contentAlignment = Alignment.CenterStart
                             ) {
                                 if (state.draftMessage.isBlank()) {
                                     Text(
                                         text = stringResource(R.string.chatbot_input_placeholder),
-                                        style = MaterialTheme.typography.bodyMedium,
+                                        style = MaterialTheme.typography.bodyLarge,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
                                 }
@@ -477,31 +511,32 @@ private fun ChatbotWindow(
                                 BasicTextField(
                                     value = state.draftMessage,
                                     onValueChange = onDraftChanged,
-                                    modifier = Modifier.fillMaxWidth(),
-                                    textStyle = MaterialTheme.typography.bodyMedium.copy(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .heightIn(min = 24.dp, max = 72.dp),
+                                    textStyle = MaterialTheme.typography.bodyLarge.copy(
                                         color = MaterialTheme.colorScheme.onSurface
                                     ),
                                     cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                                     keyboardActions = KeyboardActions(onSend = { onSendMessage() }),
                                     enabled = !state.isLoading && !state.isTyping,
-                                    singleLine = true
+                                    singleLine = false,
+                                    maxLines = 3
                                 )
                             }
+                        }
 
-                            FilledIconButton(
-                                onClick = onSendMessage,
-                                modifier = Modifier
-                                    .size(sendButtonSize)
-                                    .align(Alignment.CenterVertically),
-                                enabled = state.draftMessage.isNotBlank() && !state.isLoading && !state.isTyping
-                            ) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Rounded.Send,
-                                    contentDescription = stringResource(R.string.chatbot_send_content_description),
-                                    modifier = Modifier.size(sendButtonSize * 0.52f)
-                                )
-                            }
+                        FilledIconButton(
+                            onClick = onSendMessage,
+                            modifier = Modifier.size(sendButtonSize),
+                            enabled = state.draftMessage.isNotBlank() && !state.isLoading && !state.isTyping
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Rounded.Send,
+                                contentDescription = stringResource(R.string.chatbot_send_content_description),
+                                modifier = Modifier.size(sendButtonSize * 0.4f)
+                            )
                         }
                     }
                 }

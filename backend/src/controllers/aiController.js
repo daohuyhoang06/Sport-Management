@@ -90,7 +90,6 @@ export const suggestTimeSlots = async (req, res) => {
   try {
     const { fieldId } = req.params;
 
-    // Get field data
     const [fieldResult] = await sequelize.query(
       `SELECT field_id AS fieldId, field_name, slot_price FROM fields WHERE field_id = ?`,
       { replacements: [fieldId] },
@@ -106,14 +105,13 @@ export const suggestTimeSlots = async (req, res) => {
     const field = fieldResult[0];
     const baseSlotPrice = Number(field.slot_price) || 0;
 
-    // Get booking statistics
     const [statsResult] = await sequelize.query(
-      `SELECT 
+      `SELECT
         COUNT(*) as total,
         SUM(CASE WHEN status = 'confirmed' THEN 1 ELSE 0 END) as confirmed,
         HOUR(start_time) as hour,
         COUNT(*) as count
-       FROM bookings 
+       FROM bookings
        WHERE field_id = ? AND start_time >= DATE_SUB(NOW(), INTERVAL 30 DAY)
        GROUP BY HOUR(start_time)
        ORDER BY count DESC
@@ -127,10 +125,9 @@ export const suggestTimeSlots = async (req, res) => {
     );
     const peakHours =
       statsResult.length > 0
-        ? statsResult.map((r) => `${r.hour}h`).join(", ")
+        ? statsResult.map((row) => `${row.hour}h`).join(", ")
         : "Chưa có dữ liệu";
 
-    // Mock price data for different time slots
     const priceData = [
       {
         timeSlot: "5h-9h",
@@ -147,7 +144,11 @@ export const suggestTimeSlots = async (req, res) => {
         price: Math.round(baseSlotPrice * 0.9),
         availability: "Khá đông",
       },
-      { timeSlot: "18h-21h", price: baseSlotPrice, availability: "Đông" },
+      {
+        timeSlot: "18h-21h",
+        price: baseSlotPrice,
+        availability: "Đông",
+      },
       {
         timeSlot: "21h-23h",
         price: Math.round(baseSlotPrice * 0.85),
@@ -195,9 +196,8 @@ export const detectFraud = async (req, res) => {
       });
     }
 
-    // Get user's booking history
     const [bookingHistory] = await sequelize.query(
-      `SELECT 
+      `SELECT
         b.booking_id,
         f.field_name,
         b.total_price as price,
@@ -229,7 +229,3 @@ export const detectFraud = async (req, res) => {
     });
   }
 };
-
-
-
-

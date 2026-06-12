@@ -68,7 +68,6 @@ import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Send
-import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Card
@@ -355,35 +354,6 @@ fun InboxHeader(modifier: Modifier = Modifier) {
                 .padding(horizontal = AppScreenHorizontalPadding, vertical = 14.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.Top
-            ) {
-                Spacer(modifier = Modifier.weight(1f))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    HeaderIconButton(icon = Icons.Outlined.Search)
-                    HeaderIconButton(icon = Icons.Outlined.Tune)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun HeaderIconButton(icon: androidx.compose.ui.graphics.vector.ImageVector) {
-    Surface(
-        modifier = Modifier.size(34.dp),
-        shape = CircleShape,
-        color = Color.White.copy(alpha = 0.2f)
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = Color.White,
-                modifier = Modifier.size(18.dp)
-            )
         }
     }
 }

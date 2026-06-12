@@ -295,7 +295,7 @@
     <string name="field_detail_info_surface_type">Loại mặt sân</string>
     <string name="field_detail_info_surface_value">Sân tiêu chuẩn thi đấu</string>
     <string name="field_detail_info_court_count">Số lượng sân</string>
-    <string name="field_detail_info_court_count_value">4 sân</string>
+    <string name="field_detail_info_court_count_value">3 sân</string>
     <string name="field_detail_info_capacity">Sức chứa</string>
     <string name="field_detail_info_capacity_value">20 - 40 người</string>
     <string name="field_detail_info_amenities">Tiện ích cơ bản</string>

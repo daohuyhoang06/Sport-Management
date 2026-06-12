@@ -1,4 +1,5 @@
 import sequelize from '../config/database.js';
+import { sendPushToUser } from './user/pushNotificationService.js';
 
 /**
  * Get or create chat between user and manager
@@ -152,6 +153,37 @@ export const sendMessageService = async (chatId, senderId, messageText) => {
        WHERE chat_id = ?`,
       { replacements: [messageText, chatId] }
     );
+
+    const [chatRows] = await sequelize.query(
+      `SELECT user_id, manager_id
+       FROM chats
+       WHERE chat_id = ?
+       LIMIT 1`,
+      { replacements: [chatId] }
+    );
+
+    const chat = chatRows?.[0];
+    const recipientUserId =
+      Number(chat?.user_id) === Number(senderId)
+        ? Number(chat?.manager_id)
+        : Number(chat?.user_id);
+
+    if (Number.isInteger(recipientUserId) && recipientUserId !== Number(senderId)) {
+      await sendPushToUser({
+        userId: recipientUserId,
+        title: 'Tin nhắn mới',
+        body: String(messageText || 'Bạn có tin nhắn mới').slice(0, 160),
+        data: {
+          type: 'message',
+          targetType: 'conversation',
+          targetId: Number(chatId),
+          conversationId: Number(chatId),
+          messageId: newMessageId,
+        },
+      }).catch((error) => {
+        console.error('send legacy message push error:', error.message);
+      });
+    }
 
     return {
       message_id: newMessageId,

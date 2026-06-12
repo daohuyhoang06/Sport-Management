@@ -17,8 +17,10 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import com.sportmanagement.user.R
 import com.sportmanagement.user.domain.model.SportIconType
+import com.sportmanagement.user.domain.model.UserField
 
 @Composable
 fun SportMarkerIcon(
@@ -71,6 +73,41 @@ fun SportCircleAvatar(
             contentDescription = null,
             modifier = Modifier.size(resolvedIconSize),
             contentScale = ContentScale.Fit
+        )
+    }
+}
+
+@Composable
+fun FieldCircleAvatar(
+    field: UserField,
+    size: Dp = 44.dp,
+    iconSize: Dp = 25.dp,
+    modifier: Modifier = Modifier
+) {
+    val remoteAvatarUrl = field.avatarImageUrl.trim()
+    val shouldLoadRemoteImage =
+        remoteAvatarUrl.isNotBlank() &&
+            !remoteAvatarUrl.endsWith("placeholder.svg", ignoreCase = true) &&
+            !isGeneratedFieldAvatarUrl(remoteAvatarUrl)
+
+    if (shouldLoadRemoteImage) {
+        AsyncImage(
+            model = remoteAvatarUrl,
+            contentDescription = null,
+            modifier = modifier
+                .size(size)
+                .clip(CircleShape)
+                .background(sportAvatarBackgroundColor(field.sportIconType)),
+            contentScale = ContentScale.Crop,
+            placeholder = painterResource(id = sportIconDrawableRes(field.sportIconType)),
+            error = painterResource(id = sportIconDrawableRes(field.sportIconType)),
+            fallback = painterResource(id = sportIconDrawableRes(field.sportIconType))
+        )
+    } else {
+        SportCircleAvatar(
+            iconType = field.sportIconType,
+            size = size,
+            iconSize = iconSize
         )
     }
 }

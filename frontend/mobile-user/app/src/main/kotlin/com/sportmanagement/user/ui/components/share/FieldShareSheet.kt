@@ -52,7 +52,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.sportmanagement.user.R
 import com.sportmanagement.user.domain.model.UserField
-import com.sportmanagement.user.ui.components.SportCircleAvatar
+import com.sportmanagement.user.ui.components.FieldCircleAvatar
 import com.sportmanagement.user.ui.theme.AppCtaCornerRadius
 import com.sportmanagement.user.ui.theme.AppHomeVenueCornerRadius
 import com.sportmanagement.user.ui.theme.AppSheetTopCornerRadius
@@ -217,8 +217,8 @@ private fun ShareHeroCard(
                         modifier = Modifier.size(avatarContainerSize),
                         contentAlignment = Alignment.Center
                     ) {
-                        SportCircleAvatar(
-                            iconType = field.sportIconType,
+                        FieldCircleAvatar(
+                            field = field,
                             size = avatarSize,
                             iconSize = 32.dp
                         )

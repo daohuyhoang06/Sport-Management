@@ -1,4 +1,5 @@
 import sequelize from "../../config/database.js";
+import { sendPushToUser } from "../../services/user/pushNotificationService.js";
 
 const getFieldById = async (fieldId) => {
   const [rows] = await sequelize.query(
@@ -662,6 +663,27 @@ export const sendConversationMessage = async (req, res) => {
     );
 
     const messageId = insertResult?.insertId || insertResult;
+    const recipientUserId = isPrimaryParticipant
+      ? Number(conversation.manager_id)
+      : Number(conversation.user_id);
+
+    if (Number.isInteger(recipientUserId) && recipientUserId !== Number(userId)) {
+      const pushBody = trimmedContent || (imageUrl ? "Bạn nhận được hình ảnh mới" : "Bạn có tin nhắn mới");
+      await sendPushToUser({
+        userId: recipientUserId,
+        title: "Tin nhắn mới",
+        body: pushBody.slice(0, 160),
+        data: {
+          type: "message",
+          targetType: "conversation",
+          targetId: Number(conversationId),
+          conversationId: Number(conversationId),
+          messageId,
+        },
+      }).catch((error) => {
+        console.error("send message push error:", error.message);
+      });
+    }
 
     return res.json({
       success: true,

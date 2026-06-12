@@ -1,6 +1,7 @@
 package com.sportmanagement.user.push
 
 import android.Manifest
+import android.graphics.BitmapFactory
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -13,6 +14,7 @@ import androidx.core.content.ContextCompat
 import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import com.sportmanagement.user.MainActivity
+import com.sportmanagement.user.R
 
 class SportFirebaseMessagingService : FirebaseMessagingService() {
     override fun onNewToken(token: String) {
@@ -59,7 +61,8 @@ class SportFirebaseMessagingService : FirebaseMessagingService() {
         )
 
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setSmallIcon(R.drawable.banner_app)
+            .setLargeIcon(BitmapFactory.decodeResource(resources, R.drawable.banner_app))
             .setContentTitle(title)
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))

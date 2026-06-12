@@ -42,6 +42,7 @@ import coil.compose.AsyncImage
 import com.sportmanagement.user.domain.model.SportIconType
 import com.sportmanagement.user.domain.model.UserField
 import com.sportmanagement.user.domain.model.VenueCardType
+import com.sportmanagement.user.ui.components.FieldCircleAvatar
 import com.sportmanagement.user.ui.components.SportCircleAvatar
 import com.sportmanagement.user.ui.components.isGeneratedFieldAvatarUrl
 import com.sportmanagement.user.ui.components.sportAvatarBackgroundColor
@@ -304,32 +305,11 @@ private fun FieldCardAvatar(
     size: androidx.compose.ui.unit.Dp,
     iconSize: androidx.compose.ui.unit.Dp
 ) {
-    val remoteAvatarUrl = field.avatarImageUrl.trim()
-    val shouldLoadRemoteImage =
-        remoteAvatarUrl.isNotBlank() &&
-            !remoteAvatarUrl.endsWith("placeholder.svg", ignoreCase = true) &&
-            !isGeneratedFieldAvatarUrl(remoteAvatarUrl)
-
-    if (shouldLoadRemoteImage) {
-        AsyncImage(
-            model = remoteAvatarUrl,
-            contentDescription = null,
-            modifier = Modifier
-                .size(size)
-                .clip(CircleShape)
-                .background(sportAvatarBackgroundColor(field.sportIconType)),
-            contentScale = ContentScale.Crop,
-            placeholder = painterResource(id = sportIconDrawableRes(field.sportIconType)),
-            error = painterResource(id = sportIconDrawableRes(field.sportIconType)),
-            fallback = painterResource(id = sportIconDrawableRes(field.sportIconType))
-        )
-    } else {
-        SportCircleAvatar(
-            iconType = field.sportIconType,
-            size = size,
-            iconSize = iconSize
-        )
-    }
+    FieldCircleAvatar(
+        field = field,
+        size = size,
+        iconSize = iconSize
+    )
 }
 
 @Composable
