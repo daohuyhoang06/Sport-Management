@@ -111,22 +111,6 @@ data class BookingsUiState(
     val cancelTargetId: String = "",
     val cancelReasonDraft: String = "",
 
-    // Edit/reschedule dialog state
-    val showEditDialog: Boolean = false,
-    val editTargetId: String = "",
-    val editFieldId: Int? = null,
-    val editCourtId: Int? = null,
-    val editPitchName: String = "",
-    val editCourtName: String = "",
-    val editDate: String = "",
-    val editStart: String = "",
-    val editEnd: String = "",
-    val editCourtCode: String = "",
-    val editBookedRanges: List<Pair<Int, Int>> = emptyList(),
-    val editIsLoadingSlots: Boolean = false,
-    val editCustomerName: String = "",
-    val editCustomerPhone: String = "",
-
     // Manual payment dialog state
     val showPaymentDialog: Boolean = false,
     val paymentTargetId: String = "",
