@@ -1,6 +1,20 @@
 ﻿import sequelize from "../../config/database.js";
 import bcrypt from "bcrypt";
 
+const latestPaymentJoin = `
+      LEFT JOIN payments pay ON pay.payment_id = (
+        SELECT p2.payment_id
+        FROM payments p2
+        WHERE p2.booking_id = b.booking_id
+           OR (
+             p2.booking_ids_json IS NOT NULL
+             AND JSON_VALID(p2.booking_ids_json)
+             AND JSON_CONTAINS(p2.booking_ids_json, CAST(b.booking_id AS CHAR), '$')
+           )
+        ORDER BY p2.payment_id DESC
+        LIMIT 1
+      )`;
+
 /**
  * Get all bookings for manager's fields
  */
@@ -43,11 +57,15 @@ export const getManagerBookingsService = async (managerId, filters = {}) => {
         b.field_id,
         b.customer_id,
         b.court_id,
+        b.created_at,
         b.start_time,
         b.end_time,
         b.status,
         b.price,
         b.note,
+        pay.payment_method,
+        COALESCE(pay.payment_status, pay.status) AS payment_status,
+        pay.amount AS payment_amount,
         f.field_name,
         f.location,
         p.person_name as customer_name,
@@ -65,6 +83,7 @@ export const getManagerBookingsService = async (managerId, filters = {}) => {
       INNER JOIN fields f ON b.field_id = f.field_id
       LEFT JOIN person p ON b.customer_id = p.person_id
       LEFT JOIN field_courts fc ON b.court_id = fc.court_id
+      ${latestPaymentJoin}
       ${whereClause}
       ORDER BY b.booking_id DESC
     `,
@@ -90,11 +109,15 @@ export const getManagerBookingByIdService = async (managerId, bookingId) => {
         b.field_id,
         b.customer_id,
         b.court_id,
+        b.created_at,
         b.start_time,
         b.end_time,
         b.status,
         b.price,
         b.note,
+        pay.payment_method,
+        COALESCE(pay.payment_status, pay.status) AS payment_status,
+        pay.amount AS payment_amount,
         f.field_name,
         f.location,
         f.manager_id,
@@ -113,6 +136,7 @@ export const getManagerBookingByIdService = async (managerId, bookingId) => {
       INNER JOIN fields f ON b.field_id = f.field_id
       LEFT JOIN person p ON b.customer_id = p.person_id
       LEFT JOIN field_courts fc ON b.court_id = fc.court_id
+      ${latestPaymentJoin}
       WHERE b.booking_id = ? AND f.manager_id = ?
     `,
       { replacements: [bookingId, managerId] },
@@ -268,6 +292,139 @@ export const createBookingService = async (managerId, data) => {
   );
 
   return booking;
+};
+
+/**
+ * Manager dời lịch booking đã xác nhận
+ */
+export const rescheduleBookingService = async (managerId, bookingId, data) => {
+  const { start_time, end_time, court_id = null } = data;
+  const toMysqlDatetime = (value) =>
+    value ? String(value).replace("T", " ").replace("Z", "").split(".")[0] : null;
+
+  const nextStartTime = toMysqlDatetime(start_time);
+  const nextEndTime = toMysqlDatetime(end_time);
+  if (!nextStartTime || !nextEndTime) {
+    throw new Error("Thiếu thời gian bắt đầu hoặc kết thúc");
+  }
+
+  const transaction = await sequelize.transaction();
+  try {
+    const booking = await getManagerBookingByIdService(managerId, bookingId);
+    if (!booking) {
+      throw new Error("Booking not found or unauthorized");
+    }
+    if (String(booking.status || "").toLowerCase() !== "confirmed") {
+      throw new Error("Chỉ có thể dời lịch của booking đã xác nhận");
+    }
+
+    const fieldId = booking.field_id;
+    const targetCourtId = court_id ?? booking.court_id;
+    if (!targetCourtId) {
+      throw new Error("Booking chưa có sân con để dời lịch");
+    }
+
+    const [[field]] = await sequelize.query(
+      "SELECT field_id, slot_price, slot_minutes FROM fields WHERE field_id = ? AND manager_id = ?",
+      { replacements: [fieldId, managerId], transaction },
+    );
+    if (!field) {
+      throw new Error("Field không tồn tại hoặc không có quyền");
+    }
+
+    const blockedQuery = await sequelize.query(
+      `SELECT slot_id
+       FROM field_blocked_slots
+       WHERE field_id = ?
+         AND (court_id = ? OR court_id IS NULL)
+         AND block_date = DATE(?)
+         AND start_time < TIME(?)
+         AND end_time > TIME(?)
+       LIMIT 1`,
+      {
+        replacements: [fieldId, targetCourtId, nextStartTime, nextEndTime, nextStartTime],
+        transaction,
+      },
+    );
+    const blockedConflict = blockedQuery[0]?.[0];
+    if (blockedConflict) {
+      throw new Error("Khung giờ này đã bị khóa bởi quản lý");
+    }
+
+    const [conflicts] = await sequelize.query(
+      `SELECT booking_id
+       FROM bookings
+       WHERE booking_id <> ?
+         AND field_id = ?
+         AND court_id = ?
+         AND DATE(start_time) = DATE(?)
+         AND status NOT IN ('cancelled', 'rejected')
+         AND start_time < ?
+         AND end_time > ?
+       LIMIT 1`,
+      {
+        replacements: [bookingId, fieldId, targetCourtId, nextStartTime, nextEndTime, nextStartTime],
+        transaction,
+      },
+    );
+    if (conflicts?.[0]) {
+      throw new Error("Khung giờ này đã có người đặt");
+    }
+
+    let finalPrice = booking.price;
+    if (field.slot_price && nextStartTime && nextEndTime) {
+      const start = new Date(nextStartTime);
+      const end = new Date(nextEndTime);
+      const minutes = (end - start) / 60000;
+      const slots = Math.ceil(minutes / (field.slot_minutes || 60));
+      finalPrice = slots * parseFloat(field.slot_price);
+    }
+
+    await sequelize.query(
+      `UPDATE bookings
+       SET court_id = ?, start_time = ?, end_time = ?, price = ?
+       WHERE booking_id = ? AND field_id = ?`,
+      {
+        replacements: [targetCourtId, nextStartTime, nextEndTime, finalPrice ?? null, bookingId, fieldId],
+        transaction,
+      },
+    );
+
+    await sequelize.query(
+      "DELETE FROM booking_slots WHERE booking_id = ?",
+      { replacements: [bookingId], transaction },
+    );
+
+    await sequelize.query(
+      `INSERT INTO booking_slots (booking_id, field_id, court_id, start_time, end_time, price)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      {
+        replacements: [bookingId, fieldId, targetCourtId, nextStartTime, nextEndTime, finalPrice ?? null],
+        transaction,
+      },
+    );
+
+    await sequelize.query(
+      `INSERT INTO booking_history (booking_id, action, from_status, to_status, note, author)
+       VALUES (?, 'Dời lịch', ?, 'confirmed', ?, 'manager')`,
+      {
+        replacements: [
+          bookingId,
+          booking.status,
+          `Dời lịch sang ${nextStartTime} - ${nextEndTime}`,
+        ],
+        transaction,
+      },
+    );
+
+    await transaction.commit();
+
+    return await getManagerBookingByIdService(managerId, bookingId);
+  } catch (error) {
+    await transaction.rollback();
+    console.error("Error in rescheduleBookingService:", error);
+    throw error;
+  }
 };
 
 /**

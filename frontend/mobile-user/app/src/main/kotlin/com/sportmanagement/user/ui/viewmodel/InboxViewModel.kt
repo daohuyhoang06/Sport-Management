@@ -256,6 +256,7 @@ class InboxViewModel(
                             shareUrl = booking.shareUrl,
                             customerName = booking.userName,
                             customerPhone = booking.userPhone,
+                            ownerName = booking.ownerName,
                             ownerPhone = booking.ownerPhone,
                             ownerNote = booking.ownerNote,
                             fieldId = booking.fieldId,
@@ -565,6 +566,7 @@ class InboxViewModel(
                             fieldId = detail.fieldId,
                             bookingId = detail.bookingId,
                             fieldName = booking?.fieldName ?: detail.title,
+                            ownerName = booking?.ownerName ?: "",
                             address = booking?.fieldAddress ?: "",
                             timeRange = listOf(booking?.startTime, booking?.endTime)
                                 .filter { !it.isNullOrBlank() }
@@ -645,7 +647,8 @@ class InboxViewModel(
                     isLoadingConversation = false,
                     currentConversation = info.copy(
                         conversationId = thread.conversationId,
-                        fieldName = thread.fieldName.ifBlank { info.fieldName },
+                        fieldName = thread.ownerName?.takeIf { it.isNotBlank() }
+                            ?: thread.fieldName.ifBlank { info.fieldName },
                         phoneNumber = thread.ownerPhone ?: info.phoneNumber
                     ),
                     conversationMessages = thread.messages
@@ -808,7 +811,10 @@ class InboxViewModel(
             )
         }
 
-        conversations.forEach { row ->
+        conversations.forEach { originalRow ->
+            val row = originalRow.copy(
+                fieldName = originalRow.ownerName?.takeIf { it.isNotBlank() } ?: originalRow.fieldName
+            )
             messages.add(
                 NotificationItem(
                     id = row.conversationId,
@@ -1224,6 +1230,7 @@ class InboxViewModel(
             shareUrl = shareUrl,
             customerName = userName,
             customerPhone = userPhone,
+            ownerName = ownerName,
             ownerPhone = ownerPhone,
             ownerNote = ownerNote,
             fieldId = fieldId,

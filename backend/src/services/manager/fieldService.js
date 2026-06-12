@@ -385,10 +385,10 @@ export const getFieldStatsService = async (managerId, field_id) => {
     );
 
     return {
-      totalBookings: Number(stats[0].totalbookings) || 0,
-      confirmedBookings: Number(stats[0].confirmedbookings) || 0,
-      completedBookings: Number(stats[0].completedbookings) || 0,
-      totalRevenue: parseFloat(stats[0].totalrevenue) || 0,
+      totalBookings: Number(stats[0].totalBookings ?? stats[0].totalbookings) || 0,
+      confirmedBookings: Number(stats[0].confirmedBookings ?? stats[0].confirmedbookings) || 0,
+      completedBookings: Number(stats[0].completedBookings ?? stats[0].completedbookings) || 0,
+      totalRevenue: parseFloat(stats[0].totalRevenue ?? stats[0].totalrevenue) || 0,
     };
   } catch (error) {
     console.error("Error in getFieldStatsService:", error);

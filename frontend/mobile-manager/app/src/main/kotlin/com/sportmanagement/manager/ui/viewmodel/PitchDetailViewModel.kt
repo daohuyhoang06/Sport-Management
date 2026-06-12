@@ -43,24 +43,36 @@ class PitchDetailViewModel : ViewModel() {
             val courtsDeferred  = async { AppContainer.fieldRepository.getCourts(fieldId) }
             val servicesDeferred = async { AppContainer.fieldRepository.getServices(fieldId) }
             val policiesDeferred = async { AppContainer.fieldRepository.getPolicies(fieldId) }
-            val fieldsResult    = AppContainer.fieldRepository.getFields()
+            val blockedSlotsDeferred = async { AppContainer.fieldRepository.getBlockedSlots(fieldId) }
+            val fieldDeferred = async { AppContainer.fieldRepository.getField(fieldId) }
+            val statsDeferred = async { AppContainer.fieldRepository.getFieldStats(fieldId) }
+            val reviewStatsDeferred = async { AppContainer.fieldRepository.getFieldReviewStats(fieldId) }
+            val reviewsDeferred = async { AppContainer.fieldRepository.getFieldReviews(fieldId) }
+            val fieldsResult = AppContainer.fieldRepository.getFields()
 
-            val fieldDto = fieldsResult.getOrNull()?.firstOrNull { it.fieldId == fieldId }
+            val fieldDto = fieldDeferred.await().getOrNull()
+                ?: fieldsResult.getOrNull()?.firstOrNull { it.fieldId == fieldId }
             if (fieldDto == null) {
                 _uiState.update { it.copy(isLoading = false, error = "Không tìm thấy sân") }
                 return@launch
             }
-
-            val blockedSlotsDeferred = async { AppContainer.fieldRepository.getBlockedSlots(fieldId) }
 
             val pitchDetail = fieldDto.toPitchDetail(
                 courts   = courtsDeferred.await().getOrNull()?.map { it.toCourt() }         ?: emptyList(),
                 services = servicesDeferred.await().getOrNull()?.map { it.toFieldService() } ?: emptyList(),
                 policies = policiesDeferred.await().getOrNull()?.map { it.toFieldPolicy() }  ?: emptyList()
             ).copy(
+                rating = reviewStatsDeferred.await().getOrNull()?.averageRating ?: 0f,
+                bookingCount = statsDeferred.await().getOrNull()?.totalBookings ?: 0,
                 blockedSlots = blockedSlotsDeferred.await().getOrNull()?.map { it.toBlockedSlot() } ?: emptyList()
             )
-            _uiState.update { it.copy(isLoading = false, pitchDetail = pitchDetail) }
+            _uiState.update {
+                it.copy(
+                    isLoading = false,
+                    pitchDetail = pitchDetail,
+                    reviews = reviewsDeferred.await().getOrNull().orEmpty()
+                )
+            }
         }
     }
 

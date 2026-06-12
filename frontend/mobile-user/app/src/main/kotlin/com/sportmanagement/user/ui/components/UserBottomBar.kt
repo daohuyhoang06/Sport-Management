@@ -19,6 +19,9 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalRippleConfiguration
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -40,6 +43,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.sportmanagement.user.ui.navigation.UserTab
 import com.sportmanagement.user.ui.theme.AppControlCornerRadius
 import com.sportmanagement.user.ui.theme.AppHeaderGradientEnd
@@ -82,69 +86,64 @@ fun UserBottomBar(
         shape = containerShape,
         color = containerColor,
         border = BorderStroke(1.dp, outlineColor),
-        shadowElevation = 8.dp,
+        shadowElevation = 10.dp,
         tonalElevation = 0.dp
     ) {
         Column(
             modifier = Modifier
                 .navigationBarsPadding()
-                .padding(top = 1.dp)
+                .offset(y = (-4).dp)
+                .padding(top = 2.dp)
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(2.dp)
+                    .height(4.dp)
                     .background(glowBrush)
             )
 
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(62.dp)
+            NavigationBar(
+                modifier = Modifier.fillMaxWidth(),
+                containerColor = Color.Transparent,
+                tonalElevation = 0.dp
             ) {
                 UserTab.entries.forEach { tab ->
                     val isSelected = selectedTab == tab
                     val tabTitle = stringResource(tab.titleRes)
                     val itemScale by animateFloatAsState(
-                        targetValue = if (animatingTab == tab) 1.15f else 1f,
-                        animationSpec = tween(durationMillis = 120),
+                        targetValue = if (animatingTab == tab) 1.2f else 1f,
+                        animationSpec = tween(durationMillis = 140),
                         label = "bottom_tab_item_scale"
                     )
                     val badgeCount = if (tab == UserTab.Inbox) inboxUnreadCount else 0
                     CompositionLocalProvider(LocalRippleConfiguration provides null) {
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxWidth()
-                                .height(62.dp)
-                                .clickable(
-                                    onClick = {
-                                        animatingTab = tab
-                                        onTabSelected(tab)
-                                        scope.launch {
-                                            delay(170)
-                                            if (animatingTab == tab) animatingTab = null
-                                        }
-                                    }
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                modifier = Modifier
-                                    .padding(top = 2.dp)
-                                    .graphicsLayer {
-                                        scaleX = itemScale
-                                        scaleY = itemScale
-                                    }
-                            ) {
-                                Box(modifier = Modifier.size(24.dp), contentAlignment = Alignment.TopEnd) {
+                        NavigationBarItem(
+                            selected = isSelected,
+                            onClick = {
+                                animatingTab = tab
+                                onTabSelected(tab)
+                                scope.launch {
+                                    delay(170)
+                                    if (animatingTab == tab) animatingTab = null
+                                }
+                            },
+                            icon = {
+                                Box(
+                                    modifier = Modifier
+                                        .size(28.dp)
+                                        .graphicsLayer {
+                                            scaleX = itemScale
+                                            scaleY = itemScale
+                                        },
+                                    contentAlignment = Alignment.TopEnd
+                                ) {
                                     Icon(
                                         imageVector = if (isSelected) tab.selectedIcon else tab.unselectedIcon,
                                         contentDescription = tabTitle,
                                         tint = if (isSelected) Color.White else inactiveColor,
                                         modifier = Modifier
-                                            .size(22.dp)
+                                            .align(Alignment.Center)
+                                            .size(25.dp)
                                             .then(
                                                 if (isSelected) {
                                                     Modifier
@@ -168,7 +167,7 @@ fun UserBottomBar(
                                     if (badgeCount > 0) {
                                         Box(
                                             modifier = Modifier
-                                                .offset(x = 9.dp, y = (-4).dp)
+                                                .offset(x = 10.dp, y = (-4).dp)
                                                 .size(if (badgeCount > 9) 20.dp else 16.dp)
                                                 .background(Color(0xFFE53935), CircleShape),
                                             contentAlignment = Alignment.Center
@@ -182,16 +181,24 @@ fun UserBottomBar(
                                         }
                                     }
                                 }
-
+                            },
+                            label = {
                                 Text(
                                     text = tabTitle,
                                     style = MaterialTheme.typography.labelSmall,
                                     fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium,
-                                    color = if (isSelected) selectedTextColor else inactiveColor,
-                                    modifier = Modifier.padding(top = 1.dp)
+                                    letterSpacing = 0.3.sp
                                 )
-                            }
-                        }
+                            },
+                            alwaysShowLabel = true,
+                            colors = NavigationBarItemDefaults.colors(
+                                selectedIconColor = Color.White,
+                                selectedTextColor = selectedTextColor,
+                                unselectedIconColor = inactiveColor,
+                                unselectedTextColor = inactiveColor,
+                                indicatorColor = Color.Transparent
+                            )
+                        )
                     }
                 }
             }

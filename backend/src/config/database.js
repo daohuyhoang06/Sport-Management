@@ -15,6 +15,9 @@ const useSsl = process.env.NODE_ENV === "production";
 const sequelize = process.env.DATABASE_URL
   ? new Sequelize(process.env.DATABASE_URL, {
       dialect: dbDialect,
+      dialectOptions: {
+        charset: "utf8mb4",
+      },
       logging: false,
       pool: {
         max: 5,
@@ -35,15 +38,17 @@ const sequelize = process.env.DATABASE_URL
         host: process.env.DB_HOST || "localhost",
         port: Number(process.env.DB_PORT) || defaultPort,
         dialect: dbDialect,
-
-        dialectOptions: useSsl
-          ? {
-              ssl: {
-                require: true,
-                rejectUnauthorized: false,
-              },
-            }
-          : {},
+        dialectOptions: {
+          charset: "utf8mb4",
+          ...(useSsl
+            ? {
+                ssl: {
+                  require: true,
+                  rejectUnauthorized: false,
+                },
+              }
+            : {}),
+        },
 
         logging: false,
 

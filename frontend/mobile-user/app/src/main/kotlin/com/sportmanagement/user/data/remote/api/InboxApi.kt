@@ -51,6 +51,7 @@ data class ConversationMessageDto(
 data class ConversationThreadDto(
     val conversationId: Int,
     val fieldName: String,
+    val ownerName: String?,
     val ownerPhone: String?,
     val messages: List<ConversationMessageDto>
 )
@@ -413,6 +414,7 @@ class InboxApi(
         ConversationThreadDto(
             conversationId = conversation.optInt("conversationId", conversationId),
             fieldName = conversation.optString("fieldName"),
+            ownerName = conversation.optString("ownerName").takeIf { it.isNotBlank() },
             ownerPhone = conversation.optString("ownerPhone").takeIf { it.isNotBlank() },
             messages = mappedMessages
         )

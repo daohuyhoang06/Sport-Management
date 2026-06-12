@@ -37,10 +37,12 @@ import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
@@ -48,7 +50,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.ChatBubble
 import androidx.compose.material.icons.outlined.CameraAlt
 import androidx.compose.material.icons.outlined.CheckCircle
@@ -82,6 +83,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
@@ -550,18 +552,25 @@ fun NotificationCard(item: NotificationItem, onClick: () -> Unit) {
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = if (isMatchItem) Alignment.CenterVertically else Alignment.Top
         ) {
-            Box(
-                modifier = Modifier
-                    .size(44.dp)
-                    .background(item.iconBackground, CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = item.icon,
-                    contentDescription = null,
-                    tint = item.iconTint,
-                    modifier = Modifier.size(22.dp)
+            if (item.category == InboxCategoryType.Message) {
+                ConversationInitialAvatar(
+                    name = item.conversationInfo?.fieldName ?: item.title,
+                    modifier = Modifier.size(44.dp)
                 )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .size(44.dp)
+                        .background(item.iconBackground, CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = item.icon,
+                        contentDescription = null,
+                        tint = item.iconTint,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
             }
 
             Column(modifier = Modifier.weight(1f)) {
@@ -1141,6 +1150,7 @@ data class BookingInfo(
     val shareUrl: String = "",
     val customerName: String,
     val customerPhone: String,
+    val ownerName: String = "",
     val ownerPhone: String = "",
     val ownerNote: String,
     val fieldId: Int? = null,
@@ -1203,6 +1213,7 @@ sealed class NotificationDetailInfo {
         val fieldId: Int? = null,
         val bookingId: Int? = null,
         val fieldName: String,
+        val ownerName: String = "",
         val address: String,
         val timeRange: String,
         val dateLabel: String,
@@ -1821,7 +1832,7 @@ fun BookingDetailScreen(
                         showContactSheet = false
                         onOpenChat(
                             ConversationInfo(
-                                fieldName = info.fieldName,
+                                fieldName = info.ownerName.ifBlank { info.fieldName },
                                 statusLabel = "Đang hoạt động",
                                 phoneNumber = ownerPhone,
                                 avatarRes = R.drawable.field_football,
@@ -3078,7 +3089,7 @@ fun NotificationDetailScreen(
                         showContactSheet = false
                         onOpenChat(
                             ConversationInfo(
-                                fieldName = info.fieldName,
+                                fieldName = info.ownerName.ifBlank { info.fieldName },
                                 statusLabel = "Đang hoạt động",
                                 phoneNumber = info.phoneNumber,
                                 avatarRes = info.avatarRes,
@@ -4065,9 +4076,7 @@ fun ConversationScreen(
             isSending = isSending,
             onDraftChange = onDraftChange,
             onSend = onSend,
-            modifier = Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding()
+            modifier = Modifier.fillMaxWidth()
         )
     }
 }
@@ -4094,15 +4103,11 @@ private fun ConversationTopBar(
             )
         }
         Box(modifier = Modifier.size(42.dp)) {
-            Image(
-                painter = painterResource(id = info.avatarRes),
-                contentDescription = null,
+            ConversationInitialAvatar(
+                name = info.fieldName,
                 modifier = Modifier
                     .size(42.dp)
-                    .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape)
-                    .border(1.dp, MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape),
-                contentScale = ContentScale.Crop
+                    .border(1.dp, MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape)
             )
             Box(
                 modifier = Modifier
@@ -4141,6 +4146,34 @@ private fun ConversationTopBar(
                 tint = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+    }
+}
+
+@Composable
+private fun ConversationInitialAvatar(
+    name: String,
+    modifier: Modifier = Modifier
+) {
+    val initial = remember(name) {
+        name.trim()
+            .firstOrNull()
+            ?.toString()
+            ?.uppercase()
+            ?: "?"
+    }
+
+    Box(
+        modifier = modifier
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.primaryContainer, CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = initial,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onPrimaryContainer
+        )
     }
 }
 
@@ -4208,51 +4241,76 @@ private fun ConversationInputBar(
     onSend: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val navigationBottomPadding = WindowInsets.navigationBars
+        .asPaddingValues()
+        .calculateBottomPadding()
+
     Surface(
         modifier = modifier,
-        color = MaterialTheme.colorScheme.surface,
+        color = Color.White,
         shadowElevation = 4.dp
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = AppScreenHorizontalPadding, vertical = 6.dp),
+                .padding(
+                    start = AppScreenHorizontalPadding,
+                    end = AppScreenHorizontalPadding,
+                    top = 8.dp,
+                    bottom = 8.dp + navigationBottomPadding
+                ),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Surface(
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.surface
-            ) {
-                Box(
-                    modifier = Modifier.size(36.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Add,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            }
-            TextField(
-                value = draft,
-                onValueChange = onDraftChange,
                 modifier = Modifier
                     .weight(1f)
-                    .heightIn(min = 44.dp),
-                placeholder = { Text(stringResource(R.string.inbox_chat_placeholder)) },
-                singleLine = true,
-                shape = RoundedCornerShape(AppPillCornerRadius)
+                    .height(40.dp)
+                    .border(
+                        width = 1.dp,
+                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                        shape = RoundedCornerShape(AppPillCornerRadius)
+                    ),
+                shape = RoundedCornerShape(AppPillCornerRadius),
+                color = Color.White,
+                tonalElevation = 0.dp,
+                shadowElevation = 0.dp
             )
+            {
+                BasicTextField(
+                    value = draft,
+                    onValueChange = onDraftChange,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 14.dp),
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.bodyMedium.copy(
+                        color = MaterialTheme.colorScheme.onSurface
+                    ),
+                    decorationBox = { innerTextField ->
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.CenterStart
+                        ) {
+                            if (draft.isBlank()) {
+                                Text(
+                                    text = stringResource(R.string.inbox_chat_placeholder),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            innerTextField()
+                        }
+                    }
+                )
+            }
             Surface(
                 shape = CircleShape,
                 color = MaterialTheme.colorScheme.primary
             ) {
                 Box(
                     modifier = Modifier
-                        .size(36.dp)
+                        .size(34.dp)
                         .clickable(enabled = !isSending, onClick = onSend),
                     contentAlignment = Alignment.Center
                 ) {

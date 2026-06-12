@@ -8,12 +8,15 @@ import com.sportmanagement.manager.data.remote.dto.CreatePolicyRequest
 import com.sportmanagement.manager.data.remote.dto.CreateServiceRequest
 import com.sportmanagement.manager.data.remote.dto.BookedRangeDto
 import com.sportmanagement.manager.data.remote.dto.FieldCourtDto
+import com.sportmanagement.manager.data.remote.dto.FieldReviewStatsDto
 import com.sportmanagement.manager.data.remote.dto.UpdateBasicInfoRequest
 import com.sportmanagement.manager.data.remote.dto.UpdateCourtRequest
 import com.sportmanagement.manager.data.remote.dto.FieldDto
 import com.sportmanagement.manager.data.remote.dto.FieldPolicyDto
 import com.sportmanagement.manager.data.remote.dto.FieldServiceDto
+import com.sportmanagement.manager.data.remote.dto.FieldStatsDto
 import com.sportmanagement.manager.data.remote.dto.UpdateFieldStatusRequest
+import com.sportmanagement.manager.domain.model.ReviewItem
 import okhttp3.MultipartBody
 
 class FieldRepository(private val api: FieldApiService) {
@@ -46,6 +49,72 @@ class FieldRepository(private val api: FieldApiService) {
             Result.success(response.body()?.data ?: emptyList())
         } else {
             Result.failure(Exception("Lỗi tải danh sách sân (${response.code()})"))
+        }
+    }
+
+    suspend fun getField(id: Int): Result<FieldDto> = safeCall {
+        val response = api.getField(id)
+        if (response.isSuccessful) {
+            val data = response.body()?.data
+                ?: return@safeCall Result.failure(Exception("Không có dữ liệu sân"))
+            Result.success(data)
+        } else {
+            Result.failure(Exception("Lỗi tải thông tin sân (${response.code()})"))
+        }
+    }
+
+    suspend fun getFieldStats(id: Int): Result<FieldStatsDto> = safeCall {
+        val response = api.getFieldStats(id)
+        if (response.isSuccessful) {
+            val body = response.body()?.data
+                ?: return@safeCall Result.failure(Exception("Không có dữ liệu thống kê sân"))
+            Result.success(body)
+        } else {
+            Result.failure(Exception("Lỗi tải thống kê sân (${response.code()})"))
+        }
+    }
+
+    suspend fun getFieldReviewStats(fieldId: Int): Result<FieldReviewStatsDto> = safeCall {
+        val response = api.getFieldReviewStats(fieldId)
+        if (response.isSuccessful) {
+            val body = response.body()
+                ?: return@safeCall Result.failure(Exception("Không có dữ liệu đánh giá"))
+            Result.success(
+                FieldReviewStatsDto(
+                    averageRating = body.average_rating?.toFloat() ?: 0f,
+                    totalReviews = body.total_reviews ?: 0,
+                    fiveStar = body.five_star ?: 0,
+                    fourStar = body.four_star ?: 0,
+                    threeStar = body.three_star ?: 0,
+                    twoStar = body.two_star ?: 0,
+                    oneStar = body.one_star ?: 0
+                )
+            )
+        } else {
+            Result.failure(Exception("Lỗi tải thống kê đánh giá (${response.code()})"))
+        }
+    }
+
+    suspend fun getFieldReviews(fieldId: Int): Result<List<ReviewItem>> = safeCall {
+        val response = api.getFieldReviews(fieldId)
+        if (response.isSuccessful) {
+            val items = response.body().orEmpty().map { dto ->
+                ReviewItem(
+                    id = dto.reviewId.toString(),
+                    customerName = dto.customerName?.trim().orEmpty().ifBlank { "Người chơi" },
+                    customerAvatarUrl = resolveMediaUrl(dto.customerAvatarUrl),
+                    rating = dto.rating.coerceIn(1, 5),
+                    content = dto.comment.trim(),
+                    timestamp = dto.createdAt,
+                    pitchName = "",
+                    courtName = "",
+                    managerReply = null,
+                    replyTimestamp = null
+                )
+            }
+            Result.success(items)
+        } else {
+            Result.failure(Exception("Lỗi tải đánh giá sân (${response.code()})"))
         }
     }
 
@@ -169,5 +238,13 @@ class FieldRepository(private val api: FieldApiService) {
         } catch (e: Exception) {
             Result.failure(Exception("Không thể kết nối đến máy chủ"))
         }
+    }
+
+    private fun resolveMediaUrl(value: String?): String? {
+        val trimmed = value?.trim().orEmpty()
+        if (trimmed.isBlank() || trimmed.equals("null", ignoreCase = true)) return null
+        if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) return trimmed
+        val base = com.sportmanagement.manager.data.remote.NetworkClient.BASE_URL.trimEnd('/')
+        return "$base${if (trimmed.startsWith("/")) trimmed else "/$trimmed"}"
     }
 }

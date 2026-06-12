@@ -34,6 +34,49 @@ data class FieldResponse(
     val data: FieldDto?
 )
 
+data class FieldStatsDto(
+    @SerializedName("totalBookings") val totalBookings: Int = 0,
+    @SerializedName("confirmedBookings") val confirmedBookings: Int = 0,
+    @SerializedName("completedBookings") val completedBookings: Int = 0,
+    @SerializedName("totalRevenue") val totalRevenue: Double = 0.0
+)
+
+data class FieldStatsResponse(
+    val success: Boolean?,
+    val data: FieldStatsDto?
+)
+
+data class FieldReviewStatsDto(
+    @SerializedName("average_rating") val averageRating: Float = 0f,
+    @SerializedName("total_reviews") val totalReviews: Int = 0,
+    @SerializedName("five_star") val fiveStar: Int = 0,
+    @SerializedName("four_star") val fourStar: Int = 0,
+    @SerializedName("three_star") val threeStar: Int = 0,
+    @SerializedName("two_star") val twoStar: Int = 0,
+    @SerializedName("one_star") val oneStar: Int = 0
+)
+
+data class FieldReviewStatsResponse(
+    val total_reviews: Int? = null,
+    val average_rating: Double? = null,
+    val five_star: Int? = null,
+    val four_star: Int? = null,
+    val three_star: Int? = null,
+    val two_star: Int? = null,
+    val one_star: Int? = null
+)
+
+data class FieldReviewDto(
+    @SerializedName("review_id") val reviewId: Int,
+    @SerializedName("field_id") val fieldId: Int,
+    @SerializedName("customer_id") val customerId: Int,
+    val rating: Int,
+    val comment: String,
+    @SerializedName("created_at") val createdAt: String,
+    @SerializedName("customer_name") val customerName: String? = null,
+    @SerializedName("customer_avatar_url") val customerAvatarUrl: String? = null
+)
+
 data class CreateFieldRequest(
     @SerializedName("field_name") val fieldName: String,
     val location: String,

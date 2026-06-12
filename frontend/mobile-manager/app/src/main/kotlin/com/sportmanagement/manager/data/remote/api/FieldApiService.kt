@@ -11,7 +11,10 @@ import com.sportmanagement.manager.data.remote.dto.UpdateBasicInfoRequest
 import com.sportmanagement.manager.data.remote.dto.UpdateCourtRequest
 import com.sportmanagement.manager.data.remote.dto.CreateFieldRequest
 import com.sportmanagement.manager.data.remote.dto.FieldListResponse
+import com.sportmanagement.manager.data.remote.dto.FieldReviewDto
 import com.sportmanagement.manager.data.remote.dto.FieldResponse
+import com.sportmanagement.manager.data.remote.dto.FieldReviewStatsResponse
+import com.sportmanagement.manager.data.remote.dto.FieldStatsResponse
 import com.sportmanagement.manager.data.remote.dto.PoliciesResponse
 import com.sportmanagement.manager.data.remote.dto.ServicesResponse
 import com.sportmanagement.manager.data.remote.dto.UpdateFieldStatusRequest
@@ -41,6 +44,15 @@ interface FieldApiService {
 
     @GET("api/manager/fields/{id}")
     suspend fun getField(@Path("id") id: Int): Response<FieldResponse>
+
+    @GET("api/manager/fields/{id}/stats")
+    suspend fun getFieldStats(@Path("id") id: Int): Response<FieldStatsResponse>
+
+    @GET("api/user/reviews/stats/{fieldId}")
+    suspend fun getFieldReviewStats(@Path("fieldId") fieldId: Int): Response<FieldReviewStatsResponse>
+
+    @GET("api/user/reviews")
+    suspend fun getFieldReviews(@Query("field_id") fieldId: Int): Response<List<FieldReviewDto>>
 
     @POST("api/manager/fields")
     suspend fun createField(@Body request: CreateFieldRequest): Response<FieldResponse>

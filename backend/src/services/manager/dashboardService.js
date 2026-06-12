@@ -59,9 +59,9 @@ export const getDashboardStatsService = async (managerId) => {
         AND b.status IN ('pending', 'confirmed', 'completed')
     `, { replacements: [managerId] });
 
-    const activeCourts = Number(courtStats[0].activecourts) || 0;
+    const activeCourts = Number(courtStats[0].activeCourts) || 0;
     const totalAvailableMinutes = activeCourts * 960; // 16h/court/day (06:00–22:00)
-    const bookedMinutes = Number(bookedStats[0].bookedminutes) || 0;
+    const bookedMinutes = Number(bookedStats[0].bookedMinutes) || 0;
     const occupancyPercent = totalAvailableMinutes > 0
       ? Math.min(100, Math.round(bookedMinutes / totalAvailableMinutes * 100))
       : 0;
@@ -96,20 +96,20 @@ export const getDashboardStatsService = async (managerId) => {
     `, { replacements: [managerId] });
 
     return {
-      totalFields: Number(fieldStats[0].totalfields) || 0,
-      activeFields: Number(fieldStats[0].activefields) || 0,
-      totalBookings: Number(bookingStats[0].totalbookings) || 0,
-      pendingBookings: Number(bookingStats[0].pendingbookings) || 0,
-      confirmedBookings: Number(bookingStats[0].confirmedbookings) || 0,
-      completedBookings: Number(bookingStats[0].completedbookings) || 0,
-      cancelledBookings: Number(bookingStats[0].cancelledbookings) || 0,
-      rejectedBookings: Number(bookingStats[0].rejectedbookings) || 0,
-      todayBookings: Number(todayStats[0].todaybookings) || 0,
+      totalFields: Number(fieldStats[0].totalFields) || 0,
+      activeFields: Number(fieldStats[0].activeFields) || 0,
+      totalBookings: Number(bookingStats[0].totalBookings) || 0,
+      pendingBookings: Number(bookingStats[0].pendingBookings) || 0,
+      confirmedBookings: Number(bookingStats[0].confirmedBookings) || 0,
+      completedBookings: Number(bookingStats[0].completedBookings) || 0,
+      cancelledBookings: Number(bookingStats[0].cancelledBookings) || 0,
+      rejectedBookings: Number(bookingStats[0].rejectedBookings) || 0,
+      todayBookings: Number(todayStats[0].todayBookings) || 0,
       todayOccupancyPercent: occupancyPercent,
-      totalRevenue: parseFloat(revenueStats[0].totalrevenue) || 0,
-      monthlyRevenue: parseFloat(revenueStats[0].monthlyrevenue) || 0,
-      todayRevenue: parseFloat(revenueStats[0].todayrevenue) || 0,
-      yesterdayRevenue: parseFloat(revenueStats[0].yesterdayrevenue) || 0,
+      totalRevenue: parseFloat(revenueStats[0].totalRevenue) || 0,
+      monthlyRevenue: parseFloat(revenueStats[0].monthlyRevenue) || 0,
+      todayRevenue: parseFloat(revenueStats[0].todayRevenue) || 0,
+      yesterdayRevenue: parseFloat(revenueStats[0].yesterdayRevenue) || 0,
       topFieldName: topFieldData[0]?.field_name || null,
       topFieldRevenue: parseFloat(topFieldData[0]?.revenue) || 0
     };

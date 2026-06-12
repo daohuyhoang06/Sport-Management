@@ -5,6 +5,7 @@ import com.sportmanagement.manager.domain.model.BookingItem
 import com.sportmanagement.manager.domain.model.FieldScheduleConfig
 import com.sportmanagement.manager.domain.model.PitchDetail
 import com.sportmanagement.manager.domain.model.PitchStatus
+import com.sportmanagement.manager.domain.model.ReviewItem
 
 enum class PitchDetailTab(val label: String) {
     OVERVIEW("Tổng quan"),
@@ -35,6 +36,9 @@ data class PitchDetailUiState(
     val isLoadingHistory: Boolean = false,
     val historyStatusFilter: String = "all",
     val historyError: String? = null,
+
+    // Reviews
+    val reviews: List<ReviewItem> = emptyList(),
 
     // Basic info edit form
     val editFieldName: String = "",

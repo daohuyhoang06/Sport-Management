@@ -5,6 +5,8 @@ import com.sportmanagement.manager.data.remote.dto.BookingCancelRequest
 import com.sportmanagement.manager.data.remote.dto.BookingDto
 import com.sportmanagement.manager.data.remote.dto.BookingHistoryResponse
 import com.sportmanagement.manager.data.remote.dto.BookingRejectRequest
+import com.sportmanagement.manager.data.remote.dto.BookingRescheduleRequest
+import com.sportmanagement.manager.data.remote.dto.BookingRescheduleResponse
 import com.sportmanagement.manager.data.remote.dto.CreateBookingRequest
 import com.sportmanagement.manager.data.remote.dto.CreateBookingResponse
 import retrofit2.Response
@@ -48,6 +50,12 @@ interface BookingApiService {
 
     @PUT("api/manager/bookings/{id}/complete")
     suspend fun completeBooking(@Path("id") id: Int): Response<BookingActionResponse>
+
+    @PUT("api/manager/bookings/{id}/reschedule")
+    suspend fun rescheduleBooking(
+        @Path("id") id: Int,
+        @Body request: BookingRescheduleRequest
+    ): Response<BookingRescheduleResponse>
 
     @GET("api/manager/bookings/{id}/history")
     suspend fun getBookingHistory(@Path("id") id: Int): Response<BookingHistoryResponse>

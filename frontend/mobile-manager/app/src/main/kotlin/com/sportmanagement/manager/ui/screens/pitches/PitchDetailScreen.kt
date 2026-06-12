@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Star
@@ -96,6 +97,7 @@ import com.sportmanagement.manager.domain.model.FieldScheduleConfig
 import com.sportmanagement.manager.domain.model.FieldService
 import com.sportmanagement.manager.domain.model.PitchDetail
 import com.sportmanagement.manager.domain.model.PitchStatus
+import com.sportmanagement.manager.domain.model.ReviewItem
 import androidx.compose.material3.CircularProgressIndicator
 import com.sportmanagement.manager.domain.model.BookingItem
 import com.sportmanagement.manager.domain.model.BookingStatus
@@ -106,7 +108,10 @@ import com.sportmanagement.manager.ui.theme.AmberContainer
 import com.sportmanagement.manager.ui.theme.SportManagerTheme
 import com.sportmanagement.manager.ui.viewmodel.PitchDetailViewModel
 import java.text.NumberFormat
+import java.text.SimpleDateFormat
 import java.util.Locale
+import java.util.TimeZone
+import java.util.Date
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -180,6 +185,7 @@ fun PitchDetailScreen(
             when (uiState.selectedTab) {
                 PitchDetailTab.OVERVIEW -> OverviewTab(
                     detail = uiState.pitchDetail,
+                    reviews = uiState.reviews,
                     showEditDialog = uiState.showEditBasicInfoDialog,
                     editName = uiState.editFieldName,
                     editLocation = uiState.editLocation,
@@ -189,8 +195,7 @@ fun PitchDetailScreen(
                     onNameChange = viewModel::onEditFieldNameChange,
                     onLocationChange = viewModel::onEditLocationChange,
                     onPhoneChange = viewModel::onEditPhoneChange,
-                    onSaveEdit = viewModel::onSaveBasicInfo,
-                    onStatusChange = viewModel::onFieldStatusChange
+                    onSaveEdit = viewModel::onSaveBasicInfo
                 )
                 PitchDetailTab.COURTS -> CourtsTab(
                     courts = uiState.pitchDetail.courts,
@@ -317,6 +322,7 @@ private fun PitchDetailTabRow(
 @Composable
 private fun OverviewTab(
     detail: PitchDetail,
+    reviews: List<ReviewItem>,
     showEditDialog: Boolean,
     editName: String,
     editLocation: String,
@@ -326,8 +332,7 @@ private fun OverviewTab(
     onNameChange: (String) -> Unit,
     onLocationChange: (String) -> Unit,
     onPhoneChange: (String) -> Unit,
-    onSaveEdit: () -> Unit,
-    onStatusChange: (PitchStatus) -> Unit
+    onSaveEdit: () -> Unit
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -439,7 +444,7 @@ private fun OverviewTab(
                         horizontalArrangement = Arrangement.SpaceAround
                     ) {
                         StatItem(
-                            value = detail.rating.toString(),
+                            value = String.format(Locale.getDefault(), "%.1f", detail.rating),
                             label = "Đánh giá",
                             color = Color(0xFFF59E0B)
                         )
@@ -461,44 +466,59 @@ private fun OverviewTab(
         item {
             InfoCard {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    SectionTitle("Trạng thái hoạt động")
-                    PitchStatus.entries.forEach { status ->
-                        val isSelected = detail.status == status
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(
-                                    if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(0.2f)
-                                    else Color.Transparent
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        SectionTitle("Đánh giá từ người chơi")
+                        Text(
+                            text = if (reviews.isEmpty()) "0 đánh giá" else "${reviews.size} đánh giá",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.outline
+                        )
+                    }
+
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            text = String.format(Locale.getDefault(), "%.1f", detail.rating),
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(1.dp)) {
+                            repeat(5) { index ->
+                                Icon(
+                                    imageVector = Icons.Filled.Star,
+                                    contentDescription = null,
+                                    tint = if (index < kotlin.math.round(detail.rating).toInt()) Color(0xFFF59E0B) else Color(0xFFCFD3D8),
+                                    modifier = Modifier.size(16.dp)
                                 )
-                                .clickable { onStatusChange(status) }
-                                .padding(12.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(20.dp)
-                                    .clip(CircleShape)
-                                    .border(
-                                        width = 2.dp,
-                                        color = if (isSelected) MaterialTheme.colorScheme.primary
-                                        else MaterialTheme.colorScheme.outline,
-                                        shape = CircleShape
-                                    )
-                                    .background(
-                                        if (isSelected) MaterialTheme.colorScheme.primary
-                                        else Color.Transparent
-                                    )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        item {
+            InfoCard {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    if (reviews.isEmpty()) {
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            SectionTitle("Bình luận gần đây")
+                            Text(
+                                text = "Chưa có đánh giá nào cho sân này.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.outline
                             )
-                            Column {
-                                Text(
-                                    text = status.label,
-                                    fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                                    color = if (isSelected) MaterialTheme.colorScheme.primary
-                                    else MaterialTheme.colorScheme.onBackground
-                                )
+                        }
+                    } else {
+                        SectionTitle("Bình luận gần đây")
+                        reviews.take(5).forEachIndexed { index, review ->
+                            ReviewCardItem(review = review, pitchName = detail.name)
+                            if (index != minOf(reviews.size, 5) - 1) {
+                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f))
                             }
                         }
                     }
@@ -1466,6 +1486,140 @@ private fun InfoCard(content: @Composable () -> Unit) {
     ) {
         Column(modifier = Modifier.padding(16.dp)) { content() }
     }
+}
+
+@Composable
+private fun ReviewCardItem(review: ReviewItem, pitchName: String) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            ReviewAvatar(avatarUrl = review.customerAvatarUrl, author = review.customerName)
+            Spacer(Modifier.width(8.dp))
+            Column {
+                Text(
+                    text = review.customerName,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+                val reviewTimeLabel = remember(review.timestamp) { formatReviewCreatedAt(review.timestamp) }
+                if (reviewTimeLabel.isNotBlank()) {
+                    Text(
+                        text = reviewTimeLabel,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Text(
+                text = String.format(Locale.getDefault(), "%.1f", review.rating.toFloat()),
+                style = MaterialTheme.typography.labelMedium,
+                color = Color(0xFFE59C00),
+                fontWeight = FontWeight.SemiBold
+            )
+            StarRating(rating = review.rating)
+        }
+
+        Text(
+            text = review.content.ifBlank { "Chưa có nội dung bình luận" },
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        if (pitchName.isNotBlank()) {
+            Text(
+                text = pitchName,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.outline
+            )
+        }
+    }
+}
+
+@Composable
+private fun StarRating(rating: Int, iconSize: androidx.compose.ui.unit.Dp = 14.dp) {
+    Row(horizontalArrangement = Arrangement.spacedBy(1.dp)) {
+        repeat(5) { index ->
+            Icon(
+                imageVector = Icons.Filled.Star,
+                contentDescription = null,
+                tint = if (index < rating) Color(0xFFE59C00) else Color(0xFFCFD3D8),
+                modifier = Modifier.size(iconSize)
+            )
+        }
+    }
+}
+
+@Composable
+private fun ReviewAvatar(avatarUrl: String?, author: String) {
+    val normalizedAvatarUrl = avatarUrl?.trim().orEmpty()
+    Box(
+        modifier = Modifier.size(36.dp).clip(CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        DefaultReviewAvatar(author = author)
+        if (normalizedAvatarUrl.isNotBlank() &&
+            !normalizedAvatarUrl.equals("null", ignoreCase = true) &&
+            !normalizedAvatarUrl.endsWith("/null", ignoreCase = true) &&
+            !normalizedAvatarUrl.endsWith("/undefined", ignoreCase = true)
+        ) {
+            AsyncImage(
+                model = normalizedAvatarUrl,
+                contentDescription = author,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = ContentScale.Crop
+            )
+        }
+    }
+}
+
+@Composable
+private fun DefaultReviewAvatar(author: String) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.surfaceContainerLow),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = Icons.Filled.Person,
+            contentDescription = author,
+            tint = MaterialTheme.colorScheme.outline,
+            modifier = Modifier.size(18.dp)
+        )
+    }
+}
+
+private fun formatReviewCreatedAt(value: String): String {
+    val trimmed = value.trim()
+    if (trimmed.isBlank()) return ""
+
+    val candidates = listOf(
+        "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'" to "dd/MM/yyyy HH:mm",
+        "yyyy-MM-dd'T'HH:mm:ss'Z'" to "dd/MM/yyyy HH:mm",
+        "yyyy-MM-dd HH:mm:ss" to "dd/MM/yyyy HH:mm",
+        "yyyy-MM-dd'T'HH:mm:ss.SSSXXX" to "dd/MM/yyyy HH:mm",
+        "yyyy-MM-dd'T'HH:mm:ssXXX" to "dd/MM/yyyy HH:mm"
+    )
+
+    candidates.forEach { (inputPattern, outputPattern) ->
+        runCatching {
+            val inputFormat = SimpleDateFormat(inputPattern, Locale.getDefault()).apply {
+                timeZone = TimeZone.getTimeZone("UTC")
+            }
+            val outputFormat = SimpleDateFormat(outputPattern, Locale("vi", "VN"))
+            val parsed = inputFormat.parse(trimmed)
+            if (parsed != null) {
+                return outputFormat.format(parsed)
+            }
+        }
+    }
+
+    return trimmed
 }
 
 @Composable

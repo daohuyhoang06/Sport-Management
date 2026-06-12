@@ -74,6 +74,7 @@ import com.sportmanagement.manager.ui.screens.auth.LoginScreen
 import com.sportmanagement.manager.ui.screens.bookings.AddBookingScreen
 import com.sportmanagement.manager.ui.screens.bookings.BookingDetailScreen
 import com.sportmanagement.manager.ui.screens.bookings.BookingsScreen
+import com.sportmanagement.manager.ui.screens.bookings.EditBookingSheetRoot
 import com.sportmanagement.manager.ui.screens.dashboard.DashboardScreen
 import com.sportmanagement.manager.ui.screens.messages.MessageThreadScreen
 import com.sportmanagement.manager.ui.screens.messages.MessagesScreen
@@ -154,6 +155,17 @@ fun ManagerApp(dashboardViewModel: DashboardViewModel = viewModel()) {
         }
     }
 
+    if (bookingsState.showEditDialog) {
+        EditBookingSheetRoot(
+            state = bookingsState,
+            onDateChanged = bookingsViewModel::onEditDateChanged,
+            onStartChanged = bookingsViewModel::onEditStartChanged,
+            onEndChanged = bookingsViewModel::onEditEndChanged,
+            onConfirm = bookingsViewModel::onConfirmEdit,
+            onDismiss = bookingsViewModel::onDismissEditDialog
+        )
+    }
+
     when {
         showProfile -> {
             ProfileScreen(
@@ -184,7 +196,6 @@ fun ManagerApp(dashboardViewModel: DashboardViewModel = viewModel()) {
                 onConfirm = { bookingsViewModel.onConfirmBooking(it) },
                 onCancel = { bookingsViewModel.onRequestCancel(it) },
                 onEdit = { bookingsViewModel.onRequestEdit(it) },
-                onPaymentConfirm = { bookingsViewModel.onRequestPayment(it) },
                 onMessageCustomer = {
                     bookingsState.selectedBooking?.let { booking ->
                         val custId = booking.customer.id.toIntOrNull()
@@ -211,19 +222,6 @@ fun ManagerApp(dashboardViewModel: DashboardViewModel = viewModel()) {
                     onReasonChanged = bookingsViewModel::onCancelReasonChanged,
                     onConfirm = bookingsViewModel::onConfirmCancel,
                     onDismiss = bookingsViewModel::onDismissCancelDialog
-                )
-            }
-            if (bookingsState.showEditDialog) {
-                EditBookingDialogRoot(
-                    state = bookingsState,
-                    onDateChanged = bookingsViewModel::onEditDateChanged,
-                    onStartChanged = bookingsViewModel::onEditStartChanged,
-                    onEndChanged = bookingsViewModel::onEditEndChanged,
-                    onCourtChanged = bookingsViewModel::onEditCourtChanged,
-                    onCustomerNameChanged = bookingsViewModel::onEditCustomerNameChanged,
-                    onCustomerPhoneChanged = bookingsViewModel::onEditCustomerPhoneChanged,
-                    onConfirm = bookingsViewModel::onConfirmEdit,
-                    onDismiss = bookingsViewModel::onDismissEditDialog
                 )
             }
             if (bookingsState.showPaymentDialog) {
@@ -320,6 +318,7 @@ fun ManagerApp(dashboardViewModel: DashboardViewModel = viewModel()) {
             ManagerTab.Bookings -> BookingsScreen(
                 padding = padding,
                 onBookingClick = { bookingsViewModel.onBookingClick(it) },
+                onEditBooking = { bookingsViewModel.onRequestEdit(it.id) },
                 onAddBooking = { bookingsViewModel.onToggleAddBooking() },
                 viewModel = bookingsViewModel
             )

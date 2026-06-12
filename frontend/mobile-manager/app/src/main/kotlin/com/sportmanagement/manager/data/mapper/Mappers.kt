@@ -209,6 +209,11 @@ fun BookingHistoryDto.toHistoryEvent(): BookingHistoryEvent = BookingHistoryEven
 private val utc = TimeZone.getTimeZone("UTC")
 private val isoFmt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault()).also { it.timeZone = utc }
 private val isoFmtAlt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault()).also { it.timeZone = utc }
+private val bookingIsoFmt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
+private val bookingIsoFmtAlt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.getDefault())
+private val bookingLocalIsoFmt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS", Locale.getDefault())
+private val bookingLocalIsoFmtAlt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
+private val bookingSpaceFmt = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
 private val dateFmt = SimpleDateFormat("dd/MM/yyyy", Locale("vi", "VN"))
 private val timeFmt = SimpleDateFormat("HH:mm", Locale.getDefault())
 private val chatTimeFmt = SimpleDateFormat("HH:mm", Locale.getDefault())
@@ -227,9 +232,23 @@ private fun parseIso(raw: String?): java.util.Date? {
 }
 
 private fun durationMinutes(start: String?, end: String?): Int {
-    val s = parseIso(start) ?: return 0
-    val e = parseIso(end) ?: return 0
+    val s = parseBookingDateTime(start) ?: return 0
+    val e = parseBookingDateTime(end) ?: return 0
     return ((e.time - s.time) / 60_000).toInt().coerceAtLeast(0)
+}
+
+private fun parseBookingDateTime(raw: String?): java.util.Date? {
+    if (raw == null) return null
+    val normalized = raw.trim()
+    if (normalized.isBlank()) return null
+
+    // Booking timestamps represent local wall-clock times from the backend DB,
+    // so we intentionally parse them as local time instead of UTC.
+    return runCatching { bookingIsoFmt.parse(normalized) }.getOrNull()
+        ?: runCatching { bookingIsoFmtAlt.parse(normalized) }.getOrNull()
+        ?: runCatching { bookingLocalIsoFmt.parse(normalized) }.getOrNull()
+        ?: runCatching { bookingLocalIsoFmtAlt.parse(normalized) }.getOrNull()
+        ?: runCatching { bookingSpaceFmt.parse(normalized) }.getOrNull()
 }
 
 private fun resolveMediaUrl(value: String?): String? {
@@ -240,9 +259,26 @@ private fun resolveMediaUrl(value: String?): String? {
     return "$base${if (trimmed.startsWith("/")) trimmed else "/$trimmed"}"
 }
 
+private fun normalizePaymentMethodLabel(value: String?): String {
+    return when (value?.trim()?.lowercase()) {
+        null, "" -> ""
+        "momo" -> "MoMo"
+        "bank_transfer" -> "Chuyển khoản"
+        "cash" -> "Tiền mặt"
+        "zalopay" -> "ZaloPay"
+        "vnpay" -> "VNPay"
+        "credit_card" -> "Thẻ tín dụng"
+        else -> value.trim()
+    }
+}
+
 fun BookingDto.toBookingItem(): BookingItem {
-    val startDate = parseIso(startTime)
-    val endDate = parseIso(endTime)
+    val startDate = parseBookingDateTime(startTime)
+    val endDate = parseBookingDateTime(endTime)
+    val createdAtDate = parseIso(createdAt) ?: parseBookingDateTime(createdAt)
+    val bookingPaymentStatus = paymentStatus.orEmpty()
+    val bookingPaymentMethod = normalizePaymentMethodLabel(paymentMethod)
+        .ifBlank { if (status.equals("confirmed", ignoreCase = true) && managerCreated != 1) "MoMo" else "" }
 
     val customer = BookingCustomer(
         id = customerId?.toString() ?: "0",
@@ -274,13 +310,20 @@ fun BookingDto.toBookingItem(): BookingItem {
             ?.replaceFirstChar { it.uppercaseChar() } ?: "",
         startTime = startDate?.let { timeFmt.format(it) } ?: "",
         endTime = endDate?.let { timeFmt.format(it) } ?: "",
+        createdAtTime = createdAtDate?.let { timeFmt.format(it) } ?: "",
         durationMinutes = durationMinutes(startTime, endTime),
         pricePerHour = price?.toLong() ?: 0L,
         totalPrice = price?.toLong() ?: 0L,
         depositPaid = 0L,
         status = bookingStatus,
-        isPaid = bookingStatus == BookingStatus.COMPLETED,
+        paymentStatus = bookingPaymentStatus,
+        isPaid = bookingPaymentStatus.equals("completed", ignoreCase = true) ||
+            bookingStatus == BookingStatus.COMPLETED ||
+            (bookingStatus == BookingStatus.CONFIRMED && managerCreated != 1),
+        paymentMethod = bookingPaymentMethod,
         notes = note ?: "",
-        isManagerCreated = managerCreated == 1
+        isManagerCreated = managerCreated == 1,
+        fieldId = fieldId,
+        courtId = courtId
     )
 }

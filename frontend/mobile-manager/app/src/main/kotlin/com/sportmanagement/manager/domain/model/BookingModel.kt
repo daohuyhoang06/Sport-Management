@@ -29,17 +29,21 @@ data class BookingItem(
     val dayOfWeek: String,
     val startTime: String,
     val endTime: String,
+    val createdAtTime: String = "",
     val durationMinutes: Int,
     val pricePerHour: Long,
     val totalPrice: Long,
     val depositPaid: Long = 0L,
     val status: BookingStatus,
+    val paymentStatus: String = "",
     val isPaid: Boolean,
     val paymentMethod: String = "Tiền mặt",
     val notes: String = "",
     val showLive: Boolean = false,
     val cancelReason: String = "",
-    val isManagerCreated: Boolean = false
+    val isManagerCreated: Boolean = false,
+    val fieldId: Int? = null,
+    val courtId: Int? = null
 )
 
 data class BookingHistoryEvent(

@@ -100,7 +100,6 @@ fun BookingDetailScreen(
     onConfirm: (String) -> Unit = {},
     onCancel: (String) -> Unit = {},
     onEdit: (String) -> Unit = {},
-    onPaymentConfirm: (String) -> Unit = {},
     onMessageCustomer: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -187,7 +186,7 @@ fun BookingDetailScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             when (selectedTab) {
-                0 -> infoTabContent(booking, onConfirm, onCancel, onEdit, onPaymentConfirm)
+                0 -> infoTabContent(booking, onConfirm, onCancel, onEdit)
                 1 -> customerTabContent(
                     booking = booking,
                     isStartingChat = isStartingChat,
@@ -313,8 +312,7 @@ private fun LazyListScope.infoTabContent(
     booking: BookingItem,
     onConfirm: (String) -> Unit,
     onCancel: (String) -> Unit,
-    onEdit: (String) -> Unit,
-    onPaymentConfirm: (String) -> Unit
+    onEdit: (String) -> Unit
 ) {
     item {
         SectionCard {
@@ -398,7 +396,7 @@ private fun LazyListScope.infoTabContent(
             }
         }
     }
-    item { BookingActionsSection(booking, onConfirm, onCancel, onEdit, onPaymentConfirm) }
+    item { BookingActionsSection(booking, onConfirm, onCancel, onEdit) }
 }
 
 // ── Customer tab ──────────────────────────────────────────────────────────────
@@ -687,8 +685,7 @@ private fun BookingActionsSection(
     booking: BookingItem,
     onConfirm: (String) -> Unit,
     onCancel: (String) -> Unit,
-    onEdit: (String) -> Unit,
-    onPaymentConfirm: (String) -> Unit
+    onEdit: (String) -> Unit
 ) {
     when (booking.status) {
         BookingStatus.PENDING -> {
@@ -742,32 +739,6 @@ private fun BookingActionsSection(
                     ) {
                         Text("HỦY LỊCH")
                     }
-                }
-                if (!booking.isPaid) {
-                    Button(
-                        onClick = { onPaymentConfirm(booking.id) },
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1D4ED8)),
-                        shape = RoundedCornerShape(10.dp)
-                    ) {
-                        Icon(Icons.Filled.Payments, null, Modifier.size(16.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("XÁC NHẬN THANH TOÁN")
-                    }
-                }
-            }
-        }
-        BookingStatus.COMPLETED -> {
-            if (!booking.isPaid) {
-                Button(
-                    onClick = { onPaymentConfirm(booking.id) },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1D4ED8)),
-                    shape = RoundedCornerShape(10.dp)
-                ) {
-                    Icon(Icons.Filled.Payments, null, Modifier.size(16.dp))
-                    Spacer(Modifier.width(8.dp))
-                    Text("XÁC NHẬN THANH TOÁN")
                 }
             }
         }

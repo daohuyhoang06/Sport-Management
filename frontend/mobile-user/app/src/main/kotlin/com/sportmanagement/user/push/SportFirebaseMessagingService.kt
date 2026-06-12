@@ -1,10 +1,10 @@
 package com.sportmanagement.user.push
 
 import android.Manifest
-import android.graphics.BitmapFactory
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
+import android.graphics.BitmapFactory
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -61,8 +61,9 @@ class SportFirebaseMessagingService : FirebaseMessagingService() {
         )
 
         val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.drawable.banner_app)
-            .setLargeIcon(BitmapFactory.decodeResource(resources, R.drawable.banner_app))
+            .setSmallIcon(R.drawable.ic_stat_notification)
+            .setLargeIcon(BitmapFactory.decodeResource(resources, R.drawable.app_logo))
+            .setColor(ContextCompat.getColor(this, R.color.notification_accent))
             .setContentTitle(title)
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))

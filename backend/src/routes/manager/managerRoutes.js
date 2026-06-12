@@ -8,6 +8,7 @@ import {
   rejectBooking,
   completeBooking,
   cancelBooking,
+  rescheduleBooking,
   getBookingByCheckInCode,
   confirmBookingCheckIn,
   getCourtAvailability,
@@ -82,6 +83,7 @@ r.get('/bookings/:id/history', getBookingHistory);
 r.put('/bookings/:id/approve', approveBooking);
 r.put('/bookings/:id/reject', rejectBooking);
 r.put('/bookings/:id/complete', completeBooking);
+r.put('/bookings/:id/reschedule', rescheduleBooking);
 r.put('/bookings/:id/cancel', cancelBooking);
 
 // Field image upload
