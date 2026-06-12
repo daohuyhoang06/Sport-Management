@@ -17,22 +17,22 @@ enum class ManagerTab(
     val outlinedIcon: ImageVector
 ) {
     Dashboard(
-        label = "Dashboard",
+        label = "Tổng quan",
         filledIcon = Icons.Filled.Dashboard,
         outlinedIcon = Icons.Outlined.Dashboard
     ),
     Pitches(
-        label = "Pitches",
+        label = "Sân bóng",
         filledIcon = Icons.Filled.Stadium,
         outlinedIcon = Icons.Outlined.Stadium
     ),
     Bookings(
-        label = "Bookings",
+        label = "Đặt sân",
         filledIcon = Icons.Filled.EventNote,
         outlinedIcon = Icons.Outlined.EventNote
     ),
     Messages(
-        label = "Messages",
+        label = "Tin nhắn",
         filledIcon = Icons.Filled.Chat,
         outlinedIcon = Icons.Outlined.Chat
     )

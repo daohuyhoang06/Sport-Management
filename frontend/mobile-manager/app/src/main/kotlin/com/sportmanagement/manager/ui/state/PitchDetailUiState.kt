@@ -1,6 +1,7 @@
 package com.sportmanagement.manager.ui.state
 
 import com.sportmanagement.manager.domain.model.BlockType
+import com.sportmanagement.manager.domain.model.BookingItem
 import com.sportmanagement.manager.domain.model.FieldScheduleConfig
 import com.sportmanagement.manager.domain.model.PitchDetail
 import com.sportmanagement.manager.domain.model.PitchStatus
@@ -28,6 +29,12 @@ data class PitchDetailUiState(
     val showEditScheduleDialog: Boolean = false,
     val isSaving: Boolean = false,
     val saveSuccess: Boolean = false,
+
+    // Booking history state
+    val bookingHistory: List<BookingItem> = emptyList(),
+    val isLoadingHistory: Boolean = false,
+    val historyStatusFilter: String = "all",
+    val historyError: String? = null,
 
     // Basic info edit form
     val editFieldName: String = "",

@@ -96,6 +96,9 @@ import com.sportmanagement.manager.domain.model.FieldScheduleConfig
 import com.sportmanagement.manager.domain.model.FieldService
 import com.sportmanagement.manager.domain.model.PitchDetail
 import com.sportmanagement.manager.domain.model.PitchStatus
+import androidx.compose.material3.CircularProgressIndicator
+import com.sportmanagement.manager.domain.model.BookingItem
+import com.sportmanagement.manager.domain.model.BookingStatus
 import com.sportmanagement.manager.ui.state.PitchDetailTab
 import com.sportmanagement.manager.ui.state.PitchDetailUiState
 import com.sportmanagement.manager.ui.theme.Amber
@@ -124,6 +127,13 @@ fun PitchDetailScreen(
         val msg = uiState.error
         if (!msg.isNullOrBlank()) {
             snackbarHostState.showSnackbar(msg)
+        }
+    }
+
+    LaunchedEffect(uiState.selectedTab) {
+        if (uiState.selectedTab == PitchDetailTab.BOOKING_HISTORY) {
+            val fid = fieldId.toIntOrNull() ?: 0
+            if (fid > 0) viewModel.loadBookingHistory(fid, showLoading = uiState.bookingHistory.isEmpty())
         }
     }
 
@@ -252,7 +262,13 @@ fun PitchDetailScreen(
                     onAdd = viewModel::onAddPolicy,
                     onDelete = viewModel::onDeletePolicy
                 )
-                PitchDetailTab.BOOKING_HISTORY -> BookingHistoryTab()
+                PitchDetailTab.BOOKING_HISTORY -> BookingHistoryTab(
+                    bookings = uiState.bookingHistory,
+                    isLoading = uiState.isLoadingHistory,
+                    error = uiState.historyError,
+                    selectedFilter = uiState.historyStatusFilter,
+                    onFilterChange = viewModel::onHistoryFilterChange
+                )
             }
         }
     }
@@ -1519,16 +1535,43 @@ private data class PitchBookingRecord(
     val statusColor: Color
 )
 
-private val demoPitchBookingHistory = listOf(
-    PitchBookingRecord("b001", "Nguyễn Văn An", "S1", "26/05/2026", "17:00", "18:30", 450_000L, true, "Hoàn thành", Color(0xFF15803D)),
-    PitchBookingRecord("b002", "Trần Thị Bích", "S2", "26/05/2026", "18:30", "20:00", 450_000L, false, "Chờ xác nhận", Color(0xFFF59E0B)),
-    PitchBookingRecord("b003", "Lê Hoàng Nam", "S1", "25/05/2026", "15:00", "16:30", 450_000L, true, "Hoàn thành", Color(0xFF15803D)),
-    PitchBookingRecord("b004", "Phạm Minh Tuấn", "S3", "25/05/2026", "19:00", "20:30", 450_000L, true, "Đã xác nhận", Color(0xFF1976D2)),
-    PitchBookingRecord("b005", "Hoàng Thị Mai", "S2", "24/05/2026", "08:00", "09:30", 450_000L, false, "Đã hủy", Color(0xFFE11D48))
+private fun BookingItem.toPitchBookingRecord(): PitchBookingRecord {
+    val (statusLabel, statusColor) = when (status) {
+        BookingStatus.PENDING   -> "Chờ xác nhận" to Color(0xFFF59E0B)
+        BookingStatus.CONFIRMED -> "Đã xác nhận"  to Color(0xFF1976D2)
+        BookingStatus.COMPLETED -> "Hoàn thành"   to Color(0xFF15803D)
+        BookingStatus.CANCELLED -> "Đã hủy"       to Color(0xFFE11D48)
+    }
+    return PitchBookingRecord(
+        id = id,
+        customerName = customer.name,
+        courtCode = courtCode.ifBlank { courtName },
+        date = date,
+        startTime = startTime,
+        endTime = endTime,
+        totalPrice = totalPrice,
+        isPaid = isPaid,
+        status = statusLabel,
+        statusColor = statusColor
+    )
+}
+
+private val historyFilters = listOf(
+    "Tất cả"      to "all",
+    "Đang chờ"    to "pending",
+    "Đã xác nhận" to "confirmed",
+    "Hoàn thành"  to "completed",
+    "Đã hủy"      to "cancelled"
 )
 
 @Composable
-private fun BookingHistoryTab() {
+private fun BookingHistoryTab(
+    bookings: List<BookingItem>,
+    isLoading: Boolean,
+    error: String?,
+    selectedFilter: String,
+    onFilterChange: (String) -> Unit
+) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
@@ -1541,41 +1584,46 @@ private fun BookingHistoryTab() {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 SectionTitle("Lịch sử đặt sân")
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(MaterialTheme.colorScheme.primaryContainer.copy(0.2f))
-                        .padding(horizontal = 10.dp, vertical = 4.dp)
-                ) {
-                    Text(
-                        text = "${demoPitchBookingHistory.size} lượt",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.SemiBold
-                    )
+                if (!isLoading) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(MaterialTheme.colorScheme.primaryContainer.copy(0.2f))
+                            .padding(horizontal = 10.dp, vertical = 4.dp)
+                    ) {
+                        Text(
+                            text = "${bookings.size} lượt",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
                 }
             }
         }
 
         item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(end = 4.dp)
             ) {
-                listOf("Tất cả", "Hoàn thành", "Đang chờ", "Đã hủy").forEach { label ->
+                items(historyFilters) { filter ->
+                    val (label, value) = filter
+                    val isSelected = selectedFilter == value
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(20.dp))
                             .background(
-                                if (label == "Tất cả") MaterialTheme.colorScheme.primary
+                                if (isSelected) MaterialTheme.colorScheme.primary
                                 else MaterialTheme.colorScheme.surfaceVariant
                             )
+                            .clickable { onFilterChange(value) }
                             .padding(horizontal = 12.dp, vertical = 6.dp)
                     ) {
                         Text(
                             text = label,
                             fontSize = 12.sp,
-                            color = if (label == "Tất cả") Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
                             fontWeight = FontWeight.Medium
                         )
                     }
@@ -1583,8 +1631,42 @@ private fun BookingHistoryTab() {
             }
         }
 
-        items(demoPitchBookingHistory) { record ->
-            PitchBookingHistoryCard(record = record)
+        when {
+            isLoading -> item {
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 48.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            }
+            error != null -> item {
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 48.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Không thể tải dữ liệu",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
+            bookings.isEmpty() -> item {
+                Box(
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 48.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "Chưa có lịch sử đặt sân",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.outline
+                    )
+                }
+            }
+            else -> items(bookings) { booking ->
+                PitchBookingHistoryCard(record = booking.toPitchBookingRecord())
+            }
         }
 
         item { Spacer(Modifier.height(24.dp)) }

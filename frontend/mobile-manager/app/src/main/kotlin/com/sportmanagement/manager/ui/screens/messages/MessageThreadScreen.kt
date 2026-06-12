@@ -67,6 +67,7 @@ import com.sportmanagement.manager.domain.model.MessageStatus
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.TimeZone
 
 // ── Colors ────────────────────────────────────────────────────────────────────
 
@@ -543,12 +544,26 @@ private fun ChatMessage.sortIndex(): Long = when {
 }
 
 // Parse raw timestamp for DISPLAY only (date chips, time labels).
-// Handles both MySQL "YYYY-MM-DD HH:MM:SS" and ISO "YYYY-MM-DDTHH:MM:SS[.sss][Z]".
+// Backend returns ISO UTC strings (e.g. "2024-01-15T03:00:00.000Z").
+// Must parse as UTC then format in device local timezone.
 private fun ChatMessage.timestampEpoch(): Long? {
     val raw = rawTimestamp?.takeIf { it.isNotBlank() } ?: return null
+    val utc = TimeZone.getTimeZone("UTC")
     return runCatching {
-        val normalized = raw.take(19).replace(' ', 'T')
-        SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US).parse(normalized)?.time
+        when {
+            raw.endsWith("Z") && raw.contains('.') ->
+                SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US)
+                    .also { it.timeZone = utc }.parse(raw)?.time
+            raw.endsWith("Z") ->
+                SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", Locale.US)
+                    .also { it.timeZone = utc }.parse(raw)?.time
+            raw.contains('T') ->
+                // ISO without Z — no timezone info, treat as local
+                SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US).parse(raw.take(19))?.time
+            else ->
+                // MySQL "YYYY-MM-DD HH:MM:SS" — treat as local
+                SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US).parse(raw.take(19))?.time
+        }
     }.getOrNull()?.takeIf { it > 0L }
 }
 

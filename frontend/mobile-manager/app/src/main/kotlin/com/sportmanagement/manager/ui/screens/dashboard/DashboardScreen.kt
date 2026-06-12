@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Payments
 import androidx.compose.material.icons.filled.PieChart
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.TrendingDown
 import androidx.compose.material.icons.filled.TrendingUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -61,6 +62,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.sportmanagement.manager.domain.model.DashboardStats
 import com.sportmanagement.manager.domain.model.RevenuePeriod
@@ -83,6 +85,11 @@ fun DashboardScreen(
     onViewSchedule: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
+
+    // Refresh stats mỗi lần màn hình này được compose (tab switch, đóng form đặt sân, v.v.)
+    LaunchedEffect(Unit) {
+        viewModel.loadStats(showLoading = false)
+    }
 
     Box(
         modifier = Modifier
@@ -111,7 +118,7 @@ fun DashboardScreen(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.outline
                     )
-                    Button(onClick = { viewModel.loadStats(); viewModel.loadMonthlyRevenue() }) {
+                    Button(onClick = { viewModel.refresh() }) {
                         Text("Thử lại")
                     }
                 }
@@ -301,20 +308,22 @@ private fun RevenueCard(stats: DashboardStats) {
 
             Spacer(Modifier.height(6.dp))
 
+            val trendUp = stats.revenueTrendPercent >= 0
+            val trendColor = if (trendUp) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Filled.TrendingUp,
+                    imageVector = if (trendUp) Icons.Filled.TrendingUp else Icons.Filled.TrendingDown,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
+                    tint = trendColor,
                     modifier = Modifier.size(14.dp)
                 )
                 Text(
-                    text = "+${stats.revenueTrendPercent}% so với hôm qua",
+                    text = "${if (trendUp) "+" else ""}${stats.revenueTrendPercent}% so với hôm qua",
                     fontSize = 12.sp,
-                    color = MaterialTheme.colorScheme.primary,
+                    color = trendColor,
                     fontWeight = FontWeight.Medium
                 )
             }

@@ -2,7 +2,8 @@ import {
   getDashboardStatsService,
   getRevenueByDateRangeService,
   getMonthlyRevenueStatsService,
-  getUpcomingBookingsService
+  getUpcomingBookingsService,
+  getRevenueTrendService
 } from '../../services/manager/dashboardService.js';
 
 /**
@@ -82,9 +83,25 @@ export const getMonthlyRevenue = async (req, res) => {
     res.json(monthlyStats);
   } catch (error) {
     console.error('Error in getMonthlyRevenue:', error);
-    res.status(500).json({ 
+    res.status(500).json({
       message: 'Server error when fetching monthly revenue',
-      error: error.message 
+      error: error.message
     });
+  }
+};
+
+/**
+ * Get revenue trend data points
+ * GET /api/manager/dashboard/revenue-trend?period=day|week|month|year
+ */
+export const getRevenueTrend = async (req, res) => {
+  try {
+    const managerId = req.user.id;
+    const period = req.query.period || 'week';
+    const data = await getRevenueTrendService(managerId, period);
+    res.json(data);
+  } catch (error) {
+    console.error('Error in getRevenueTrend:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
   }
 };

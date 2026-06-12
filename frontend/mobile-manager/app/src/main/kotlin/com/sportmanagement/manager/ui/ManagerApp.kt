@@ -288,6 +288,10 @@ fun ManagerApp(dashboardViewModel: DashboardViewModel = viewModel()) {
                     if (newTab != selectedTab) {
                         if (newTab == ManagerTab.Bookings) {
                             bookingsViewModel.showTodaySchedule()
+                            bookingsViewModel.loadPitchFilters()
+                        }
+                        if (newTab == ManagerTab.Dashboard) {
+                            dashboardViewModel.refresh()
                         }
                         previousTab = selectedTab
                         selectedTab = newTab
