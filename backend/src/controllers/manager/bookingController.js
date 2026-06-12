@@ -5,7 +5,6 @@ import {
   createBookingService,
   getBookingHistoryService,
   getCourtAvailabilityService,
-  rescheduleBookingService,
 } from "../../services/manager/bookingService.js";
 import {
   buildBookingShareResponse,
@@ -145,22 +144,6 @@ export const completeBooking = async (req, res) => {
   } catch (err) {
     console.error("Error completing booking:", err);
     res.status(500).json({ message: "Server error", error: err.message });
-  }
-};
-
-/**
- * Dời lịch booking
- * PUT /api/manager/bookings/:id/reschedule
- */
-export const rescheduleBooking = async (req, res) => {
-  try {
-    const managerId = req.user.id;
-    const { id } = req.params;
-    const booking = await rescheduleBookingService(managerId, id, req.body);
-    res.json({ success: true, data: booking });
-  } catch (err) {
-    console.error("Error rescheduling booking:", err);
-    res.status(400).json({ message: "Server error", error: err.message });
   }
 };
 

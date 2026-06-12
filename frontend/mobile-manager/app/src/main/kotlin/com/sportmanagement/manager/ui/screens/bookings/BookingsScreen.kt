@@ -101,7 +101,6 @@ private val BookingStatus.badgeText: Color
 fun BookingsScreen(
     padding: PaddingValues,
     onBookingClick: (BookingItem) -> Unit = {},
-    onEditBooking: (BookingItem) -> Unit = {},
     onAddBooking: () -> Unit = {},
     viewModel: BookingsViewModel = viewModel()
 ) {
@@ -189,8 +188,7 @@ fun BookingsScreen(
                     booking = booking,
                     onClick = { onBookingClick(booking) },
                     onConfirm = { viewModel.onConfirmBooking(booking.id) },
-                    onCancel = { viewModel.onRequestCancel(booking.id) },
-                    onEditBooking = onEditBooking
+                    onCancel = { viewModel.onRequestCancel(booking.id) }
                 )
             }
 
@@ -407,8 +405,7 @@ private fun TimelineRow(
     booking: BookingItem,
     onClick: () -> Unit,
     onConfirm: () -> Unit,
-    onCancel: () -> Unit,
-    onEditBooking: (BookingItem) -> Unit
+    onCancel: () -> Unit
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -449,8 +446,7 @@ private fun TimelineRow(
             modifier = Modifier.weight(1f),
             onClick = onClick,
             onConfirm = onConfirm,
-            onCancel = onCancel,
-            onEditBooking = onEditBooking
+            onCancel = onCancel
         )
     }
 }
@@ -461,8 +457,7 @@ private fun BookingCard(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
     onConfirm: () -> Unit,
-    onCancel: () -> Unit,
-    onEditBooking: (BookingItem) -> Unit
+    onCancel: () -> Unit
 ) {
     Card(
         modifier = modifier
@@ -570,26 +565,14 @@ private fun BookingCard(
 
                 when (booking.status) {
                     BookingStatus.CONFIRMED -> {
-                        Row(
+                        OutlinedButton(
+                            onClick = onCancel,
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            OutlinedButton(
-                                onClick = { onEditBooking(booking) },
-                                modifier = Modifier.weight(1f),
-                                colors = ButtonDefaults.outlinedButtonColors(
-                                    contentColor = MaterialTheme.colorScheme.onBackground
-                                )
-                            ) { Text(text = "DỜI LỊCH") }
-                            OutlinedButton(
-                                onClick = onCancel,
-                                modifier = Modifier.weight(1f),
-                                colors = ButtonDefaults.outlinedButtonColors(
-                                    contentColor = Color(0xFFE11D48)
-                                ),
-                                border = BorderStroke(1.dp, Color(0xFFE11D48))
-                            ) { Text(text = "HỦY SÂN") }
-                        }
+                            colors = ButtonDefaults.outlinedButtonColors(
+                                contentColor = Color(0xFFE11D48)
+                            ),
+                            border = BorderStroke(1.dp, Color(0xFFE11D48))
+                        ) { Text(text = "HỦY SÂN") }
                     }
                     BookingStatus.PENDING -> {
                         Button(

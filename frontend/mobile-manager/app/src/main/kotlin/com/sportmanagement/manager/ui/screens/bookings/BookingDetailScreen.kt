@@ -28,7 +28,6 @@ import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.EventBusy
 import androidx.compose.material.icons.filled.Payments
-import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.SportsSoccer
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.Button
@@ -99,7 +98,6 @@ fun BookingDetailScreen(
     onBackClick: () -> Unit,
     onConfirm: (String) -> Unit = {},
     onCancel: (String) -> Unit = {},
-    onEdit: (String) -> Unit = {},
     onMessageCustomer: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -186,7 +184,7 @@ fun BookingDetailScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             when (selectedTab) {
-                0 -> infoTabContent(booking, onConfirm, onCancel, onEdit)
+                0 -> infoTabContent(booking, onConfirm, onCancel)
                 1 -> customerTabContent(
                     booking = booking,
                     isStartingChat = isStartingChat,
@@ -311,8 +309,7 @@ private fun BookingSummaryCard(booking: BookingItem) {
 private fun LazyListScope.infoTabContent(
     booking: BookingItem,
     onConfirm: (String) -> Unit,
-    onCancel: (String) -> Unit,
-    onEdit: (String) -> Unit
+    onCancel: (String) -> Unit
 ) {
     item {
         SectionCard {
@@ -396,7 +393,7 @@ private fun LazyListScope.infoTabContent(
             }
         }
     }
-    item { BookingActionsSection(booking, onConfirm, onCancel, onEdit) }
+    item { BookingActionsSection(booking, onConfirm, onCancel) }
 }
 
 // ── Customer tab ──────────────────────────────────────────────────────────────
@@ -684,8 +681,7 @@ private fun LazyListScope.historyTabContent(booking: BookingItem) {
 private fun BookingActionsSection(
     booking: BookingItem,
     onConfirm: (String) -> Unit,
-    onCancel: (String) -> Unit,
-    onEdit: (String) -> Unit
+    onCancel: (String) -> Unit
 ) {
     when (booking.status) {
         BookingStatus.PENDING -> {
@@ -714,32 +710,14 @@ private fun BookingActionsSection(
             }
         }
         BookingStatus.CONFIRMED -> {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = { onEdit(booking.id) },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.primary),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
-                    ) {
-                        Icon(Icons.Filled.Schedule, null, Modifier.size(16.dp))
-                        Spacer(Modifier.width(4.dp))
-                        Text("DỜI LỊCH")
-                    }
-                    OutlinedButton(
-                        onClick = { onCancel(booking.id) },
-                        modifier = Modifier.weight(1f),
-                        shape = RoundedCornerShape(10.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFDC2626)),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFDC2626))
-                    ) {
-                        Text("HỦY LỊCH")
-                    }
-                }
+            OutlinedButton(
+                onClick = { onCancel(booking.id) },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(10.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFFDC2626)),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFDC2626))
+            ) {
+                Text("HỦY LỊCH")
             }
         }
         else -> {}

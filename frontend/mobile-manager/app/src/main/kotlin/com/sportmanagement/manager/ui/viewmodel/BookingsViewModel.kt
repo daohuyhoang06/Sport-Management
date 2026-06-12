@@ -7,7 +7,6 @@ import com.sportmanagement.manager.data.AppContainer
 import com.sportmanagement.manager.data.mapper.toBookingItem
 import com.sportmanagement.manager.data.mapper.toHistoryEvent
 import com.sportmanagement.manager.data.remote.dto.CreateBookingRequest
-import com.sportmanagement.manager.data.remote.dto.BookingRescheduleRequest
 import com.sportmanagement.manager.ui.state.buildWeekDayChips
 import com.sportmanagement.manager.ui.state.currentWeekStartIso
 import com.sportmanagement.manager.domain.model.BookingItem
@@ -218,104 +217,6 @@ class BookingsViewModel : ViewModel() {
         updateBookingStatus(bookingId, BookingStatus.COMPLETED)
     }
 
-    fun onRequestEdit(bookingId: String) {
-        val booking = _uiState.value.bookings.firstOrNull { it.id == bookingId }
-            ?: _uiState.value.selectedBooking?.takeIf { it.id == bookingId }
-        if (booking != null) {
-            _uiState.value = _uiState.value.copy(
-                showEditDialog = true,
-                editTargetId = bookingId,
-                editFieldId = booking.fieldId,
-                editCourtId = booking.courtId,
-                editPitchName = booking.pitchName,
-                editCourtName = booking.courtName,
-                editDate = booking.date,
-                editStart = booking.startTime,
-                editEnd = booking.endTime,
-                editCourtCode = booking.courtCode,
-                editCustomerName = booking.customer.name,
-                editCustomerPhone = booking.customer.phone
-            )
-            refreshEditAvailability()
-        }
-    }
-
-    fun onEditDateChanged(date: String) {
-        _uiState.value = _uiState.value.copy(editDate = date, editStart = "", editEnd = "")
-        refreshEditAvailability()
-    }
-
-    fun onEditStartChanged(time: String) { _uiState.value = _uiState.value.copy(editStart = time, editEnd = "") }
-    fun onEditEndChanged(time: String) { _uiState.value = _uiState.value.copy(editEnd = time) }
-    fun onEditCourtChanged(court: String) { _uiState.value = _uiState.value.copy(editCourtCode = court) }
-    fun onEditCustomerNameChanged(name: String) { _uiState.value = _uiState.value.copy(editCustomerName = name) }
-    fun onEditCustomerPhoneChanged(phone: String) { _uiState.value = _uiState.value.copy(editCustomerPhone = phone) }
-
-    fun onConfirmEdit() {
-        val id = _uiState.value.editTargetId
-        val s = _uiState.value
-        if (s.editFieldId == null || s.editCourtId == null) return
-        val dateIso = ddMmYyyyToIso(s.editDate) ?: return
-        if (s.editStart.isBlank() || s.editEnd.isBlank()) return
-
-        val startIso = "${dateIso}T${s.editStart}:00"
-        val endIso = "${dateIso}T${s.editEnd}:00"
-
-        viewModelScope.launch {
-            AppContainer.bookingRepository.rescheduleBooking(
-                id.toIntOrNull() ?: return@launch,
-                BookingRescheduleRequest(
-                    startTime = startIso,
-                    endTime = endIso
-                )
-            ).fold(
-                onSuccess = { dto ->
-                    val updatedBooking = dto.toBookingItem()
-                    val updated = s.bookings.map { b -> if (b.id == id) updatedBooking else b }
-                    val selectedUpdated = s.selectedBooking?.let { sel ->
-                        if (sel.id == id) updatedBooking else sel
-                    }
-                    _uiState.value = s.copy(
-                        bookings = updated,
-                        selectedBooking = selectedUpdated,
-                        showEditDialog = false,
-                        editTargetId = "",
-                        editFieldId = null,
-                        editCourtId = null,
-                        editPitchName = "",
-                        editCourtName = "",
-                        editDate = "",
-                        editStart = "",
-                        editEnd = "",
-                        editCourtCode = "",
-                        editBookedRanges = emptyList(),
-                        editIsLoadingSlots = false
-                    )
-                },
-                onFailure = { e ->
-                    _uiState.value = _uiState.value.copy(error = e.message, editIsLoadingSlots = false)
-                }
-            )
-        }
-    }
-
-    fun onDismissEditDialog() {
-        _uiState.value = _uiState.value.copy(
-            showEditDialog = false,
-            editTargetId = "",
-            editFieldId = null,
-            editCourtId = null,
-            editPitchName = "",
-            editCourtName = "",
-            editDate = "",
-            editStart = "",
-            editEnd = "",
-            editCourtCode = "",
-            editBookedRanges = emptyList(),
-            editIsLoadingSlots = false
-        )
-    }
-
     fun onRequestPayment(bookingId: String) {
         _uiState.value = _uiState.value.copy(
             showPaymentDialog = true,
@@ -498,35 +399,6 @@ class BookingsViewModel : ViewModel() {
             bookings = updated,
             selectedBooking = selectedUpdated
         )
-    }
-
-    private fun refreshEditAvailability() {
-        val s = _uiState.value
-        val fieldId = s.editFieldId ?: return
-        val courtId = s.editCourtId ?: return
-        val dateIso = ddMmYyyyToIso(s.editDate) ?: return
-
-        _uiState.value = _uiState.value.copy(editIsLoadingSlots = true)
-        viewModelScope.launch {
-            AppContainer.fieldRepository.getCourtAvailability(fieldId, courtId, dateIso)
-                .onSuccess { ranges ->
-                    val currentRange = if (s.editStart.isNotBlank() && s.editEnd.isNotBlank()) {
-                        timeStrToMin(s.editStart) to timeStrToMin(s.editEnd)
-                    } else null
-                    val booked = ranges.map { timeStrToMin(it.startTime) to timeStrToMin(it.endTime) }
-                        .filterNot { it == currentRange }
-                    _uiState.value = _uiState.value.copy(
-                        editBookedRanges = booked,
-                        editIsLoadingSlots = false
-                    )
-                }
-                .onFailure {
-                    _uiState.value = _uiState.value.copy(
-                        editBookedRanges = emptyList(),
-                        editIsLoadingSlots = false
-                    )
-                }
-        }
     }
 
     private fun selectDate(dateIso: String) {

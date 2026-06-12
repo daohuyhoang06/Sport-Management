@@ -24,7 +24,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -74,7 +73,6 @@ import com.sportmanagement.manager.ui.screens.auth.LoginScreen
 import com.sportmanagement.manager.ui.screens.bookings.AddBookingScreen
 import com.sportmanagement.manager.ui.screens.bookings.BookingDetailScreen
 import com.sportmanagement.manager.ui.screens.bookings.BookingsScreen
-import com.sportmanagement.manager.ui.screens.bookings.EditBookingSheetRoot
 import com.sportmanagement.manager.ui.screens.dashboard.DashboardScreen
 import com.sportmanagement.manager.ui.screens.messages.MessageThreadScreen
 import com.sportmanagement.manager.ui.screens.messages.MessagesScreen
@@ -155,17 +153,6 @@ fun ManagerApp(dashboardViewModel: DashboardViewModel = viewModel()) {
         }
     }
 
-    if (bookingsState.showEditDialog) {
-        EditBookingSheetRoot(
-            state = bookingsState,
-            onDateChanged = bookingsViewModel::onEditDateChanged,
-            onStartChanged = bookingsViewModel::onEditStartChanged,
-            onEndChanged = bookingsViewModel::onEditEndChanged,
-            onConfirm = bookingsViewModel::onConfirmEdit,
-            onDismiss = bookingsViewModel::onDismissEditDialog
-        )
-    }
-
     when {
         showProfile -> {
             ProfileScreen(
@@ -195,7 +182,6 @@ fun ManagerApp(dashboardViewModel: DashboardViewModel = viewModel()) {
                 onBackClick = { bookingsViewModel.onBackFromDetail() },
                 onConfirm = { bookingsViewModel.onConfirmBooking(it) },
                 onCancel = { bookingsViewModel.onRequestCancel(it) },
-                onEdit = { bookingsViewModel.onRequestEdit(it) },
                 onMessageCustomer = {
                     bookingsState.selectedBooking?.let { booking ->
                         val custId = booking.customer.id.toIntOrNull()
@@ -318,7 +304,6 @@ fun ManagerApp(dashboardViewModel: DashboardViewModel = viewModel()) {
             ManagerTab.Bookings -> BookingsScreen(
                 padding = padding,
                 onBookingClick = { bookingsViewModel.onBookingClick(it) },
-                onEditBooking = { bookingsViewModel.onRequestEdit(it.id) },
                 onAddBooking = { bookingsViewModel.onToggleAddBooking() },
                 viewModel = bookingsViewModel
             )
@@ -434,17 +419,6 @@ private fun ManagerTopAppBar(managerName: String, managerAvatarUrl: String?, onA
                 }
             }
 
-            Box(
-                modifier = Modifier.size(36.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Notifications,
-                    contentDescription = "Thông báo",
-                    tint = Color.White,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
         }
     }
 }
@@ -618,47 +592,6 @@ fun CancelBookingDialogRoot(
             ) { Text("Xác nhận hủy") }
         },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Quay lại") } }
-    )
-}
-
-@Composable
-fun EditBookingDialogRoot(
-    state: BookingsUiState,
-    onDateChanged: (String) -> Unit,
-    onStartChanged: (String) -> Unit,
-    onEndChanged: (String) -> Unit,
-    onCourtChanged: (String) -> Unit,
-    onCustomerNameChanged: (String) -> Unit,
-    onCustomerPhoneChanged: (String) -> Unit,
-    onConfirm: () -> Unit,
-    onDismiss: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Sửa thông tin đặt sân") },
-        text = {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                OutlinedTextField(state.editCourtCode, onCourtChanged, label = { Text("Sân (mã sân)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(state.editDate, onDateChanged, label = { Text("Ngày (dd/MM/yyyy)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(
-                    value = "${state.editStart} - ${state.editEnd}",
-                    onValueChange = {},
-                    label = { Text("Khung giờ") },
-                    enabled = false,
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                OutlinedTextField(state.editStart, onStartChanged, label = { Text("Giờ bắt đầu (HH:mm)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(state.editEnd, onEndChanged, label = { Text("Giờ kết thúc (HH:mm)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(state.editCustomerName, onCustomerNameChanged, label = { Text("Tên khách hàng") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(state.editCustomerPhone, onCustomerPhoneChanged, label = { Text("Số điện thoại") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-            }
-        },
-        confirmButton = { Button(onClick = onConfirm) { Text("Lưu thay đổi") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("Hủy") } }
     )
 }
 

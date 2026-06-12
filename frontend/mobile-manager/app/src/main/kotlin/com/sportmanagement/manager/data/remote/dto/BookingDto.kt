@@ -33,12 +33,3 @@ data class BookingActionResponse(
 
 data class BookingRejectRequest(val reason: String? = null)
 data class BookingCancelRequest(val reason: String? = null)
-data class BookingRescheduleRequest(
-    @SerializedName("start_time") val startTime: String,
-    @SerializedName("end_time") val endTime: String
-)
-data class BookingRescheduleResponse(
-    val success: Boolean?,
-    val data: BookingDto?,
-    val message: String? = null
-)

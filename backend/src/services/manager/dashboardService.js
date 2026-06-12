@@ -133,7 +133,7 @@ export const getRevenueByDateRangeService = async (managerId, startDate, endDate
         b.status,
         f.field_name,
         f.location,
-        p.name as customer_name
+        p.person_name as customer_name
       FROM bookings b
       INNER JOIN fields f ON b.field_id = f.field_id
       LEFT JOIN person p ON b.customer_id = p.person_id

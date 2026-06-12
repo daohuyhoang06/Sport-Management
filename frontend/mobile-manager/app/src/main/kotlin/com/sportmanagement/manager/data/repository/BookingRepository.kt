@@ -5,7 +5,6 @@ import com.sportmanagement.manager.data.remote.dto.BookingCancelRequest
 import com.sportmanagement.manager.data.remote.dto.BookingDto
 import com.sportmanagement.manager.data.remote.dto.BookingHistoryDto
 import com.sportmanagement.manager.data.remote.dto.BookingRejectRequest
-import com.sportmanagement.manager.data.remote.dto.BookingRescheduleRequest
 import com.sportmanagement.manager.data.remote.dto.CreateBookingRequest
 
 class BookingRepository(private val api: BookingApiService) {
@@ -46,17 +45,6 @@ class BookingRepository(private val api: BookingApiService) {
         val response = api.completeBooking(id)
         if (response.isSuccessful) Result.success(Unit)
         else Result.failure(Exception("Hoàn thành booking thất bại"))
-    }
-
-    suspend fun rescheduleBooking(id: Int, request: BookingRescheduleRequest): Result<BookingDto> = safeCall {
-        val response = api.rescheduleBooking(id, request)
-        if (response.isSuccessful) {
-            val data = response.body()?.data
-            if (data != null) Result.success(data)
-            else Result.failure(Exception("Dời lịch thất bại"))
-        } else {
-            Result.failure(Exception("Dời lịch thất bại (${response.code()})"))
-        }
     }
 
     suspend fun createBooking(request: CreateBookingRequest): Result<BookingDto> = safeCall {
