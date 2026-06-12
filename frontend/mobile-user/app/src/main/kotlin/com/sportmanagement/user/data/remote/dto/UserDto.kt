@@ -25,6 +25,7 @@ data class UserFieldDto(
     val region: String? = null,
     val province: String? = null,
     val district: String? = null,
+    val phone: String? = null,
     val contactPhone: String? = null,
     val avatarImageUrl: String? = null,
     val cardImageUrl: String? = null

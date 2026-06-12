@@ -153,8 +153,10 @@ fun FieldDetailBottomSheet(
     var previewImage by remember { mutableStateOf<Int?>(null) }
     var ratingBadgeHeightPx by remember { mutableIntStateOf(0) }
     val bookingLink = remember(field.fieldId, field.name) { bookingLinkFor(field) }
-    val hotline = remember(field.contactPhone) {
-        field.contactPhone.trim().ifBlank {
+    val hotline = remember(field.phone, field.contactPhone) {
+        field.phone.trim().ifBlank {
+            field.contactPhone.trim()
+        }.ifBlank {
             context.getString(R.string.field_detail_default_hotline)
         }
     }

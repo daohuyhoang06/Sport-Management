@@ -19,6 +19,7 @@ data class UserField(
     val region: String = "",
     val province: String = "",
     val district: String = "",
+    val phone: String = "",
     val contactPhone: String = "",
     val distanceKm: Double? = null,
     val avatarImageUrl: String = "",

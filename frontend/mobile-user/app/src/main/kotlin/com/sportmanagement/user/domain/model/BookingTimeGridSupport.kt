@@ -8,8 +8,12 @@ object BookingTimeGridSupport {
         gridStepMinutes: Int
     ): List<Int> {
         val step = gridStepMinutes.coerceAtLeast(1)
-        val openMinutes = parseTimeToMinutes(openTime)
-        val closeMinutes = parseTimeToMinutes(closeTime)
+        val openMinutes = roundMinutesUpToHalfHour(parseTimeToMinutes(openTime))
+        val closeMinutes = normalizeCloseMinutes(
+            openMinutes = openMinutes,
+            closeMinutes = parseTimeToMinutes(closeTime),
+            stepMinutes = step
+        )
         if (closeMinutes <= openMinutes) return emptyList()
 
         val starts = mutableListOf<Int>()
@@ -21,6 +25,38 @@ object BookingTimeGridSupport {
         return starts
     }
 
+    fun roundMinutesUpToHalfHour(totalMinutes: Int): Int {
+        val minutes = totalMinutes.coerceAtLeast(0)
+        val remainder = minutes % 30
+        return if (remainder == 0) {
+            minutes
+        } else {
+            minutes + (30 - remainder)
+        }
+    }
+
+    fun roundMinutesToNearestStep(totalMinutes: Int, stepMinutes: Int): Int {
+        val step = stepMinutes.coerceAtLeast(1)
+        val minutes = totalMinutes.coerceAtLeast(0)
+        val remainder = minutes % step
+        return when {
+            remainder == 0 -> minutes
+            remainder * 2 < step -> minutes - remainder
+            else -> minutes + (step - remainder)
+        }
+    }
+
+    fun normalizeCloseMinutes(
+        openMinutes: Int,
+        closeMinutes: Int,
+        stepMinutes: Int
+    ): Int {
+        if (closeMinutes <= openMinutes) {
+            return 24 * 60
+        }
+        return roundMinutesToNearestStep(closeMinutes, stepMinutes).coerceAtMost(24 * 60)
+    }
+
     fun parseTimeToMinutes(time: String): Int {
         val parts = time.split(":")
         val hours = parts.getOrNull(0)?.toIntOrNull() ?: 0
@@ -30,7 +66,7 @@ object BookingTimeGridSupport {
 
     fun formatMinutesAsTime(totalMinutes: Int): String {
         val normalized = totalMinutes.coerceAtLeast(0)
-        val hours = normalized / 60
+        val hours = (normalized / 60) % 24
         val minutes = normalized % 60
         return "%02d:%02d".format(hours, minutes)
     }

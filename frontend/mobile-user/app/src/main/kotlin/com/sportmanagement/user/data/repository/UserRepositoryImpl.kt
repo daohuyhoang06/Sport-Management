@@ -692,6 +692,7 @@ private fun List<UserField>.toJsonArray(): JSONArray {
             .put("region", field.region)
             .put("province", field.province)
             .put("district", field.district)
+            .put("phone", field.phone)
             .put("contactPhone", field.contactPhone)
             .put("distanceKm", field.distanceKm)
             .put("avatarImageUrl", field.avatarImageUrl)
@@ -737,6 +738,7 @@ private fun JSONObject.toUserField(): UserField {
         region = optString("region"),
         province = optString("province"),
         district = optString("district"),
+        phone = optString("phone"),
         contactPhone = optSanitizedString("contactPhone"),
         distanceKm = if (has("distanceKm") && !isNull("distanceKm")) optDouble("distanceKm") else null,
         avatarImageUrl = optSanitizedString("avatarImageUrl"),

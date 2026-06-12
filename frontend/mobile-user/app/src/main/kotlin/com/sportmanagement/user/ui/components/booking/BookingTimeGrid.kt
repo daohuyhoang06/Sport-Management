@@ -50,8 +50,14 @@ fun BookingTimeGrid(
     val horizontalScroll = rememberScrollState()
     val stepMinutes = gridData.gridStepMinutes.coerceAtLeast(1)
     val selectionMinutes = gridData.minBookingMinutes.coerceAtLeast(1)
-    val closeMinutes = remember(gridData.closeTime) {
-        BookingTimeGridSupport.parseTimeToMinutes(gridData.closeTime)
+    val closeMinutes = remember(gridData.openTime, gridData.closeTime, stepMinutes) {
+        BookingTimeGridSupport.normalizeCloseMinutes(
+            openMinutes = BookingTimeGridSupport.roundMinutesUpToHalfHour(
+                BookingTimeGridSupport.parseTimeToMinutes(gridData.openTime)
+            ),
+            closeMinutes = BookingTimeGridSupport.parseTimeToMinutes(gridData.closeTime),
+            stepMinutes = stepMinutes
+        )
     }
     val vnClock by rememberVietnamClock()
 
@@ -62,7 +68,7 @@ fun BookingTimeGrid(
             gridStepMinutes = stepMinutes
         )
     }
-    val bookingSlotStarts = remember(gridData.openTime, gridData.closeTime, selectionMinutes) {
+    val bookingSlotStarts = remember(gridData.openTime, gridData.closeTime, selectionMinutes, stepMinutes) {
         generateBookingSlotStarts(
             openTime = gridData.openTime,
             closeTime = gridData.closeTime,
@@ -368,8 +374,14 @@ private fun generateBookingSlotStarts(
     closeTime: String,
     minBookingMinutes: Int
 ): List<Int> {
-    val openMinutes = BookingTimeGridSupport.parseTimeToMinutes(openTime)
-    val closeMinutes = BookingTimeGridSupport.parseTimeToMinutes(closeTime)
+    val openMinutes = BookingTimeGridSupport.roundMinutesUpToHalfHour(
+        totalMinutes = BookingTimeGridSupport.parseTimeToMinutes(openTime)
+    )
+    val closeMinutes = BookingTimeGridSupport.normalizeCloseMinutes(
+        openMinutes = openMinutes,
+        closeMinutes = BookingTimeGridSupport.parseTimeToMinutes(closeTime),
+        stepMinutes = minBookingMinutes
+    )
     val blockMinutes = minBookingMinutes.coerceAtLeast(1)
     if (closeMinutes <= openMinutes) return emptyList()
 

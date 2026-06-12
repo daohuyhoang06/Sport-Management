@@ -636,6 +636,7 @@ class UserApi(
             region = optStringOrNull("region"),
             province = optStringOrNull("province"),
             district = optStringOrNull("district"),
+            phone = optStringOrNull("phone"),
             contactPhone = optStringOrNull("contact_phone")
                 ?: optStringOrNull("owner_phone")
                 ?: optStringOrNull("phone"),

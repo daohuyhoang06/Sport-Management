@@ -133,6 +133,24 @@ const formatDbTimeLabel = (value) => {
   return "";
 };
 
+const roundMinutesUpToHalfHour = (minutes) => {
+  const normalizedMinutes = Math.max(0, Number(minutes) || 0);
+  const remainder = normalizedMinutes % 30;
+  return remainder === 0
+    ? normalizedMinutes
+    : normalizedMinutes + (30 - remainder);
+};
+
+const roundMinutesToNearestStep = (minutes, stepMinutes) => {
+  const normalizedMinutes = Math.max(0, Number(minutes) || 0);
+  const normalizedStep = Math.max(1, Number(stepMinutes) || 1);
+  const remainder = normalizedMinutes % normalizedStep;
+  if (remainder === 0) return normalizedMinutes;
+  return remainder * 2 < normalizedStep
+    ? normalizedMinutes - remainder
+    : normalizedMinutes + (normalizedStep - remainder);
+};
+
 const buildBookingNote = (note, customerName, customerPhone) => {
   if (customerName || customerPhone) {
     let finalNote = `Ten: ${customerName || "N/A"}, SDT: ${customerPhone || "N/A"}`;
@@ -518,7 +536,7 @@ export const mapFieldRowToListPayload = (row) => {
     region: row.region || "",
     province: row.province || "",
     district: row.district || "",
-    contact_phone: row.owner_phone || row.phone || "",
+    contact_phone: row.phone || row.owner_phone || "",
     owner_phone: row.owner_phone || "",
     phone: row.phone || "",
     distance_km: distanceKm,
@@ -885,7 +903,7 @@ export const getField = async (req, res) => {
     const data = {
       ...mapped,
       manager_id: fieldRow.manager_id,
-      phone: fieldRow.owner_phone || fieldRow.phone || "",
+      phone: fieldRow.phone || fieldRow.owner_phone || "",
       slot_minutes: fieldRow.slot_minutes,
       images,
       services,
@@ -945,6 +963,25 @@ export const getFieldGrid = async (req, res) => {
     const openTime = formatTime(fieldRow.open_time) || "06:00";
     const closeTime = formatTime(fieldRow.close_time) || "22:00";
     const slotMinutes = fieldRow.slot_minutes || 60;
+    const normalizedOpenMinutes = roundMinutesUpToHalfHour(
+      (() => {
+        const [hours, minutes] = String(openTime)
+          .split(":")
+          .map((item) => Number.parseInt(item, 10) || 0);
+        return hours * 60 + minutes;
+      })(),
+    );
+    const rawCloseMinutes = (() => {
+      const [hours, minutes] = String(closeTime)
+        .split(":")
+        .map((item) => Number.parseInt(item, 10) || 0);
+      return hours * 60 + minutes;
+    })();
+    const normalizedCloseMinutes = rawCloseMinutes <= normalizedOpenMinutes
+      ? 24 * 60
+      : Math.min(roundMinutesToNearestStep(rawCloseMinutes, slotMinutes), 24 * 60);
+    const normalizedOpenTime = `${String(Math.floor(normalizedOpenMinutes / 60) % 24).padStart(2, "0")}:${String(normalizedOpenMinutes % 60).padStart(2, "0")}`;
+    const normalizedCloseTime = `${String(Math.floor(normalizedCloseMinutes / 60) % 24).padStart(2, "0")}:${String(normalizedCloseMinutes % 60).padStart(2, "0")}`;
     const price = Number(fieldRow.slot_price) || 0;
     const selectedDate = String(date || "").trim();
     const todayVn = getVnDateString();
@@ -987,18 +1024,8 @@ export const getFieldGrid = async (req, res) => {
 
     const blockedSlots = [];
     if (isPastDate || isToday) {
-      const openMinutesValue = (() => {
-        const [hours, minutes] = String(openTime)
-          .split(":")
-          .map((item) => Number.parseInt(item, 10) || 0);
-        return hours * 60 + minutes;
-      })();
-      const closeMinutesValue = (() => {
-        const [hours, minutes] = String(closeTime)
-          .split(":")
-          .map((item) => Number.parseInt(item, 10) || 0);
-        return hours * 60 + minutes;
-      })();
+      const openMinutesValue = normalizedOpenMinutes;
+      const closeMinutesValue = normalizedCloseMinutes;
       const blockMinutes = Math.max(1, Number(slotMinutes) || 60);
       const allSlotStarts = [];
       let current = openMinutesValue;
@@ -1041,8 +1068,8 @@ export const getFieldGrid = async (req, res) => {
     const responseData = {
       selectedDate: date,
       grid: {
-        openTime: openTime,
-        closeTime: closeTime,
+        openTime: normalizedOpenTime,
+        closeTime: normalizedCloseTime,
         gridStepMinutes: slotMinutes,
         minBookingMinutes: slotMinutes,
         courts: gridCourts.map((c) => ({

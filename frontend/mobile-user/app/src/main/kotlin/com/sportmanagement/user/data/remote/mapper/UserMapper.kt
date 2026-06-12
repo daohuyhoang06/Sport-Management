@@ -36,7 +36,8 @@ object UserMapper {
         region = region ?: "",
         province = province ?: "",
         district = district ?: "",
-        contactPhone = contactPhone ?: "",
+        phone = phone ?: "",
+        contactPhone = contactPhone ?: phone ?: "",
         avatarImageUrl = avatarImageUrl ?: "",
         cardImageUrl = cardImageUrl ?: ""
     )

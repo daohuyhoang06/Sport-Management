@@ -10,10 +10,15 @@ import java.util.concurrent.TimeUnit
 
 object NetworkClient {
 
-    // Emulator dùng 10.0.2.2; điện thoại thật nên dùng localhost qua adb reverse
-    // hoặc override bằng dev.server.url trong local.properties nếu muốn trỏ sang LAN IP.
+    private const val EMULATOR_BASE_URL = "http://10.0.2.2:5000/"
+    private const val USB_REVERSE_BASE_URL = "http://127.0.0.1:5000/"
+
+    // Emulator uses 10.0.2.2. A real device connected over USB should hit the host
+    // through `adb reverse tcp:5000 tcp:5000`, so localhost is the correct base URL.
     val BASE_URL: String
-        get() = if (isEmulator()) "http://10.0.2.2:5000/" else BuildConfig.DEV_SERVER_URL
+        get() = if (isEmulator()) EMULATOR_BASE_URL else BuildConfig.DEV_SERVER_URL.ifBlank {
+            USB_REVERSE_BASE_URL
+        }
 
     private fun isEmulator(): Boolean =
         Build.FINGERPRINT.startsWith("generic") ||
