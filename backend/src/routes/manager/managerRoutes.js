@@ -47,7 +47,8 @@ import {
   getDashboardStats,
   getRevenueByDateRange,
   getMonthlyRevenue,
-  getUpcomingBookings
+  getUpcomingBookings,
+  getRevenueTrend
 } from "../../controllers/manager/dashboardController.js";
 import { getProfile, updateProfile } from "../../controllers/manager/profileController.js";
 import { managerStartChat } from "../../controllers/chatController.js";
@@ -69,6 +70,7 @@ r.get('/dashboard/stats', getDashboardStats);
 r.get('/dashboard/upcoming', getUpcomingBookings);
 r.get('/dashboard/revenue', getRevenueByDateRange);
 r.get('/dashboard/monthly-revenue', getMonthlyRevenue);
+r.get('/dashboard/revenue-trend', getRevenueTrend);
 
 // Booking management
 r.get('/bookings', listBookings);

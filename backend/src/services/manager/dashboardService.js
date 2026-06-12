@@ -29,22 +29,54 @@ export const getDashboardStatsService = async (managerId) => {
       WHERE f.manager_id = ?
     `, { replacements: [managerId] });
 
-    // Get today's bookings
+    // Get today's active bookings (exclude cancelled/rejected)
     const [todayStats] = await sequelize.query(`
       SELECT COUNT(*) as todayBookings
       FROM bookings b
       INNER JOIN fields f ON b.field_id = f.field_id
       WHERE f.manager_id = ?
-      AND DATE(b.start_time) = CURRENT_DATE
+        AND DATE(b.start_time) = CURRENT_DATE
+        AND b.status NOT IN ('cancelled', 'rejected')
     `, { replacements: [managerId] });
+
+    // Count active courts for occupancy calculation
+    const [courtStats] = await sequelize.query(`
+      SELECT COUNT(*) as activeCourts
+      FROM field_courts fc
+      INNER JOIN fields f ON fc.field_id = f.field_id
+      WHERE f.manager_id = ?
+        AND f.status = 'active'
+        AND fc.status = 'active'
+    `, { replacements: [managerId] });
+
+    // Sum booked minutes today (pending + confirmed + completed)
+    const [bookedStats] = await sequelize.query(`
+      SELECT COALESCE(SUM(TIMESTAMPDIFF(MINUTE, b.start_time, b.end_time)), 0) as bookedMinutes
+      FROM bookings b
+      INNER JOIN fields f ON b.field_id = f.field_id
+      WHERE f.manager_id = ?
+        AND DATE(b.start_time) = CURDATE()
+        AND b.status IN ('pending', 'confirmed', 'completed')
+    `, { replacements: [managerId] });
+
+    const activeCourts = Number(courtStats[0].activecourts) || 0;
+    const totalAvailableMinutes = activeCourts * 960; // 16h/court/day (06:00–22:00)
+    const bookedMinutes = Number(bookedStats[0].bookedminutes) || 0;
+    const occupancyPercent = totalAvailableMinutes > 0
+      ? Math.min(100, Math.round(bookedMinutes / totalAvailableMinutes * 100))
+      : 0;
 
     // Get revenue stats (only confirmed and completed)
     const [revenueStats] = await sequelize.query(`
-      SELECT 
+      SELECT
         COALESCE(SUM(b.price), 0) as totalRevenue,
-        COALESCE(SUM(CASE WHEN EXTRACT(MONTH FROM b.start_time) = EXTRACT(MONTH FROM CURRENT_DATE) 
-                          AND EXTRACT(YEAR FROM b.start_time) = EXTRACT(YEAR FROM CURRENT_DATE) 
-                          THEN b.price ELSE 0 END), 0) as monthlyRevenue
+        COALESCE(SUM(CASE WHEN MONTH(b.start_time) = MONTH(CURRENT_DATE)
+                          AND YEAR(b.start_time) = YEAR(CURRENT_DATE)
+                          THEN b.price ELSE 0 END), 0) as monthlyRevenue,
+        COALESCE(SUM(CASE WHEN DATE(b.start_time) = CURRENT_DATE
+                          THEN b.price ELSE 0 END), 0) as todayRevenue,
+        COALESCE(SUM(CASE WHEN DATE(b.start_time) = DATE_SUB(CURRENT_DATE, INTERVAL 1 DAY)
+                          THEN b.price ELSE 0 END), 0) as yesterdayRevenue
       FROM bookings b
       INNER JOIN fields f ON b.field_id = f.field_id
       WHERE f.manager_id = ?
@@ -73,8 +105,11 @@ export const getDashboardStatsService = async (managerId) => {
       cancelledBookings: Number(bookingStats[0].cancelledbookings) || 0,
       rejectedBookings: Number(bookingStats[0].rejectedbookings) || 0,
       todayBookings: Number(todayStats[0].todaybookings) || 0,
+      todayOccupancyPercent: occupancyPercent,
       totalRevenue: parseFloat(revenueStats[0].totalrevenue) || 0,
       monthlyRevenue: parseFloat(revenueStats[0].monthlyrevenue) || 0,
+      todayRevenue: parseFloat(revenueStats[0].todayrevenue) || 0,
+      yesterdayRevenue: parseFloat(revenueStats[0].yesterdayrevenue) || 0,
       topFieldName: topFieldData[0]?.field_name || null,
       topFieldRevenue: parseFloat(topFieldData[0]?.revenue) || 0
     };
@@ -188,3 +223,119 @@ export const getMonthlyRevenueStatsService = async (managerId, year) => {
   }
 };
 
+/**
+ * Get revenue trend data points for a specific period
+ * period: 'day' | 'week' | 'month' | 'year'
+ */
+export const getRevenueTrendService = async (managerId, period) => {
+  try {
+    let result = [];
+
+    if (period === 'day') {
+      // 5 time bands: 6-9h, 9-12h, 12-15h, 15-18h, 18-22h
+      const bands = [
+        { label: '6-9h',   minH: 6,  maxH: 9  },
+        { label: '9-12h',  minH: 9,  maxH: 12 },
+        { label: '12-15h', minH: 12, maxH: 15 },
+        { label: '15-18h', minH: 15, maxH: 18 },
+        { label: '18-22h', minH: 18, maxH: 22 },
+      ];
+      const [rows] = await sequelize.query(`
+        SELECT
+          CASE
+            WHEN HOUR(b.start_time) < 9  THEN '6-9h'
+            WHEN HOUR(b.start_time) < 12 THEN '9-12h'
+            WHEN HOUR(b.start_time) < 15 THEN '12-15h'
+            WHEN HOUR(b.start_time) < 18 THEN '15-18h'
+            ELSE '18-22h'
+          END AS label,
+          COALESCE(SUM(b.price), 0) AS revenue
+        FROM bookings b
+        INNER JOIN fields f ON b.field_id = f.field_id
+        WHERE f.manager_id = ?
+          AND DATE(b.start_time) = CURRENT_DATE
+          AND b.status IN ('confirmed', 'completed')
+          AND HOUR(b.start_time) BETWEEN 6 AND 21
+        GROUP BY label
+      `, { replacements: [managerId] });
+      result = bands.map(b => {
+        const found = rows.find(r => r.label === b.label);
+        return { label: b.label, revenue: found ? parseFloat(found.revenue) : 0 };
+      });
+
+    } else if (period === 'week') {
+      // Mon-Sun of the current week
+      const [rows] = await sequelize.query(`
+        SELECT
+          DAYOFWEEK(DATE(b.start_time)) AS dow,
+          COALESCE(SUM(b.price), 0) AS revenue
+        FROM bookings b
+        INNER JOIN fields f ON b.field_id = f.field_id
+        WHERE f.manager_id = ?
+          AND DATE(b.start_time) >= DATE_SUB(CURRENT_DATE, INTERVAL WEEKDAY(CURRENT_DATE) DAY)
+          AND DATE(b.start_time) <= DATE_ADD(DATE_SUB(CURRENT_DATE, INTERVAL WEEKDAY(CURRENT_DATE) DAY), INTERVAL 6 DAY)
+          AND b.status IN ('confirmed', 'completed')
+        GROUP BY DAYOFWEEK(DATE(b.start_time))
+      `, { replacements: [managerId] });
+      // MySQL DAYOFWEEK: 1=Sun,2=Mon,3=Tue,4=Wed,5=Thu,6=Fri,7=Sat
+      const weekOrder = [
+        { dow: 2, label: 'T2' },
+        { dow: 3, label: 'T3' },
+        { dow: 4, label: 'T4' },
+        { dow: 5, label: 'T5' },
+        { dow: 6, label: 'T6' },
+        { dow: 7, label: 'T7' },
+        { dow: 1, label: 'CN' },
+      ];
+      result = weekOrder.map(d => {
+        const found = rows.find(r => Number(r.dow) === d.dow);
+        return { label: d.label, revenue: found ? parseFloat(found.revenue) : 0 };
+      });
+
+    } else if (period === 'month') {
+      // 5 weeks of the current month
+      const [rows] = await sequelize.query(`
+        SELECT
+          LEAST(CEIL(DAY(b.start_time) / 7), 5) AS week_num,
+          COALESCE(SUM(b.price), 0) AS revenue
+        FROM bookings b
+        INNER JOIN fields f ON b.field_id = f.field_id
+        WHERE f.manager_id = ?
+          AND MONTH(b.start_time) = MONTH(CURRENT_DATE)
+          AND YEAR(b.start_time) = YEAR(CURRENT_DATE)
+          AND b.status IN ('confirmed', 'completed')
+        GROUP BY week_num
+        ORDER BY week_num
+      `, { replacements: [managerId] });
+      result = [1, 2, 3, 4, 5].map(w => {
+        const found = rows.find(r => Number(r.week_num) === w);
+        return { label: `Tuần ${w}`, revenue: found ? parseFloat(found.revenue) : 0 };
+      });
+
+    } else {
+      // year - 12 months
+      const year = new Date().getFullYear();
+      const [rows] = await sequelize.query(`
+        SELECT
+          MONTH(b.start_time) AS month,
+          COALESCE(SUM(b.price), 0) AS revenue
+        FROM bookings b
+        INNER JOIN fields f ON b.field_id = f.field_id
+        WHERE f.manager_id = ?
+          AND YEAR(b.start_time) = ?
+          AND b.status IN ('confirmed', 'completed')
+        GROUP BY MONTH(b.start_time)
+        ORDER BY month
+      `, { replacements: [managerId, year] });
+      result = Array.from({ length: 12 }, (_, i) => {
+        const found = rows.find(r => Number(r.month) === i + 1);
+        return { label: `T${i + 1}`, revenue: found ? parseFloat(found.revenue) : 0 };
+      });
+    }
+
+    return result;
+  } catch (error) {
+    console.error('Error in getRevenueTrendService:', error);
+    throw error;
+  }
+};
