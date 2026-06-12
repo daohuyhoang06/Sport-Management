@@ -115,7 +115,7 @@ export const getChatMessagesService = async (chatId, personId) => {
        FROM messages m
        JOIN person p ON m.sender_id = p.person_id
        WHERE m.chat_id = ?
-       ORDER BY m.created_at ASC`,
+       ORDER BY m.created_at ASC, m.message_id ASC`,
       { replacements: [chatId] }
     );
 

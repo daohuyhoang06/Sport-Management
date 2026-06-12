@@ -1,4 +1,5 @@
 ﻿import sequelize from "../../config/database.js";
+import bcrypt from "bcrypt";
 
 /**
  * Get all bookings for manager's fields
@@ -53,7 +54,13 @@ export const getManagerBookingsService = async (managerId, filters = {}) => {
         p.email as customer_email,
         p.phone as customer_phone,
         fc.court_code,
-        fc.court_name
+        fc.court_name,
+        CASE WHEN EXISTS (
+          SELECT 1 FROM booking_history bh
+          WHERE bh.booking_id = b.booking_id
+            AND bh.author = 'manager'
+            AND bh.action = 'Tạo đặt sân'
+        ) THEN 1 ELSE 0 END AS manager_created
       FROM bookings b
       INNER JOIN fields f ON b.field_id = f.field_id
       LEFT JOIN person p ON b.customer_id = p.person_id
@@ -95,7 +102,13 @@ export const getManagerBookingByIdService = async (managerId, bookingId) => {
         p.email as customer_email,
         p.phone as customer_phone,
         fc.court_code,
-        fc.court_name
+        fc.court_name,
+        CASE WHEN EXISTS (
+          SELECT 1 FROM booking_history bh
+          WHERE bh.booking_id = b.booking_id
+            AND bh.author = 'manager'
+            AND bh.action = 'Tạo đặt sân'
+        ) THEN 1 ELSE 0 END AS manager_created
       FROM bookings b
       INNER JOIN fields f ON b.field_id = f.field_id
       LEFT JOIN person p ON b.customer_id = p.person_id
@@ -167,7 +180,7 @@ export const updateBookingStatusService = async (
  * Manager tạo booking mới (walk-in hoặc thay mặt khách hàng)
  */
 export const createBookingService = async (managerId, data) => {
-  const { field_id, court_id, customer_phone, note, price } = data;
+  const { field_id, court_id, customer_phone, customer_name, note, price } = data;
 
   // Chuẩn hoá datetime: ISO 8601 → MySQL DATETIME
   const toMysqlDatetime = (v) => v ? v.replace('T', ' ').replace('Z', '').split('.')[0] : null;
@@ -195,14 +208,25 @@ export const createBookingService = async (managerId, data) => {
     throw new Error('Khung giờ này đã bị khóa bởi quản lý');
   }
 
-  // Tìm customer theo phone (nếu có)
+  // Tìm hoặc tạo customer theo phone
   let customerId = null;
   if (customer_phone) {
-    const [[customer]] = await sequelize.query(
-      "SELECT person_id FROM person WHERE phone = ? AND role = 'user' LIMIT 1",
+    const [[existing]] = await sequelize.query(
+      'SELECT person_id FROM person WHERE phone = ? LIMIT 1',
       { replacements: [customer_phone] }
     );
-    if (customer) customerId = customer.person_id;
+    if (existing) {
+      customerId = existing.person_id;
+    } else if (customer_name) {
+      // Tạo walk-in customer — username unique theo phone, password random (không dùng để login)
+      const fakePassword = await bcrypt.hash(`walkin_${customer_phone}_${Date.now()}`, 10);
+      const username = `walkin_${customer_phone}`;
+      const [insertPerson] = await sequelize.query(
+        `INSERT INTO person (person_name, phone, role, username, password) VALUES (?, ?, 'user', ?, ?)`,
+        { replacements: [customer_name, customer_phone, username, fakePassword] }
+      );
+      customerId = insertPerson?.insertId || insertPerson;
+    }
   }
 
   // Tính giá nếu không truyền vào
@@ -232,15 +256,43 @@ export const createBookingService = async (managerId, data) => {
 
   const [[booking]] = await sequelize.query(
     `SELECT b.*, f.field_name, f.location,
-            p.person_name as customer_name, p.email as customer_email, p.phone as customer_phone
+            p.person_name as customer_name, p.email as customer_email, p.phone as customer_phone,
+            fc.court_code, fc.court_name,
+            1 AS manager_created
      FROM bookings b
      INNER JOIN fields f ON b.field_id = f.field_id
      LEFT JOIN person p ON b.customer_id = p.person_id
+     LEFT JOIN field_courts fc ON b.court_id = fc.court_id
      WHERE b.booking_id = ?`,
     { replacements: [newBookingId] }
   );
 
   return booking;
+};
+
+/**
+ * Lấy khung giờ đã đặt của một sân con trong ngày — dùng cho form đặt sân
+ * GET /api/manager/fields/:fieldId/courts/:courtId/availability?date=YYYY-MM-DD
+ */
+export const getCourtAvailabilityService = async (managerId, fieldId, courtId, date) => {
+  const [[field]] = await sequelize.query(
+    'SELECT field_id FROM fields WHERE field_id = ? AND manager_id = ?',
+    { replacements: [fieldId, managerId] }
+  );
+  if (!field) throw new Error('Field không tồn tại hoặc không có quyền');
+
+  const [booked] = await sequelize.query(
+    `SELECT
+       TIME_FORMAT(start_time, '%H:%i') AS start_time,
+       TIME_FORMAT(end_time,   '%H:%i') AS end_time
+     FROM bookings
+     WHERE court_id = ?
+       AND DATE(start_time) = ?
+       AND status NOT IN ('cancelled', 'rejected')
+     ORDER BY start_time ASC`,
+    { replacements: [courtId, date] }
+  );
+  return booked;
 };
 
 /**

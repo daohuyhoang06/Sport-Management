@@ -111,6 +111,9 @@ dependencies {
     // Location services for GPS coordinates
     implementation("com.google.android.gms:play-services-location:21.2.0")
 
+    // MapLibre GL (same version as mobile-user) — for location picker map
+    implementation("org.maplibre.gl:android-sdk:11.0.0")
+
     // Room - local chat message cache
     val roomVersion = "2.6.1"
     implementation("androidx.room:room-runtime:$roomVersion")

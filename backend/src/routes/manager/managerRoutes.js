@@ -9,7 +9,8 @@ import {
   completeBooking,
   cancelBooking,
   getBookingByCheckInCode,
-  confirmBookingCheckIn
+  confirmBookingCheckIn,
+  getCourtAvailability,
 } from "../../controllers/manager/bookingController.js";
 import {
   listBlockedSlots,
@@ -49,6 +50,7 @@ import {
   getUpcomingBookings
 } from "../../controllers/manager/dashboardController.js";
 import { getProfile, updateProfile } from "../../controllers/manager/profileController.js";
+import { managerStartChat } from "../../controllers/chatController.js";
 import { requireAuth } from "../../middleware/authMiddleware.js";
 import { requireRole } from "../../middleware/roleMiddleware.js";
 
@@ -94,6 +96,7 @@ r.delete('/fields/:id', deleteField);
 r.put('/fields/:id/status', updateFieldStatus);
 r.get('/fields/:id/stats', getFieldStats);
 r.get('/fields/:id/courts', listFieldCourts);
+r.get('/fields/:fieldId/courts/:courtId/availability', getCourtAvailability);
 r.post('/fields/:id/courts', createFieldCourt);
 r.put('/fields/:id/courts/:courtId', updateFieldCourt);
 r.patch('/fields/:id/courts/reorder', reorderFieldCourts);
@@ -111,5 +114,8 @@ r.delete('/fields/:id/policies/:policyId', deleteFieldPolicy);
 r.get('/fields/:id/blocked-slots', listBlockedSlots);
 r.post('/fields/:id/blocked-slots', createBlockedSlot);
 r.delete('/fields/:id/blocked-slots/:slotId', deleteBlockedSlot);
+
+// Manager chat
+r.post('/chat/start', managerStartChat);
 
 export default r;

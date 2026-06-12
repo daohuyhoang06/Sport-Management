@@ -1,5 +1,7 @@
 package com.sportmanagement.manager.ui.state
 
+import com.sportmanagement.manager.data.remote.dto.FieldCourtDto
+import com.sportmanagement.manager.data.remote.dto.FieldDto
 import com.sportmanagement.manager.domain.model.BookingCustomer
 import com.sportmanagement.manager.domain.model.BookingHistoryEvent
 import com.sportmanagement.manager.domain.model.BookingItem
@@ -87,10 +89,18 @@ data class BookingsUiState(
     val bookings: List<BookingItem> = emptyList(),
     val selectedBooking: BookingItem? = null,
     val showAddBooking: Boolean = false,
-    val newBookingCourtCode: String = "A1",
-    val newBookingDate: String = "23/10/2023",
-    val newBookingStart: String = "17:00",
-    val newBookingEnd: String = "18:30",
+    // Fields & courts for new booking form
+    val newBookingFields: List<FieldDto> = emptyList(),
+    val newBookingSelectedFieldId: Int? = null,
+    val newBookingCourts: List<FieldCourtDto> = emptyList(),
+    val newBookingCourtId: Int? = null,
+    val newBookingCourtCode: String = "",
+    val newBookingDate: String = "",
+    val newBookingStart: String = "",
+    val newBookingEnd: String = "",
+    // Booked ranges for availability grid: (startMinutes, endMinutes) since midnight
+    val newBookingBookedRanges: List<Pair<Int, Int>> = emptyList(),
+    val newBookingIsLoadingSlots: Boolean = false,
     val newBookingCustomerName: String = "",
     val newBookingCustomerPhone: String = "",
     val newBookingDeposit: String = "",

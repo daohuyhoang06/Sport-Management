@@ -119,42 +119,41 @@ class BookingsViewModel : ViewModel() {
 
     fun onSaveNewBooking() {
         val s = _uiState.value
+        val fieldId = s.newBookingSelectedFieldId ?: return
         if (s.newBookingDate.isBlank() || s.newBookingStart.isBlank() || s.newBookingEnd.isBlank()) return
 
         viewModelScope.launch {
-            // Cần field_id — lấy field đầu tiên của manager
-            AppContainer.fieldRepository.getFields().onSuccess { fields ->
-                val fieldId = fields.firstOrNull()?.fieldId ?: return@onSuccess
-                val dateParts = s.newBookingDate.split("/")
-                val startIso = if (dateParts.size == 3)
-                    "${dateParts[2]}-${dateParts[1]}-${dateParts[0]}T${s.newBookingStart}:00.000Z"
-                else return@onSuccess
-                val endIso = "${dateParts[2]}-${dateParts[1]}-${dateParts[0]}T${s.newBookingEnd}:00.000Z"
+            val isoDate = ddMmYyyyToIso(s.newBookingDate) ?: return@launch
+            val startIso = "${isoDate}T${s.newBookingStart}:00.000Z"
+            val endIso   = "${isoDate}T${s.newBookingEnd}:00.000Z"
 
-                val request = CreateBookingRequest(
-                    fieldId = fieldId,
-                    customerPhone = s.newBookingCustomerPhone.ifBlank { null },
-                    startTime = startIso,
-                    endTime = endIso,
-                    note = s.newBookingNotes.ifBlank { null }
-                )
-                AppContainer.bookingRepository.createBooking(request).fold(
-                    onSuccess = { dto ->
-                        val newBooking = dto.toBookingItem()
-                        _uiState.value = _uiState.value.copy(
-                            showAddBooking = false,
-                            bookings = listOf(newBooking) + _uiState.value.bookings,
-                            newBookingCustomerName = "",
-                            newBookingCustomerPhone = "",
-                            newBookingDeposit = "",
-                            newBookingNotes = ""
-                        )
-                    },
-                    onFailure = { e ->
-                        _uiState.value = _uiState.value.copy(error = e.message)
-                    }
-                )
-            }
+            val request = CreateBookingRequest(
+                fieldId = fieldId,
+                courtId = s.newBookingCourtId,
+                customerName = s.newBookingCustomerName.ifBlank { null },
+                customerPhone = s.newBookingCustomerPhone.ifBlank { null },
+                startTime = startIso,
+                endTime = endIso,
+                note = s.newBookingNotes.ifBlank { null }
+            )
+            AppContainer.bookingRepository.createBooking(request).fold(
+                onSuccess = { dto ->
+                    val newBooking = dto.toBookingItem()
+                    _uiState.value = _uiState.value.copy(
+                        showAddBooking = false,
+                        bookings = listOf(newBooking) + _uiState.value.bookings,
+                        newBookingCourtId = null,
+                        newBookingCourtCode = "",
+                        newBookingCustomerName = "",
+                        newBookingCustomerPhone = "",
+                        newBookingDeposit = "",
+                        newBookingNotes = ""
+                    )
+                },
+                onFailure = { e ->
+                    _uiState.value = _uiState.value.copy(error = e.message)
+                }
+            )
         }
     }
 
@@ -298,17 +297,117 @@ class BookingsViewModel : ViewModel() {
     }
 
     fun onToggleAddBooking() {
+        val willShow = !_uiState.value.showAddBooking
+        _uiState.value = _uiState.value.copy(showAddBooking = willShow)
+        if (willShow) loadFieldsForBooking()
+    }
+
+    private fun loadFieldsForBooking() {
+        viewModelScope.launch {
+            AppContainer.fieldRepository.getFields().onSuccess { fields ->
+                val firstField = fields.firstOrNull()
+                _uiState.value = _uiState.value.copy(
+                    newBookingFields = fields,
+                    newBookingSelectedFieldId = firstField?.fieldId,
+                    newBookingCourts = emptyList(),
+                    newBookingCourtId = null,
+                    newBookingCourtCode = ""
+                )
+                if (firstField != null) loadCourtsForBooking(firstField.fieldId)
+            }
+        }
+    }
+
+    fun onNewBookingFieldSelected(fieldId: Int) {
         _uiState.value = _uiState.value.copy(
-            showAddBooking = !_uiState.value.showAddBooking
+            newBookingSelectedFieldId = fieldId,
+            newBookingCourts = emptyList(),
+            newBookingCourtId = null,
+            newBookingCourtCode = ""
         )
+        loadCourtsForBooking(fieldId)
+    }
+
+    private fun loadCourtsForBooking(fieldId: Int) {
+        viewModelScope.launch {
+            AppContainer.fieldRepository.getCourts(fieldId).onSuccess { courts ->
+                val activeCourts = courts.filter { it.status == "active" }
+                _uiState.value = _uiState.value.copy(newBookingCourts = activeCourts)
+            }
+        }
+    }
+
+    fun onNewBookingCourtSelected(courtId: Int, courtCode: String) {
+        _uiState.value = _uiState.value.copy(
+            newBookingCourtId = courtId,
+            newBookingCourtCode = courtCode,
+            newBookingStart = "",
+            newBookingEnd = ""
+        )
+        refreshAvailabilityIfReady()
     }
 
     fun onNewBookingCourtChanged(court: String) {
         _uiState.value = _uiState.value.copy(newBookingCourtCode = court)
     }
 
+    fun onTimeSlotTapped(time: String) {
+        val s = _uiState.value
+        when {
+            s.newBookingStart.isNotBlank() && s.newBookingEnd.isNotBlank() -> {
+                _uiState.value = s.copy(newBookingStart = time, newBookingEnd = "")
+            }
+            s.newBookingStart.isNotBlank() -> {
+                val tapMin   = timeStrToMin(time)
+                val startMin = timeStrToMin(s.newBookingStart)
+                _uiState.value = if (tapMin <= startMin)
+                    s.copy(newBookingStart = time, newBookingEnd = "")
+                else
+                    s.copy(newBookingEnd = time)
+            }
+            else -> {
+                _uiState.value = s.copy(newBookingStart = time, newBookingEnd = "")
+            }
+        }
+    }
+
+    private fun refreshAvailabilityIfReady() {
+        val s = _uiState.value
+        val fieldId  = s.newBookingSelectedFieldId ?: return
+        val courtId  = s.newBookingCourtId ?: return
+        val dateIso  = ddMmYyyyToIso(s.newBookingDate) ?: return
+        loadSlotAvailability(fieldId, courtId, dateIso)
+    }
+
+    private fun loadSlotAvailability(fieldId: Int, courtId: Int, isoDate: String) {
+        _uiState.value = _uiState.value.copy(newBookingIsLoadingSlots = true, newBookingBookedRanges = emptyList())
+        viewModelScope.launch {
+            AppContainer.fieldRepository.getCourtAvailability(fieldId, courtId, isoDate)
+                .onSuccess { ranges ->
+                    _uiState.value = _uiState.value.copy(
+                        newBookingBookedRanges = ranges.map { Pair(timeStrToMin(it.startTime), timeStrToMin(it.endTime)) },
+                        newBookingIsLoadingSlots = false
+                    )
+                }
+                .onFailure {
+                    _uiState.value = _uiState.value.copy(newBookingIsLoadingSlots = false)
+                }
+        }
+    }
+
+    private fun timeStrToMin(t: String): Int {
+        val p = t.split(":")
+        return (p.getOrNull(0)?.toIntOrNull() ?: 0) * 60 + (p.getOrNull(1)?.toIntOrNull() ?: 0)
+    }
+
+    private fun ddMmYyyyToIso(date: String): String? {
+        val p = date.split("/")
+        return if (p.size == 3) "${p[2]}-${p[1]}-${p[0]}" else null
+    }
+
     fun onNewBookingDateChanged(date: String) {
-        _uiState.value = _uiState.value.copy(newBookingDate = date)
+        _uiState.value = _uiState.value.copy(newBookingDate = date, newBookingStart = "", newBookingEnd = "")
+        refreshAvailabilityIfReady()
     }
 
     fun onNewBookingStartChanged(time: String) {

@@ -1,7 +1,5 @@
 package com.sportmanagement.manager.ui.screens.pitches
 
-import android.Manifest
-import android.annotation.SuppressLint
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -31,7 +29,8 @@ import androidx.compose.material.icons.filled.AddPhotoAlternate
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.MyLocation
+import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -69,7 +68,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
-import com.google.android.gms.location.LocationServices
 import com.sportmanagement.manager.ui.viewmodel.PitchesViewModel
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
@@ -92,7 +90,6 @@ private val STATUS_OPTIONS = listOf(
 
 private val SLOT_MINUTES_OPTIONS = listOf(30, 60, 90, 120)
 
-@SuppressLint("MissingPermission")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddFieldScreen(
@@ -112,18 +109,16 @@ fun AddFieldScreen(
     var slotPriceText by rememberSaveable { mutableStateOf("") }
     var selectedSlotMinutes by rememberSaveable { mutableStateOf(60) }
     var selectedStatus by rememberSaveable { mutableStateOf("active") }
-    var latitudeText by rememberSaveable { mutableStateOf("") }
-    var longitudeText by rememberSaveable { mutableStateOf("") }
+    var selectedLatitude by rememberSaveable { mutableStateOf<Double?>(null) }
+    var selectedLongitude by rememberSaveable { mutableStateOf<Double?>(null) }
     var avatarImageUri by remember { mutableStateOf<Uri?>(null) }
     var cardImageUri by remember { mutableStateOf<Uri?>(null) }
-    var isGettingLocation by remember { mutableStateOf(false) }
+    var showLocationPicker by remember { mutableStateOf(false) }
 
     // Validation errors
     var fieldNameError by remember { mutableStateOf<String?>(null) }
     var locationError by remember { mutableStateOf<String?>(null) }
     var priceError by remember { mutableStateOf<String?>(null) }
-    var latError by remember { mutableStateOf<String?>(null) }
-    var lngError by remember { mutableStateOf<String?>(null) }
 
     // Image pickers
     val avatarPickerLauncher = rememberLauncherForActivityResult(
@@ -133,25 +128,6 @@ fun AddFieldScreen(
     val cardPickerLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.GetContent()
     ) { uri -> uri?.let { cardImageUri = it } }
-
-    // Location permission launcher
-    val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
-    val locationPermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { granted ->
-        if (granted) {
-            isGettingLocation = true
-            fusedLocationClient.lastLocation.addOnSuccessListener { loc ->
-                isGettingLocation = false
-                if (loc != null) {
-                    latitudeText = "%.6f".format(loc.latitude)
-                    longitudeText = "%.6f".format(loc.longitude)
-                }
-            }.addOnFailureListener {
-                isGettingLocation = false
-            }
-        }
-    }
 
     LaunchedEffect(uiState.saveError) {
         uiState.saveError?.let { snackbarHostState.showSnackbar(it) }
@@ -163,28 +139,41 @@ fun AddFieldScreen(
             val bytes = stream.use { it.readBytes() }
             val mimeType = context.contentResolver.getType(uri) ?: "image/jpeg"
             val ext = when {
-                mimeType.contains("png") -> "png"
+                mimeType.contains("png")  -> "png"
                 mimeType.contains("webp") -> "webp"
-                else -> "jpg"
+                else                      -> "jpg"
             }
             val requestBody = bytes.toRequestBody(mimeType.toMediaTypeOrNull())
             MultipartBody.Part.createFormData("image", "$name.$ext", requestBody)
-        } catch (e: Exception) { null }
+        } catch (_: Exception) { null }
     }
 
     fun validate(): Boolean {
         fieldNameError = if (fieldName.isBlank()) "Vui lòng nhập tên sân" else null
-        locationError = if (location.isBlank()) "Vui lòng nhập địa chỉ" else null
-        priceError = if (slotPriceText.isNotBlank() && slotPriceText.toDoubleOrNull() == null)
+        locationError  = if (location.isBlank()) "Vui lòng nhập địa chỉ" else null
+        priceError     = if (slotPriceText.isNotBlank() && slotPriceText.toDoubleOrNull() == null)
             "Giá không hợp lệ" else null
-        latError = if (latitudeText.isNotBlank() && latitudeText.toDoubleOrNull() == null)
-            "Vĩ độ không hợp lệ" else null
-        lngError = if (longitudeText.isNotBlank() && longitudeText.toDoubleOrNull() == null)
-            "Kinh độ không hợp lệ" else null
         return fieldNameError == null && locationError == null && priceError == null
-            && latError == null && lngError == null
     }
 
+    // ── Map picker overlay (full-screen) ────────────────────────────────────────
+    if (showLocationPicker) {
+        LocationPickerSheet(
+            initialLat = selectedLatitude,
+            initialLng = selectedLongitude,
+            onConfirm = { lat, lng, address ->
+                selectedLatitude  = lat
+                selectedLongitude = lng
+                if (location.isBlank()) location = address
+                locationError = null
+                showLocationPicker = false
+            },
+            onDismiss = { showLocationPicker = false }
+        )
+        return
+    }
+
+    // ── Main form ───────────────────────────────────────────────────────────────
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
@@ -217,7 +206,8 @@ fun AddFieldScreen(
                 .padding(horizontal = 16.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // ── Thông tin cơ bản ──────────────────────────────────
+
+            // ── Thông tin cơ bản ──────────────────────────────────────────────
             SectionHeader("Thông tin cơ bản")
 
             OutlinedTextField(
@@ -253,73 +243,57 @@ fun AddFieldScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
-            // ── Vị trí GPS ────────────────────────────────────────
+            // ── Vị trí trên bản đồ ───────────────────────────────────────────
             SectionHeader("Vị trí trên bản đồ")
-            Text(
-                text = "Tọa độ giúp người dùng tìm sân gần vị trí của họ.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.Top
-            ) {
-                OutlinedTextField(
-                    value = latitudeText,
-                    onValueChange = { latitudeText = it; latError = null },
-                    label = { Text("Vĩ độ (Lat)") },
-                    placeholder = { Text("VD: 10.7769") },
-                    isError = latError != null,
-                    supportingText = latError?.let { { Text(it, color = MaterialTheme.colorScheme.error) } },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    singleLine = true,
-                    modifier = Modifier.weight(1f)
-                )
-                OutlinedTextField(
-                    value = longitudeText,
-                    onValueChange = { longitudeText = it; lngError = null },
-                    label = { Text("Kinh độ (Lng)") },
-                    placeholder = { Text("VD: 106.7009") },
-                    isError = lngError != null,
-                    supportingText = lngError?.let { { Text(it, color = MaterialTheme.colorScheme.error) } },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    singleLine = true,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-
-            OutlinedButton(
-                onClick = {
-                    locationPermissionLauncher.launch(Manifest.permission.ACCESS_FINE_LOCATION)
-                },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = !isGettingLocation
-            ) {
-                if (isGettingLocation) {
-                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                    Spacer(Modifier.size(8.dp))
-                    Text("Đang lấy vị trí...")
-                } else {
+            // Coordinates badge (shown after selection)
+            if (selectedLatitude != null && selectedLongitude != null) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color(0xFFE8F5E9))
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     Icon(
-                        imageVector = Icons.Filled.MyLocation,
+                        Icons.Filled.CheckCircle,
                         contentDescription = null,
-                        modifier = Modifier.size(18.dp)
+                        modifier = Modifier.size(15.dp),
+                        tint = Color(0xFF4CAF50)
                     )
-                    Spacer(Modifier.size(8.dp))
-                    Text("Lấy vị trí GPS hiện tại")
+                    Text(
+                        text = "Đã ghim: ${"%.5f".format(selectedLatitude)}, ${"%.5f".format(selectedLongitude)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color(0xFF2E7D32)
+                    )
                 }
             }
 
-            // ── Hình ảnh sân ──────────────────────────────────────
+            // Map picker button
+            OutlinedButton(
+                onClick = { showLocationPicker = true },
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(10.dp)
+            ) {
+                Icon(
+                    imageVector = if (selectedLatitude != null) Icons.Filled.LocationOn else Icons.Filled.Map,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(Modifier.size(8.dp))
+                Text(
+                    text = if (selectedLatitude != null) "Chỉnh sửa vị trí trên bản đồ"
+                           else "Chọn vị trí trên bản đồ",
+                    fontWeight = FontWeight.Medium
+                )
+            }
+
+            // ── Hình ảnh sân ──────────────────────────────────────────────────
             SectionHeader("Hình ảnh sân")
 
-            Text(
-                text = "Ảnh đại diện",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium
-            )
+            Text("Ảnh đại diện", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
             ImagePickerCard(
                 uri = avatarImageUri,
                 hint = "Ảnh avatar hiển thị trên danh sách sân",
@@ -327,11 +301,7 @@ fun AddFieldScreen(
                 onRemove = { avatarImageUri = null }
             )
 
-            Text(
-                text = "Ảnh bìa",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium
-            )
+            Text("Ảnh bìa", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
             ImagePickerCard(
                 uri = cardImageUri,
                 hint = "Ảnh banner lớn hiển thị trong trang chi tiết",
@@ -339,7 +309,7 @@ fun AddFieldScreen(
                 onRemove = { cardImageUri = null }
             )
 
-            // ── Loại sân ─────────────────────────────────────────
+            // ── Loại sân ─────────────────────────────────────────────────────
             SectionHeader("Loại sân")
             OptionSelector(
                 options = SPORT_TYPES.map { it.second },
@@ -347,7 +317,7 @@ fun AddFieldScreen(
                 onSelect = { selectedSportId = SPORT_TYPES[it].first }
             )
 
-            // ── Giá & Thời lượng ─────────────────────────────────
+            // ── Giá & Thời lượng ─────────────────────────────────────────────
             SectionHeader("Giá & thời lượng slot")
 
             OutlinedTextField(
@@ -376,7 +346,7 @@ fun AddFieldScreen(
                 )
             }
 
-            // ── Giờ hoạt động ─────────────────────────────────────
+            // ── Giờ hoạt động ─────────────────────────────────────────────────
             SectionHeader("Khung giờ hoạt động")
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -396,7 +366,7 @@ fun AddFieldScreen(
                 )
             }
 
-            // ── Trạng thái ───────────────────────────────────────
+            // ── Trạng thái ───────────────────────────────────────────────────
             SectionHeader("Trạng thái ban đầu")
             OptionSelector(
                 options = STATUS_OPTIONS.map { it.second },
@@ -410,46 +380,32 @@ fun AddFieldScreen(
                 onClick = {
                     if (validate()) {
                         viewModel.createField(
-                            fieldName = fieldName.trim(),
-                            location = location.trim(),
-                            sportId = selectedSportId,
-                            phone = phone.trim().takeIf { it.isNotBlank() },
-                            openTime = openTime.trim(),
-                            closeTime = closeTime.trim(),
-                            slotPrice = slotPriceText.toDoubleOrNull(),
+                            fieldName  = fieldName.trim(),
+                            location   = location.trim(),
+                            sportId    = selectedSportId,
+                            phone      = phone.trim().takeIf { it.isNotBlank() },
+                            openTime   = openTime.trim(),
+                            closeTime  = closeTime.trim(),
+                            slotPrice  = slotPriceText.toDoubleOrNull(),
                             slotMinutes = selectedSlotMinutes,
-                            status = selectedStatus,
-                            latitude = latitudeText.toDoubleOrNull(),
-                            longitude = longitudeText.toDoubleOrNull(),
+                            status     = selectedStatus,
+                            latitude   = selectedLatitude,
+                            longitude  = selectedLongitude,
                             avatarImagePart = avatarImageUri?.let { uriToMultipart(it, "avatar") },
-                            cardImagePart = cardImageUri?.let { uriToMultipart(it, "card") }
+                            cardImagePart   = cardImageUri?.let { uriToMultipart(it, "card") }
                         )
                     }
                 },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp),
+                modifier = Modifier.fillMaxWidth().height(52.dp),
                 enabled = !uiState.isSaving,
                 shape = RoundedCornerShape(12.dp)
             ) {
                 if (uiState.isSaving) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        color = Color.White,
-                        strokeWidth = 2.dp
-                    )
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
                 } else {
-                    Icon(
-                        imageVector = Icons.Filled.CheckCircle,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp)
-                    )
+                    Icon(Icons.Filled.CheckCircle, contentDescription = null, modifier = Modifier.size(20.dp))
                     Spacer(Modifier.size(8.dp))
-                    Text(
-                        text = "Tạo sân mới",
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 16.sp
-                    )
+                    Text("Tạo sân mới", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
                 }
             }
 
@@ -458,19 +414,13 @@ fun AddFieldScreen(
     }
 }
 
+// ── Sub-composables ────────────────────────────────────────────────────────────
+
 @Composable
-private fun ImagePickerCard(
-    uri: Uri?,
-    hint: String,
-    onPick: () -> Unit,
-    onRemove: () -> Unit
-) {
+private fun ImagePickerCard(uri: Uri?, hint: String, onPick: () -> Unit, onRemove: () -> Unit) {
     if (uri != null) {
         Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(160.dp)
-                .clip(RoundedCornerShape(12.dp))
+            modifier = Modifier.fillMaxWidth().height(160.dp).clip(RoundedCornerShape(12.dp))
         ) {
             AsyncImage(
                 model = uri,
@@ -486,18 +436,9 @@ private fun ImagePickerCard(
                     .size(32.dp)
                     .background(Color.Black.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
             ) {
-                Icon(
-                    imageVector = Icons.Filled.Close,
-                    contentDescription = "Xóa ảnh",
-                    tint = Color.White,
-                    modifier = Modifier.size(18.dp)
-                )
+                Icon(Icons.Filled.Close, contentDescription = "Xóa ảnh", tint = Color.White, modifier = Modifier.size(18.dp))
             }
-            Box(
-                modifier = Modifier
-                    .align(Alignment.BottomEnd)
-                    .padding(8.dp)
-            ) {
+            Box(modifier = Modifier.align(Alignment.BottomEnd).padding(8.dp)) {
                 OutlinedButton(
                     onClick = onPick,
                     modifier = Modifier.height(32.dp),
@@ -515,11 +456,7 @@ private fun ImagePickerCard(
                 .height(120.dp)
                 .clip(RoundedCornerShape(12.dp))
                 .background(MaterialTheme.colorScheme.surfaceContainerLowest)
-                .border(
-                    width = 1.5.dp,
-                    color = MaterialTheme.colorScheme.outlineVariant,
-                    shape = RoundedCornerShape(12.dp)
-                )
+                .border(1.5.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp))
                 .clickable { onPick() },
             contentAlignment = Alignment.Center
         ) {
@@ -527,25 +464,9 @@ private fun ImagePickerCard(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                Icon(
-                    imageVector = Icons.Filled.AddPhotoAlternate,
-                    contentDescription = null,
-                    modifier = Modifier.size(36.dp),
-                    tint = MaterialTheme.colorScheme.outline
-                )
-                Text(
-                    text = "Chọn ảnh",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    fontWeight = FontWeight.Medium
-                )
-                Text(
-                    text = hint,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(horizontal = 16.dp)
-                )
+                Icon(Icons.Filled.AddPhotoAlternate, contentDescription = null, modifier = Modifier.size(36.dp), tint = MaterialTheme.colorScheme.outline)
+                Text("Chọn ảnh", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Medium)
+                Text(hint, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center, modifier = Modifier.padding(horizontal = 16.dp))
             }
         }
     }
@@ -564,11 +485,7 @@ private fun SectionHeader(title: String) {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun OptionSelector(
-    options: List<String>,
-    selectedIndex: Int,
-    onSelect: (Int) -> Unit
-) {
+private fun OptionSelector(options: List<String>, selectedIndex: Int, onSelect: (Int) -> Unit) {
     FlowRow(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -579,16 +496,8 @@ private fun OptionSelector(
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(10.dp))
-                    .background(
-                        if (isSelected) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.surfaceContainerLowest
-                    )
-                    .border(
-                        width = 1.dp,
-                        color = if (isSelected) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.outlineVariant,
-                        shape = RoundedCornerShape(10.dp)
-                    )
+                    .background(if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerLowest)
+                    .border(1.dp, if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(10.dp))
                     .clickable { onSelect(index) }
                     .padding(horizontal = 16.dp, vertical = 10.dp),
                 contentAlignment = Alignment.Center
@@ -605,24 +514,14 @@ private fun OptionSelector(
 }
 
 @Composable
-private fun TimeInputField(
-    label: String,
-    value: String,
-    onValueChange: (String) -> Unit,
-    modifier: Modifier = Modifier
-) {
+private fun TimeInputField(label: String, value: String, onValueChange: (String) -> Unit, modifier: Modifier = Modifier) {
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
         label = { Text(label) },
         placeholder = { Text("HH:mm") },
         leadingIcon = {
-            Icon(
-                imageVector = Icons.Filled.Schedule,
-                contentDescription = null,
-                modifier = Modifier.size(18.dp),
-                tint = MaterialTheme.colorScheme.outline
-            )
+            Icon(Icons.Filled.Schedule, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.outline)
         },
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
         singleLine = true,

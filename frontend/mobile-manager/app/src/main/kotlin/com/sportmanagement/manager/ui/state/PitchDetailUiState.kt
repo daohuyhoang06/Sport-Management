@@ -20,6 +20,7 @@ data class PitchDetailUiState(
     val pitchDetail: PitchDetail = emptyPitchDetail(),
     val selectedTab: PitchDetailTab = PitchDetailTab.OVERVIEW,
 
+    val showEditBasicInfoDialog: Boolean = false,
     val showAddCourtDialog: Boolean = false,
     val showAddServiceDialog: Boolean = false,
     val showAddPolicyDialog: Boolean = false,
@@ -27,6 +28,11 @@ data class PitchDetailUiState(
     val showEditScheduleDialog: Boolean = false,
     val isSaving: Boolean = false,
     val saveSuccess: Boolean = false,
+
+    // Basic info edit form
+    val editFieldName: String = "",
+    val editLocation: String = "",
+    val editPhone: String = "",
 
     // Court form
     val newCourtCode: String = "",

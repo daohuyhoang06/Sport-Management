@@ -9,13 +9,16 @@ import com.sportmanagement.manager.data.mapper.toFieldPolicy
 import com.sportmanagement.manager.data.mapper.toFieldService
 import com.sportmanagement.manager.data.mapper.toPitchDetail
 import com.sportmanagement.manager.data.remote.dto.CreateBlockedSlotRequest
+import com.sportmanagement.manager.data.remote.dto.CreateCourtRequest
+import com.sportmanagement.manager.data.remote.dto.UpdateBasicInfoRequest
+import com.sportmanagement.manager.data.remote.dto.CreatePolicyRequest
+import com.sportmanagement.manager.data.remote.dto.CreateServiceRequest
+import com.sportmanagement.manager.data.remote.dto.UpdateCourtRequest
 import com.sportmanagement.manager.domain.model.BlockType
 import com.sportmanagement.manager.domain.model.BlockedSlot
 import com.sportmanagement.manager.domain.model.Court
 import com.sportmanagement.manager.domain.model.CourtStatus
-import com.sportmanagement.manager.domain.model.FieldPolicy
 import com.sportmanagement.manager.domain.model.FieldScheduleConfig
-import com.sportmanagement.manager.domain.model.FieldService
 import com.sportmanagement.manager.domain.model.PitchStatus
 import com.sportmanagement.manager.ui.state.PitchDetailTab
 import com.sportmanagement.manager.ui.state.PitchDetailUiState
@@ -62,6 +65,40 @@ class PitchDetailViewModel : ViewModel() {
 
     fun onTabSelected(tab: PitchDetailTab) { _uiState.update { it.copy(selectedTab = tab) } }
 
+    // ── Basic info edit ───────────────────────────────────────────────────────
+
+    fun onOpenEditBasicInfoDialog() {
+        val d = _uiState.value.pitchDetail
+        _uiState.update { it.copy(
+            showEditBasicInfoDialog = true,
+            editFieldName = d.name,
+            editLocation = d.location,
+            editPhone = d.phone
+        ) }
+    }
+    fun onCloseEditBasicInfoDialog() { _uiState.update { it.copy(showEditBasicInfoDialog = false) } }
+    fun onEditFieldNameChange(v: String) { _uiState.update { it.copy(editFieldName = v) } }
+    fun onEditLocationChange(v: String) { _uiState.update { it.copy(editLocation = v) } }
+    fun onEditPhoneChange(v: String) { _uiState.update { it.copy(editPhone = v) } }
+
+    fun onSaveBasicInfo() {
+        val s = _uiState.value
+        if (s.editFieldName.isBlank() || s.editLocation.isBlank()) return
+        val fieldId = s.pitchDetail.id.toIntOrNull() ?: return
+        _uiState.update { it.copy(showEditBasicInfoDialog = false) }
+        viewModelScope.launch {
+            val request = UpdateBasicInfoRequest(
+                fieldName = s.editFieldName.trim(),
+                location = s.editLocation.trim(),
+                phone = s.editPhone.trim().ifBlank { null }
+            )
+            AppContainer.fieldRepository.updateBasicInfo(fieldId, request).fold(
+                onSuccess = { loadField(fieldId) },
+                onFailure = { e -> _uiState.update { it.copy(error = e.message) } }
+            )
+        }
+    }
+
     // ── Courts ────────────────────────────────────────────────────────────────
 
     fun onToggleAddCourtDialog() {
@@ -73,20 +110,50 @@ class PitchDetailViewModel : ViewModel() {
     fun onAddCourt() {
         val s = _uiState.value
         if (s.newCourtCode.isBlank() || s.newCourtName.isBlank()) return
-        val court = Court(UUID.randomUUID().toString(), s.pitchDetail.id, s.newCourtCode.trim(), s.newCourtName.trim(), CourtStatus.ACTIVE, s.pitchDetail.courts.size + 1)
-        _uiState.update { it.copy(pitchDetail = it.pitchDetail.copy(courts = it.pitchDetail.courts + court), showAddCourtDialog = false, newCourtCode = "", newCourtName = "") }
+        val fieldId = s.pitchDetail.id.toIntOrNull() ?: return
+        _uiState.update { it.copy(showAddCourtDialog = false, newCourtCode = "", newCourtName = "") }
+        viewModelScope.launch {
+            val request = CreateCourtRequest(
+                courtCode = s.newCourtCode.trim(),
+                courtName = s.newCourtName.trim()
+            )
+            AppContainer.fieldRepository.createCourt(fieldId, request).fold(
+                onSuccess = { loadField(fieldId) },
+                onFailure = { e -> _uiState.update { it.copy(error = e.message) } }
+            )
+        }
     }
 
     fun onCourtStatusToggle(courtId: String) {
-        _uiState.update { s ->
-            s.copy(pitchDetail = s.pitchDetail.copy(courts = s.pitchDetail.courts.map { c ->
-                if (c.id == courtId) c.copy(status = if (c.status == CourtStatus.ACTIVE) CourtStatus.INACTIVE else CourtStatus.ACTIVE) else c
+        val s = _uiState.value
+        val fieldId = s.pitchDetail.id.toIntOrNull() ?: return
+        val courtIntId = courtId.toIntOrNull() ?: return
+        val court = s.pitchDetail.courts.firstOrNull { it.id == courtId } ?: return
+        val newStatus = if (court.status == CourtStatus.ACTIVE) "inactive" else "active"
+        // Optimistic update
+        _uiState.update { st ->
+            st.copy(pitchDetail = st.pitchDetail.copy(courts = st.pitchDetail.courts.map { c ->
+                if (c.id == courtId) c.copy(status = if (newStatus == "active") CourtStatus.ACTIVE else CourtStatus.INACTIVE) else c
             }))
+        }
+        viewModelScope.launch {
+            AppContainer.fieldRepository.updateCourt(fieldId, courtIntId, UpdateCourtRequest(newStatus)).onFailure {
+                loadField(fieldId) // revert nếu lỗi
+            }
         }
     }
 
     fun onDeleteCourt(courtId: String) {
-        _uiState.update { s -> s.copy(pitchDetail = s.pitchDetail.copy(courts = s.pitchDetail.courts.filter { it.id != courtId })) }
+        val s = _uiState.value
+        val fieldId = s.pitchDetail.id.toIntOrNull() ?: return
+        val courtIntId = courtId.toIntOrNull() ?: return
+        // Optimistic remove
+        _uiState.update { st -> st.copy(pitchDetail = st.pitchDetail.copy(courts = st.pitchDetail.courts.filter { it.id != courtId })) }
+        viewModelScope.launch {
+            AppContainer.fieldRepository.deleteCourt(fieldId, courtIntId).onFailure {
+                loadField(fieldId) // revert nếu lỗi
+            }
+        }
     }
 
     // ── Schedule ──────────────────────────────────────────────────────────────
@@ -161,12 +228,32 @@ class PitchDetailViewModel : ViewModel() {
     fun onAddService() {
         val s = _uiState.value
         if (s.newServiceName.isBlank()) return
-        val svc = FieldService(UUID.randomUUID().toString(), s.pitchDetail.id, s.newServiceName.trim(), s.newServiceIsFree, if (s.newServiceIsFree) 0L else s.newServicePrice.toLongOrNull() ?: 0L)
-        _uiState.update { it.copy(pitchDetail = it.pitchDetail.copy(services = it.pitchDetail.services + svc), showAddServiceDialog = false) }
+        val price = if (s.newServiceIsFree) 0L else s.newServicePrice.toLongOrNull() ?: 0L
+        if (!s.newServiceIsFree && price <= 0) return
+        val fieldId = s.pitchDetail.id.toIntOrNull() ?: return
+        _uiState.update { it.copy(showAddServiceDialog = false, newServiceName = "", newServiceIsFree = true, newServicePrice = "") }
+        viewModelScope.launch {
+            val request = CreateServiceRequest(
+                serviceName = s.newServiceName.trim(),
+                isFree = s.newServiceIsFree,
+                price = price
+            )
+            AppContainer.fieldRepository.createService(fieldId, request).fold(
+                onSuccess = { loadField(fieldId) },
+                onFailure = { e -> _uiState.update { it.copy(error = e.message) } }
+            )
+        }
     }
 
     fun onDeleteService(id: String) {
+        val fieldId = _uiState.value.pitchDetail.id.toIntOrNull() ?: return
+        val serviceId = id.toIntOrNull() ?: return
         _uiState.update { s -> s.copy(pitchDetail = s.pitchDetail.copy(services = s.pitchDetail.services.filter { it.id != id })) }
+        viewModelScope.launch {
+            AppContainer.fieldRepository.deleteService(fieldId, serviceId).onFailure {
+                loadField(fieldId)
+            }
+        }
     }
 
     // ── Policies ──────────────────────────────────────────────────────────────
@@ -179,12 +266,30 @@ class PitchDetailViewModel : ViewModel() {
     fun onAddPolicy() {
         val s = _uiState.value
         if (s.newPolicyTitle.isBlank() || s.newPolicyContent.isBlank()) return
-        val policy = FieldPolicy(UUID.randomUUID().toString(), s.pitchDetail.id, s.newPolicyType, s.newPolicyTitle.trim(), s.newPolicyContent.trim())
-        _uiState.update { it.copy(pitchDetail = it.pitchDetail.copy(policies = it.pitchDetail.policies + policy), showAddPolicyDialog = false) }
+        val fieldId = s.pitchDetail.id.toIntOrNull() ?: return
+        _uiState.update { it.copy(showAddPolicyDialog = false, newPolicyTitle = "", newPolicyContent = "") }
+        viewModelScope.launch {
+            val request = CreatePolicyRequest(
+                title = s.newPolicyTitle.trim(),
+                content = s.newPolicyContent.trim(),
+                policyType = s.newPolicyType
+            )
+            AppContainer.fieldRepository.createPolicy(fieldId, request).fold(
+                onSuccess = { loadField(fieldId) },
+                onFailure = { e -> _uiState.update { it.copy(error = e.message) } }
+            )
+        }
     }
 
     fun onDeletePolicy(id: String) {
+        val fieldId = _uiState.value.pitchDetail.id.toIntOrNull() ?: return
+        val policyId = id.toIntOrNull() ?: return
         _uiState.update { s -> s.copy(pitchDetail = s.pitchDetail.copy(policies = s.pitchDetail.policies.filter { it.id != id })) }
+        viewModelScope.launch {
+            AppContainer.fieldRepository.deletePolicy(fieldId, policyId).onFailure {
+                loadField(fieldId)
+            }
+        }
     }
 
     fun onFieldStatusChange(status: PitchStatus) {
