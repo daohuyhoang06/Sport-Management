@@ -39,15 +39,25 @@ android {
         }
     }
 
+    signingConfigs {
+        create("release") {
+            storeFile = file("${System.getProperty("user.home")}/.android/debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
         debug {
         buildConfigField(
                 "boolean",
                 "PAYMENT_SANDBOX_AUTO_COMPLETE",
-                paymentSandboxAutoComplete ?: "true"
+                paymentSandboxAutoComplete ?: "false"
             )
         }
         release {
+            signingConfig = signingConfigs.getByName("release")
             buildConfigField("boolean", "PAYMENT_SANDBOX_AUTO_COMPLETE", "false")
             isMinifyEnabled = false
             proguardFiles(

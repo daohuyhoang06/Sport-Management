@@ -1,5 +1,19 @@
 ﻿import sequelize from '../../config/database.js';
 
+const ACTIVE_DASHBOARD_BOOKING_CONDITION = `
+  (
+    b.status IN ('confirmed', 'approved', 'completed')
+    OR (
+      b.status = 'pending'
+      AND (b.pending_expires_at IS NULL OR b.pending_expires_at > NOW())
+    )
+  )
+`;
+
+const REVENUE_BOOKING_STATUS_CONDITION = `
+  b.status IN ('confirmed', 'approved', 'completed')
+`;
+
 /**
  * Get dashboard statistics for manager
  * Only shows data for fields managed by this manager
@@ -29,19 +43,39 @@ export const getDashboardStatsService = async (managerId) => {
       WHERE f.manager_id = ?
     `, { replacements: [managerId] });
 
-    // Get today's active bookings (exclude cancelled/rejected)
+    // Get today's active bookings
     const [todayStats] = await sequelize.query(`
       SELECT COUNT(*) as todayBookings
       FROM bookings b
       INNER JOIN fields f ON b.field_id = f.field_id
       WHERE f.manager_id = ?
         AND DATE(b.start_time) = CURRENT_DATE
-        AND b.status NOT IN ('cancelled', 'rejected')
+        AND ${ACTIVE_DASHBOARD_BOOKING_CONDITION}
     `, { replacements: [managerId] });
 
-    // Count active courts for occupancy calculation
+    // Count active courts and sum the actual operating minutes for each court.
     const [courtStats] = await sequelize.query(`
-      SELECT COUNT(*) as activeCourts
+      SELECT
+        COUNT(*) as activeCourts,
+        COALESCE(SUM(
+          CASE
+            WHEN COALESCE(f.open_time, '06:00:00') = COALESCE(f.close_time, '22:00:00') THEN 0
+            WHEN TIME(COALESCE(f.close_time, '22:00:00')) > TIME(COALESCE(f.open_time, '06:00:00'))
+              THEN TIMESTAMPDIFF(
+                MINUTE,
+                TIMESTAMP(CURDATE(), TIME(COALESCE(f.open_time, '06:00:00'))),
+                TIMESTAMP(CURDATE(), TIME(COALESCE(f.close_time, '22:00:00')))
+              )
+            ELSE TIMESTAMPDIFF(
+              MINUTE,
+              TIMESTAMP(CURDATE(), TIME(COALESCE(f.open_time, '06:00:00'))),
+              DATE_ADD(
+                TIMESTAMP(CURDATE(), TIME(COALESCE(f.close_time, '22:00:00'))),
+                INTERVAL 1 DAY
+              )
+            )
+          END
+        ), 0) as totalAvailableMinutes
       FROM field_courts fc
       INNER JOIN fields f ON fc.field_id = f.field_id
       WHERE f.manager_id = ?
@@ -49,24 +83,23 @@ export const getDashboardStatsService = async (managerId) => {
         AND fc.status = 'active'
     `, { replacements: [managerId] });
 
-    // Sum booked minutes today (pending + confirmed + completed)
+    // Sum booked minutes today from active bookings only.
     const [bookedStats] = await sequelize.query(`
       SELECT COALESCE(SUM(TIMESTAMPDIFF(MINUTE, b.start_time, b.end_time)), 0) as bookedMinutes
       FROM bookings b
       INNER JOIN fields f ON b.field_id = f.field_id
       WHERE f.manager_id = ?
         AND DATE(b.start_time) = CURDATE()
-        AND b.status IN ('pending', 'confirmed', 'completed')
+        AND ${ACTIVE_DASHBOARD_BOOKING_CONDITION}
     `, { replacements: [managerId] });
 
-    const activeCourts = Number(courtStats[0].activeCourts) || 0;
-    const totalAvailableMinutes = activeCourts * 960; // 16h/court/day (06:00–22:00)
+    const totalAvailableMinutes = Number(courtStats[0].totalAvailableMinutes) || 0;
     const bookedMinutes = Number(bookedStats[0].bookedMinutes) || 0;
     const occupancyPercent = totalAvailableMinutes > 0
       ? Math.min(100, Math.round(bookedMinutes / totalAvailableMinutes * 100))
       : 0;
 
-    // Get revenue stats (only confirmed and completed)
+    // Revenue on the overview is based on bookings scheduled for the period.
     const [revenueStats] = await sequelize.query(`
       SELECT
         COALESCE(SUM(b.price), 0) as totalRevenue,
@@ -80,7 +113,7 @@ export const getDashboardStatsService = async (managerId) => {
       FROM bookings b
       INNER JOIN fields f ON b.field_id = f.field_id
       WHERE f.manager_id = ?
-      AND b.status IN ('confirmed', 'completed')
+      AND ${REVENUE_BOOKING_STATUS_CONDITION}
     `, { replacements: [managerId] });
 
     // Get top performing field by revenue
@@ -88,7 +121,7 @@ export const getDashboardStatsService = async (managerId) => {
       SELECT f.field_name, COALESCE(SUM(b.price), 0) as revenue
       FROM fields f
       LEFT JOIN bookings b ON b.field_id = f.field_id
-        AND b.status IN ('confirmed', 'completed')
+        AND ${REVENUE_BOOKING_STATUS_CONDITION}
       WHERE f.manager_id = ?
       GROUP BY f.field_id, f.field_name
       ORDER BY revenue DESC
