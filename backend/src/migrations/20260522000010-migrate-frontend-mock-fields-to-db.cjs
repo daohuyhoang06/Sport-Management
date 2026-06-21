@@ -302,8 +302,8 @@ const upsertMockFields = async (queryInterface, sportNameToId) => {
     const featured = Number(item.rating) >= 4.7 || item.order % 9 === 0;
     const availabilityNote = item.order % 4 === 0 ? 'Còn sân tối nay' : null;
     const distanceKm = DISTANCE_BY_ORDER[item.order % DISTANCE_BY_ORDER.length];
-    const avatarImageUrl = `/images/fields/${item.sport_icon_type.toLowerCase()}-avatar.png`;
-    const cardImageUrl = `/images/fields/${item.sport_icon_type.toLowerCase()}-card.png`;
+    const avatarImageUrl = `/images/fields/${item.sport_icon_type.toLowerCase()}-avatar.svg`;
+    const cardImageUrl = `/images/fields/${item.sport_icon_type.toLowerCase()}-card.svg`;
 
     const [existingRows] = await queryInterface.sequelize.query(
       'SELECT field_id FROM fields WHERE field_name = ? LIMIT 1',

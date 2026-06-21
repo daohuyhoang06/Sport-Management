@@ -357,23 +357,15 @@ class UserViewModel(
                 )
             }
             val normalizedStats = stats.withReviewFallback(reviews)
-            val normalizedRating = formatAverageRating(normalizedStats.averageRating)
 
             _uiState.update { current ->
                 current.copy(
-                    homeFields = patchFieldRating(current.homeFields, fieldId, normalizedRating),
-                    nearbyFields = patchFieldRating(current.nearbyFields, fieldId, normalizedRating),
-                    fieldSearchResults = patchFieldRating(current.fieldSearchResults, fieldId, normalizedRating),
-                    favoriteFields = patchFieldRating(current.favoriteFields, fieldId, normalizedRating),
                     fieldReviewsByFieldId = current.fieldReviewsByFieldId + (fieldId to reviews),
                     fieldReviewStatsByFieldId = current.fieldReviewStatsByFieldId + (fieldId to normalizedStats),
                     fieldDetailsByFieldId = current.fieldDetailsByFieldId + (fieldId to detail),
                     loadingFieldReviewIds = current.loadingFieldReviewIds - fieldId
                 )
             }
-
-            allHomeFields = patchFieldRating(allHomeFields, fieldId, normalizedRating)
-            allNearbyFields = patchFieldRating(allNearbyFields, fieldId, normalizedRating)
         }
     }
 
@@ -382,6 +374,8 @@ class UserViewModel(
         if (fieldIds.isEmpty()) return
 
         viewModelScope.launch {
+            val loadedStats = linkedMapOf<Int, FieldReviewStats>()
+
             fieldIds.forEach { fieldId ->
                 val cachedStats = _uiState.value.fieldReviewStatsByFieldId[fieldId]
                 if (!force && cachedStats != null) {
@@ -394,23 +388,17 @@ class UserViewModel(
                     repository.getFieldReviews(fieldId)
                 }
                 val normalizedStats = stats.withReviewFallback(fallbackReviews)
-                val normalizedRating = formatAverageRating(normalizedStats.averageRating)
-                _uiState.update { current ->
-                    current.copy(
-                        homeFields = patchFieldRating(current.homeFields, fieldId, normalizedRating),
-                        nearbyFields = patchFieldRating(current.nearbyFields, fieldId, normalizedRating),
-                        fieldSearchResults = patchFieldRating(current.fieldSearchResults, fieldId, normalizedRating),
-                        favoriteFields = patchFieldRating(current.favoriteFields, fieldId, normalizedRating),
-                        fieldReviewStatsByFieldId = current.fieldReviewStatsByFieldId + (fieldId to normalizedStats),
-                        fieldReviewsByFieldId = if (fallbackReviews.isNotEmpty()) {
-                            current.fieldReviewsByFieldId + (fieldId to fallbackReviews)
-                        } else {
-                            current.fieldReviewsByFieldId
-                        }
-                    )
-                }
-                allHomeFields = patchFieldRating(allHomeFields, fieldId, normalizedRating)
-                allNearbyFields = patchFieldRating(allNearbyFields, fieldId, normalizedRating)
+                loadedStats[fieldId] = normalizedStats
+            }
+
+            if (loadedStats.isEmpty()) {
+                return@launch
+            }
+
+            _uiState.update { current ->
+                current.copy(
+                    fieldReviewStatsByFieldId = current.fieldReviewStatsByFieldId + loadedStats
+                )
             }
         }
     }
@@ -874,24 +862,6 @@ class UserViewModel(
         } else {
             options.copy(sports = options.sports.filter { it.iconType in preferredSportTypes })
         }
-    }
-
-    private fun patchFieldRating(
-        fields: List<UserField>,
-        fieldId: Int,
-        rating: String
-    ): List<UserField> {
-        if (fieldId <= 0 || rating.isBlank()) return fields
-        return fields.map { field ->
-            if (field.fieldId == fieldId) field.copy(rating = rating) else field
-        }
-    }
-
-    private fun formatAverageRating(value: Double): String {
-        if (!value.isFinite() || value <= 0.0) {
-            return "0.0"
-        }
-        return String.format("%.1f", value)
     }
 
     private fun FieldReviewStats.withReviewFallback(reviews: List<FieldReview>): FieldReviewStats {

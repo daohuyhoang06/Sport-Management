@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#0F766E"/>
+      <stop offset="100%" stop-color="#14532D"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="675" fill="url(#bg)"/>
+  <rect x="80" y="80" width="1040" height="515" rx="34" fill="none" stroke="#D1FAE5" stroke-width="8" opacity="0.85"/>
+  <circle cx="600" cy="338" r="92" fill="none" stroke="#D1FAE5" stroke-width="8" opacity="0.8"/>
+  <line x1="600" y1="84" x2="600" y2="591" stroke="#D1FAE5" stroke-width="8" opacity="0.8"/>
+  <rect x="120" y="206" width="170" height="260" rx="18" fill="none" stroke="#D1FAE5" stroke-width="8" opacity="0.7"/>
+  <rect x="910" y="206" width="170" height="260" rx="18" fill="none" stroke="#D1FAE5" stroke-width="8" opacity="0.7"/>
+  <text x="110" y="132" font-family="Arial, sans-serif" font-size="52" font-weight="700" fill="#ECFDF5">Football</text>
+  <text x="110" y="184" font-family="Arial, sans-serif" font-size="28" fill="#D1FAE5">Field card fallback</text>
+</svg>

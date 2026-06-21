@@ -77,7 +77,6 @@ fun UserHomeScreen(
     isLoadingMore: Boolean,
     hasMoreData: Boolean,
     searchResults: List<UserField>,
-    recentSearches: List<String>,
     isSearchLoading: Boolean,
     isSearchLoadingMore: Boolean,
     hasMoreSearchResults: Boolean,
@@ -198,11 +197,11 @@ fun UserHomeScreen(
     }
     val visibleFields = if (isSearching) filteredSearchResults else filteredHomeFields
     val favoriteFieldIds = remember(favoriteFields) { favoriteFields.map { it.fieldId }.toSet() }
-    val resolvedFieldRatings = remember(fields, fieldReviewStatsByFieldId, fieldReviewsByFieldId) {
-        fields.associate { field ->
+    val resolvedFieldRatings = remember(visibleFields, fieldReviewStatsByFieldId) {
+        visibleFields.associate { field ->
             val metrics = resolveFieldReviewMetrics(
                 reviewStats = fieldReviewStatsByFieldId[field.fieldId],
-                reviews = fieldReviewsByFieldId[field.fieldId].orEmpty(),
+                reviews = emptyList(),
                 fallbackRating = field.rating
             )
             field.fieldId to formatFieldRating(metrics.averageRating)

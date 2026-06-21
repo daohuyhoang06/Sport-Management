@@ -28,6 +28,25 @@ const SPORT_NAME_TO_ICON = {
 const DEFAULT_IMAGE_URL = "/images/fields/placeholder.svg";
 const EARTH_RADIUS_KM = 6371;
 const VN_TIME_ZONE = "Asia/Ho_Chi_Minh";
+const LEGACY_FIELD_IMAGE_MAP = {
+  "/images/fields/football-avatar.png": "/images/fields/football-avatar.svg",
+  "/images/fields/football-card.png": "/images/fields/football-card.svg",
+  "/images/fields/pickleball-avatar.png": "/images/fields/pickleball-avatar.svg",
+  "/images/fields/pickleball-card.png": "/images/fields/pickleball-card.svg",
+  "/images/fields/tennis-avatar.png": "/images/fields/tennis-avatar.svg",
+  "/images/fields/tennis-card.png": "/images/fields/tennis-card.svg",
+  "/images/fields/badminton-avatar.png": "/images/fields/badminton-avatar.svg",
+  "/images/fields/badminton-card.png": "/images/fields/badminton-card.svg",
+  "/images/fields/volleyball-avatar.png": "/images/fields/volleyball-avatar.svg",
+  "/images/fields/volleyball-card.png": "/images/fields/volleyball-card.svg",
+};
+
+const normalizeFieldMediaUrl = (value, fallback = null) => {
+  if (!value) return fallback;
+  const normalized = String(value).trim();
+  if (!normalized) return fallback;
+  return LEGACY_FIELD_IMAGE_MAP[normalized] || normalized;
+};
 
 const formatPriceLabel = (slotPrice) => {
   if (slotPrice === null || slotPrice === undefined || Number(slotPrice) <= 0) {
@@ -502,8 +521,8 @@ export const mapFieldRowToListPayload = (row) => {
   const tags = parseTags(row.tags_csv);
   const sportName = row.sport_name || "";
   const sportIconType = SPORT_NAME_TO_ICON[sportName] || "FOOTBALL";
-  const avatarImageUrl = row.avatar_image_url || null;
-  const cardImageUrl = row.card_image_url || null;
+  const avatarImageUrl = normalizeFieldMediaUrl(row.avatar_image_url);
+  const cardImageUrl = normalizeFieldMediaUrl(row.card_image_url);
   const image = cardImageUrl || avatarImageUrl || DEFAULT_IMAGE_URL;
   const distanceKm =
     row.distance_km === null || row.distance_km === undefined

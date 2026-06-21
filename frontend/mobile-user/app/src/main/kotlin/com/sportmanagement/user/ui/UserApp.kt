@@ -856,7 +856,6 @@ fun UserApp(
                                     isLoadingMore = uiState.isHomeLoadingMore,
                                     hasMoreData = uiState.hasMoreHomeFields,
                                     searchResults = uiState.fieldSearchResults,
-                                    recentSearches = uiState.recentFieldSearches,
                                     isSearchLoading = uiState.isFieldSearchLoading,
                                     isSearchLoadingMore = uiState.isFieldSearchLoadingMore,
                                     hasMoreSearchResults = uiState.hasMoreFieldSearchResults,

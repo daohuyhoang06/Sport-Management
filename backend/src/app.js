@@ -35,6 +35,7 @@ app.get("/api/docs-json", (_, res) => res.json(swaggerSpec));
 
 // Serve uploaded files statically
 app.use("/uploads", express.static(path.join(__dirname, "../public/uploads")));
+app.use("/images", express.static(path.join(__dirname, "../public/images")));
 
 app.use("/api/admin", adminRoutes);
 app.use("/api/manager", managerRoutes);

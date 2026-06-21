@@ -56,7 +56,7 @@ const NON_SEARCH_SMALL_TALK = new Set([
 ]);
 
 const compactSqlExpression = (expression) =>
-  `REPLACE(REPLACE(REPLACE(REPLACE(LOWER(COALESCE(${expression}, '')) COLLATE utf8mb4_unicode_ci, 'Ä‘', 'd'), ' ', ''), ',', ''), '.', '')`;
+  `REPLACE(REPLACE(REPLACE(REPLACE(LOWER(COALESCE(${expression}, '')) COLLATE utf8mb4_unicode_ci, 'đ', 'd'), ' ', ''), ',', ''), '.', '')`;
 
 const buildTextSearchClause = (columns, value, replacements) => {
   const normalized = normalizeVietnamese(value);
@@ -480,21 +480,21 @@ export const getFieldRecommendations = async (preferences) => {
     const { location, budget, time, playerCount } = preferences;
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-    const prompt = `Báº¡n lÃ  chuyÃªn gia tÆ° váº¥n Ä‘áº·t sÃ¢n thá»ƒ thao Ä‘a mÃ´n.
+    const prompt = `Bạn là chuyên gia tư vấn đặt sân thể thao đa môn.
 
-ThÃ´ng tin ngÆ°á»i dÃ¹ng:
-- Vá»‹ trÃ­ mong muá»‘n: ${location || "ChÆ°a xÃ¡c Ä‘á»‹nh"}
-- NgÃ¢n sÃ¡ch: ${budget || "Linh hoáº¡t"}
-- Thá»i gian chÆ¡i: ${time || "ChÆ°a xÃ¡c Ä‘á»‹nh"}
-- Sá»‘ ngÆ°á»i chÆ¡i: ${playerCount || "ChÆ°a biáº¿t"}
+Thông tin người dùng:
+- Vị trí mong muốn: ${location || "Chưa xác định"}
+- Ngân sách: ${budget || "Linh hoạt"}
+- Thời gian chơi: ${time || "Chưa xác định"}
+- Số người chơi: ${playerCount || "Chưa biết"}
 
-HÃ£y Ä‘Æ°a ra 3-5 gá»£i Ã½ cá»¥ thá»ƒ vá»:
-1. MÃ´n hoáº·c loáº¡i sÃ¢n phÃ¹ há»£p
-2. Khung giá» nÃªn Ä‘áº·t Ä‘á»ƒ tá»‘i Æ°u chi phÃ­
-3. Tiá»‡n Ã­ch nÃªn Æ°u tiÃªn theo tá»«ng mÃ´n
-4. LÆ°u Ã½ khi Ä‘áº·t sÃ¢n
+Hãy đưa ra 3-5 gợi ý cụ thể về:
+1. Môn hoặc loại sân phù hợp
+2. Khung giờ nên đặt để tối ưu chi phí
+3. Tiện ích nên ưu tiên theo từng môn
+4. Lưu ý khi đặt sân
 
-Tráº£ lá»i ngáº¯n gá»n, dá»… hiá»ƒu, tá»‘i Ä‘a 200 tá»«.`;
+Trả lời ngắn gọn, dễ hiểu, tối đa 200 từ.`;
 
     const result = await model.generateContent(prompt);
     const response = await result.response;
@@ -508,7 +508,7 @@ Tráº£ lá»i ngáº¯n gá»n, dá»… hiá»ƒu, tá»‘i Ä‘a 200 t
     console.error("Gemini API Error:", error);
     return {
       success: false,
-      message: "KhÃ´ng thá»ƒ táº¡o gá»£i Ã½ lÃºc nÃ y",
+      message: "Không thể tạo gợi ý lúc này",
       error: error.message,
     };
   }
@@ -522,28 +522,28 @@ export const detectBookingFraud = async (bookingData) => {
     const { bookingHistory, currentBooking } = bookingData;
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-    const prompt = `PhÃ¢n tÃ­ch hÃ nh vi Ä‘áº·t sÃ¢n Ä‘á»ƒ phÃ¡t hiá»‡n gian láº­n:
+    const prompt = `Phân tích hành vi đặt sân để phát hiện gian lận:
 
-Lá»‹ch sá»­ Ä‘áº·t sÃ¢n (${bookingHistory.length} láº§n):
-${bookingHistory.map((booking, index) => `${index + 1}. SÃ¢n: ${booking.field_name}, GiÃ¡: ${booking.price}Ä‘, Tráº¡ng thÃ¡i: ${booking.status}, NgÃ y: ${booking.date}`).join("\n")}
+Lịch sử đặt sân (${bookingHistory.length} lần):
+${bookingHistory.map((booking, index) => `${index + 1}. Sân: ${booking.field_name}, Giá: ${booking.price}đ, Trạng thái: ${booking.status}, Ngày: ${booking.date}`).join("\n")}
 
-Booking hiá»‡n táº¡i:
-- SÃ¢n: ${currentBooking.field_name}
-- GiÃ¡: ${currentBooking.price}Ä‘
-- Thá»i gian: ${currentBooking.time}
+Booking hiện tại:
+- Sân: ${currentBooking.field_name}
+- Giá: ${currentBooking.price}đ
+- Thời gian: ${currentBooking.time}
 
-ÄÃ¡nh giÃ¡ cÃ¡c dáº¥u hiá»‡u báº¥t thÆ°á»ng:
-1. Äáº·t quÃ¡ nhiá»u sÃ¢n cÃ¹ng lÃºc
-2. Há»§y liÃªn tá»¥c
-3. Äáº·t giá» cao Ä‘iá»ƒm rá»“i há»§y
-4. Thay Ä‘á»•i báº¥t thÆ°á»ng vá» giÃ¡ trá»‹ booking
+Đánh giá các dấu hiệu bất thường:
+1. Đặt quá nhiều sân cùng lúc
+2. Hủy liên tục
+3. Đặt giờ cao điểm rồi hủy
+4. Thay đổi bất thường về giá trị booking
 
-Tráº£ vá» JSON:
+Trả về JSON:
 {
   "riskLevel": "low|medium|high",
   "score": 0-100,
-  "reasons": ["lÃ½ do 1", "lÃ½ do 2"],
-  "recommendation": "Cho phÃ©p/Cáº§n xem xÃ©t/Tá»« chá»‘i"
+  "reasons": ["lý do 1", "lý do 2"],
+  "recommendation": "Cho phép/Cần xem xét/Từ chối"
 }`;
 
     const result = await model.generateContent(prompt);
@@ -563,8 +563,8 @@ Tráº£ vá» JSON:
       success: true,
       riskLevel: "low",
       score: 10,
-      reasons: ["KhÃ´ng phÃ¡t hiá»‡n dáº¥u hiá»‡u báº¥t thÆ°á»ng"],
-      recommendation: "Cho phÃ©p",
+      reasons: ["Không phát hiện dấu hiệu bất thường"],
+      recommendation: "Cho phép",
     };
   } catch (error) {
     console.error("Fraud Detection Error:", error);
@@ -572,7 +572,7 @@ Tráº£ vá» JSON:
       success: false,
       riskLevel: "low",
       score: 0,
-      message: "KhÃ´ng thá»ƒ phÃ¢n tÃ­ch lÃºc nÃ y",
+      message: "Không thể phân tích lúc này",
     };
   }
 };
@@ -585,25 +585,25 @@ export const suggestBestTimeSlots = async (fieldData) => {
     const { fieldName, priceData, bookingStats } = fieldData;
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-    const prompt = `PhÃ¢n tÃ­ch dá»¯ liá»‡u Ä‘áº·t sÃ¢n thá»ƒ thao vÃ  Ä‘Æ°a ra gá»£i Ã½ khung giá» tá»‘t nháº¥t:
+    const prompt = `Phân tích dữ liệu đặt sân thể thao và đưa ra gợi ý khung giờ tốt nhất:
 
-SÃ¢n: ${fieldName}
+Sân: ${fieldName}
 
-Thá»‘ng kÃª Ä‘áº·t sÃ¢n:
-- Tá»•ng sá»‘ booking: ${bookingStats.total || 0}
-- Tá»· lá»‡ láº¥p Ä‘áº§y: ${bookingStats.occupancyRate || 0}%
-- Khung giá» Ä‘Ã´ng nháº¥t: ${bookingStats.peakHours || "N/A"}
+Thống kê đặt sân:
+- Tổng số booking: ${bookingStats.total || 0}
+- Tỷ lệ lấp đầy: ${bookingStats.occupancyRate || 0}%
+- Khung giờ đông nhất: ${bookingStats.peakHours || "N/A"}
 
-Báº£ng giÃ¡ theo khung giá»:
-${priceData && priceData.length > 0 ? priceData.map((item) => `- ${item.timeSlot}: ${item.price}Ä‘ (${item.availability})`).join("\n") : "ChÆ°a cÃ³ dá»¯ liá»‡u"}
+Bảng giá theo khung giờ:
+${priceData && priceData.length > 0 ? priceData.map((item) => `- ${item.timeSlot}: ${item.price}đ (${item.availability})`).join("\n") : "Chưa có dữ liệu"}
 
-HÃ£y Ä‘Æ°a ra:
-1. Top 3 khung giá» tá»‘t nháº¥t
-2. Khung giá» tiáº¿t kiá»‡m nháº¥t
-3. Khung giá» tá»‘t nháº¥t cho cháº¥t lÆ°á»£ng sÃ¢n
-4. Lá»i khuyÃªn theo má»¥c Ä‘Ã­ch sá»­ dá»¥ng
+Hãy đưa ra:
+1. Top 3 khung giờ tốt nhất
+2. Khung giờ tiết kiệm nhất
+3. Khung giờ tốt nhất cho chất lượng sân
+4. Lời khuyên theo mục đích sử dụng
 
-Tráº£ lá»i ngáº¯n gá»n, dá»… hiá»ƒu.`;
+Trả lời ngắn gọn, dễ hiểu.`;
 
     const result = await model.generateContent(prompt);
     const response = await result.response;
@@ -617,7 +617,7 @@ Tráº£ lá»i ngáº¯n gá»n, dá»… hiá»ƒu.`;
     console.error("Time Slot Suggestion Error:", error);
     return {
       success: false,
-      message: "KhÃ´ng thá»ƒ táº¡o gá»£i Ã½ lÃºc nÃ y",
+      message: "Không thể tạo gợi ý lúc này",
     };
   }
 };
@@ -657,22 +657,22 @@ export const chatWithAI = async (userMessage, conversationHistory = []) => {
 
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-    const systemPrompt = `Báº¡n lÃ  trá»£ lÃ½ AI cá»§a há»‡ thá»‘ng Ä‘áº·t sÃ¢n thá»ƒ thao Ä‘a mÃ´n.
-Nhiá»‡m vá»¥:
-- TÆ° váº¥n tÃ¬m vÃ  chá»n sÃ¢n cho nhiá»u mÃ´n: bÃ³ng Ä‘Ã¡, cáº§u lÃ´ng, tennis, bÃ³ng rá»•, bÃ³ng chuyá»n, pickleball vÃ  cÃ¡c mÃ´n khÃ¡c trong há»‡ thá»‘ng.
-- Giáº£i Ä‘Ã¡p tháº¯c máº¯c vá» giÃ¡, khung giá», chÃ­nh sÃ¡ch, cÃ¡ch Ä‘áº·t, há»§y hoáº·c Ä‘á»•i lá»‹ch.
-- ÄÆ°a ra gá»£i Ã½ dá»±a trÃªn nhu cáº§u ngÆ°á»i dÃ¹ng nhÆ° sá»‘ ngÆ°á»i, ngÃ¢n sÃ¡ch, thá»i gian vÃ  má»¥c Ä‘Ã­ch chÆ¡i.
+    const systemPrompt = `Bạn là trợ lý AI của hệ thống đặt sân thể thao đa môn.
+Nhiệm vụ:
+- Tư vấn tìm và chọn sân cho nhiều môn: bóng đá, cầu lông, tennis, bóng rổ, bóng chuyền, pickleball và các môn khác trong hệ thống.
+- Giải đáp thắc mắc về giá, khung giờ, chính sách, cách đặt, hủy hoặc đổi lịch.
+- Đưa ra gợi ý dựa trên nhu cầu người dùng như số người, ngân sách, thời gian và mục đích chơi.
 
-HÆ°á»›ng dáº«n tráº£ lá»i:
-- Khi ngÆ°á»i dÃ¹ng Ä‘ang tÃ¬m sÃ¢n, Æ°u tiÃªn há»i Ã­t nháº¥t cÃ³ thá»ƒ. Chá»‰ há»i láº¡i mÃ´n thá»ƒ thao hoáº·c khu vá»±c náº¿u thiáº¿u. KhÃ´ng tá»± Ä‘á»™ng há»i giÃ¡ hoáº·c ngÃ¢n sÃ¡ch náº¿u ngÆ°á»i dÃ¹ng chÆ°a Ä‘á» cáº­p.
-- Náº¿u ngÆ°á»i dÃ¹ng há»i vá» mÃ´n khÃ¡c bÃ³ng Ä‘Ã¡ nhÆ°ng váº«n liÃªn quan Ä‘áº¿n Ä‘áº·t sÃ¢n thá»ƒ thao, váº«n tráº£ lá»i bÃ¬nh thÆ°á»ng.
-- Náº¿u cÃ¢u há»i khÃ´ng liÃªn quan Ä‘áº¿n Ä‘áº·t sÃ¢n thá»ƒ thao, lá»‹ch sá»­ dÃ¹ng sÃ¢n hoáº·c há»— trá»£ khÃ¡ch hÃ ng trong há»‡ thá»‘ng, pháº£n há»“i ngáº¯n gá»n vÃ  hÆ°á»›ng ngÆ°á»i dÃ¹ng vá» ná»™i dung thá»ƒ thao.
-- Tráº£ lá»i thÃ¢n thiá»‡n, rÃµ rÃ ng, ngáº¯n gá»n, tá»‘i Ä‘a 180 tá»«.
-- Æ¯u tiÃªn dÃ¹ng cÃ¹ng ngÃ´n ngá»¯ vá»›i ngÆ°á»i dÃ¹ng.`;
+Hướng dẫn trả lời:
+- Khi người dùng đang tìm sân, ưu tiên hỏi ít nhất có thể. Chỉ hỏi lại môn thể thao hoặc khu vực nếu thiếu. Không tự động hỏi giá hoặc ngân sách nếu người dùng chưa đề cập.
+- Nếu người dùng hỏi về môn khác bóng đá nhưng vẫn liên quan đến đặt sân thể thao, vẫn trả lời bình thường.
+- Nếu câu hỏi không liên quan đến đặt sân thể thao, lịch sử dùng sân hoặc hỗ trợ khách hàng trong hệ thống, phản hồi ngắn gọn và hướng người dùng về nội dung thể thao.
+- Trả lời thân thiện, rõ ràng, ngắn gọn, tối đa 180 từ.
+- Ưu tiên dùng cùng ngôn ngữ với người dùng.`;
 
     const fullPrompt =
       conversationHistory.length > 0
-        ? `${systemPrompt}\n\nLá»‹ch sá»­ há»™i thoáº¡i:\n${conversationHistory.map((item) => `${item.role}: ${item.message}`).join("\n")}\n\nUser: ${userMessage}\nAI:`
+        ? `${systemPrompt}\n\nLịch sử hội thoại:\n${conversationHistory.map((item) => `${item.role}: ${item.message}`).join("\n")}\n\nUser: ${userMessage}\nAI:`
         : `${systemPrompt}\n\nUser: ${userMessage}\nAI:`;
 
     const result = await model.generateContent(fullPrompt);
@@ -687,7 +687,7 @@ HÆ°á»›ng dáº«n tráº£ lá»i:
     console.error("AI Chat Error:", error);
     return {
       success: false,
-      message: "Xin lá»—i, tÃ´i khÃ´ng thá»ƒ tráº£ lá»i lÃºc nÃ y. Vui lÃ²ng thá»­ láº¡i sau.",
+      message: "Xin lỗi, tôi không thể trả lời lúc này. Vui lòng thử lại sau.",
     };
   }
 };

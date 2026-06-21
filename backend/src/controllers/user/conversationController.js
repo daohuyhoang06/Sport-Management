@@ -45,49 +45,33 @@ const getMatchedPeerContext = async ({ bookingId, currentUserId, peerUserId }) =
   return rows?.[0] || null;
 };
 
-const findConversationForField = async ({ userId, managerId, fieldId }) => {
+const findAnyOwnerConversation = async ({ userId, managerId }) => {
   const [rows] = await sequelize.query(
     `SELECT chat_id, user_id, manager_id, field_id, booking_id
      FROM chats
      WHERE user_id = ?
-       AND manager_id = ?
-       AND field_id <=> ?
-     ORDER BY COALESCE(last_message_at, updated_at, created_at) DESC, chat_id DESC
-     LIMIT 1`,
-    { replacements: [userId, managerId, fieldId ?? null] },
+        AND manager_id = ?
+        AND field_id IS NOT NULL
+      ORDER BY COALESCE(last_message_at, updated_at, created_at) DESC, chat_id DESC
+      LIMIT 1`,
+    { replacements: [userId, managerId] },
   );
   return rows?.[0] || null;
 };
 
-const findConversationForBooking = async ({
-  participantA,
-  participantB,
-  bookingId,
-  fieldId,
-}) => {
+const findOwnerConversationChatIds = async ({ userId, managerId }) => {
   const [rows] = await sequelize.query(
-    `SELECT chat_id, user_id, manager_id, field_id, booking_id
+    `SELECT chat_id
      FROM chats
-     WHERE booking_id <=> ?
-       AND field_id <=> ?
-       AND (
-         (user_id = ? AND manager_id = ?)
-         OR (user_id = ? AND manager_id = ?)
-       )
-     ORDER BY COALESCE(last_message_at, updated_at, created_at) DESC, chat_id DESC
-     LIMIT 1`,
-    {
-      replacements: [
-        bookingId ?? null,
-        fieldId ?? null,
-        participantA,
-        participantB,
-        participantB,
-        participantA,
-      ],
-    },
-  );
-  return rows?.[0] || null;
+     WHERE user_id = ?
+       AND manager_id = ?
+       AND field_id IS NOT NULL
+     ORDER BY created_at ASC, chat_id ASC`,
+     {
+       replacements: [userId, managerId],
+     },
+   );
+  return rows.map((row) => row.chat_id);
 };
 
 const findAnyPeerConversationBetweenUsers = async ({ participantA, participantB }) => {
@@ -254,37 +238,18 @@ export const createConversation = async (req, res) => {
 
     const managerId = Number(field.manager_id);
 
-    const existingForField = await findConversationForField({
+    const existingOwnerConversation = await findAnyOwnerConversation({
       userId: Number(userId),
       managerId,
-      fieldId: resolvedFieldId,
     });
 
-    if (existingForField) {
+    if (existingOwnerConversation) {
       return res.json({
         success: true,
         data: {
-          conversationId: existingForField.chat_id,
-          fieldId: existingForField.field_id,
-          bookingId: existingForField.booking_id,
-        },
-      });
-    }
-
-    const existing = await findConversationForBooking({
-      participantA: Number(userId),
-      participantB: managerId,
-      bookingId: resolvedBookingId,
-      fieldId: resolvedFieldId,
-    });
-
-    if (existing) {
-      return res.json({
-        success: true,
-        data: {
-          conversationId: existing.chat_id,
-          fieldId: existing.field_id,
-          bookingId: existing.booking_id,
+          conversationId: existingOwnerConversation.chat_id,
+          fieldId: existingOwnerConversation.field_id,
+          bookingId: existingOwnerConversation.booking_id,
         },
       });
     }
@@ -346,16 +311,25 @@ export const listConversations = async (req, res) => {
         (c.field_id IS NULL AND c.booking_id IS NOT NULL) AS is_peer_chat,
         CASE
           WHEN c.field_id IS NULL AND c.booking_id IS NOT NULL THEN COALESCE(cp.username, cp.person_name)
-          ELSE f.field_name
+          ELSE COALESCE(cp.username, cp.person_name, f.field_name)
         END AS display_title,
         (
           SELECT message_text
           FROM messages m2
           INNER JOIN chats c3 ON m2.chat_id = c3.chat_id
-          WHERE c3.field_id <=> c.field_id
-            AND (
-              (c3.user_id = c.user_id AND c3.manager_id = c.manager_id)
-              OR (c3.user_id = c.manager_id AND c3.manager_id = c.user_id)
+          WHERE (
+              c.field_id IS NULL
+              AND c3.field_id IS NULL
+              AND c3.booking_id <=> c.booking_id
+              AND (
+                (c3.user_id = c.user_id AND c3.manager_id = c.manager_id)
+                OR (c3.user_id = c.manager_id AND c3.manager_id = c.user_id)
+              )
+            ) OR (
+              c.field_id IS NOT NULL
+              AND c3.field_id IS NOT NULL
+              AND c3.user_id = c.user_id
+              AND c3.manager_id = c.manager_id
             )
           ORDER BY m2.created_at DESC
           LIMIT 1
@@ -364,10 +338,19 @@ export const listConversations = async (req, res) => {
           SELECT m2.created_at
           FROM messages m2
           INNER JOIN chats c3 ON m2.chat_id = c3.chat_id
-          WHERE c3.field_id <=> c.field_id
-            AND (
-              (c3.user_id = c.user_id AND c3.manager_id = c.manager_id)
-              OR (c3.user_id = c.manager_id AND c3.manager_id = c.user_id)
+          WHERE (
+              c.field_id IS NULL
+              AND c3.field_id IS NULL
+              AND c3.booking_id <=> c.booking_id
+              AND (
+                (c3.user_id = c.user_id AND c3.manager_id = c.manager_id)
+                OR (c3.user_id = c.manager_id AND c3.manager_id = c.user_id)
+              )
+            ) OR (
+              c.field_id IS NOT NULL
+              AND c3.field_id IS NOT NULL
+              AND c3.user_id = c.user_id
+              AND c3.manager_id = c.manager_id
             )
           ORDER BY m2.created_at DESC
           LIMIT 1
@@ -376,10 +359,21 @@ export const listConversations = async (req, res) => {
           SELECT COUNT(*)
           FROM messages m2
           INNER JOIN chats c3 ON m2.chat_id = c3.chat_id
-          WHERE c3.field_id <=> c.field_id
-            AND (
-              (c3.user_id = c.user_id AND c3.manager_id = c.manager_id)
-              OR (c3.user_id = c.manager_id AND c3.manager_id = c.user_id)
+          WHERE (
+            (
+                c.field_id IS NULL
+                AND c3.field_id IS NULL
+                AND c3.booking_id <=> c.booking_id
+                AND (
+                  (c3.user_id = c.user_id AND c3.manager_id = c.manager_id)
+                  OR (c3.user_id = c.manager_id AND c3.manager_id = c.user_id)
+                )
+              ) OR (
+                c.field_id IS NOT NULL
+                AND c3.field_id IS NOT NULL
+                AND c3.user_id = c.user_id
+                AND c3.manager_id = c.manager_id
+              )
             )
             AND m2.sender_id != ?
             AND m2.is_read = 0
@@ -396,12 +390,22 @@ export const listConversations = async (req, res) => {
           SELECT c2.chat_id
           FROM chats c2
           WHERE ? IN (c2.user_id, c2.manager_id)
+             AND (
+               (c2.user_id = c.user_id AND c2.manager_id = c.manager_id)
+               OR (c2.user_id = c.manager_id AND c2.manager_id = c.user_id)
+             )
             AND (
-              (c2.user_id = c.user_id AND c2.manager_id = c.manager_id)
-              OR (c2.user_id = c.manager_id AND c2.manager_id = c.user_id)
+              (
+                c.field_id IS NULL
+                AND c2.field_id IS NULL
+                AND c2.booking_id <=> c.booking_id
+              ) OR (
+                c.field_id IS NOT NULL
+                AND c2.field_id IS NOT NULL
+                AND c2.user_id = c.user_id
+                AND c2.manager_id = c.manager_id
+              )
             )
-            AND c2.field_id <=> c.field_id
-            AND (c.field_id IS NULL OR c2.booking_id <=> c.booking_id)
           ORDER BY COALESCE(c2.last_message_at, c2.updated_at, c2.created_at) DESC, c2.chat_id DESC
           LIMIT 1
         )
@@ -488,7 +492,7 @@ export const getConversationMessages = async (req, res) => {
       });
     }
 
-    let chatIdsToFetch = [conversationId];
+    let chatIdsToFetch = [Number(conversationId)];
     if (conversation.field_id === null) {
       const [peerChats] = await sequelize.query(
         `SELECT chat_id 
@@ -509,6 +513,14 @@ export const getConversationMessages = async (req, res) => {
       );
       if (peerChats && peerChats.length > 0) {
         chatIdsToFetch = peerChats.map(r => r.chat_id);
+      }
+    } else {
+      const ownerChatIds = await findOwnerConversationChatIds({
+        userId: conversation.user_id,
+        managerId: conversation.manager_id,
+      });
+      if (ownerChatIds.length > 0) {
+        chatIdsToFetch = ownerChatIds;
       }
     }
 
@@ -746,7 +758,7 @@ export const markConversationRead = async (req, res) => {
       });
     }
 
-    let chatIdsToUpdate = [conversationId];
+    let chatIdsToUpdate = [Number(conversationId)];
     if (conversation.field_id === null) {
       const [peerChats] = await sequelize.query(
         `SELECT chat_id 
@@ -767,6 +779,14 @@ export const markConversationRead = async (req, res) => {
       );
       if (peerChats && peerChats.length > 0) {
         chatIdsToUpdate = peerChats.map(r => r.chat_id);
+      }
+    } else {
+      const ownerChatIds = await findOwnerConversationChatIds({
+        userId: conversation.user_id,
+        managerId: conversation.manager_id,
+      });
+      if (ownerChatIds.length > 0) {
+        chatIdsToUpdate = ownerChatIds;
       }
     }
 

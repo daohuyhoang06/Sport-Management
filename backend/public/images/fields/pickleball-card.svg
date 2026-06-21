@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675">
+  <defs>
+    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#0F766E"/>
+      <stop offset="100%" stop-color="#155E75"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="675" fill="url(#bg)"/>
+  <rect x="76" y="76" width="1048" height="523" rx="34" fill="none" stroke="#CCFBF1" stroke-width="8" opacity="0.85"/>
+  <circle cx="300" cy="220" r="92" fill="#CCFBF1" opacity="0.16"/>
+  <circle cx="900" cy="430" r="92" fill="#CCFBF1" opacity="0.16"/>
+  <rect x="410" y="170" width="380" height="260" rx="26" fill="none" stroke="#CCFBF1" stroke-width="8" opacity="0.75"/>
+  <line x1="410" y1="300" x2="790" y2="300" stroke="#CCFBF1" stroke-width="8" opacity="0.75"/>
+  <text x="110" y="132" font-family="Arial, sans-serif" font-size="52" font-weight="700" fill="#F0FDFA">Pickleball</text>
+  <text x="110" y="184" font-family="Arial, sans-serif" font-size="28" fill="#CCFBF1">Field card fallback</text>
+</svg>
